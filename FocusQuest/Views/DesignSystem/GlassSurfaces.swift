@@ -27,15 +27,22 @@ extension View {
 
     /// Hlavni akce pripnuta ke spodnimu okraji. Obsah, ktery pod ni odroluje,
     /// se plynule rozmaze do ztracena, misto aby byl ostre useknuty.
-    func pinnedBottomAction<Action: View>(@ViewBuilder _ action: () -> Action) -> some View {
-        safeAreaInset(edge: .bottom, spacing: 0) {
-            action()
-                .frame(maxWidth: 640)
-                .padding(.horizontal, FQSpace.lg)
-                .padding(.top, FQSpace.xl)
-                .padding(.bottom, FQSpace.sm)
-                .frame(maxWidth: .infinity)
-                .background { ScrollFadeBackground() }
+    /// Na iOS 26+ to dela system (scroll edge effect pod `safeAreaBar`),
+    /// na starsich iOS vlastni rozmazany prechod.
+    @ViewBuilder func pinnedBottomAction<Action: View>(@ViewBuilder _ action: () -> Action) -> some View {
+        let bar = action()
+            .frame(maxWidth: 640)
+            .padding(.horizontal, FQSpace.lg)
+            .padding(.top, FQSpace.xl)
+            .padding(.bottom, FQSpace.sm)
+            .frame(maxWidth: .infinity)
+        if #available(iOS 26.0, *) {
+            safeAreaBar(edge: .bottom, spacing: 0) { bar }
+                .scrollEdgeEffectStyle(.soft, for: .bottom)
+        } else {
+            safeAreaInset(edge: .bottom, spacing: 0) {
+                bar.background { ScrollFadeBackground() }
+            }
         }
     }
 
@@ -81,10 +88,10 @@ struct GlassCardModifier: ViewModifier {
 private struct ScrollFadeBackground: View {
     var body: some View {
         Rectangle()
-            .fill(.ultraThinMaterial)
+            .fill(.regularMaterial)
             .mask {
                 LinearGradient(
-                    stops: [.init(color: .clear, location: 0), .init(color: .black, location: 0.55)],
+                    stops: [.init(color: .clear, location: 0), .init(color: .black, location: 0.3)],
                     startPoint: .top,
                     endPoint: .bottom
                 )
