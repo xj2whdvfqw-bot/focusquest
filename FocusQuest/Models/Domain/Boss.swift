@@ -8,7 +8,7 @@ struct Boss: Identifiable, Codable, Hashable, Sendable {
     let id: String
     var name: String
     let tier: BossTier
-    let maxHP: Int
+    var maxHP: Int
     var currentHP: Int
     let pixelSpriteConfig: String
     let lootTable: [String]
@@ -18,6 +18,22 @@ struct Boss: Identifiable, Codable, Hashable, Sendable {
 
     mutating func applyDamage(_ amount: Int) {
         currentHP = max(0, currentHP - max(0, amount))
+    }
+
+    // HP bosse si hrac voli sam: 1 HP = 1 minuta overeneho soustredeni.
+    static let minutesRange = 1...240
+    static let defaultMinutes = 25
+
+    static func clampedMinutes(_ value: Int) -> Int {
+        min(minutesRange.upperBound, max(minutesRange.lowerBound, value))
+    }
+
+    /// Stejny boss s plnym zdravim na zvoleny pocet minut.
+    func withHP(minutes: Int) -> Boss {
+        var copy = self
+        copy.maxHP = Boss.clampedMinutes(minutes)
+        copy.currentHP = copy.maxHP
+        return copy
     }
 
     static let roster: [Boss] = [

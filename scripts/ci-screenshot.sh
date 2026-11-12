@@ -44,8 +44,13 @@ diagnose() {
 }
 
 INDEX=1
-for TAB in arena stats profile settings; do
-  SHOT="build/screenshots/0${INDEX}-${TAB}.png"
+# Kazda polozka je "rezim:zalozka". Vsechny zalozky se foti v tmavem rezimu, hlavni i ve svetlem.
+# "creator" neni zalozka, ale uvodni tvorba hrdiny pri prvnim spusteni.
+for ENTRY in dark:arena dark:village dark:stats dark:profile dark:settings dark:creator light:arena light:village light:profile; do
+  MODE="${ENTRY%%:*}"
+  TAB="${ENTRY##*:}"
+  xcrun simctl ui "$UDID" appearance "$MODE" || true
+  SHOT=$(printf 'build/screenshots/%02d-%s-%s.png' "$INDEX" "$TAB" "$MODE")
   xcrun simctl terminate "$UDID" "$BUNDLE_ID" 2>/dev/null || true
   LAUNCH_OUTPUT=$(xcrun simctl launch "$UDID" "$BUNDLE_ID" -initialTab "$TAB")
   echo "$LAUNCH_OUTPUT"

@@ -1,31 +1,38 @@
 import SwiftUI
 
 private enum FocusQuestTab: String, CaseIterable, Identifiable {
-    case arena, stats, profile, settings
+    case arena, village, stats, profile, settings
     var id: String { rawValue }
     var title: String { rawValue.capitalized }
     var symbol: String {
         switch self {
         case .arena: "flame.fill"
+        case .village: "house.fill"
         case .stats: "chart.bar.fill"
         case .profile: "person.crop.circle.fill"
         case .settings: "gearshape.fill"
         }
     }
 
-    /// V debug buildu jde vychozi zalozku zvolit argumentem `-initialTab stats`.
-    /// Pouziva to CI, aby vyfotilo vsechny obrazovky v simulatoru.
-    static var initial: FocusQuestTab {
+    /// V debug buildu jde appku spustit s argumentem `-initialTab stats` (vychozi zalozka)
+    /// nebo `-initialTab creator` (uvodni tvorba hrdiny). Pouziva to CI pro screenshoty.
+    static var launchArgument: String? {
         #if DEBUG
-        if let raw = UserDefaults.standard.string(forKey: "initialTab"), let tab = FocusQuestTab(rawValue: raw) { return tab }
+        return UserDefaults.standard.string(forKey: "initialTab")
+        #else
+        return nil
         #endif
-        return .arena
+    }
+
+    static var initial: FocusQuestTab {
+        launchArgument.flatMap(FocusQuestTab.init(rawValue:)) ?? .arena
     }
 }
 
 struct MainTabView: View {
     let container: AppDIContainer
     @State private var selectedTab = FocusQuestTab.initial
+    @State private var showsHeroCreator = false
 
     var body: some View {
         Group {
@@ -37,6 +44,9 @@ struct MainTabView: View {
                     ArenaView(model: container.arenaViewModel, profileModel: container.profileViewModel)
                         .tabItem { Label(FocusQuestTab.arena.title, systemImage: FocusQuestTab.arena.symbol) }
                         .tag(FocusQuestTab.arena)
+                    VillageView(model: container.profileViewModel)
+                        .tabItem { Label(FocusQuestTab.village.title, systemImage: FocusQuestTab.village.symbol) }
+                        .tag(FocusQuestTab.village)
                     StatsView(model: container.statsViewModel, profile: container.profileViewModel)
                         .tabItem { Label(FocusQuestTab.stats.title, systemImage: FocusQuestTab.stats.symbol) }
                         .tag(FocusQuestTab.stats)
@@ -47,10 +57,23 @@ struct MainTabView: View {
                         .tabItem { Label(FocusQuestTab.settings.title, systemImage: FocusQuestTab.settings.symbol) }
                         .tag(FocusQuestTab.settings)
                 }
+                .task { await presentHeroCreatorIfNeeded() }
+                .fullScreenCover(isPresented: $showsHeroCreator) {
+                    HeroCreatorView(model: container.profileViewModel) { showsHeroCreator = false }
+                }
             }
         }
+        // Vzhled se ridi nastavenim iOS (Light / Dark); barvy i sklo se prepinaji samy.
         .tint(FQColor.accent)
-        .preferredColorScheme(.dark)
+    }
+
+    /// Pri prvnim spusteni si hrac vytvori hrdinu. Screenshoty zalozek v CI tuhle obrazovku preskakuji.
+    private func presentHeroCreatorIfNeeded() async {
+        await container.profileViewModel.refresh()
+        await container.profileViewModel.refreshProgress()
+        let argument = FocusQuestTab.launchArgument
+        guard argument == nil || argument == "creator" else { return }
+        if !container.profileViewModel.profile.hasCreatedHero { showsHeroCreator = true }
     }
 }
 

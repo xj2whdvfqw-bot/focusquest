@@ -31,6 +31,5 @@ struct LegalDocumentSheetView: View {
         // Samotny list je sklo: pres material prosvita obrazovka pod nim.
         .presentationBackground(.ultraThinMaterial)
         .presentationDragIndicator(.visible)
-        .preferredColorScheme(.dark)
     }
 }

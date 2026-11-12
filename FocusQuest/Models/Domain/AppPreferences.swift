@@ -39,10 +39,56 @@ enum AmbientTrack: String, Codable, CaseIterable, Sendable, Identifiable {
     }
 }
 
-struct AppPreferences: Codable, Sendable {
+/// Zanr zvuku pri soustredeni. Lo-fi jsou nahravky z bundlu, sumy se generuji primo v appce.
+enum Soundscape: String, Codable, CaseIterable, Sendable, Identifiable {
+    case lofi, whiteNoise, brownNoise
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .lofi: "Lo-fi beats"
+        case .whiteNoise: "White noise"
+        case .brownNoise: "Brown noise"
+        }
+    }
+
+    var shortTitle: String {
+        switch self {
+        case .lofi: "Lo-fi"
+        case .whiteNoise: "White"
+        case .brownNoise: "Brown"
+        }
+    }
+}
+
+struct AppPreferences: Codable, Equatable, Sendable {
     var isHapticsEnabled = true
     var isMusicEnabled = true
     var isSFXEnabled = true
     var ambientVolume = 0.55
     var selectedTrack: AmbientTrack = .calmCurrents
+    var soundscape: Soundscape = .lofi
+    /// Naposledy zvolene HP bosse (1 HP = 1 minuta soustredeni).
+    var bossMinutes = Boss.defaultMinutes
+
+    enum CodingKeys: String, CodingKey {
+        case isHapticsEnabled, isMusicEnabled, isSFXEnabled, ambientVolume, selectedTrack, soundscape, bossMinutes
+    }
+}
+
+extension AppPreferences {
+    // Predvolby ulozene starsi verzi nektera pole nemaji; chybejici hodnoty se doplni vychozimi.
+    init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let fallback = AppPreferences()
+        isHapticsEnabled = try container.decodeIfPresent(Bool.self, forKey: .isHapticsEnabled) ?? fallback.isHapticsEnabled
+        isMusicEnabled = try container.decodeIfPresent(Bool.self, forKey: .isMusicEnabled) ?? fallback.isMusicEnabled
+        isSFXEnabled = try container.decodeIfPresent(Bool.self, forKey: .isSFXEnabled) ?? fallback.isSFXEnabled
+        ambientVolume = try container.decodeIfPresent(Double.self, forKey: .ambientVolume) ?? fallback.ambientVolume
+        selectedTrack = try container.decodeIfPresent(AmbientTrack.self, forKey: .selectedTrack) ?? fallback.selectedTrack
+        soundscape = (try? container.decodeIfPresent(Soundscape.self, forKey: .soundscape)) ?? fallback.soundscape
+        let storedMinutes = try container.decodeIfPresent(Int.self, forKey: .bossMinutes) ?? fallback.bossMinutes
+        bossMinutes = Boss.clampedMinutes(storedMinutes)
+    }
 }

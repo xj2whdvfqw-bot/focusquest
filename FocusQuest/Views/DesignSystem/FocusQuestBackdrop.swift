@@ -1,27 +1,31 @@
 import SwiftUI
 
-/// Pozadi vsech obrazovek: tmave platno s nekolika rozmazanymi barevnymi svetly.
+/// Pozadi vsech obrazovek: klidne platno (tmave nebo svetle podle rezimu iOS) s nekolika rozmazanymi barevnymi svetly.
 /// Sklenene karty maji diky nim co "lamat", ale platno zustava klidne a neutralni.
 struct FocusQuestBackdrop: View {
     var alert = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorScheme) private var colorScheme
     @State private var drift = false
 
     var body: some View {
         GeometryReader { proxy in
             let width = proxy.size.width
             let height = proxy.size.height
+            let isDark = colorScheme == .dark
             ZStack {
                 LinearGradient(
-                    colors: [Color(red: 0.03, green: 0.04, blue: 0.10), Color(red: 0.07, green: 0.06, blue: 0.16), Color(red: 0.03, green: 0.09, blue: 0.12)],
+                    colors: isDark
+                        ? [Color(red: 0.03, green: 0.04, blue: 0.10), Color(red: 0.07, green: 0.06, blue: 0.16), Color(red: 0.03, green: 0.09, blue: 0.12)]
+                        : [Color(red: 0.93, green: 0.95, blue: 1.00), Color(red: 0.95, green: 0.93, blue: 1.00), Color(red: 0.90, green: 0.97, blue: 0.96)],
                     startPoint: .top,
                     endPoint: .bottom
                 )
-                glow(alert ? FQColor.danger : FQColor.accent, diameter: width * 1.1, opacity: alert ? 0.50 : 0.30)
+                glow(alert ? FQColor.alarm : FQColor.mint, diameter: width * 1.1, opacity: alert ? 0.50 : (isDark ? 0.30 : 0.45))
                     .position(x: width * (drift ? 0.92 : 0.74), y: height * (drift ? 0.10 : 0.18))
-                glow(Color(red: 0.36, green: 0.38, blue: 0.98), diameter: width * 1.3, opacity: 0.36)
+                glow(Color(red: 0.36, green: 0.38, blue: 0.98), diameter: width * 1.3, opacity: isDark ? 0.36 : 0.26)
                     .position(x: width * (drift ? 0.06 : 0.24), y: height * (drift ? 0.52 : 0.42))
-                glow(Color(red: 0.76, green: 0.36, blue: 0.92), diameter: width * 1.0, opacity: 0.24)
+                glow(Color(red: 0.76, green: 0.36, blue: 0.92), diameter: width * 1.0, opacity: isDark ? 0.24 : 0.22)
                     .position(x: width * (drift ? 0.84 : 0.66), y: height * (drift ? 0.84 : 0.94))
             }
         }

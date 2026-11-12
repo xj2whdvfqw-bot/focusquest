@@ -44,6 +44,9 @@ final class SettingsViewModel: ObservableObject {
         onPreferencesChanged?(preferences)
     }
 
+    /// Predvolby zmenene jinde (prehravac v Arene) - jen se prevezmou, uz jsou ulozene.
+    func syncPreferences(_ updated: AppPreferences) { preferences = updated }
+
     func signInWithApple(identityToken: String) async {
         do { try await profileSync.exchangeAppleToken(identityToken); isSignedIn = true; statusMessage = "Apple account connected." }
         catch { statusMessage = "Sign in could not be completed." }

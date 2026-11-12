@@ -27,6 +27,8 @@ struct ArenaView: View {
                     if model.mode == .raid { raidPartyBar }
                 }
                 battleStage
+                bossHPCard
+                soundPlayer
                 #if targetEnvironment(simulator)
                 simulatorControls
                 #endif
@@ -44,18 +46,123 @@ struct ArenaView: View {
             if case let .penalized(reason) = model.state {
                 resultOverlay(icon: "xmark.shield.fill", title: "Combo broken", detail: reason, color: FQColor.danger)
             }
-            if case let .victory(boss, _, loot) = model.state {
-                resultOverlay(icon: "trophy.fill", title: "Victory", detail: loot.map { "\(boss.name) defeated. \($0.name) found." } ?? "\(boss.name) defeated.", color: FQColor.accent)
+            if case let .victory(boss, xp, loot) = model.state {
+                resultOverlay(icon: "trophy.fill", title: "Victory", detail: victoryDetail(boss: boss, xp: xp, loot: loot), color: FQColor.accent)
             }
         }
         // Cervena obrazovka s odpoctem ma zabrat opravdu cely displej.
         .toolbar(isWarning ? .hidden : .visible, for: .tabBar)
         .onChange(of: model.state) { _, value in
-            if case let .victory(boss, _, loot) = value {
-                profileModel.unlockLoot(loot)
-                receipt = BattleReceiptRenderer.render(profile: profileModel.profile, boss: boss, focusMinutes: elapsed / 60, flawless: true)
+            if case let .victory(boss, xp, loot) = value {
+                profileModel.recordVictory(boss: boss, xpEarned: xp, loot: loot)
+                receipt = BattleReceiptRenderer.render(profile: profileModel.profile, boss: boss, focusMinutes: boss.maxHP, flawless: true)
             }
         }
+    }
+
+    private func victoryDetail(boss: Boss, xp: Int, loot: LootItem?) -> String {
+        let coins = RewardRules.coins(verifiedMinutes: boss.maxHP, bossDefeated: true)
+        let rewards = "\(boss.name) defeated. +\(xp) XP, +\(coins) coins."
+        return loot.map { "\(rewards) \($0.name) found." } ?? rewards
+    }
+
+    /// "25 min" nebo "1 h 30 min".
+    static func durationText(minutes: Int) -> String {
+        guard minutes >= 60 else { return "\(minutes) min" }
+        let rest = minutes % 60
+        return rest == 0 ? "\(minutes / 60) h" : "\(minutes / 60) h \(rest) min"
+    }
+
+    // MARK: - HP bosse
+
+    private var bossHPCard: some View {
+        VStack(alignment: .leading, spacing: FQSpace.md) {
+            HStack(spacing: FQSpace.sm) {
+                VStack(alignment: .leading, spacing: FQSpace.xs) {
+                    Text("Boss HP").font(.fqLabel).foregroundStyle(FQColor.textSecondary)
+                    Text("\(model.bossMinutes) HP")
+                        .font(.fqTitle)
+                        .monospacedDigit()
+                        .foregroundStyle(FQColor.textPrimary)
+                        .contentTransition(.numericText())
+                }
+                Spacer(minLength: FQSpace.sm)
+                roundButton("minus", label: "One minute less") { model.setBossMinutes(model.bossMinutes - 1) }
+                roundButton("plus", label: "One minute more") { model.setBossMinutes(model.bossMinutes + 1) }
+            }
+            Slider(
+                value: Binding(get: { Double(model.bossMinutes) }, set: { model.setBossMinutes(Self.snappedMinutes($0)) }),
+                in: Double(Boss.minutesRange.lowerBound)...Double(Boss.minutesRange.upperBound)
+            )
+            .tint(FQColor.accent)
+            .accessibilityLabel("Boss HP")
+            .accessibilityValue("\(model.bossMinutes) minutes")
+            Text("1 HP = 1 minute of verified focus. This battle takes \(Self.durationText(minutes: model.bossMinutes)).")
+                .font(.fqMeta)
+                .foregroundStyle(FQColor.textSecondary)
+        }
+        .padding(FQSpace.lg)
+        .glassCard()
+        .disabled(!isIdle)
+        .opacity(isIdle ? 1 : 0.6)
+    }
+
+    /// Posuvnik skace po 5 minutach (pod 10 minut po jedne); presnou hodnotu doladi tlacitka +/-.
+    static func snappedMinutes(_ value: Double) -> Int {
+        let minutes = Int(value.rounded())
+        return minutes < 10 ? minutes : Int((Double(minutes) / 5).rounded()) * 5
+    }
+
+    private func roundButton(_ symbol: String, label: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(FQColor.textPrimary)
+                .frame(width: 44, height: 44)
+                .glassControl(in: Circle(), interactive: true)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(label)
+    }
+
+    // MARK: - Prehravac
+
+    private var soundPlayer: some View {
+        let preferences = model.preferences
+        let isFocusing = if case .focusing = model.state { true } else { false }
+        let status = !preferences.isMusicEnabled ? "Sound is off" : (isFocusing ? "Now playing" : "Plays when the battle starts")
+        return VStack(spacing: FQSpace.md) {
+            HStack(spacing: FQSpace.md) {
+                IconTile(symbol: preferences.soundscape == .lofi ? "music.note" : "waveform")
+                VStack(alignment: .leading, spacing: FQSpace.xs) {
+                    Text(preferences.soundscape == .lofi ? preferences.selectedTrack.title : preferences.soundscape.title)
+                        .font(.fqBody.weight(.medium))
+                        .foregroundStyle(FQColor.textPrimary)
+                        .lineLimit(1)
+                    Text(status).font(.fqMeta).foregroundStyle(FQColor.textSecondary)
+                }
+                Spacer(minLength: FQSpace.sm)
+                if preferences.soundscape == .lofi {
+                    roundButton("forward.fill", label: "Next track") { model.skipTrack() }
+                }
+                roundButton(preferences.isMusicEnabled ? "speaker.wave.2.fill" : "speaker.slash.fill", label: preferences.isMusicEnabled ? "Turn sound off" : "Turn sound on") {
+                    model.setMusicEnabled(!preferences.isMusicEnabled)
+                }
+            }
+            Picker("Sound", selection: Binding(get: { preferences.soundscape }, set: { model.setSoundscape($0) })) {
+                ForEach(Soundscape.allCases) { Text($0.title).tag($0) }
+            }
+            .pickerStyle(.segmented)
+            HStack(spacing: FQSpace.md) {
+                Image(systemName: "speaker.fill").font(.fqMeta).foregroundStyle(FQColor.textSecondary).accessibilityHidden(true)
+                Slider(value: Binding(get: { preferences.ambientVolume }, set: { model.setVolume($0) }), in: 0...1)
+                    .tint(FQColor.accent)
+                    .accessibilityLabel("Sound volume")
+                Image(systemName: "speaker.wave.3.fill").font(.fqMeta).foregroundStyle(FQColor.textSecondary).accessibilityHidden(true)
+            }
+        }
+        .padding(FQSpace.lg)
+        .glassCard()
     }
 
     // MARK: - Sekce
@@ -122,7 +229,7 @@ struct ArenaView: View {
                 }
                 .padding(.horizontal, FQSpace.md)
                 .padding(.vertical, FQSpace.sm)
-                .background(Color.white.opacity(0.08), in: Capsule())
+                .background(FQColor.fill, in: Capsule())
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -142,7 +249,7 @@ struct ArenaView: View {
 
             VStack(spacing: FQSpace.xs) {
                 Text(model.selectedBoss.name).font(.fqTitle).foregroundStyle(FQColor.textPrimary)
-                Text("\(model.selectedBoss.tier.rawValue.capitalized) boss").font(.fqMeta).foregroundStyle(FQColor.textSecondary)
+                Text("\(Self.durationText(minutes: model.selectedBoss.maxHP)) battle").font(.fqMeta).foregroundStyle(FQColor.textSecondary)
             }
 
             Text(clockText)
@@ -160,7 +267,7 @@ struct ArenaView: View {
             .padding(.leading, FQSpace.sm)
             .padding(.trailing, FQSpace.lg)
             .padding(.vertical, FQSpace.xs)
-            .background(Color.white.opacity(0.08), in: Capsule())
+            .background(FQColor.fill, in: Capsule())
 
             HairlineDivider()
 
@@ -259,6 +366,8 @@ struct ArenaView: View {
         .transition(.opacity)
         .animation(.easeInOut(duration: 0.15), value: Int(ceil(seconds)))
         .accessibilityAddTraits(.isModal)
+        // Varovna obrazovka je cervena v obou rezimech, text na ni musi zustat svetly.
+        .environment(\.colorScheme, .dark)
     }
 
     private func resultOverlay(icon: String, title: String, detail: String, color: Color) -> some View {

@@ -146,7 +146,7 @@ struct ProgressRing<Center: View>: View {
 
     var body: some View {
         ZStack {
-            Circle().stroke(Color.white.opacity(0.12), lineWidth: lineWidth)
+            Circle().stroke(FQColor.track, lineWidth: lineWidth)
             Circle()
                 .trim(from: 0, to: min(1, max(0, progress)))
                 .stroke(FQColor.accent, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))

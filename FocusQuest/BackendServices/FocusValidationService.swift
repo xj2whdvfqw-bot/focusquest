@@ -1,7 +1,7 @@
 import Foundation
 
 protocol FocusValidationServiceProtocol: Sendable {
-    func startSession(bossID: String, mode: SessionMode) async throws -> StartSessionResponse
+    func startSession(bossID: String, mode: SessionMode, targetMinutes: Int) async throws -> StartSessionResponse
     func sendHeartbeat(sessionID: String, monotonicElapsedSeconds: TimeInterval, motionIntegrityToken: String, attestationAssertion: Data?, clientNonce: String, requestSignature: String?) async throws -> HeartbeatResponse
     func reportViolation(sessionID: String, reason: String, monotonicElapsedSeconds: TimeInterval) async throws
     func completeSession(sessionID: String) async throws -> CompleteSessionResponse
@@ -12,8 +12,8 @@ struct RemoteFocusValidationService: FocusValidationServiceProtocol {
     let attestation: any AppAttestServiceProtocol
     let signer: any CryptoSignerProtocol
 
-    func startSession(bossID: String, mode: SessionMode) async throws -> StartSessionResponse {
-        let request = StartSessionRequest(bossID: bossID, mode: mode, clientNonce: signer.makeNonce(byteCount: 24), clientUptime: ProcessInfo.processInfo.systemUptime)
+    func startSession(bossID: String, mode: SessionMode, targetMinutes: Int) async throws -> StartSessionResponse {
+        let request = StartSessionRequest(bossID: bossID, mode: mode, targetMinutes: Boss.clampedMinutes(targetMinutes), clientNonce: signer.makeNonce(byteCount: 24), clientUptime: ProcessInfo.processInfo.systemUptime)
         let response = try await api.post("v1/sessions/start", body: request, as: StartSessionResponse.self)
         if await attestation.isSupported(), let keyID = try await attestation.prepareKey(), let assertion = try await attestation.attest(keyID: keyID, challenge: Data(response.sessionNonce.utf8)) {
             let registration = AttestationRegistrationRequest(sessionID: response.sessionID, keyID: keyID, attestation: assertion)
@@ -46,7 +46,7 @@ struct RemoteFocusValidationService: FocusValidationServiceProtocol {
 actor SimulatedSecureBackendService: FocusValidationServiceProtocol {
     private struct ActiveSession {
         let id: String
-        let bossID: String
+        var boss: Boss
         let startedAt: TimeInterval
         var lastAuthorizedAt: TimeInterval
         var combo = 1
@@ -57,16 +57,19 @@ actor SimulatedSecureBackendService: FocusValidationServiceProtocol {
     private let signingKey: Data
     private let signer = CryptoSigner()
     private var sessions: [String: ActiveSession] = [:]
-    private var bosses = Dictionary(uniqueKeysWithValues: Boss.roster.map { ($0.id, $0) })
+    private let bosses = Dictionary(uniqueKeysWithValues: Boss.roster.map { ($0.id, $0) })
+    /// Level stoji 1000 XP, takze 10 XP za minutu = novy level zhruba po 100 minutach soustredeni.
+    static let xpPerVerifiedMinute = 10
     private var stats = PlayerStats.initial
 
     init(signingKey: Data? = nil) { self.signingKey = signingKey ?? Data(CryptoSigner().makeNonce(byteCount: 48).utf8) }
 
-    func startSession(bossID: String, mode: SessionMode) async throws -> StartSessionResponse {
-        guard bosses[bossID] != nil else { throw SimulationError.unknownBoss }
+    func startSession(bossID: String, mode: SessionMode, targetMinutes: Int) async throws -> StartSessionResponse {
+        guard let template = bosses[bossID] else { throw SimulationError.unknownBoss }
         let now = ProcessInfo.processInfo.systemUptime
         let id = UUID().uuidString
-        sessions[id] = ActiveSession(id: id, bossID: bossID, startedAt: now, lastAuthorizedAt: now)
+        // Kazda bitva ma vlastniho bosse s HP, ktere si hrac zvolil (1 HP = 1 minuta).
+        sessions[id] = ActiveSession(id: id, boss: template.withHP(minutes: targetMinutes), startedAt: now, lastAuthorizedAt: now)
         _ = mode
         return StartSessionResponse(sessionID: id, sessionNonce: signer.makeNonce(), serverTimestamp: Date())
     }
@@ -78,38 +81,40 @@ actor SimulatedSecureBackendService: FocusValidationServiceProtocol {
         let payload = try JSONEncoder.focusQuest.encode(heartbeat)
         guard let requestSignature, signer.verify(requestSignature, payload: payload, key: signingKey, nonce: clientNonce) else { throw SimulationError.invalidSignature }
         let elapsed = ProcessInfo.processInfo.systemUptime - session.startedAt
-        guard abs(elapsed - monotonicElapsedSeconds) <= 2 else { throw SimulationError.invalidClock }
-        let available = Int((elapsed - session.lastAuthorizedAt + session.startedAt) / 60)
+        // Klient nesmi hlasit vic casu, nez opravdu ubehlo. Mene hlasit smi: pauzy pri zvednuti telefonu se do soustredeni nepocitaji.
+        guard monotonicElapsedSeconds <= elapsed + 2 else { throw SimulationError.invalidClock }
+        let available = Int((monotonicElapsedSeconds - (session.lastAuthorizedAt - session.startedAt)) / 60)
         let damage = max(0, available)
         if damage > 0 {
             session.lastAuthorizedAt += TimeInterval(damage * 60)
             session.verifiedSeconds += damage * 60
-            if var boss = bosses[session.bossID] { boss.applyDamage(damage); bosses[session.bossID] = boss }
+            session.boss.applyDamage(damage)
         }
         sessions[sessionID] = session
         _ = motionIntegrityToken
         _ = attestationAssertion
-        return HeartbeatResponse(authorizedDamage: damage, authoritativeBossHP: bosses[session.bossID]?.currentHP ?? 0, comboMultiplier: session.combo, serverTimestamp: Date())
+        return HeartbeatResponse(authorizedDamage: damage, authoritativeBossHP: session.boss.currentHP, comboMultiplier: session.combo, serverTimestamp: Date())
     }
 
     func reportViolation(sessionID: String, reason: String, monotonicElapsedSeconds: TimeInterval) async throws {
         guard var session = sessions[sessionID] else { throw SimulationError.invalidSession }
         session.violated = true
         session.combo = 1
-        sessions[sessionID] = session
         stats.totalXP = max(0, stats.totalXP - 25)
-        if var boss = bosses[session.bossID] { boss.currentHP = min(boss.maxHP, boss.currentHP + 5); bosses[session.bossID] = boss }
+        session.boss.currentHP = min(session.boss.maxHP, session.boss.currentHP + 5)
+        sessions[sessionID] = session
         _ = reason
         _ = monotonicElapsedSeconds
     }
 
     func completeSession(sessionID: String) async throws -> CompleteSessionResponse {
-        guard let session = sessions.removeValue(forKey: sessionID), let boss = bosses[session.bossID] else { throw SimulationError.invalidSession }
+        guard let session = sessions.removeValue(forKey: sessionID) else { throw SimulationError.invalidSession }
+        let boss = session.boss
         stats.battles += 1
         let loot = boss.isDefeated ? LootItem.catalog.first(where: { boss.lootTable.contains($0.id) }) : nil
         if boss.isDefeated { stats.wins += 1 }
         stats.totalHPDealt += session.verifiedSeconds / 60
-        let xpEarned = session.verifiedSeconds / 60
+        let xpEarned = session.verifiedSeconds / 60 * Self.xpPerVerifiedMinute
         stats.totalXP += xpEarned
         stats.level = max(1, stats.totalXP / 1000 + 1)
         return CompleteSessionResponse(stats: stats, boss: boss, loot: loot, xpEarned: xpEarned)

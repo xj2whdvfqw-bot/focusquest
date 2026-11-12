@@ -19,7 +19,7 @@ struct FocusBattleLiveActivity: Widget {
                         .font(.title3.weight(.semibold))
                         .monospacedDigit()
                         .multilineTextAlignment(.trailing)
-                        .foregroundStyle(context.state.isWarning ? FQColor.danger : .white)
+                        .foregroundStyle(context.state.isWarning ? FQColor.alarm : .white)
                         .frame(width: 72, alignment: .trailing)
                         .padding(.trailing, 4)
                 }
@@ -44,13 +44,13 @@ struct FocusBattleLiveActivity: Widget {
                     .font(.caption.weight(.semibold))
                     .monospacedDigit()
                     .multilineTextAlignment(.trailing)
-                    .foregroundStyle(context.state.isWarning ? FQColor.danger : FQColor.accent)
+                    .foregroundStyle(context.state.isWarning ? FQColor.alarm : FQColor.mint)
                     .frame(width: 44, alignment: .trailing)
             } minimal: {
                 Image(systemName: context.state.isWarning ? "exclamationmark.triangle.fill" : "bolt.fill")
-                    .foregroundStyle(context.state.isWarning ? FQColor.danger : FQColor.accent)
+                    .foregroundStyle(context.state.isWarning ? FQColor.alarm : FQColor.mint)
             }
-            .keylineTint(context.state.isWarning ? FQColor.danger : FQColor.accent)
+            .keylineTint(context.state.isWarning ? FQColor.alarm : FQColor.mint)
         }
     }
 }
@@ -107,7 +107,7 @@ private struct BattleHealthBar: View {
 
     var body: some View {
         ProgressView(value: Double(min(max(0, state.bossHP), max(1, state.bossMaxHP))), total: Double(max(1, state.bossMaxHP)))
-            .tint(state.isWarning ? FQColor.danger : FQColor.accent)
+            .tint(state.isWarning ? FQColor.alarm : FQColor.mint)
     }
 }
 

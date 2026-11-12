@@ -6,6 +6,7 @@ final class ProfileViewModel: ObservableObject {
     @Published private(set) var profile: UserProfile
     @Published private(set) var isSaving = false
     @Published private(set) var todayVerifiedMinutes = 0
+    @Published private(set) var stats: PlayerStats = .initial
     @Published var errorMessage: String?
     private let sync: any ProfileSyncServiceProtocol
 
@@ -21,6 +22,54 @@ final class ProfileViewModel: ObservableObject {
     func updateTitle(_ value: String) { profile.title = value; save() }
     func updateHeroClass(_ value: HeroClass) { profile.heroClass = value; save() }
     func updateDailyGoal(_ value: Int) { profile.dailyFocusGoalMinutes = min(240, max(15, value)); save() }
+
+    // MARK: - Hrdina
+
+    func updateAvatar(_ value: AvatarAppearance) {
+        guard value != profile.avatar else { return }
+        profile.avatar = value
+        save()
+    }
+
+    /// Konec uvodni tvorby hrdiny; priste se uz nezobrazi.
+    func completeHeroCreation() {
+        guard !profile.hasCreatedHero else { return }
+        profile.hasCreatedHero = true
+        save()
+    }
+
+    // MARK: - Odmeny a vesnice
+
+    var level: Int { stats.level }
+
+    var canUpgradeVillage: Bool {
+        profile.village.canUpgrade(level: stats.level, bossesDefeated: profile.bossesDefeated, coins: profile.coins)
+    }
+
+    func upgradeVillage() {
+        guard let cost = profile.village.upgrade(level: stats.level, bossesDefeated: profile.bossesDefeated, coins: profile.coins) else { return }
+        profile.coins = max(0, profile.coins - cost)
+        save()
+    }
+
+    /// Porazeny boss: mince, pocitadlo bossu, pripadny relikt a zapis do statistik.
+    func recordVictory(boss: Boss, xpEarned: Int, loot: LootItem?) {
+        let minutes = boss.maxHP
+        profile.coins += RewardRules.coins(verifiedMinutes: minutes, bossDefeated: true)
+        profile.bossesDefeated += 1
+        if let loot, !profile.unlockedLootIDs.contains(loot.id) { profile.unlockedLootIDs.append(loot.id) }
+        save()
+        let summary = SessionSummary(id: UUID(), bossName: boss.name, verifiedMinutes: minutes, xpEarned: xpEarned, completedAt: Date(), flawless: true)
+        Task {
+            do { apply(stats: try await sync.recordBattle(summary, bossDefeated: true)) }
+            catch { errorMessage = "Battle could not be added to your stats." }
+        }
+    }
+
+    private func apply(stats updated: PlayerStats) {
+        stats = updated
+        todayVerifiedMinutes = updated.sessionHistory.filter { Calendar.current.isDateInToday($0.completedAt) }.reduce(0) { $0 + $1.verifiedMinutes }
+    }
 
     func unlockLoot(_ item: LootItem?) {
         guard let item, !profile.unlockedLootIDs.contains(item.id) else { return }
@@ -40,8 +89,7 @@ final class ProfileViewModel: ObservableObject {
 
     func refreshProgress() async {
         do {
-            let stats = try await sync.loadStats()
-            todayVerifiedMinutes = stats.sessionHistory.filter { Calendar.current.isDateInToday($0.completedAt) }.reduce(0) { $0 + $1.verifiedMinutes }
+            apply(stats: try await sync.loadStats())
         } catch { errorMessage = "Verified daily progress is unavailable." }
     }
 

@@ -43,5 +43,6 @@ final class AppDIContainer {
         self.arenaViewModel = ArenaViewModel(validation: validation, motion: motion, haptics: haptics, audio: audio, security: security, raid: raid, preferenceStore: preferences, profileProvider: { [weak profileViewModel] in profileViewModel?.profile ?? profile }, simulationSigningKey: previewSigningKey, activity: activity)
         // Zmeny v Nastaveni (hudba, hlasitost, skladba) se maji projevit hned i v bezici bitve.
         settingsViewModel.onPreferencesChanged = { [weak arenaViewModel] updated in arenaViewModel?.updatePreferences(updated) }
+        arenaViewModel.onPreferencesChanged = { [weak settingsViewModel] updated in settingsViewModel?.syncPreferences(updated) }
     }
 }

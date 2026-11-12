@@ -38,25 +38,28 @@ extension View {
 struct GlassCardModifier: ViewModifier {
     let radius: CGFloat
     let tint: Color?
+    @Environment(\.colorScheme) private var colorScheme
 
     func body(content: Content) -> some View {
         let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
+        // Ve svetlem rezimu je sklo mlecne bile, v tmavem jen lehce prosvetlene.
+        let isDark = colorScheme == .dark
         return content
             .background {
                 ZStack {
                     shape.fill(.ultraThinMaterial)
-                    shape.fill((tint ?? Color.white).opacity(tint == nil ? 0.04 : 0.18))
+                    shape.fill((tint ?? Color.white).opacity(tint == nil ? (isDark ? 0.04 : 0.36) : 0.18))
                     // Odlesk shora - dodava skleneny dojem bez tvrdych stinu.
-                    shape.fill(LinearGradient(colors: [Color.white.opacity(0.10), Color.white.opacity(0)], startPoint: .top, endPoint: .center))
+                    shape.fill(LinearGradient(colors: [Color.white.opacity(isDark ? 0.10 : 0.45), Color.white.opacity(0)], startPoint: .top, endPoint: .center))
                 }
             }
             .overlay {
                 shape.strokeBorder(
-                    LinearGradient(colors: [Color.white.opacity(0.32), Color.white.opacity(0.08), Color.white.opacity(0.14)], startPoint: .topLeading, endPoint: .bottomTrailing),
+                    LinearGradient(colors: [Color.white.opacity(isDark ? 0.32 : 0.95), Color.white.opacity(isDark ? 0.08 : 0.50), Color.white.opacity(isDark ? 0.14 : 0.75)], startPoint: .topLeading, endPoint: .bottomTrailing),
                     lineWidth: 1
                 )
             }
-            .shadow(color: Color.black.opacity(0.18), radius: 16, y: 8)
+            .shadow(color: isDark ? Color.black.opacity(0.18) : Color(red: 0.20, green: 0.24, blue: 0.45).opacity(0.14), radius: 16, y: 8)
     }
 }
 

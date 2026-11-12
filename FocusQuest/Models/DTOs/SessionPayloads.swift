@@ -10,6 +10,8 @@ struct SignedRequest: Codable, Sendable {
 struct StartSessionRequest: Codable, Sendable {
     let bossID: String
     let mode: SessionMode
+    /// HP bosse zvolene hracem (minuty soustredeni).
+    let targetMinutes: Int
     let clientNonce: String
     let clientUptime: TimeInterval
 }

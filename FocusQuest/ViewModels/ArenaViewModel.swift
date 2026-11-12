@@ -20,6 +20,10 @@ final class ArenaViewModel: ObservableObject {
     @Published private(set) var partyAlert: String?
     @Published private(set) var preferences: AppPreferences
     @Published private(set) var activeSession: StudySession?
+    /// HP bosse zvolene hracem; 1 HP = 1 minuta overeneho soustredeni.
+    @Published private(set) var bossMinutes: Int
+    /// Volano, kdyz se predvolby zmeni z Areny (prehravac, HP bosse), aby je znalo i Nastaveni.
+    var onPreferencesChanged: ((AppPreferences) -> Void)?
 
     private let validation: any FocusValidationServiceProtocol
     private let motion: any MotionMonitoringServiceProtocol
@@ -54,7 +58,11 @@ final class ArenaViewModel: ObservableObject {
         self.signer = signer
         self.simulationSigningKey = simulationSigningKey
         self.activity = activity
-        self.preferences = preferenceStore.load()
+        let storedPreferences = preferenceStore.load()
+        self.preferences = storedPreferences
+        self.bossMinutes = Boss.clampedMinutes(storedPreferences.bossMinutes)
+        selectedBoss = selectedBoss.withHP(minutes: bossMinutes)
+        audio.onTrackAdvanced = { [weak self] track in self?.trackDidAdvance(track) }
         haptics.prepare()
         observeRaidEvents()
     }
@@ -65,6 +73,7 @@ final class ArenaViewModel: ObservableObject {
         case .idle, .penalized, .victory: break
         default: return
         }
+        selectedBoss = selectedBoss.withHP(minutes: bossMinutes)
         state = .awaitingFlatPlacement
         Task { partyMembers = await raid.partyMembers() }
         postureTask = Task { [weak self] in
@@ -83,15 +92,57 @@ final class ArenaViewModel: ObservableObject {
         postureTask = nil; timerTask = nil
         audio.stop()
         Task { await activity?.end() }
-        if activeSession != nil { state = .idle; activeSession = nil }
+        state = .idle
+        activeSession = nil
+        // Boss se pred dalsi bitvou vrati na plne zdravi podle zvolenych minut.
+        selectedBoss = selectedBoss.withHP(minutes: bossMinutes)
     }
 
-    func selectBoss(_ boss: Boss) { guard case .idle = state else { return }; selectedBoss = boss }
+    func selectBoss(_ boss: Boss) { guard case .idle = state else { return }; selectedBoss = boss.withHP(minutes: bossMinutes) }
+
+    /// HP bosse = pocet minut soustredeni. Menit jde jen mimo bitvu.
+    func setBossMinutes(_ value: Int) {
+        guard case .idle = state else { return }
+        let minutes = Boss.clampedMinutes(value)
+        guard minutes != bossMinutes else { return }
+        bossMinutes = minutes
+        selectedBoss = selectedBoss.withHP(minutes: minutes)
+        changePreferences { $0.bossMinutes = minutes }
+    }
+
+    // MARK: - Prehravac
+
+    func setSoundscape(_ value: Soundscape) { changePreferences { $0.soundscape = value } }
+    func setMusicEnabled(_ value: Bool) { changePreferences { $0.isMusicEnabled = value } }
+    func setVolume(_ value: Double) { changePreferences { $0.ambientVolume = min(1, max(0, value)) } }
+    func skipTrack() { changePreferences { $0.soundscape = .lofi; $0.selectedTrack = $0.selectedTrack.next } }
+
+    /// Zmena predvoleb z Areny: ulozi se, projevi se ve zvuku a da se vedet Nastaveni.
+    private func changePreferences(_ change: (inout AppPreferences) -> Void) {
+        var updated = preferences
+        change(&updated)
+        guard updated != preferences else { return }
+        updatePreferences(updated)
+        onPreferencesChanged?(updated)
+    }
+
+    /// Playlist sam presel na dalsi skladbu - jen si ji zapamatujeme, prehravani uz bezi.
+    private func trackDidAdvance(_ track: AmbientTrack) {
+        guard preferences.selectedTrack != track else { return }
+        preferences.selectedTrack = track
+        preferenceStore.save(preferences)
+        onPreferencesChanged?(preferences)
+    }
 
     func updatePreferences(_ updated: AppPreferences) {
         preferences = updated
         preferenceStore.save(updated)
         audio.apply(preferences: updated)
+        // Nastaveni umi predvolby smazat (smazani uctu); HP bosse se pak vrati na vychozi.
+        if case .idle = state, updated.bossMinutes != bossMinutes {
+            bossMinutes = Boss.clampedMinutes(updated.bossMinutes)
+            selectedBoss = selectedBoss.withHP(minutes: bossMinutes)
+        }
     }
 
     func setSimulatedPosture(_ value: DevicePostureState) async {
@@ -103,7 +154,7 @@ final class ArenaViewModel: ObservableObject {
 
     private func createServerSession() async {
         do {
-            let response = try await validation.startSession(bossID: selectedBoss.id, mode: mode)
+            let response = try await validation.startSession(bossID: selectedBoss.id, mode: mode, targetMinutes: selectedBoss.maxHP)
             activeSession = StudySession(serverSessionID: response.sessionID, bossID: selectedBoss.id, mode: mode)
             await activity?.start(boss: selectedBoss)
             sessionStartUptime = ProcessInfo.processInfo.systemUptime

@@ -14,6 +14,11 @@ struct ProfileView: View {
             ScreenTitle(eyebrow: "Profile", title: "Hero profile")
             heroCard
             ScreenSection(title: "Identity") { identityCard }
+            ScreenSection(title: "Hero look") {
+                HeroLookEditor(appearance: model.profile.avatar) { model.updateAvatar($0) }
+                    .padding(FQSpace.lg)
+                    .glassCard()
+            }
             ScreenSection(title: "Hero class") { heroClassGrid }
             ScreenSection(title: "Daily focus target") { dailyTargetCard }
             ScreenSection(title: "Relics", detail: "Equip up to 2") { relicsCard }
@@ -29,11 +34,12 @@ struct ProfileView: View {
 
     private var heroCard: some View {
         HStack(spacing: FQSpace.lg) {
-            PixelArtAvatarView(sprite: .hero(model.profile.heroClass), size: 88)
+            HeroAvatarView(appearance: model.profile.avatar, heroClass: model.profile.heroClass, size: 88)
             VStack(alignment: .leading, spacing: FQSpace.xs) {
                 Text(model.profile.username).font(.fqTitle).foregroundStyle(FQColor.textPrimary)
                 Text(model.profile.title).font(.fqSecondary).foregroundStyle(FQColor.textSecondary)
                 Text(model.profile.heroClass.displayName).font(.fqMeta.weight(.medium)).foregroundStyle(FQColor.accent)
+                Text("Level \(model.level) · \(model.profile.coins) coins").font(.fqMeta).monospacedDigit().foregroundStyle(FQColor.textSecondary)
             }
             Spacer(minLength: 0)
             // Misto je vyhrazene stale, aby karta pri ukladani neposkakovala.
@@ -87,7 +93,7 @@ struct ProfileView: View {
                 let isSelected = hero == model.profile.heroClass
                 Button { model.updateHeroClass(hero) } label: {
                     VStack(spacing: FQSpace.sm) {
-                        PixelArtAvatarView(sprite: .hero(hero), size: 56)
+                        HeroAvatarView(appearance: model.profile.avatar, heroClass: hero, size: 56)
                         Text(hero.displayName).font(.fqLabel).foregroundStyle(FQColor.textPrimary)
                     }
                     .frame(maxWidth: .infinity)

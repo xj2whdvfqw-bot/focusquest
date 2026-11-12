@@ -67,7 +67,7 @@ struct BattleReceiptCard: View {
         }
         .clipShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 32, style: .continuous).strokeBorder(Color.white.opacity(0.24), lineWidth: 1))
-        .preferredColorScheme(.dark)
+        .environment(\.colorScheme, .dark)
     }
 }
 
