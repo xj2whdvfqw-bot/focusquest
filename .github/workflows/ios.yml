@@ -12,7 +12,9 @@ concurrency:
 
 jobs:
   build-and-test:
-    runs-on: macos-26
+    # macos-26 (ARM) mel dlouhodobe plnou frontu ("capacity constraints"),
+    # Intel varianta ma stejny Xcode 26 a jinou skupinu stroju.
+    runs-on: macos-26-intel
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v5
