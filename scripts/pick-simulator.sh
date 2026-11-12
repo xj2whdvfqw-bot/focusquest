@@ -17,6 +17,7 @@ if not candidates:
     sys.exit("Nenalezen zadny iPhone simulator")
 candidates.sort(reverse=True)
 best = candidates[0]
-print(f"Simulator: {best[2]} (iOS {'.'.join(map(str, best[0]))})", file=sys.stderr)
+version = ".".join(map(str, best[0]))
+print(f"Simulator: {best[2]} (iOS {version})", file=sys.stderr)
 print(best[3])
 '
