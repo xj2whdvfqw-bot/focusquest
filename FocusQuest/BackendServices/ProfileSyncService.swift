@@ -61,7 +61,10 @@ actor LocalProfileSyncService: ProfileSyncServiceProtocol {
     private var profile: UserProfile
     private var stats: PlayerStats
 
-    init(defaults: UserDefaults = .standard) {
+    /// `suiteName` = vlastni uloziste (testy); nil = standardni UserDefaults appky.
+    /// UserDefaults neni Sendable, proto si ho actor vytvari sam a nedostava ho zvenku.
+    init(suiteName: String? = nil) {
+        let defaults = suiteName.flatMap { UserDefaults(suiteName: $0) } ?? .standard
         self.defaults = defaults
         profile = Self.read(UserProfile.self, key: Self.profileKey, from: defaults) ?? UserProfile.fresh(deviceID: "local-preview")
         stats = Self.read(PlayerStats.self, key: Self.statsKey, from: defaults) ?? .initial

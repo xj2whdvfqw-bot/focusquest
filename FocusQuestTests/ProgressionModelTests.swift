@@ -150,20 +150,18 @@ final class ProgressionModelTests: XCTestCase {
 
     func testLocalProfileSurvivesRelaunch() async throws {
         let suiteName = "focusquest.tests.\(UUID().uuidString)"
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
-
         var profile = UserProfile.fresh(deviceID: "local-preview")
         profile.avatar.hairColor = .mint
         profile.coins = 77
-        let firstLaunch = LocalProfileSyncService(defaults: defaults)
+        let firstLaunch = LocalProfileSyncService(suiteName: suiteName)
         try await firstLaunch.saveProfile(profile)
         let summary = SessionSummary(id: UUID(), bossName: "Slime", verifiedMinutes: 25, xpEarned: 250, completedAt: Date(), flawless: true)
         _ = try await firstLaunch.recordBattle(summary, bossDefeated: true)
 
-        let secondLaunch = LocalProfileSyncService(defaults: defaults)
+        let secondLaunch = LocalProfileSyncService(suiteName: suiteName)
         let restored = try await secondLaunch.loadProfile()
         let restoredStats = try await secondLaunch.loadStats()
-        defaults.removePersistentDomain(forName: suiteName)
+        UserDefaults(suiteName: suiteName)?.removePersistentDomain(forName: suiteName)
 
         XCTAssertEqual(restored.avatar.hairColor, .mint)
         XCTAssertEqual(restored.coins, 77)
