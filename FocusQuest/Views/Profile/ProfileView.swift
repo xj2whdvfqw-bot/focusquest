@@ -24,7 +24,7 @@ struct ProfileView: View {
                         TextField("Username", text: $usernameDraft).textInputAutocapitalization(.never).autocorrectionDisabled().submitLabel(.done).onSubmit { model.updateUsername(usernameDraft) }
                         Button { model.updateUsername(usernameDraft) } label: { Image(systemName: "checkmark.circle.fill").foregroundStyle(.mint) }.accessibilityLabel("Save username")
                     }.padding(13).glassmorphic(radius: 16)
-                    Picker("Title", selection: Binding(get: { model.profile.title }, set: model.updateTitle)) {
+                    Picker("Title", selection: Binding(get: { model.profile.title }, set: { model.updateTitle($0) })) {
                         ForEach(["Novice Focuser", "Deep Work Mage", "Grandmaster of Stillness"], id: \.self) { Text($0).tag($0) }
                     }.pickerStyle(.menu).padding(.horizontal, 12).padding(.vertical, 5).glassmorphic(radius: 16)
 

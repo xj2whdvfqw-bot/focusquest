@@ -16,7 +16,12 @@ xcodebuild build \
   CODE_SIGNING_ALLOWED=NO \
   CODE_SIGNING_REQUIRED=NO \
   CODE_SIGN_IDENTITY="" \
-  2>&1 | tee build/build.log | (command -v xcbeautify >/dev/null && xcbeautify || cat)
+  2>&1 | tee build/build.log | (command -v xcbeautify >/dev/null && xcbeautify || cat) || {
+    echo "::group::Chyby ze suroveho logu"
+    grep -nE "error:|Stack dump|While evaluating|While emitting|BUILD FAILED" build/build.log | cut -c1-400 | head -60
+    echo "::endgroup::"
+    exit 1
+  }
 
 APP="build/DerivedData/Build/Products/${CONFIG}-iphoneos/FocusQuest.app"
 test -d "$APP" || { echo "Chybi $APP"; exit 1; }
