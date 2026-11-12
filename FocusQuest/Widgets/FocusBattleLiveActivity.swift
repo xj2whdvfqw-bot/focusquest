@@ -1,4 +1,4 @@
-import ActivityKit
+@preconcurrency import ActivityKit
 import SwiftUI
 import WidgetKit
 
@@ -67,20 +67,31 @@ protocol FocusBattleActivityServiceProtocol: Sendable {
 
 @available(iOS 16.1, *)
 actor FocusBattleActivityController: FocusBattleActivityServiceProtocol {
-    private var activity: Activity<FocusBattleAttributes>?
+    // Activity neni Sendable -> v aktoru drzime jen jeji ID a instanci si vzdy
+    // dohledame lokalne (Swift 6 strict concurrency).
+    private var activityID: String?
+
+    private static func activity(withID id: String) -> Activity<FocusBattleAttributes>? {
+        Activity<FocusBattleAttributes>.activities.first { $0.id == id }
+    }
 
     func start(boss: Boss) async {
         guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
         let attributes = FocusBattleAttributes(bossName: boss.name, bossSpriteID: boss.pixelSpriteConfig, bossMaxHP: boss.maxHP)
         let state = FocusBattleAttributes.ContentState(bossHP: boss.currentHP, bossMaxHP: boss.maxHP, elapsedSeconds: 0, warningSecondsRemaining: nil, isWarning: false)
-        activity = try? Activity.request(attributes: attributes, content: ActivityContent(state: state, staleDate: nil))
+        activityID = (try? Activity.request(attributes: attributes, content: ActivityContent(state: state, staleDate: nil)))?.id
     }
 
     func update(bossHP: Int, elapsedSeconds: Int, warningSecondsRemaining: Int?) async {
-        guard let activity else { return }
+        guard let id = activityID, let activity = Self.activity(withID: id) else { return }
         let state = FocusBattleAttributes.ContentState(bossHP: bossHP, bossMaxHP: activity.attributes.bossMaxHP, elapsedSeconds: elapsedSeconds, warningSecondsRemaining: warningSecondsRemaining, isWarning: warningSecondsRemaining != nil)
         await activity.update(ActivityContent(state: state, staleDate: nil))
     }
 
-    func end() async { await activity?.end(nil, dismissalPolicy: .immediate); activity = nil }
+    func end() async {
+        guard let id = activityID else { return }
+        activityID = nil
+        guard let activity = Self.activity(withID: id) else { return }
+        await activity.end(nil, dismissalPolicy: .immediate)
+    }
 }
