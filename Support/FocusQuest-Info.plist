@@ -25,6 +25,10 @@
 	<string>FocusQuest checks whether your iPhone is resting face-up during a focus battle.</string>
 	<key>NSSupportsLiveActivities</key>
 	<true/>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>audio</string>
+	</array>
 
 	<key>API_BASE_URL</key>
 	<string>$(API_BASE_URL)</string>

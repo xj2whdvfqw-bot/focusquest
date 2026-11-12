@@ -56,7 +56,7 @@ final class ArenaAntiCheatTests: XCTestCase {
     }
 
     private func makeRig(hapticsEnabled: Bool) -> Rig {
-        let prefs = AppPreferences(isHapticsEnabled: hapticsEnabled, isMusicEnabled: true, isSFXEnabled: true, ambientVolume: 0.5, selectedTrack: .midnightRain)
+        let prefs = AppPreferences(isHapticsEnabled: hapticsEnabled, isMusicEnabled: true, isSFXEnabled: true, ambientVolume: 0.5, selectedTrack: .calmCurrents)
         let validation = ValidationSpy()
         let motion = MotionSpy()
         let haptics = HapticsSpy()

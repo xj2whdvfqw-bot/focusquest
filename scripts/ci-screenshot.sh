@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Spusti aplikaci v iPhone simulatoru a ulozi screenshot do build/screenshots/.
+# Spusti aplikaci v iPhone simulatoru a ulozi screenshoty vsech zalozek do build/screenshots/.
 # Diky tomu jde zkontrolovat vzhled UI i bez instalace do telefonu.
 set -euo pipefail
 APP="build/DerivedData/Build/Products/Debug-iphonesimulator/FocusQuest.app"
@@ -14,7 +14,14 @@ xcrun simctl bootstatus "$UDID" -b
 xcrun simctl status_bar "$UDID" override --time "9:41" --batteryState charged --batteryLevel 100 || true
 xcrun simctl ui "$UDID" appearance dark || true
 xcrun simctl install "$UDID" "$APP"
-xcrun simctl launch "$UDID" "$BUNDLE_ID"
-sleep 8
-xcrun simctl io "$UDID" screenshot build/screenshots/01-spusteni.png
+
+# Debug build umi otevrit konkretni zalozku argumentem -initialTab (viz MainTabView.swift).
+INDEX=1
+for TAB in arena stats profile settings; do
+  xcrun simctl terminate "$UDID" "$BUNDLE_ID" 2>/dev/null || true
+  xcrun simctl launch "$UDID" "$BUNDLE_ID" -initialTab "$TAB"
+  sleep 6
+  xcrun simctl io "$UDID" screenshot "build/screenshots/0${INDEX}-${TAB}.png"
+  INDEX=$((INDEX + 1))
+done
 ls -lh build/screenshots

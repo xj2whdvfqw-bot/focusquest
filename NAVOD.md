@@ -59,8 +59,20 @@ a výsledky unit testů. Když build nebo test spadne, Claude si přes `gh run v
 | Max. **10 App ID za 7 dní** | Neměň zbytečně Bundle ID. |
 | Některé funkce nejdou | **App Attest, push notifikace, iCloud, App Groups** vyžadují placený Apple Developer účet (99 USD/rok). Appka teď běží se simulovaným backendem (`FOCUSQUEST_SIMULATED_BACKEND = YES`), takže to zatím nevadí. |
 | Bundle ID obsazené | Když Sideloadly hlásí chybu s App ID, změň v *Advanced options* Bundle ID např. na `com.tvojejmeno.focusquest`. |
+| Widget Extension = druhé App ID | Appka obsahuje rozšíření pro Live Activity, takže podepsání spotřebuje **2 App ID** (appka + rozšíření) z limitu 10 za 7 dní. |
 
 Placený účet budeš potřebovat až pro **TestFlight / App Store** – to je až na konec vývoje.
+
+## Live Activity (zamčená obrazovka a Dynamic Island)
+
+Odpočet bitvy kreslí samostatné rozšíření **FocusQuestWidgets** (`FocusQuest.app/PlugIns/FocusQuestWidgets.appex`).
+
+- **Sideloadly:** rozšíření se musí podepsat spolu s appkou. Pokud v *Advanced options* uvidíš volbu, která rozšíření
+  odstraňuje (app extensions / PlugIns), nech ji **vypnutou** – jinak se Live Activity nezobrazí.
+- **iPhone:** *Nastavení → FocusQuest → Živé aktivity* musí být zapnuté (výchozí stav).
+- Čas na zamčené obrazovce počítá přímo iOS, takže běží i když appka zrovna nepracuje.
+- Lo-fi hudba hraje i se zamčeným telefonem (režim *audio* na pozadí). Dokud hraje, appka běží dál a hlídá
+  zvednutí telefonu. S **vypnutou hudbou** iOS appku po zamčení uspí – hlídání polohy se pak pozastaví.
 
 ## Co z Windows nejde (a čím to nahrazujeme)
 
@@ -78,8 +90,10 @@ Placený účet budeš potřebovat až pro **TestFlight / App Store** – to je 
 - [.github/workflows/ios.yml](.github/workflows/ios.yml) – automatický build a testy
 - [scripts/](scripts/) – skripty běžící na Macu v CI
 - [tools/stahni-ipa.ps1](tools/stahni-ipa.ps1) – stažení IPA na Windows
+- [FocusQuestWidgets/](FocusQuestWidgets/) – Widget Extension s Live Activity; [Shared/](Shared/) – kód společný pro appku i rozšíření
+- [FocusQuest/Views/DesignSystem/](FocusQuest/Views/DesignSystem/) – vzhled (barvy, rozestupy, skleněné povrchy)
+- [CREDITS.md](CREDITS.md) – původ a licence hudby
 
 ## Známé TODO
 
-- **Live Activity / Dynamic Island** ([FocusBattleLiveActivity.swift](FocusQuest/Widgets/FocusBattleLiveActivity.swift)) potřebuje samostatný *Widget Extension* target – zatím je jen v hlavní appce, takže se nezobrazí. Přidáme, až bude jádro appky běžet.
 - Ikona appky (Assets.xcassets / AppIcon) zatím chybí.

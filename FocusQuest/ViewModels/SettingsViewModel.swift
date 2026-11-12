@@ -26,6 +26,8 @@ final class SettingsViewModel: ObservableObject {
     @Published var showingDeleteConfirmation = false
     @Published var statusMessage: String?
     @Published private(set) var isSignedIn = false
+    /// Volano po kazde zmene predvoleb, aby se projevila hned (napr. v bezici hudbe).
+    var onPreferencesChanged: ((AppPreferences) -> Void)?
     private let store: any PreferencesStoreProtocol
     private let profileSync: any ProfileSyncServiceProtocol
     private let keychain: any KeychainServiceProtocol
@@ -39,6 +41,7 @@ final class SettingsViewModel: ObservableObject {
         change(&preferences)
         preferences.ambientVolume = min(1, max(0, preferences.ambientVolume))
         store.save(preferences)
+        onPreferencesChanged?(preferences)
     }
 
     func signInWithApple(identityToken: String) async {
@@ -57,6 +60,7 @@ final class SettingsViewModel: ObservableObject {
             try await keychain.deleteAll()
             store.reset()
             preferences = AppPreferences()
+            onPreferencesChanged?(preferences)
             isSignedIn = false
             statusMessage = "Account and locally stored credentials were deleted."
         } catch { statusMessage = "Account deletion could not be completed. Check your connection and try again." }

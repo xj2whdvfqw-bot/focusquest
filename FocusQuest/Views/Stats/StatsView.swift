@@ -4,54 +4,98 @@ struct StatsView: View {
     @ObservedObject var model: StatsViewModel
     @ObservedObject var profile: ProfileViewModel
 
-    var body: some View {
-        ZStack {
-            FocusQuestBackdrop()
-            ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
-                    Text("Your progression").font(.system(size: 28, weight: .bold, design: .rounded)).foregroundStyle(.white)
-                    HStack(spacing: 16) {
-                        ZStack {
-                            Circle().stroke(.white.opacity(0.14), lineWidth: 9)
-                            Circle().trim(from: 0, to: Double(model.stats.xpIntoLevel) / Double(model.stats.xpForNextLevel)).stroke(Color.mint, style: StrokeStyle(lineWidth: 9, lineCap: .round)).rotationEffect(.degrees(-90))
-                            VStack(spacing: 0) { Text("LV").font(.system(size: 10, weight: .bold, design: .monospaced)); Text("\(model.stats.level)").font(.system(size: 24, weight: .bold, design: .rounded)) }
-                        }.frame(width: 76, height: 76)
-                        VStack(alignment: .leading, spacing: 7) {
-                            Text(profile.profile.title).font(.system(size: 18, weight: .bold, design: .rounded))
-                            Text("\(model.stats.xpIntoLevel) / \(model.stats.xpForNextLevel) XP to next level").font(.system(size: 12, design: .monospaced)).foregroundStyle(.white.opacity(0.68))
-                            ProgressView(value: Double(model.stats.xpIntoLevel), total: Double(model.stats.xpForNextLevel)).tint(.mint)
-                        }
-                    }.padding(18).frame(maxWidth: .infinity, alignment: .leading).glassmorphic()
+    private var focusHours: String {
+        String(format: "%.1f", Double(model.stats.sessionHistory.reduce(0) { $0 + $1.verifiedMinutes }) / 60)
+    }
 
-                    HStack(spacing: 10) {
-                        metric("WIN RATE", value: "\(Int(model.stats.winRate * 100))%", icon: "scope")
-                        metric("HP DEALT", value: "\(model.stats.totalHPDealt)", icon: "bolt.fill")
-                    }
-                    HStack(spacing: 10) {
-                        metric("BEST COMBO", value: "\(model.stats.bestCombo)x", icon: "flame.fill")
-                        metric("FOCUS HOURS", value: String(format: "%.1f", Double(model.stats.sessionHistory.reduce(0) { $0 + $1.verifiedMinutes }) / 60), icon: "clock")
-                    }
-                    HStack { SectionEyebrow(title: "Verified battle log"); Spacer(); Text("\(model.stats.sessionHistory.count) battles").font(.caption).foregroundStyle(.white.opacity(0.6)) }
-                    if model.stats.sessionHistory.isEmpty {
-                        Text("Your verified battles will appear here.").font(.system(size: 14, design: .rounded)).foregroundStyle(.white.opacity(0.6)).frame(maxWidth: .infinity, alignment: .leading).padding(18).glassmorphic()
-                    } else {
-                        ForEach(model.stats.sessionHistory) { entry in
-                            HStack {
-                                VStack(alignment: .leading, spacing: 5) { Text(entry.bossName).font(.system(size: 14, weight: .bold, design: .rounded)); Text(entry.completedAt, style: .date).font(.caption).foregroundStyle(.white.opacity(0.58)) }
-                                Spacer()
-                                Text("\(entry.verifiedMinutes)m - +\(entry.xpEarned) XP").font(.system(size: 11, weight: .medium, design: .monospaced))
-                            }.padding(15).glassmorphic(radius: 16)
+    var body: some View {
+        ScreenScaffold {
+            ScreenTitle(eyebrow: "Stats", title: "Your progression")
+            levelCard
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: FQSpace.md), GridItem(.flexible())], spacing: FQSpace.md) {
+                metric("Win rate", value: "\(Int(model.stats.winRate * 100))%", icon: "scope")
+                metric("HP dealt", value: "\(model.stats.totalHPDealt)", icon: "bolt.fill")
+                metric("Best combo", value: "\(model.stats.bestCombo)x", icon: "flame.fill")
+                metric("Focus hours", value: focusHours, icon: "clock.fill")
+            }
+            ScreenSection(title: "Verified battle log", detail: "\(model.stats.sessionHistory.count) battles") {
+                battleLog
+            }
+        }
+        .task { await model.load() }
+    }
+
+    private var levelCard: some View {
+        HStack(spacing: FQSpace.lg) {
+            ProgressRing(progress: Double(model.stats.xpIntoLevel) / Double(max(1, model.stats.xpForNextLevel))) {
+                VStack(spacing: 0) {
+                    Text("Level").font(.fqMeta).foregroundStyle(FQColor.textSecondary)
+                    Text("\(model.stats.level)").font(.fqTitle).foregroundStyle(FQColor.textPrimary)
+                }
+            }
+            .frame(width: 80, height: 80)
+            VStack(alignment: .leading, spacing: FQSpace.sm) {
+                Text(profile.profile.title).font(.fqHeadline).foregroundStyle(FQColor.textPrimary)
+                Text("\(model.stats.xpIntoLevel) / \(model.stats.xpForNextLevel) XP to next level")
+                    .font(.fqSecondary)
+                    .monospacedDigit()
+                    .foregroundStyle(FQColor.textSecondary)
+                ProgressView(value: Double(model.stats.xpIntoLevel), total: Double(max(1, model.stats.xpForNextLevel)))
+                    .tint(FQColor.accent)
+            }
+        }
+        .padding(FQSpace.lg)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .glassCard()
+        .accessibilityElement(children: .combine)
+    }
+
+    @ViewBuilder private var battleLog: some View {
+        if model.stats.sessionHistory.isEmpty {
+            VStack(alignment: .leading, spacing: FQSpace.xs) {
+                Text("No battles yet").font(.fqHeadline).foregroundStyle(FQColor.textPrimary)
+                Text("Win a focus battle in the Arena and it will show up here.")
+                    .font(.fqSecondary)
+                    .foregroundStyle(FQColor.textSecondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(FQSpace.lg)
+            .glassCard()
+        } else {
+            VStack(spacing: 0) {
+                ForEach(Array(model.stats.sessionHistory.enumerated()), id: \.element.id) { index, entry in
+                    if index > 0 { HairlineDivider() }
+                    HStack(spacing: FQSpace.md) {
+                        VStack(alignment: .leading, spacing: FQSpace.xs) {
+                            Text(entry.bossName).font(.fqBody).foregroundStyle(FQColor.textPrimary)
+                            Text(entry.completedAt, style: .date).font(.fqMeta).foregroundStyle(FQColor.textSecondary)
+                        }
+                        Spacer(minLength: FQSpace.sm)
+                        VStack(alignment: .trailing, spacing: FQSpace.xs) {
+                            Text("+\(entry.xpEarned) XP").font(.fqLabel).monospacedDigit().foregroundStyle(FQColor.accent)
+                            Text("\(entry.verifiedMinutes) min").font(.fqMeta).monospacedDigit().foregroundStyle(FQColor.textSecondary)
                         }
                     }
-                }.padding(18)
+                    .padding(.vertical, FQSpace.md)
+                }
             }
-        }.preferredColorScheme(.dark).task { await model.load() }
+            .padding(.horizontal, FQSpace.lg)
+            .padding(.vertical, FQSpace.xs)
+            .glassCard()
+        }
     }
 
     private func metric(_ title: String, value: String, icon: String) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Label(title, systemImage: icon).font(.system(size: 10, weight: .bold, design: .monospaced)).foregroundStyle(.white.opacity(0.62))
-            Text(value).font(.system(size: 25, weight: .bold, design: .rounded)).foregroundStyle(.white)
-        }.frame(maxWidth: .infinity, alignment: .leading).padding(15).glassmorphic(radius: 18)
+        VStack(alignment: .leading, spacing: FQSpace.md) {
+            IconTile(symbol: icon)
+            VStack(alignment: .leading, spacing: FQSpace.xs) {
+                Text(value).font(.fqTitle).monospacedDigit().foregroundStyle(FQColor.textPrimary)
+                Text(title).font(.fqSecondary).foregroundStyle(FQColor.textSecondary)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(FQSpace.lg)
+        .glassCard(radius: FQRadius.control + 4)
+        .accessibilityElement(children: .combine)
     }
 }

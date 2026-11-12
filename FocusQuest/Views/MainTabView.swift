@@ -5,43 +5,51 @@ private enum FocusQuestTab: String, CaseIterable, Identifiable {
     var id: String { rawValue }
     var title: String { rawValue.capitalized }
     var symbol: String {
-        switch self { case .arena: "sparkles.rectangle.stack"; case .stats: "chart.bar.xaxis"; case .profile: "person.crop.square"; case .settings: "slider.horizontal.3" }
+        switch self {
+        case .arena: "flame.fill"
+        case .stats: "chart.bar.fill"
+        case .profile: "person.crop.circle.fill"
+        case .settings: "gearshape.fill"
+        }
+    }
+
+    /// V debug buildu jde vychozi zalozku zvolit argumentem `-initialTab stats`.
+    /// Pouziva to CI, aby vyfotilo vsechny obrazovky v simulatoru.
+    static var initial: FocusQuestTab {
+        #if DEBUG
+        if let raw = UserDefaults.standard.string(forKey: "initialTab"), let tab = FocusQuestTab(rawValue: raw) { return tab }
+        #endif
+        return .arena
     }
 }
 
 struct MainTabView: View {
     let container: AppDIContainer
-    @State private var selectedTab: FocusQuestTab = .arena
+    @State private var selectedTab = FocusQuestTab.initial
 
     var body: some View {
         Group {
             if container.isIntegrityCompromised {
                 IntegrityLockdownView()
-            } else { switch selectedTab {
-            case .arena: ArenaView(model: container.arenaViewModel, profileModel: container.profileViewModel)
-            case .stats: StatsView(model: container.statsViewModel, profile: container.profileViewModel)
-            case .profile: ProfileView(model: container.profileViewModel)
-            case .settings: SettingsView(model: container.settingsViewModel)
-            } }
-        }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            HStack(spacing: 6) {
-                ForEach(FocusQuestTab.allCases) { tab in
-                    Button { selectedTab = tab } label: {
-                        VStack(spacing: 4) {
-                            Image(systemName: tab.symbol).font(.system(size: 17, weight: .semibold))
-                            Text(tab.title).font(.system(size: 9, weight: .bold, design: .rounded))
-                        }
-                        .foregroundStyle(selectedTab == tab ? Color.mint : Color.white.opacity(0.58))
-                        .frame(maxWidth: .infinity).frame(height: 51)
-                        .background(selectedTab == tab ? Color.white.opacity(0.1) : .clear, in: RoundedRectangle(cornerRadius: 13))
-                    }.buttonStyle(.plain).accessibilityLabel(tab.title)
+            } else {
+                // Systemovy TabView: na iOS 26 dostane plovouci Liquid Glass listu sam od systemu.
+                TabView(selection: $selectedTab) {
+                    ArenaView(model: container.arenaViewModel, profileModel: container.profileViewModel)
+                        .tabItem { Label(FocusQuestTab.arena.title, systemImage: FocusQuestTab.arena.symbol) }
+                        .tag(FocusQuestTab.arena)
+                    StatsView(model: container.statsViewModel, profile: container.profileViewModel)
+                        .tabItem { Label(FocusQuestTab.stats.title, systemImage: FocusQuestTab.stats.symbol) }
+                        .tag(FocusQuestTab.stats)
+                    ProfileView(model: container.profileViewModel)
+                        .tabItem { Label(FocusQuestTab.profile.title, systemImage: FocusQuestTab.profile.symbol) }
+                        .tag(FocusQuestTab.profile)
+                    SettingsView(model: container.settingsViewModel)
+                        .tabItem { Label(FocusQuestTab.settings.title, systemImage: FocusQuestTab.settings.symbol) }
+                        .tag(FocusQuestTab.settings)
                 }
             }
-            .padding(7).background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 22).strokeBorder(.white.opacity(0.2), lineWidth: 1))
-            .padding(.horizontal, 22).padding(.bottom, 6)
         }
+        .tint(FQColor.accent)
         .preferredColorScheme(.dark)
     }
 }
@@ -50,11 +58,23 @@ private struct IntegrityLockdownView: View {
     var body: some View {
         ZStack {
             FocusQuestBackdrop(alert: true)
-            VStack(spacing: 14) {
-                Image(systemName: "lock.shield.fill").font(.system(size: 42)).foregroundStyle(.red)
-                Text("Integrity check failed").font(.system(size: 22, weight: .bold, design: .rounded))
-                Text("FocusQuest has disabled battles on this device to protect account and raid integrity.").font(.system(size: 14, design: .rounded)).multilineTextAlignment(.center).foregroundStyle(.white.opacity(0.7))
-            }.padding(28).glassmorphic()
-        }.preferredColorScheme(.dark)
+            VStack(spacing: FQSpace.lg) {
+                Image(systemName: "lock.shield.fill")
+                    .font(.system(size: 40, weight: .semibold))
+                    .foregroundStyle(FQColor.danger)
+                    .accessibilityHidden(true)
+                VStack(spacing: FQSpace.sm) {
+                    Text("Integrity check failed").font(.fqTitle).foregroundStyle(FQColor.textPrimary)
+                    Text("FocusQuest has disabled battles on this device to protect account and raid integrity.")
+                        .font(.fqSecondary)
+                        .multilineTextAlignment(.center)
+                        .foregroundStyle(FQColor.textSecondary)
+                }
+            }
+            .padding(FQSpace.xl)
+            .frame(maxWidth: 360)
+            .glassCard()
+            .padding(.horizontal, FQSpace.xl)
+        }
     }
 }

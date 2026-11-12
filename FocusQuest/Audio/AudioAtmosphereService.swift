@@ -11,38 +11,54 @@ protocol AudioAtmosphereServiceProtocol: AnyObject {
     func stop()
 }
 
+/// Prehrava lo-fi hudbu behem soustredeni a 8-bit tony varovneho odpoctu.
+/// Hudba jsou skutecne nahravky z bundlu; hraje se jako playlist od vybrane skladby.
 @MainActor
-final class AudioAtmosphereService: AudioAtmosphereServiceProtocol {
+final class AudioAtmosphereService: NSObject, AudioAtmosphereServiceProtocol, AVAudioPlayerDelegate {
     private var ambientPlayer: AVAudioPlayer?
     private var warningPlayer: AVAudioPlayer?
+    private var currentTrack: AmbientTrack?
     private var preferences = AppPreferences()
     private var isWarning = false
+    private var isSessionActive = false
+    private var interruptionObserver: (any NSObjectProtocol)?
+
+    /// Behem varovani se hudba ztlumi, aby vynikl odpocet.
+    private var targetVolume: Float {
+        preferences.isMusicEnabled ? Float(preferences.ambientVolume * (isWarning ? 0.2 : 1)) : 0
+    }
 
     func apply(preferences: AppPreferences) {
+        let previousTrack = self.preferences.selectedTrack
         self.preferences = preferences
-        ambientPlayer?.volume = preferences.isMusicEnabled ? Float(preferences.ambientVolume * (isWarning ? 0.2 : 1)) : 0
+        guard isSessionActive else { return }
+        guard preferences.isMusicEnabled else { stopAmbient(); return }
+        if ambientPlayer == nil || previousTrack != preferences.selectedTrack {
+            startAmbient(track: preferences.selectedTrack)
+        } else {
+            ambientPlayer?.volume = targetVolume
+        }
     }
 
     func beginFocus(preferences: AppPreferences) {
         self.preferences = preferences
         isWarning = false
-        guard preferences.isMusicEnabled else { ambientPlayer?.stop(); return }
-        do {
-            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: [.mixWithOthers])
-            try AVAudioSession.sharedInstance().setActive(true)
-            let samples = Self.ambientWave(track: preferences.selectedTrack)
-            ambientPlayer = try AVAudioPlayer(data: samples)
-            ambientPlayer?.numberOfLoops = -1
-            ambientPlayer?.volume = Float(preferences.ambientVolume)
-            ambientPlayer?.prepareToPlay()
-            ambientPlayer?.play()
-        } catch { ambientPlayer = nil }
+        isSessionActive = true
+        observeInterruptionsIfNeeded()
+        guard preferences.isMusicEnabled else { stopAmbient(); return }
+        if let player = ambientPlayer {
+            // Navrat z varovani: hudba pokracuje tam, kde byla, jen se vrati hlasitost.
+            if !player.isPlaying { player.play() }
+            player.setVolume(targetVolume, fadeDuration: 0.25)
+        } else {
+            startAmbient(track: preferences.selectedTrack)
+        }
     }
 
     func enterWarning(preferences: AppPreferences, secondsRemaining: Int) {
         self.preferences = preferences
         isWarning = true
-        ambientPlayer?.setVolume(preferences.isMusicEnabled ? Float(preferences.ambientVolume * 0.2) : 0, fadeDuration: 0.15)
+        ambientPlayer?.setVolume(targetVolume, fadeDuration: 0.15)
         countdownTick(preferences: preferences, secondsRemaining: secondsRemaining)
     }
 
@@ -56,14 +72,72 @@ final class AudioAtmosphereService: AudioAtmosphereServiceProtocol {
         self.preferences = preferences
         isWarning = false
         warningPlayer?.stop()
-        ambientPlayer?.setVolume(preferences.isMusicEnabled ? Float(preferences.ambientVolume) : 0, fadeDuration: 0.25)
+        ambientPlayer?.setVolume(targetVolume, fadeDuration: 0.25)
     }
 
     func stop() {
-        ambientPlayer?.stop()
+        isSessionActive = false
+        isWarning = false
+        stopAmbient()
         warningPlayer?.stop()
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
+
+    // MARK: - Hudba
+
+    private func startAmbient(track: AmbientTrack) {
+        stopAmbient()
+        guard let url = Bundle.main.url(forResource: track.resourceName, withExtension: "mp3") else { return }
+        do {
+            // .playback + rezim "audio" v Info.plist = hudba hraje i se zamcenou obrazovkou.
+            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: [.mixWithOthers])
+            try AVAudioSession.sharedInstance().setActive(true)
+            let player = try AVAudioPlayer(contentsOf: url)
+            player.delegate = self
+            player.numberOfLoops = 0
+            player.volume = 0
+            player.prepareToPlay()
+            player.play()
+            player.setVolume(targetVolume, fadeDuration: 1.5)
+            ambientPlayer = player
+            currentTrack = track
+        } catch {
+            ambientPlayer = nil
+        }
+    }
+
+    private func stopAmbient() {
+        ambientPlayer?.stop()
+        ambientPlayer = nil
+        currentTrack = nil
+    }
+
+    private func playNextTrack() {
+        guard isSessionActive, preferences.isMusicEnabled, let finished = currentTrack else { return }
+        startAmbient(track: finished.next)
+    }
+
+    nonisolated func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
+        Task { @MainActor [weak self] in self?.playNextTrack() }
+    }
+
+    /// Po hovoru nebo Siri system prehravani pozastavi; po skonceni preruseni ho obnovime.
+    private func observeInterruptionsIfNeeded() {
+        guard interruptionObserver == nil else { return }
+        interruptionObserver = NotificationCenter.default.addObserver(forName: AVAudioSession.interruptionNotification, object: nil, queue: .main) { [weak self] notification in
+            let rawType = notification.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt
+            guard rawType == AVAudioSession.InterruptionType.ended.rawValue else { return }
+            Task { @MainActor [weak self] in self?.resumeAfterInterruption() }
+        }
+    }
+
+    private func resumeAfterInterruption() {
+        guard isSessionActive, preferences.isMusicEnabled, let player = ambientPlayer, !player.isPlaying else { return }
+        try? AVAudioSession.sharedInstance().setActive(true)
+        player.play()
+    }
+
+    // MARK: - Tony odpoctu
 
     private func playTone(frequency: Double, duration: Double, volume: Float) {
         guard let data = Self.toneWave(frequency: frequency, duration: duration) else { return }
@@ -73,20 +147,6 @@ final class AudioAtmosphereService: AudioAtmosphereServiceProtocol {
             warningPlayer?.volume = volume
             warningPlayer?.play()
         } catch { warningPlayer = nil }
-    }
-
-    private static func ambientWave(track: AmbientTrack) -> Data {
-        let sampleRate = 8_000
-        let sampleCount = sampleRate * 4
-        var samples = [Int16](repeating: 0, count: sampleCount)
-        var seed: UInt32 = track == .midnightRain ? 19 : (track == .vinylLibrary ? 47 : 83)
-        for index in samples.indices {
-            seed = 1_664_525 &* seed &+ 1_013_904_223
-            let noise = Double(Int32(bitPattern: seed) >> 16) / 32768
-            let tone = sin(Double(index) * 2 * .pi * (track == .campfireCrackle ? 82 : 54) / Double(sampleRate)) * 0.07
-            samples[index] = Int16(max(-1, min(1, noise * 0.035 + tone)) * Double(Int16.max))
-        }
-        return wav(samples: samples, sampleRate: sampleRate)
     }
 
     private static func toneWave(frequency: Double, duration: Double) -> Data? {

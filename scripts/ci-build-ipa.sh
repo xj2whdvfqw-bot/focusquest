@@ -26,6 +26,14 @@ xcodebuild build \
 APP="build/DerivedData/Build/Products/${CONFIG}-iphoneos/FocusQuest.app"
 test -d "$APP" || { echo "Chybi $APP"; exit 1; }
 
+# Bez Widget Extension se Live Activity na zamcene obrazovce nezobrazi,
+# bez .mp3 by hudba mlcela - radsi at build spadne tady nez az v telefonu.
+test -d "$APP/PlugIns/FocusQuestWidgets.appex" || { echo "V appce chybi PlugIns/FocusQuestWidgets.appex"; exit 1; }
+for track in calm-currents tokyo-sunset peaceful-drift; do
+  test -f "$APP/$track.mp3" || { echo "V appce chybi skladba $track.mp3"; exit 1; }
+done
+echo "Obsah appky OK: Widget Extension + 3 skladby"
+
 rm -rf build/ipa build/FocusQuest.ipa
 mkdir -p build/ipa/Payload
 cp -R "$APP" build/ipa/Payload/

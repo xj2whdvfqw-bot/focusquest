@@ -41,5 +41,7 @@ final class AppDIContainer {
         self.isIntegrityCompromised = security.integrityReport().isCompromised
         if security.integrityReport().isCompromised { Task { try? await keychain.deleteAll() } }
         self.arenaViewModel = ArenaViewModel(validation: validation, motion: motion, haptics: haptics, audio: audio, security: security, raid: raid, preferenceStore: preferences, profileProvider: { [weak profileViewModel] in profileViewModel?.profile ?? profile }, simulationSigningKey: previewSigningKey, activity: activity)
+        // Zmeny v Nastaveni (hudba, hlasitost, skladba) se maji projevit hned i v bezici bitve.
+        settingsViewModel.onPreferencesChanged = { [weak arenaViewModel] updated in arenaViewModel?.updatePreferences(updated) }
     }
 }

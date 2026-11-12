@@ -9,18 +9,51 @@ options:
     iOS: "17.0"
   createIntermediateGroups: true
 
+# Verze musi byt stejna pro appku i jeji Widget Extension, proto je na urovni projektu.
+settings:
+  base:
+    MARKETING_VERSION: "0.2.0"
+    CURRENT_PROJECT_VERSION: "2"
+
 targets:
   FocusQuest:
     type: application
     platform: iOS
     sources:
       - path: FocusQuest
+      - path: Shared
+    dependencies:
+      # Widget Extension se vlozi do appky (FocusQuest.app/PlugIns/FocusQuestWidgets.appex).
+      - target: FocusQuestWidgets
     configFiles:
       Debug: FocusQuest/Config/Development.xcconfig
       Release: FocusQuest/Config/Development.xcconfig
     settings:
       base:
         CODE_SIGN_STYLE: Automatic
+        PRODUCT_BUNDLE_IDENTIFIER: com.focusquest.app
+
+  # Kresli Live Activity na zamcene obrazovce a v Dynamic Islandu.
+  # iOS vyzaduje, aby tenhle kod bezel v samostatnem rozsireni, ne v hlavni appce.
+  FocusQuestWidgets:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: FocusQuestWidgets
+      - path: Shared
+    settings:
+      base:
+        # Bundle ID rozsireni musi zacinat Bundle ID appky.
+        PRODUCT_BUNDLE_IDENTIFIER: com.focusquest.app.widgets
+        INFOPLIST_FILE: Support/FocusQuestWidgets-Info.plist
+        GENERATE_INFOPLIST_FILE: YES
+        IPHONEOS_DEPLOYMENT_TARGET: "17.0"
+        SWIFT_VERSION: "6.0"
+        SWIFT_STRICT_CONCURRENCY: complete
+        TARGETED_DEVICE_FAMILY: "1,2"
+        CODE_SIGN_STYLE: Automatic
+        SKIP_INSTALL: YES
+        APPLICATION_EXTENSION_API_ONLY: YES
 
   FocusQuestTests:
     type: bundle.unit-test

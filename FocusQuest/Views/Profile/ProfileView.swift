@@ -4,69 +4,162 @@ struct ProfileView: View {
     @ObservedObject var model: ProfileViewModel
     @State private var usernameDraft = ""
 
-    var body: some View {
-        ZStack {
-            FocusQuestBackdrop()
-            ScrollView {
-                VStack(alignment: .leading, spacing: 17) {
-                    Text("Hero profile").font(.system(size: 28, weight: .bold, design: .rounded)).foregroundStyle(.white)
-                    HStack(spacing: 15) {
-                        PixelArtAvatarView(sprite: .hero(model.profile.heroClass), size: 90)
-                        VStack(alignment: .leading, spacing: 5) {
-                            Text(model.profile.username).font(.system(size: 21, weight: .bold, design: .rounded))
-                            Text(model.profile.title).font(.system(size: 13, design: .rounded)).foregroundStyle(.white.opacity(0.65))
-                            if model.isSaving { ProgressView().controlSize(.small) }
-                        }
-                    }.padding(16).frame(maxWidth: .infinity, alignment: .leading).glassmorphic()
-
-                    sectionTitle("Identity")
-                    HStack {
-                        TextField("Username", text: $usernameDraft).textInputAutocapitalization(.never).autocorrectionDisabled().submitLabel(.done).onSubmit { model.updateUsername(usernameDraft) }
-                        Button { model.updateUsername(usernameDraft) } label: { Image(systemName: "checkmark.circle.fill").foregroundStyle(.mint) }.accessibilityLabel("Save username")
-                    }.padding(13).glassmorphic(radius: 16)
-                    Picker("Title", selection: Binding(get: { model.profile.title }, set: { model.updateTitle($0) })) {
-                        ForEach(["Novice Focuser", "Deep Work Mage", "Grandmaster of Stillness"], id: \.self) { Text($0).tag($0) }
-                    }.pickerStyle(.menu).padding(.horizontal, 12).padding(.vertical, 5).glassmorphic(radius: 16)
-
-                    sectionTitle("Hero class")
-                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 9) {
-                        ForEach(HeroClass.allCases) { hero in
-                            Button { model.updateHeroClass(hero) } label: {
-                                VStack(spacing: 6) { PixelArtAvatarView(sprite: .hero(hero), size: 58); Text(hero.displayName).font(.system(size: 11, weight: .semibold, design: .rounded)) }
-                                    .frame(maxWidth: .infinity).padding(9).overlay(RoundedRectangle(cornerRadius: 16).stroke(hero == model.profile.heroClass ? Color.mint : .clear, lineWidth: 1.5)).glassmorphic(radius: 16)
-                            }.buttonStyle(.plain)
-                        }
-                    }
-
-                    HStack(spacing: 13) {
-                        ZStack {
-                            Circle().stroke(.white.opacity(0.13), lineWidth: 6)
-                            Circle().trim(from: 0, to: min(1, Double(model.todayVerifiedMinutes) / Double(max(1, model.profile.dailyFocusGoalMinutes)))).stroke(.mint, style: StrokeStyle(lineWidth: 6, lineCap: .round)).rotationEffect(.degrees(-90))
-                            Text("\(model.todayVerifiedMinutes)").font(.system(size: 12, weight: .bold, design: .monospaced))
-                        }.frame(width: 46, height: 46)
-                        VStack(alignment: .leading, spacing: 3) {
-                            sectionTitle("Daily focus target")
-                            Text("\(model.todayVerifiedMinutes)m of \(model.profile.dailyFocusGoalMinutes)m verified today").font(.system(size: 11, design: .rounded)).foregroundStyle(.white.opacity(0.6))
-                        }
-                    }.padding(12).glassmorphic(radius: 16)
-                    sectionTitle("Daily target - \(model.profile.dailyFocusGoalMinutes)m")
-                    Slider(value: Binding(get: { Double(model.profile.dailyFocusGoalMinutes) }, set: { model.updateDailyGoal(Int($0 / 15) * 15) }), in: 30...180, step: 15).tint(.mint).padding(14).glassmorphic(radius: 16)
-
-                    sectionTitle("Relics - Equip up to 2")
-                    ForEach(LootItem.catalog) { item in
-                        Button { model.toggleLoot(item.id) } label: {
-                            HStack(spacing: 12) {
-                                Image(systemName: model.profile.equippedLootIDs.contains(item.id) ? "checkmark.seal.fill" : "seal").foregroundStyle(model.profile.equippedLootIDs.contains(item.id) ? .mint : .white.opacity(0.55))
-                                VStack(alignment: .leading, spacing: 4) { Text(item.name).font(.system(size: 14, weight: .bold, design: .rounded)); Text(item.description).font(.system(size: 11, design: .rounded)).foregroundStyle(.white.opacity(0.62)) }
-                                Spacer(); Text(item.rarity.rawValue.uppercased()).font(.system(size: 9, weight: .bold, design: .monospaced)).foregroundStyle(.yellow)
-                            }.padding(13).glassmorphic(radius: 16)
-                        }.buttonStyle(.plain).disabled(!model.profile.unlockedLootIDs.contains(item.id) && !model.profile.equippedLootIDs.contains(item.id))
-                    }
-                    if let error = model.errorMessage { Text(error).font(.caption).foregroundStyle(.orange) }
-                }.padding(18)
-            }
-        }.preferredColorScheme(.dark).onAppear { usernameDraft = model.profile.username }.task { await model.refresh(); await model.refreshProgress() }
+    private let titles = ["Novice Focuser", "Deep Work Mage", "Grandmaster of Stillness"]
+    private var dailyProgress: Double {
+        Double(model.todayVerifiedMinutes) / Double(max(1, model.profile.dailyFocusGoalMinutes))
     }
 
-    private func sectionTitle(_ title: String) -> some View { Text(title).font(.system(size: 13, weight: .bold, design: .rounded)).foregroundStyle(.white.opacity(0.86)) }
+    var body: some View {
+        ScreenScaffold {
+            ScreenTitle(eyebrow: "Profile", title: "Hero profile")
+            heroCard
+            ScreenSection(title: "Identity") { identityCard }
+            ScreenSection(title: "Hero class") { heroClassGrid }
+            ScreenSection(title: "Daily focus target") { dailyTargetCard }
+            ScreenSection(title: "Relics", detail: "Equip up to 2") { relicsCard }
+            if let error = model.errorMessage {
+                Label(error, systemImage: "exclamationmark.circle.fill")
+                    .font(.fqSecondary)
+                    .foregroundStyle(FQColor.caution)
+            }
+        }
+        .onAppear { usernameDraft = model.profile.username }
+        .task { await model.refresh(); await model.refreshProgress() }
+    }
+
+    private var heroCard: some View {
+        HStack(spacing: FQSpace.lg) {
+            PixelArtAvatarView(sprite: .hero(model.profile.heroClass), size: 88)
+            VStack(alignment: .leading, spacing: FQSpace.xs) {
+                Text(model.profile.username).font(.fqTitle).foregroundStyle(FQColor.textPrimary)
+                Text(model.profile.title).font(.fqSecondary).foregroundStyle(FQColor.textSecondary)
+                Text(model.profile.heroClass.displayName).font(.fqMeta.weight(.medium)).foregroundStyle(FQColor.accent)
+            }
+            Spacer(minLength: 0)
+            // Misto je vyhrazene stale, aby karta pri ukladani neposkakovala.
+            ProgressView().controlSize(.small).opacity(model.isSaving ? 1 : 0)
+        }
+        .padding(FQSpace.lg)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .glassCard()
+    }
+
+    private var identityCard: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: FQSpace.md) {
+                IconTile(symbol: "at")
+                VStack(alignment: .leading, spacing: FQSpace.xs) {
+                    Text("Username").font(.fqMeta).foregroundStyle(FQColor.textSecondary)
+                    TextField("3-20 letters or numbers", text: $usernameDraft)
+                        .font(.fqBody)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .submitLabel(.done)
+                        .onSubmit { model.updateUsername(usernameDraft) }
+                }
+                Button { model.updateUsername(usernameDraft) } label: {
+                    Image(systemName: "checkmark.circle.fill").font(.system(size: 24)).foregroundStyle(FQColor.accent)
+                }
+                .buttonStyle(.plain)
+                .frame(width: 44, height: 44)
+                .accessibilityLabel("Save username")
+            }
+            .padding(.vertical, FQSpace.sm)
+            HairlineDivider()
+            HStack(spacing: FQSpace.md) {
+                IconTile(symbol: "rosette")
+                Text("Title").font(.fqBody).foregroundStyle(FQColor.textPrimary)
+                Spacer(minLength: FQSpace.sm)
+                Picker("Title", selection: Binding(get: { model.profile.title }, set: { model.updateTitle($0) })) {
+                    ForEach(titles, id: \.self) { Text($0).tag($0) }
+                }
+                .pickerStyle(.menu)
+                .labelsHidden()
+            }
+            .padding(.vertical, FQSpace.sm)
+        }
+        .padding(.horizontal, FQSpace.lg)
+        .padding(.vertical, FQSpace.xs)
+        .glassCard()
+    }
+
+    private var heroClassGrid: some View {
+        LazyVGrid(columns: [GridItem(.flexible(), spacing: FQSpace.md), GridItem(.flexible())], spacing: FQSpace.md) {
+            ForEach(HeroClass.allCases) { hero in
+                let isSelected = hero == model.profile.heroClass
+                Button { model.updateHeroClass(hero) } label: {
+                    VStack(spacing: FQSpace.sm) {
+                        PixelArtAvatarView(sprite: .hero(hero), size: 56)
+                        Text(hero.displayName).font(.fqLabel).foregroundStyle(FQColor.textPrimary)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(FQSpace.md)
+                    .glassCard(radius: FQRadius.control, tint: isSelected ? FQColor.accent : nil)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: FQRadius.control, style: .continuous)
+                            .strokeBorder(isSelected ? FQColor.accent : Color.clear, lineWidth: 1)
+                    }
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(isSelected ? .isSelected : [])
+            }
+        }
+    }
+
+    private var dailyTargetCard: some View {
+        VStack(spacing: FQSpace.lg) {
+            HStack(spacing: FQSpace.lg) {
+                ProgressRing(progress: dailyProgress, lineWidth: 6) {
+                    Text("\(model.todayVerifiedMinutes)").font(.fqLabel).monospacedDigit().foregroundStyle(FQColor.textPrimary)
+                }
+                .frame(width: 56, height: 56)
+                VStack(alignment: .leading, spacing: FQSpace.xs) {
+                    Text("\(model.profile.dailyFocusGoalMinutes) minutes a day").font(.fqHeadline).foregroundStyle(FQColor.textPrimary)
+                    Text("\(model.todayVerifiedMinutes) of \(model.profile.dailyFocusGoalMinutes) min verified today")
+                        .font(.fqSecondary)
+                        .foregroundStyle(FQColor.textSecondary)
+                }
+                Spacer(minLength: 0)
+            }
+            Slider(
+                value: Binding(get: { Double(model.profile.dailyFocusGoalMinutes) }, set: { model.updateDailyGoal(Int($0 / 15) * 15) }),
+                in: 30...180,
+                step: 15
+            )
+            .tint(FQColor.accent)
+            .accessibilityLabel("Daily focus target")
+            .accessibilityValue("\(model.profile.dailyFocusGoalMinutes) minutes")
+        }
+        .padding(FQSpace.lg)
+        .glassCard()
+    }
+
+    private var relicsCard: some View {
+        VStack(spacing: 0) {
+            ForEach(Array(LootItem.catalog.enumerated()), id: \.element.id) { index, item in
+                let isEquipped = model.profile.equippedLootIDs.contains(item.id)
+                let isUnlocked = model.profile.unlockedLootIDs.contains(item.id)
+                if index > 0 { HairlineDivider() }
+                Button { model.toggleLoot(item.id) } label: {
+                    HStack(spacing: FQSpace.md) {
+                        IconTile(symbol: isEquipped ? "checkmark.seal.fill" : (isUnlocked ? "seal" : "lock.fill"), color: isEquipped ? FQColor.accent : FQColor.textSecondary)
+                        VStack(alignment: .leading, spacing: FQSpace.xs) {
+                            Text(item.name).font(.fqBody).foregroundStyle(FQColor.textPrimary)
+                            Text(item.description).font(.fqSecondary).foregroundStyle(FQColor.textSecondary)
+                        }
+                        Spacer(minLength: FQSpace.sm)
+                        Text(item.rarity.rawValue.capitalized).font(.fqMeta.weight(.medium)).foregroundStyle(FQColor.textSecondary)
+                    }
+                    .padding(.vertical, FQSpace.md)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .disabled(!isUnlocked && !isEquipped)
+                .opacity(isUnlocked || isEquipped ? 1 : 0.55)
+            }
+        }
+        .padding(.horizontal, FQSpace.lg)
+        .padding(.vertical, FQSpace.xs)
+        .glassCard()
+    }
 }
