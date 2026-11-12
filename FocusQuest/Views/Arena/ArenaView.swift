@@ -36,12 +36,7 @@ struct ArenaView: View {
                 if let receipt { BattleReceiptShareView(image: receipt) }
             }
             // Hlavni akce je pripnuta nad spodni listou, aby byla videt bez rolovani.
-            .safeAreaInset(edge: .bottom, spacing: 0) {
-                sessionControls
-                    .frame(maxWidth: 640)
-                    .padding(.horizontal, FQSpace.lg)
-                    .padding(.vertical, FQSpace.sm)
-            }
+            .pinnedBottomAction { sessionControls }
             if case let .warningCountdown(seconds, _) = model.state { warningOverlay(seconds: seconds) }
             if case let .penalized(reason) = model.state {
                 resultOverlay(icon: "xmark.shield.fill", title: "Combo broken", detail: reason, color: FQColor.danger)

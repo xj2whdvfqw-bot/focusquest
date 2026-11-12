@@ -25,6 +25,20 @@ extension View {
         }
     }
 
+    /// Hlavni akce pripnuta ke spodnimu okraji. Obsah, ktery pod ni odroluje,
+    /// se plynule rozmaze do ztracena, misto aby byl ostre useknuty.
+    func pinnedBottomAction<Action: View>(@ViewBuilder _ action: () -> Action) -> some View {
+        safeAreaInset(edge: .bottom, spacing: 0) {
+            action()
+                .frame(maxWidth: 640)
+                .padding(.horizontal, FQSpace.lg)
+                .padding(.top, FQSpace.xl)
+                .padding(.bottom, FQSpace.sm)
+                .frame(maxWidth: .infinity)
+                .background { ScrollFadeBackground() }
+        }
+    }
+
     /// Vedlejsi akce (pruhledne sklo).
     @ViewBuilder func glassButtonStyle() -> some View {
         if #available(iOS 26.0, *) {
@@ -60,6 +74,23 @@ struct GlassCardModifier: ViewModifier {
                 )
             }
             .shadow(color: isDark ? Color.black.opacity(0.18) : Color(red: 0.20, green: 0.24, blue: 0.45).opacity(0.14), radius: 16, y: 8)
+    }
+}
+
+/// Rozmazany prechod pod pripnutou akci: nahore pruhledny, dole plny material.
+private struct ScrollFadeBackground: View {
+    var body: some View {
+        Rectangle()
+            .fill(.ultraThinMaterial)
+            .mask {
+                LinearGradient(
+                    stops: [.init(color: .clear, location: 0), .init(color: .black, location: 0.55)],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            }
+            .ignoresSafeArea(edges: .bottom)
+            .allowsHitTesting(false)
     }
 }
 

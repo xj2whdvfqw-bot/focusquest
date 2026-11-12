@@ -143,7 +143,7 @@ struct HeroCreatorView: View {
                     .glassCard()
             }
         }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
+        .pinnedBottomAction {
             Button { start() } label: {
                 Label("Start Adventure", systemImage: "sparkles")
                     .font(.fqHeadline)
@@ -155,9 +155,6 @@ struct HeroCreatorView: View {
             .buttonBorderShape(.capsule)
             .controlSize(.large)
             .tint(FQColor.accent)
-            .frame(maxWidth: 640)
-            .padding(.horizontal, FQSpace.lg)
-            .padding(.vertical, FQSpace.sm)
         }
         .onAppear { nameDraft = model.profile.username }
         .interactiveDismissDisabled()
