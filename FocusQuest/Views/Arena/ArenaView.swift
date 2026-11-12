@@ -157,6 +157,6 @@ struct ArenaView: View {
             Text(title).font(.system(size: 21, weight: .black, design: .rounded)).foregroundStyle(color)
             Text(detail).font(.system(size: 14, design: .rounded)).multilineTextAlignment(.center).foregroundStyle(.white)
             Button("Return to Arena") { model.stopSession() }.font(.system(size: 13, weight: .bold)).padding(.horizontal, 18).padding(.vertical, 10).background(.white.opacity(0.16), in: Capsule())
-        }.padding(24).frame(maxWidth: .infinity).glassmorphic().padding(.horizontal, 28).background(.black.opacity(0.45).ignoresSafeArea())
+        }.padding(24).frame(maxWidth: .infinity).glassmorphic().padding(.horizontal, 28).background(Color.black.opacity(0.45).ignoresSafeArea())
     }
 }
