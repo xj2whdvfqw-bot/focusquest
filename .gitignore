@@ -1,0 +1,14 @@
+# Generovano XcodeGenem v CI - necommitovat
+*.xcodeproj/
+*.xcworkspace/
+
+# Vystupy buildu
+build/
+DerivedData/
+dist/
+*.ipa
+*.xcresult
+
+# Systemove soubory
+.DS_Store
+Thumbs.db

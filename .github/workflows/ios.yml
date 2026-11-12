@@ -1,0 +1,65 @@
+name: iOS build a testy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch: # rucni spusteni z GitHubu nebo `gh workflow run ios.yml`
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Verze Xcode
+        run: xcodebuild -version
+
+      - name: Instalace XcodeGen
+        run: brew install xcodegen
+
+      - name: Vygenerovani Xcode projektu z project.yml
+        run: xcodegen generate
+
+      # IPA se sestavi PRED testy, aby byla ke stazeni i kdyz nejaky test spadne.
+      - name: Sestaveni IPA pro iPhone (nepodepsana)
+        run: bash scripts/ci-build-ipa.sh
+
+      - name: Nahrani IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: FocusQuest-ipa
+          path: build/FocusQuest.ipa
+          retention-days: 14
+
+      - name: Unit testy na iOS simulatoru
+        run: bash scripts/ci-test.sh
+
+      - name: Screenshot aplikace ze simulatoru
+        if: success() || failure()
+        continue-on-error: true
+        run: bash scripts/ci-screenshot.sh
+
+      - name: Nahrani screenshotu
+        if: success() || failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshoty
+          path: build/screenshots/
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Nahrani logu (pri chybe)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: logy
+          path: |
+            build/*.log
+            build/TestResults.xcresult
+          retention-days: 7

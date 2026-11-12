@@ -1,0 +1,53 @@
+# XcodeGen specifikace projektu.
+# .xcodeproj se NEcommituje - generuje se automaticky na Macu v GitHub Actions
+# prikazem `xcodegen generate`. Diky tomu se projekt da spravovat jen z Windows.
+name: FocusQuest
+
+options:
+  bundleIdPrefix: com.focusquest
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+
+targets:
+  FocusQuest:
+    type: application
+    platform: iOS
+    sources:
+      - path: FocusQuest
+    configFiles:
+      Debug: FocusQuest/Config/Development.xcconfig
+      Release: FocusQuest/Config/Development.xcconfig
+    settings:
+      base:
+        CODE_SIGN_STYLE: Automatic
+
+  FocusQuestTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: FocusQuestTests
+    dependencies:
+      - target: FocusQuest
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: com.focusquest.app.tests
+        IPHONEOS_DEPLOYMENT_TARGET: "17.0"
+        SWIFT_VERSION: "6.0"
+        SWIFT_STRICT_CONCURRENCY: complete
+
+schemes:
+  FocusQuest:
+    build:
+      targets:
+        FocusQuest: all
+        FocusQuestTests: [test]
+    test:
+      config: Debug
+      targets:
+        - FocusQuestTests
+    run:
+      config: Debug
+    archive:
+      config: Release
