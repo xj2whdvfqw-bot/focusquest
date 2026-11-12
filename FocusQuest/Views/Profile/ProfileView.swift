@@ -70,13 +70,11 @@ struct ProfileView: View {
                 IconTile(symbol: "rosette")
                 Text("Title").font(.fqBody).foregroundStyle(FQColor.textPrimary)
                 Spacer(minLength: FQSpace.sm)
-                Picker("Title", selection: Binding(get: { model.profile.title }, set: { model.updateTitle($0) })) {
+                ValueMenu(title: "Title", valueText: model.profile.title, selection: Binding(get: { model.profile.title }, set: { model.updateTitle($0) })) {
                     ForEach(titles, id: \.self) { Text($0).tag($0) }
                 }
-                .pickerStyle(.menu)
-                .labelsHidden()
             }
-            .padding(.vertical, FQSpace.sm)
+            .padding(.vertical, FQSpace.xs)
         }
         .padding(.horizontal, FQSpace.lg)
         .padding(.vertical, FQSpace.xs)

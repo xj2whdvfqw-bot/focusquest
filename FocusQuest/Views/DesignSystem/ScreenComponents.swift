@@ -105,6 +105,32 @@ struct IconTile: View {
     }
 }
 
+/// Rozbalovaci volba v radku karty: aktualni hodnota na jednom radku + sipky.
+/// (Systemovy Picker ve stylu .menu hodnotu lamal na dva radky a pretekal z karty.)
+struct ValueMenu<Value: Hashable, Options: View>: View {
+    let title: String
+    let valueText: String
+    @Binding var selection: Value
+    @ViewBuilder let options: () -> Options
+
+    var body: some View {
+        Menu {
+            Picker(title, selection: $selection) { options() }
+        } label: {
+            HStack(spacing: FQSpace.xs) {
+                Text(valueText).font(.fqBody).lineLimit(1)
+                Image(systemName: "chevron.up.chevron.down").font(.fqMeta.weight(.semibold))
+            }
+            .foregroundStyle(FQColor.accent)
+            .frame(minHeight: 44)
+            .contentShape(Rectangle())
+        }
+        .layoutPriority(1)
+        .accessibilityLabel(title)
+        .accessibilityValue(valueText)
+    }
+}
+
 /// Vlasova linka mezi radky uvnitr karty.
 struct HairlineDivider: View {
     var body: some View {

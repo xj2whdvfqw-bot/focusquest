@@ -27,12 +27,18 @@ struct ArenaView: View {
                     if model.mode == .raid { raidPartyBar }
                 }
                 battleStage
-                sessionControls
                 #if targetEnvironment(simulator)
                 simulatorControls
                 #endif
                 if let partyAlert = model.partyAlert { partyAlertBanner(partyAlert) }
                 if let receipt { BattleReceiptShareView(image: receipt) }
+            }
+            // Hlavni akce je pripnuta nad spodni listou, aby byla videt bez rolovani.
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                sessionControls
+                    .frame(maxWidth: 640)
+                    .padding(.horizontal, FQSpace.lg)
+                    .padding(.vertical, FQSpace.sm)
             }
             if case let .warningCountdown(seconds, _) = model.state { warningOverlay(seconds: seconds) }
             if case let .penalized(reason) = model.state {
@@ -125,14 +131,14 @@ struct ArenaView: View {
     }
 
     private var battleStage: some View {
-        VStack(spacing: FQSpace.lg) {
+        VStack(spacing: FQSpace.md) {
             ZStack {
                 Circle()
-                    .fill(RadialGradient(colors: [(isWarning ? FQColor.danger : FQColor.accent).opacity(0.22), Color.clear], center: .center, startRadius: 0, endRadius: 104))
-                    .frame(width: 208, height: 208)
-                PixelArtAvatarView(sprite: .boss(model.selectedBoss.pixelSpriteConfig), hitFlash: false, size: 144)
+                    .fill(RadialGradient(colors: [(isWarning ? FQColor.danger : FQColor.accent).opacity(0.22), Color.clear], center: .center, startRadius: 0, endRadius: 88))
+                    .frame(width: 176, height: 176)
+                PixelArtAvatarView(sprite: .boss(model.selectedBoss.pixelSpriteConfig), hitFlash: false, size: 112)
             }
-            .frame(height: 176)
+            .frame(height: 120)
 
             VStack(spacing: FQSpace.xs) {
                 Text(model.selectedBoss.name).font(.fqTitle).foregroundStyle(FQColor.textPrimary)
@@ -160,7 +166,8 @@ struct ArenaView: View {
 
             BossHealthBarView(currentHP: model.selectedBoss.currentHP, maxHP: model.selectedBoss.maxHP)
         }
-        .padding(FQSpace.xl)
+        .padding(.horizontal, FQSpace.xl)
+        .padding(.vertical, FQSpace.lg)
         .frame(maxWidth: .infinity)
         .glassCard(tint: isWarning ? FQColor.danger : nil)
     }

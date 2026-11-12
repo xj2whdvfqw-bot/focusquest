@@ -45,13 +45,11 @@ struct SettingsView: View {
                 IconTile(symbol: "music.note.list")
                 Text("Starting track").font(.fqBody).foregroundStyle(FQColor.textPrimary)
                 Spacer(minLength: FQSpace.sm)
-                Picker("Starting track", selection: Binding(get: { model.preferences.selectedTrack }, set: { track in model.update { $0.selectedTrack = track } })) {
+                ValueMenu(title: "Starting track", valueText: model.preferences.selectedTrack.title, selection: Binding(get: { model.preferences.selectedTrack }, set: { track in model.update { $0.selectedTrack = track } })) {
                     ForEach(AmbientTrack.allCases) { Text($0.title).tag($0) }
                 }
-                .pickerStyle(.menu)
-                .labelsHidden()
             }
-            .padding(.vertical, FQSpace.sm)
+            .padding(.vertical, FQSpace.xs)
             HairlineDivider()
             HStack(spacing: FQSpace.md) {
                 Image(systemName: "speaker.fill").accessibilityHidden(true)
