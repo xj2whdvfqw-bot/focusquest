@@ -1,5 +1,6 @@
 import Darwin
 import Foundation
+import MachO
 
 protocol RuntimeSecurityServiceProtocol: Sendable {
     func integrityReport() -> RuntimeIntegrityReport

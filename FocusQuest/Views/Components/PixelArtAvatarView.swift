@@ -58,7 +58,7 @@ private enum SpritePalette {
     static func rows(for sprite: PixelSprite, startled: Bool) -> [String] {
         switch sprite {
         case .boss(let id):
-            switch id {
+            return switch id {
             case "shadow-golem": ["......SSSS......", ".....SDDDS.....", "....SDDDDS.....", "...SDDWWDDS....", "...SDDDDDDS....", "..SSDDDDDDSS...", "..SDDDDDDDDDS..", ".SSDDDDDDDDSS..", ".SDDDDDDDDDDDS.", ".SDDSSDDDDSSDS.", "..SDDSSSSDDDS..", "..SDDDDDDDDD...", "...SDDDDDDS....", "...SS....SS....", "..SS......SS...", "................"]
             case "void-dragon": ["...PP......PP...", "..PPPP....PPPP..", ".PPPPPP..PPPPPP.", "PPWWPPPPPPPPWWPP", ".PPPPPPPPPPPPPP.", "..PPPPPPPPPPPP..", "...PPPPPPPPPP...", "....PPPPPPPP....", "...PPPPPPPPPP...", "..PPPPPPPPPPPP..", ".PPPPPPPPPPPPPP.", "PP...PP..PP...PP", ".....PP..PP.....", "....PP....PP....", "...PP......PP...", "................"]
             default: ["................", "......GGGG......", "....GGGGGGGG....", "...GGGGGGGGGG...", "..GGGGGGGGGGGG..", "..GGWWGGGGWWGG..", ".GGGGGGGGGGGGGG.", ".GGGGGGGGGGGGGG.", ".GGGGGGGGGGGGGG.", "..GGGGGGGGGGGG..", "...GGGGGGGGGG...", "....GGGGGGGG....", ".....GGGGGG.....", "......GGGG......", "................", "................"]
