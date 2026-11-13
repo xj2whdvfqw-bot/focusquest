@@ -13,7 +13,18 @@ final class ProgressionModelTests: XCTestCase {
         XCTAssertEqual(Boss.clampedMinutes(1), 10)
         XCTAssertEqual(Boss.roster[0].withHP(minutes: 0).maxHP, 10)
         XCTAssertEqual(Boss.roster[0].withHP(minutes: 9_999).maxHP, Boss.minutesRange.upperBound)
-        for boss in Boss.roster { XCTAssertEqual(Boss.initialMinutes(for: boss.id) % Boss.minutesStep, 0) }
+    }
+
+    func testPathNodesHaveFixedDurationsTenFifteenTwenty() {
+        XCTAssertEqual(Boss.fixedMinutes(forNode: 0), 10)
+        XCTAssertEqual(Boss.fixedMinutes(forNode: 1), 15)
+        XCTAssertEqual(Boss.fixedMinutes(forNode: 2), 20)
+        for world in BossWorld.allCases {
+            for (index, boss) in world.bosses.enumerated() {
+                XCTAssertEqual(boss.maxHP, 10 + 5 * index, boss.name)
+                XCTAssertEqual(boss.currentHP, boss.maxHP, boss.name)
+            }
+        }
     }
 
     func testSimulatedBackendUsesCustomHPForEachBattle() async throws {
@@ -27,31 +38,54 @@ final class ProgressionModelTests: XCTestCase {
     // MARK: - Predvolby
 
     func testPreferencesSavedByOlderVersionKeepTheirValues() throws {
-        let legacy = Data(#"{"isHapticsEnabled":false,"isMusicEnabled":true,"isSFXEnabled":true,"ambientVolume":0.3,"selectedTrack":"tokyoSunset","bossMinutes":1}"#.utf8)
+        let legacy = Data(#"{"isHapticsEnabled":false,"isMusicEnabled":true,"isSFXEnabled":true,"ambientVolume":0.3,"selectedTrack":"tokyoSunset","bossMinutes":1,"bossMinutesByID":{"web-slacker":60}}"#.utf8)
         let preferences = try JSONDecoder().decode(AppPreferences.self, from: legacy)
         XCTAssertFalse(preferences.isHapticsEnabled)
         XCTAssertEqual(preferences.ambientVolume, 0.3, accuracy: 0.0001)
         XCTAssertEqual(preferences.selectedTrack, .tokyoSunset)
         XCTAssertEqual(preferences.soundscape, .lofi)
         XCTAssertNil(preferences.lastSubject)
-        // Stare spolecne HP pro vsechny bosse se nepouzije; kazdy boss ma sve vychozi.
-        for boss in Boss.roster { XCTAssertEqual(preferences.bossMinutes(for: boss.id), Boss.initialMinutes(for: boss.id)) }
+        // Stare vlastni delky bitev se zahodi; cesta zacina od prvniho uzlu.
+        XCTAssertTrue(preferences.clearedNodesByWorld.isEmpty)
+        XCTAssertTrue(preferences.isUnlocked(BossWorld.heroes.bosses[0]))
+        XCTAssertFalse(preferences.isUnlocked(BossWorld.heroes.bosses[1]))
     }
 
-    func testEachBossKeepsItsOwnHP() throws {
+    func testPathUnlocksOneNodeAtATimeInEachWorld() {
         var preferences = AppPreferences()
-        let first = Boss.roster[0].id
-        let second = Boss.roster[1].id
-        let secondBefore = preferences.bossMinutes(for: second)
-        preferences.bossMinutesByID[first] = 60
-        XCTAssertEqual(preferences.bossMinutes(for: first), 60)
-        XCTAssertEqual(preferences.bossMinutes(for: second), secondBefore)
+        let heroes = BossWorld.heroes.bosses
+        let villains = BossWorld.villains.bosses
+        XCTAssertTrue(preferences.isUnlocked(heroes[0]))
+        XCTAssertFalse(preferences.isUnlocked(heroes[1]))
+
+        // Vyhra nad uzlem mimo poradi cestu neposune.
+        preferences.markCleared(heroes[2])
+        XCTAssertEqual(preferences.clearedNodes(in: .heroes), 0)
+
+        preferences.markCleared(heroes[0])
+        XCTAssertEqual(preferences.clearedNodes(in: .heroes), 1)
+        XCTAssertTrue(preferences.isUnlocked(heroes[1]))
+        XCTAssertFalse(preferences.isUnlocked(heroes[2]))
+        XCTAssertEqual(BossWorld.heroes.frontierBoss(cleared: 1)?.id, heroes[1].id)
+
+        // Opakovana vyhra nad starsim uzlem nic nemeni.
+        preferences.markCleared(heroes[0])
+        XCTAssertEqual(preferences.clearedNodes(in: .heroes), 1)
+
+        // Kazdy svet ma vlastni cestu.
+        XCTAssertTrue(preferences.isUnlocked(villains[0]))
+        XCTAssertFalse(preferences.isUnlocked(villains[1]))
+
+        // Dobyty svet uz nema dalsi uzel.
+        for boss in villains { preferences.markCleared(boss) }
+        XCTAssertEqual(preferences.clearedNodes(in: .villains), villains.count)
+        XCTAssertNil(BossWorld.villains.frontierBoss(cleared: villains.count))
     }
 
-    func testPreferencesRoundTripKeepsSoundscapeBossHPAndSubject() throws {
+    func testPreferencesRoundTripKeepsSoundscapePathProgressAndSubject() throws {
         var preferences = AppPreferences()
         preferences.soundscape = .brownNoise
-        preferences.bossMinutesByID = [Boss.roster[0].id: 90, Boss.roster[1].id: 15]
+        preferences.clearedNodesByWorld = [BossWorld.heroes.rawValue: 3, BossWorld.brainrot.rawValue: 1]
         preferences.lastSubject = .german
         preferences.lastBossID = Boss.roster[1].id
         let data = try JSONEncoder().encode(preferences)
@@ -185,11 +219,17 @@ final class ProgressionModelTests: XCTestCase {
         XCTAssertEqual(decoded.avatar.equippedItemID(in: .weapon), "excalibur")
     }
 
-    func testEveryBossHasAFullSpriteAndACategory() {
-        XCTAssertEqual(Boss.roster.count, 9)
-        for category in BossCategory.allCases { XCTAssertEqual(category.bosses.count, 3, category.title) }
+    func testEveryBossHasAFullSpriteAndAPlaceOnAPath() {
+        XCTAssertEqual(Set(Boss.roster.map(\.id)).count, Boss.roster.count, "boss IDs must be unique")
+        for world in BossWorld.allCases {
+            XCTAssertFalse(world.bosses.isEmpty, world.rawValue)
+            for (index, boss) in world.bosses.enumerated() {
+                XCTAssertEqual(boss.world, world, boss.name)
+                XCTAssertEqual(boss.nodeIndex, index, boss.name)
+            }
+        }
         for boss in Boss.roster {
-            let rows = SpritePalette.bossRows[boss.pixelSpriteConfig]
+            let rows = SpritePalette.bossRows[boss.pixelSpriteConfig] ?? SpritePalette.worldBossRows[boss.pixelSpriteConfig]
             XCTAssertNotNil(rows, "\(boss.name) has no sprite")
             XCTAssertEqual(rows?.count, 16, boss.name)
             XCTAssertTrue(rows?.allSatisfy { $0.count == 16 } ?? false, boss.name)
@@ -248,6 +288,54 @@ final class ProgressionModelTests: XCTestCase {
         XCTAssertEqual(stats.streakDays, 1)
         XCTAssertEqual(stats.wins, 2)
         XCTAssertEqual(stats.battles, 3)
+    }
+
+    // MARK: - HP hrdiny a serie
+
+    func testStreakExpiresAfterAMissedDay() {
+        let calendar = Calendar(identifier: .gregorian)
+        let dayOne = Date(timeIntervalSince1970: 1_700_000_000)
+        let dayTwo = dayOne.addingTimeInterval(86_400)
+        var stats = PlayerStats.initial
+        XCTAssertEqual(stats.currentStreak(now: dayOne, calendar: calendar), 0)
+
+        stats.record(SessionSummary(id: UUID(), bossName: "A", verifiedMinutes: 10, xpEarned: 100, completedAt: dayOne, flawless: true), bossDefeated: true, calendar: calendar)
+        stats.record(SessionSummary(id: UUID(), bossName: "B", verifiedMinutes: 10, xpEarned: 100, completedAt: dayTwo, flawless: true), bossDefeated: true, calendar: calendar)
+        XCTAssertEqual(stats.currentStreak(now: dayTwo, calendar: calendar), 2)
+        // Den bez bitvy serii jeste drzi, dva dny uz ne.
+        XCTAssertEqual(stats.currentStreak(now: dayTwo.addingTimeInterval(86_400), calendar: calendar), 2)
+        XCTAssertEqual(stats.currentStreak(now: dayTwo.addingTimeInterval(86_400 * 2), calendar: calendar), 0)
+    }
+
+    func testFailedQuestCostsHeroHPAndStreakAndWinsHealHP() {
+        let calendar = Calendar(identifier: .gregorian)
+        let dayOne = Date(timeIntervalSince1970: 1_700_000_000)
+        var stats = PlayerStats.initial
+        XCTAssertEqual(stats.heroHP, PlayerStats.maxHeroHP)
+
+        stats.record(SessionSummary(id: UUID(), bossName: "A", verifiedMinutes: 10, xpEarned: 100, completedAt: dayOne, flawless: true), bossDefeated: true, calendar: calendar)
+        XCTAssertEqual(stats.heroHP, PlayerStats.maxHeroHP, "healing never goes above max HP")
+        XCTAssertEqual(stats.currentStreak(now: dayOne, calendar: calendar), 1)
+
+        stats.recordQuestFailure(at: dayOne.addingTimeInterval(60))
+        XCTAssertEqual(stats.heroHP, PlayerStats.maxHeroHP - PlayerStats.heroHPLossPerFailedQuest)
+        XCTAssertEqual(stats.currentStreak(now: dayOne.addingTimeInterval(120), calendar: calendar), 0)
+
+        // Dalsi vyhra serii zacne znovu od jedne a kousek HP doplni.
+        stats.record(SessionSummary(id: UUID(), bossName: "B", verifiedMinutes: 10, xpEarned: 100, completedAt: dayOne.addingTimeInterval(3_600), flawless: true), bossDefeated: true, calendar: calendar)
+        XCTAssertEqual(stats.streakDays, 1)
+        XCTAssertEqual(stats.heroHP, PlayerStats.maxHeroHP - PlayerStats.heroHPLossPerFailedQuest + PlayerStats.heroHPHealPerWin)
+
+        for _ in 0..<10 { stats.recordQuestFailure(at: dayOne.addingTimeInterval(7_200)) }
+        XCTAssertEqual(stats.heroHP, 0, "HP never goes below zero")
+    }
+
+    func testHeroHPAndQuestFailureSurviveEncoding() throws {
+        var stats = PlayerStats.initial
+        stats.recordQuestFailure(at: Date(timeIntervalSince1970: 1_700_000_000))
+        let decoded = try JSONDecoder().decode(PlayerStats.self, from: JSONEncoder().encode(stats))
+        XCTAssertEqual(decoded.heroHP, stats.heroHP)
+        XCTAssertEqual(decoded.lastQuestFailedAt, stats.lastQuestFailedAt)
     }
 
     func testLocalProfileSurvivesRelaunch() async throws {
