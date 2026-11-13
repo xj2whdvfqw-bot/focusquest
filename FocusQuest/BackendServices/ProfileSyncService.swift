@@ -6,6 +6,8 @@ protocol ProfileSyncServiceProtocol: Sendable {
     func saveProfile(_ profile: UserProfile) async throws
     /// Zapise dokoncenou bitvu do statistik a vrati jejich novy stav.
     func recordBattle(_ summary: SessionSummary, bossDefeated: Bool) async throws -> PlayerStats
+    /// Vyvojarske testovaci XP mimo bitvu. Vraci novy stav statistik.
+    func addBonusXP(_ amount: Int) async throws -> PlayerStats
     func exchangeAppleToken(_ token: String) async throws
     func signOut() async throws
     func deleteAccount() async throws
@@ -30,6 +32,12 @@ struct ProfileSyncService: ProfileSyncServiceProtocol {
     func recordBattle(_ summary: SessionSummary, bossDefeated: Bool) async throws -> PlayerStats {
         // Na serveru statistiky pocita sluzba pri dokonceni bitvy; tady se jen nactou.
         try await loadStats()
+    }
+
+    func addBonusXP(_ amount: Int) async throws -> PlayerStats {
+        // XP na serveru prideluje jen server; testovaci bonus funguje jen v rezimu bez serveru.
+        _ = amount
+        return try await loadStats()
     }
 
     func exchangeAppleToken(_ token: String) async throws {
@@ -80,6 +88,12 @@ actor LocalProfileSyncService: ProfileSyncServiceProtocol {
 
     func recordBattle(_ summary: SessionSummary, bossDefeated: Bool) async throws -> PlayerStats {
         stats.record(summary, bossDefeated: bossDefeated)
+        persist(stats, key: Self.statsKey)
+        return stats
+    }
+
+    func addBonusXP(_ amount: Int) async throws -> PlayerStats {
+        stats.grantBonusXP(amount)
         persist(stats, key: Self.statsKey)
         return stats
     }

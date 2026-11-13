@@ -28,6 +28,8 @@ final class SettingsViewModel: ObservableObject {
     @Published private(set) var isSignedIn = false
     /// Volano po kazde zmene predvoleb, aby se projevila hned (napr. v bezici hudbe).
     var onPreferencesChanged: ((AppPreferences) -> Void)?
+    /// DOCASNE: pripise testovaci mince a XP do profilu (napojeno v AppDIContainer).
+    var onAddDevFunds: (() -> Void)?
     private let store: any PreferencesStoreProtocol
     private let profileSync: any ProfileSyncServiceProtocol
     private let keychain: any KeychainServiceProtocol
@@ -46,6 +48,11 @@ final class SettingsViewModel: ObservableObject {
 
     /// Predvolby zmenene jinde (prehravac v Arene) - jen se prevezmou, uz jsou ulozene.
     func syncPreferences(_ updated: AppPreferences) { preferences = updated }
+
+    func addDevFunds() {
+        onAddDevFunds?()
+        statusMessage = "Added 10,000 coins and 5,000 XP."
+    }
 
     func signInWithApple(identityToken: String) async {
         do { try await profileSync.exchangeAppleToken(identityToken); isSignedIn = true; statusMessage = "Apple account connected." }

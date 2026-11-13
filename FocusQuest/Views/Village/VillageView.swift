@@ -8,8 +8,8 @@ struct VillageView: View {
     private var stageNumber: Int { (DwellingStage.allCases.firstIndex(of: village.stage) ?? 0) + 1 }
 
     var body: some View {
-        ScreenScaffold {
-            ScreenTitle(eyebrow: "Village", title: "Your base")
+        ScreenScaffold(scene: .castleKeep) {
+            ScreenHeader(eyebrow: "Village", title: "Your base")
             dwellingCard
             ScreenSection(title: "Evolution", detail: "Stage \(stageNumber) of \(DwellingStage.allCases.count)") { evolutionStrip }
             HStack(spacing: FQSpace.md) {

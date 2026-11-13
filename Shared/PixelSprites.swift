@@ -78,7 +78,7 @@ enum SpritePalette {
             if id == "ember-dragonling" { return ["................", ".....OO..OO.....", "....OOOOOOOO....", "...OOOOWWOOOO...", "...OOOOOOOOOO...", "....OOOOOOOO....", ".....OOOOOO.....", "....OOO..OOO....", "...OO......OO...", "..OO........OO..", "................", "................", "................", "................", "................", "................"] }
             return ["................", "..DD........DD..", ".DDD........DDD.", ".DDDD......DDDD.", "..DDDDDDDDDDDD..", "..DDWWDDDDWWDD..", "..DDDDDDDDDDDD..", "...DDDDDDDDDD...", "....DDDDDDDD....", "....DDDDDDDD....", ".....DDDDDD.....", "....DD......DD..", "...DD........DD.", "................", "................", "................"]
         case .hero(let hero):
-            let color: Character = switch hero { case .arcaneScholar: "P"; case .cyberRonin: "B"; case .alchemist: "G"; case .voidKnight: "D" }
+            let color: Character = switch hero { case .mage: "P"; case .rogue: "B"; case .archer: "G"; case .warrior: "D" }
             return ["......WWWW......", ".....W\(color)\(color)WW.....", ".....\(color)\(color)\(color)\(color)\(color)\(color).....", "....\(color)\(color)WW\(color)\(color)....", "....\(color)\(color)\(color)\(color)\(color)\(color)....", "......\(color)\(color)......", "....\(color)\(color)\(color)\(color)\(color)\(color)....", "...\(color)\(color)\(color)\(color)\(color)\(color)\(color)\(color)...", "..\(color)\(color)\(color)\(color)\(color)\(color)\(color)\(color)\(color)\(color)..", "..\(color)\(color)..\(color)\(color)..", "..\(color)\(color)..\(color)\(color)..", "..\(color)\(color)..\(color)\(color)..", "................", "................", "................", "................"]
         }
     }

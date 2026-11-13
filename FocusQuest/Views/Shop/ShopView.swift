@@ -16,7 +16,7 @@ struct ShopView: View {
     }
 
     var body: some View {
-        ScreenScaffold {
+        ScreenScaffold(scene: .lanternGrove) {
             ForEach(EquipmentSlot.shopOrder, id: \.self) { slot in
                 ScreenSection(title: slot.displayName) {
                     LazyVGrid(columns: [GridItem(.flexible(), spacing: FQSpace.md), GridItem(.flexible())], spacing: FQSpace.md) {
@@ -30,9 +30,10 @@ struct ShopView: View {
     }
 
     private var previewHeader: some View {
-        HStack(spacing: FQSpace.lg) {
+        HStack(alignment: .top, spacing: FQSpace.lg) {
             HeroAvatarView(appearance: previewAppearance, heroClass: model.profile.heroClass, size: 104)
                 .animation(.easeOut(duration: 0.2), value: previewAppearance)
+                .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: FQSpace.xs) {
                 Text("Shop").font(.fqLabel).foregroundStyle(FQColor.textSecondary)
                 Text(tryOn.map { "Trying on \($0.name)" } ?? "Gear up your hero")
@@ -45,11 +46,12 @@ struct ShopView: View {
                     .foregroundStyle(FQColor.accent)
                     .contentTransition(.numericText())
             }
+            .accessibilityElement(children: .combine)
             Spacer(minLength: 0)
+            SettingsGearButton()
         }
         .padding(FQSpace.md)
         .glassCard()
-        .accessibilityElement(children: .combine)
     }
 
     private func itemCard(_ item: EquipmentItem) -> some View {

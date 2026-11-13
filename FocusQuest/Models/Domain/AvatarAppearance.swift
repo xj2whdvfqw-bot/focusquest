@@ -143,10 +143,10 @@ enum AvatarSprite {
 
     static func classAccent(_ heroClass: HeroClass) -> RGB {
         switch heroClass {
-        case .arcaneScholar: RGB(0.68, 0.45, 0.85)
-        case .cyberRonin: RGB(0.26, 0.72, 0.82)
-        case .alchemist: RGB(0.36, 0.73, 0.46)
-        case .voidKnight: RGB(0.55, 0.58, 0.70)
+        case .mage: RGB(0.68, 0.45, 0.85)
+        case .rogue: RGB(0.26, 0.72, 0.82)
+        case .archer: RGB(0.36, 0.73, 0.46)
+        case .warrior: RGB(0.78, 0.30, 0.26)
         }
     }
 

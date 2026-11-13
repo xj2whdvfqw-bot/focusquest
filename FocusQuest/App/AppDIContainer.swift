@@ -45,5 +45,9 @@ final class AppDIContainer {
         // Zmeny v Nastaveni (hudba, hlasitost, skladba) se maji projevit hned i v bezici bitve.
         settingsViewModel.onPreferencesChanged = { [weak arenaViewModel] updated in arenaViewModel?.updatePreferences(updated) }
         arenaViewModel.onPreferencesChanged = { [weak settingsViewModel] updated in settingsViewModel?.syncPreferences(updated) }
+        // Docasne testovaci odmeny z Nastaveni.
+        settingsViewModel.onAddDevFunds = { [weak profileViewModel] in profileViewModel?.addDevFunds() }
+        // Statistiky zmenene vitezstvim nebo bonusem se hned ukazi i na zalozce Stats.
+        profileViewModel.onStatsChanged = { [weak stats = self.statsViewModel] updated in stats?.replace(with: updated) }
     }
 }

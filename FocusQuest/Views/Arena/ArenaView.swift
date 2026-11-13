@@ -23,7 +23,7 @@ struct ArenaView: View {
 
     var body: some View {
         ZStack {
-            ScreenScaffold(alert: isWarning) {
+            ScreenScaffold(alert: isWarning, scene: .dungeonRuins) {
                 header
                 subjectPicker
                 bossSelector
@@ -155,8 +155,7 @@ struct ArenaView: View {
     // MARK: - Sekce
 
     private var header: some View {
-        ScreenTitle(eyebrow: "Arena", title: "Study battle")
-            .frame(maxWidth: .infinity, alignment: .leading)
+        ScreenHeader(eyebrow: "Arena", title: "Study battle")
     }
 
     /// Predmet je povinny - bez nej tlacitko bitvy nejde zmacknout.

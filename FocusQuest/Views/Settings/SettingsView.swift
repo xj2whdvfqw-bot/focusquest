@@ -3,7 +3,7 @@ import AuthenticationServices
 
 struct SettingsView: View {
     @ObservedObject var model: SettingsViewModel
-    /// Nastaveni se otevira jako list z Profilu; tohle ho zavre.
+    /// Nastaveni se otevira jako list ozubenym kolem na kterekoli zalozce; tohle ho zavre.
     var onClose: (() -> Void)? = nil
 
     var body: some View {
@@ -28,6 +28,8 @@ struct SettingsView: View {
             ScreenSection(title: "Soundscape") { soundscapeCard }
             ScreenSection(title: "Privacy & fair play") { legalCard }
             ScreenSection(title: "Account & data") { accountCard }
+            // DOCASNE: testovaci odmeny. Pred vydanim do App Storu odstranit.
+            ScreenSection(title: "Developer", detail: "Temporary") { developerCard }
             if let message = model.statusMessage {
                 Text(message).font(.fqSecondary).foregroundStyle(FQColor.textSecondary).padding(.horizontal, FQSpace.xs)
             }
@@ -138,6 +140,26 @@ struct SettingsView: View {
                     IconTile(symbol: "trash.fill", color: FQColor.danger)
                     Text("Delete account and data").font(.fqBody).foregroundStyle(FQColor.danger)
                     Spacer(minLength: 0)
+                }
+                .padding(.vertical, FQSpace.sm)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    /// DOCASNE: +10 000 minci a +5 000 XP pro testovani vesnice a obchodu.
+    private var developerCard: some View {
+        card {
+            Button { model.addDevFunds() } label: {
+                HStack(spacing: FQSpace.md) {
+                    IconTile(symbol: "hammer.fill")
+                    VStack(alignment: .leading, spacing: FQSpace.xs) {
+                        Text("Add Dev Funds").font(.fqBody).foregroundStyle(FQColor.textPrimary)
+                        Text("+10,000 coins and +5,000 XP").font(.fqMeta).foregroundStyle(FQColor.textSecondary)
+                    }
+                    Spacer(minLength: 0)
+                    Image(systemName: "plus.circle.fill").font(.system(size: 22)).foregroundStyle(FQColor.accent)
                 }
                 .padding(.vertical, FQSpace.sm)
                 .contentShape(Rectangle())

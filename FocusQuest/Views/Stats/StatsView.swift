@@ -9,8 +9,8 @@ struct StatsView: View {
     }
 
     var body: some View {
-        ScreenScaffold {
-            ScreenTitle(eyebrow: "Stats", title: "Your progression")
+        ScreenScaffold(scene: .starlitPeaks) {
+            ScreenHeader(eyebrow: "Stats", title: "Your progression")
             levelCard
             LazyVGrid(columns: [GridItem(.flexible(), spacing: FQSpace.md), GridItem(.flexible())], spacing: FQSpace.md) {
                 metric("Win rate", value: "\(Int(model.stats.winRate * 100))%", icon: "scope")
@@ -19,6 +19,7 @@ struct StatsView: View {
                 metric("Focus hours", value: focusHours, icon: "clock.fill")
             }
             ScreenSection(title: "Subjects") { subjectsCard }
+            ScreenSection(title: "Bestiary", detail: bestiaryDetail) { bestiaryCard }
             ScreenSection(title: "Verified battle log", detail: "\(model.stats.sessionHistory.count) battles") {
                 battleLog
             }
@@ -59,6 +60,74 @@ struct StatsView: View {
         }
     }
 
+    // MARK: - Bestiar
+
+    private var bestiaryGroups: [BestiaryGroup] { BestiaryGroup.groups(from: model.stats.bestiary) }
+
+    private var bestiaryDetail: String? {
+        let total = model.stats.bestiary.reduce(0) { $0 + $1.defeats }
+        return total == 0 ? nil : "\(total) defeated"
+    }
+
+    /// Porazeni bossove po predmetech, napr. "English: 4x Banana Bandit".
+    @ViewBuilder private var bestiaryCard: some View {
+        let groups = bestiaryGroups
+        if groups.isEmpty {
+            Label("Win a battle in the Arena and the boss you beat is recorded here, sorted by subject.", systemImage: "book.closed.fill")
+                .font(.fqSecondary)
+                .foregroundStyle(FQColor.textSecondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(FQSpace.lg)
+                .glassCard()
+        } else {
+            VStack(spacing: FQSpace.md) {
+                ForEach(groups) { group in bestiaryGroupCard(group) }
+            }
+        }
+    }
+
+    private func bestiaryGroupCard(_ group: BestiaryGroup) -> some View {
+        VStack(spacing: 0) {
+            HStack(spacing: FQSpace.sm) {
+                Label(group.subject?.title ?? "No subject", systemImage: group.subject?.symbol ?? "questionmark.circle")
+                    .font(.fqHeadline)
+                    .foregroundStyle(FQColor.textPrimary)
+                Spacer(minLength: FQSpace.sm)
+                Text("\(group.totalDefeats)x").font(.fqLabel).monospacedDigit().foregroundStyle(FQColor.accent)
+            }
+            .padding(.vertical, FQSpace.md)
+            .accessibilityElement(children: .combine)
+            ForEach(group.entries) { entry in
+                HairlineDivider()
+                bestiaryRow(entry)
+            }
+        }
+        .padding(.horizontal, FQSpace.lg)
+        .padding(.vertical, FQSpace.xs)
+        .glassCard()
+    }
+
+    private func bestiaryRow(_ entry: BestiaryEntry) -> some View {
+        let spriteID = Boss.roster.first { $0.id == entry.bossID }?.pixelSpriteConfig
+        return HStack(spacing: FQSpace.md) {
+            Group {
+                if let spriteID {
+                    PixelArtAvatarView(sprite: .boss(spriteID), size: 32)
+                } else {
+                    IconTile(symbol: "xmark.shield.fill")
+                }
+            }
+            .frame(width: 40, height: 40)
+            .accessibilityHidden(true)
+            Text(entry.bossName).font(.fqBody).foregroundStyle(FQColor.textPrimary)
+            Spacer(minLength: FQSpace.sm)
+            Text("\(entry.defeats)x").font(.fqHeadline).monospacedDigit().foregroundStyle(FQColor.textPrimary)
+        }
+        .padding(.vertical, FQSpace.sm)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(entry.bossName), defeated \(entry.defeats) \(entry.defeats == 1 ? "time" : "times")")
+    }
+
     private var levelCard: some View {
         HStack(spacing: FQSpace.lg) {
             ProgressRing(progress: Double(model.stats.xpIntoLevel) / Double(max(1, model.stats.xpForNextLevel))) {
@@ -69,7 +138,7 @@ struct StatsView: View {
             }
             .frame(width: 80, height: 80)
             VStack(alignment: .leading, spacing: FQSpace.sm) {
-                Text(profile.profile.title).font(.fqHeadline).foregroundStyle(FQColor.textPrimary)
+                Text(HeroRank.current(forLevel: model.stats.level).title).font(.fqHeadline).foregroundStyle(FQColor.textPrimary)
                 Text("\(model.stats.xpIntoLevel) / \(model.stats.xpForNextLevel) XP to next level")
                     .font(.fqSecondary)
                     .monospacedDigit()

@@ -3,11 +3,13 @@ import SwiftUI
 /// Kostra obrazovky: pozadi + rolovaci sloupec se stejnymi okraji a rozestupy sekci.
 struct ScreenScaffold<Content: View>: View {
     var alert = false
+    /// Ktera pixelova krajina je za obrazovkou.
+    var scene: BackdropScene = .enchantedForest
     @ViewBuilder let content: () -> Content
 
     var body: some View {
         ZStack {
-            FocusQuestBackdrop(alert: alert)
+            FocusQuestBackdrop(alert: alert, scene: scene)
             ScrollView {
                 VStack(alignment: .leading, spacing: FQSpace.xl) {
                     content()
@@ -21,6 +23,8 @@ struct ScreenScaffold<Content: View>: View {
             }
             .scrollIndicators(.hidden)
         }
+        // Krajina je vzdy nocni, takze text a sklo musi byt vzdy v tmavem rezimu (i v listech).
+        .preferredColorScheme(.dark)
     }
 }
 
@@ -38,6 +42,48 @@ struct ScreenTitle: View {
         }
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isHeader)
+    }
+}
+
+/// Otevira list Nastaveni odkudkoli. MainTabView ho vlozi do prostredi;
+/// kde v prostredi neni (tvorba hrdiny, samotne Nastaveni), ozubene kolo se nezobrazi.
+@Observable
+@MainActor
+final class SettingsPresenter {
+    var isPresented = false
+}
+
+/// Male ozubene kolo vpravo nahore, ktere otevre Nastaveni.
+struct SettingsGearButton: View {
+    @Environment(SettingsPresenter.self) private var presenter: SettingsPresenter?
+
+    var body: some View {
+        if let presenter {
+            Button { presenter.isPresented = true } label: {
+                Image(systemName: "gearshape.fill")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(FQColor.textPrimary)
+                    .frame(width: 44, height: 44)
+                    .glassControl(in: Circle(), interactive: true)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Settings")
+        }
+    }
+}
+
+/// Nadpis obrazovky s ozubenym kolem Nastaveni v pravem hornim rohu.
+struct ScreenHeader: View {
+    var eyebrow: String?
+    let title: String
+
+    var body: some View {
+        HStack(alignment: .top, spacing: FQSpace.sm) {
+            ScreenTitle(eyebrow: eyebrow, title: title)
+            Spacer(minLength: FQSpace.sm)
+            SettingsGearButton()
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 

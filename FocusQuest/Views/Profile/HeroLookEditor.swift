@@ -11,7 +11,7 @@ extension HairColor: SwatchOption { }
 extension GearColor: SwatchOption { }
 
 /// Editor vzhledu hrdiny: kuze, uces, barva vlasu, obleceni a boty.
-/// Pouziva ho Profil i uvodni tvorba hrdiny.
+/// Pouziva ho list Upravit vzhled v Profilu i uvodni tvorba hrdiny.
 struct HeroLookEditor: View {
     let appearance: AvatarAppearance
     let onChange: (AvatarAppearance) -> Void
@@ -96,7 +96,7 @@ struct HeroCreatorView: View {
     @State private var nameDraft = ""
 
     var body: some View {
-        ScreenScaffold {
+        ScreenScaffold(scene: .enchantedForest) {
             ScreenSection(title: "Hero name") {
                 VStack(alignment: .leading, spacing: FQSpace.xs) {
                     TextField("3-20 letters or numbers", text: $nameDraft)
@@ -114,19 +114,7 @@ struct HeroCreatorView: View {
                 .glassCard(radius: FQRadius.control)
             }
 
-            ScreenSection(title: "Hero class") {
-                HStack(spacing: FQSpace.md) {
-                    IconTile(symbol: "shield.lefthalf.filled")
-                    Text("Class").font(.fqBody).foregroundStyle(FQColor.textPrimary)
-                    Spacer(minLength: FQSpace.sm)
-                    ValueMenu(title: "Hero class", valueText: model.profile.heroClass.displayName, selection: Binding(get: { model.profile.heroClass }, set: { model.updateHeroClass($0) })) {
-                        ForEach(HeroClass.allCases) { Text($0.displayName).tag($0) }
-                    }
-                }
-                .padding(.horizontal, FQSpace.lg)
-                .padding(.vertical, FQSpace.xs)
-                .glassCard(radius: FQRadius.control)
-            }
+            ScreenSection(title: "Choose your class") { classGrid }
 
             ScreenSection(title: "Look") {
                 HeroLookEditor(appearance: model.profile.avatar) { model.updateAvatar($0) }
@@ -151,6 +139,46 @@ struct HeroCreatorView: View {
         }
         .onAppear { nameDraft = model.profile.username }
         .interactiveDismissDisabled()
+    }
+
+    /// Povolani jako karty s nahledem hrdiny a kratkym popisem.
+    private var classGrid: some View {
+        LazyVGrid(columns: [GridItem(.flexible(), spacing: FQSpace.md), GridItem(.flexible())], spacing: FQSpace.md) {
+            ForEach(HeroClass.allCases) { hero in classCard(hero) }
+        }
+    }
+
+    private func classCard(_ hero: HeroClass) -> some View {
+        let isSelected = hero == model.profile.heroClass
+        return Button { model.updateHeroClass(hero) } label: {
+            VStack(alignment: .leading, spacing: FQSpace.sm) {
+                HStack(alignment: .top) {
+                    HeroAvatarView(appearance: model.profile.avatar, heroClass: hero, size: 56)
+                    Spacer(minLength: 0)
+                    Image(systemName: isSelected ? "checkmark.circle.fill" : hero.symbol)
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(isSelected ? FQColor.accent : FQColor.textSecondary)
+                }
+                Text(hero.displayName).font(.fqHeadline).foregroundStyle(FQColor.textPrimary)
+                Text(hero.tagline)
+                    .font(.fqMeta)
+                    .foregroundStyle(FQColor.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 0)
+            }
+            .frame(maxWidth: .infinity, minHeight: 150, alignment: .topLeading)
+            .padding(FQSpace.md)
+            .glassCard(radius: FQRadius.control, tint: isSelected ? FQColor.accent : nil)
+            .overlay {
+                RoundedRectangle(cornerRadius: FQRadius.control, style: .continuous)
+                    .strokeBorder(isSelected ? FQColor.accent : Color.clear, lineWidth: 1.5)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(hero.displayName). \(hero.tagline)")
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
     private var avatarHeader: some View {

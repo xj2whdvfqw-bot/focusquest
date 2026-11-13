@@ -19,7 +19,6 @@ final class ProfileViewModel: ObservableObject {
         save()
     }
 
-    func updateTitle(_ value: String) { profile.title = value; save() }
     func updateHeroClass(_ value: HeroClass) { profile.heroClass = value; save() }
     func updateDailyGoal(_ value: Int) { profile.dailyFocusGoalMinutes = min(240, max(15, value)); save() }
 
@@ -41,6 +40,9 @@ final class ProfileViewModel: ObservableObject {
     // MARK: - Odmeny a vesnice
 
     var level: Int { stats.level }
+    /// Hodnost se odvozuje z levelu, hrac si ji nevybira.
+    var rank: HeroRank { HeroRank.current(forLevel: stats.level) }
+    var nextRank: HeroRank? { HeroRank.next(afterLevel: stats.level) }
 
     var canUpgradeVillage: Bool {
         profile.village.canUpgrade(level: stats.level, bossesDefeated: profile.bossesDefeated, coins: profile.coins)
@@ -59,15 +61,32 @@ final class ProfileViewModel: ObservableObject {
         if defeated { profile.bossesDefeated += 1 }
         if let loot = victory.droppedLoot, !profile.unlockedLootIDs.contains(loot.id) { profile.unlockedLootIDs.append(loot.id) }
         save()
-        let summary = SessionSummary(id: UUID(), bossName: victory.boss.name, verifiedMinutes: victory.verifiedMinutes, xpEarned: victory.xpEarned, completedAt: Date(), flawless: true, subject: victory.subject)
+        let summary = SessionSummary(id: UUID(), bossName: victory.boss.name, verifiedMinutes: victory.verifiedMinutes, xpEarned: victory.xpEarned, completedAt: Date(), flawless: true, subject: victory.subject, bossID: victory.boss.id)
         Task {
             do { apply(stats: try await sync.recordBattle(summary, bossDefeated: defeated)) }
             catch { errorMessage = "Battle could not be added to your stats." }
         }
     }
 
+    /// DOCASNE pro testovani: +10 000 minci a +5 000 XP, aby slo hned zkouset vesnici a obchod.
+    func addDevFunds() {
+        profile.coins += Self.devFundsCoins
+        save()
+        Task {
+            do { apply(stats: try await sync.addBonusXP(Self.devFundsXP)) }
+            catch { errorMessage = "Dev XP could not be added." }
+        }
+    }
+
+    static let devFundsCoins = 10_000
+    static let devFundsXP = 5_000
+
+    /// Statistiky zmenene vitezstvim nebo bonusem; posila je i obrazovce Statistik.
+    var onStatsChanged: ((PlayerStats) -> Void)?
+
     private func apply(stats updated: PlayerStats) {
         stats = updated
+        onStatsChanged?(updated)
         todayVerifiedMinutes = updated.sessionHistory.filter { Calendar.current.isDateInToday($0.completedAt) }.reduce(0) { $0 + $1.verifiedMinutes }
     }
 
@@ -116,6 +135,8 @@ final class ProfileViewModel: ObservableObject {
     }
 
     private func save() {
+        // Ulozeny titul drzi krok s hodnosti (vidi ho server i sdileny vysledek bitvy).
+        if stats.totalXP > 0 { profile.title = rank.title }
         let current = profile
         Task {
             isSaving = true

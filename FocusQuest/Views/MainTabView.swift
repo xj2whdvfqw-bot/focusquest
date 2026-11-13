@@ -35,6 +35,8 @@ struct MainTabView: View {
     let container: AppDIContainer
     @State private var selectedTab = FocusQuestTab.initial
     @State private var showsHeroCreator = false
+    /// Ozubene kolo na kazde zalozce otevira tentyz list Nastaveni.
+    @State private var settingsPresenter = SettingsPresenter()
 
     var body: some View {
         Group {
@@ -55,17 +57,26 @@ struct MainTabView: View {
                     StatsView(model: container.statsViewModel, profile: container.profileViewModel)
                         .tabItem { Label(FocusQuestTab.stats.title, systemImage: FocusQuestTab.stats.symbol) }
                         .tag(FocusQuestTab.stats)
-                    ProfileView(model: container.profileViewModel, settingsModel: container.settingsViewModel, opensSettingsAtLaunch: FocusQuestTab.launchArgument == "settings")
+                    ProfileView(model: container.profileViewModel)
                         .tabItem { Label(FocusQuestTab.profile.title, systemImage: FocusQuestTab.profile.symbol) }
                         .tag(FocusQuestTab.profile)
                 }
-                .task { await presentHeroCreatorIfNeeded() }
+                .environment(settingsPresenter)
+                .sheet(isPresented: Binding(get: { settingsPresenter.isPresented }, set: { settingsPresenter.isPresented = $0 })) {
+                    SettingsView(model: container.settingsViewModel) { settingsPresenter.isPresented = false }
+                        .presentationDragIndicator(.visible)
+                }
+                .task {
+                    if FocusQuestTab.launchArgument == "settings" { settingsPresenter.isPresented = true }
+                    await presentHeroCreatorIfNeeded()
+                }
                 .fullScreenCover(isPresented: $showsHeroCreator) {
                     HeroCreatorView(model: container.profileViewModel) { showsHeroCreator = false }
                 }
             }
         }
-        // Vzhled se ridi nastavenim iOS (Light / Dark); barvy i sklo se prepinaji samy.
+        // Pixelova krajina je nocni, proto je appka vzdy v tmavem rezimu (text na skle vynikne).
+        .preferredColorScheme(.dark)
         .tint(FQColor.accent)
     }
 
@@ -82,7 +93,7 @@ struct MainTabView: View {
 private struct IntegrityLockdownView: View {
     var body: some View {
         ZStack {
-            FocusQuestBackdrop(alert: true)
+            FocusQuestBackdrop(alert: true, scene: .dungeonRuins)
             VStack(spacing: FQSpace.lg) {
                 Image(systemName: "lock.shield.fill")
                     .font(.system(size: 40, weight: .semibold))

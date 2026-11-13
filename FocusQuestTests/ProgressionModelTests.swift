@@ -115,7 +115,7 @@ final class ProgressionModelTests: XCTestCase {
         for style in HairStyle.allCases {
             var appearance = AvatarAppearance()
             appearance.hairStyle = style
-            let layers = AvatarSprite.layers(for: appearance, heroClass: .voidKnight)
+            let layers = AvatarSprite.layers(for: appearance, heroClass: .warrior)
             let hasHair = layers.contains(where: { $0.id == "hair" })
             XCTAssertEqual(hasHair, style != .bald)
             for layer in layers {
@@ -133,7 +133,7 @@ final class ProgressionModelTests: XCTestCase {
         for item in EquipmentItem.catalog {
             var appearance = AvatarAppearance()
             appearance.equip(item.id, in: item.slot)
-            let layers = AvatarSprite.layers(for: appearance, heroClass: .arcaneScholar)
+            let layers = AvatarSprite.layers(for: appearance, heroClass: .mage)
             let itemLayers = layers.filter { $0.id.hasPrefix("\(item.id)-") }
             XCTAssertFalse(itemLayers.isEmpty, "\(item.name) is not drawn")
             XCTAssertEqual(Set(layers.map(\.id)).count, layers.count, "Layer IDs must be unique for \(item.name)")
@@ -151,7 +151,7 @@ final class ProgressionModelTests: XCTestCase {
     func testUnknownEquipmentIsIgnored() {
         var appearance = AvatarAppearance()
         appearance.equip("item-from-the-future", in: .head)
-        XCTAssertEqual(AvatarSprite.layers(for: appearance, heroClass: .alchemist).count, AvatarSprite.layers(for: AvatarAppearance(), heroClass: .alchemist).count)
+        XCTAssertEqual(AvatarSprite.layers(for: appearance, heroClass: .archer).count, AvatarSprite.layers(for: AvatarAppearance(), heroClass: .archer).count)
     }
 
     func testProfileKeepsOwnedEquipment() throws {
@@ -247,6 +247,72 @@ final class ProgressionModelTests: XCTestCase {
         XCTAssertEqual(restored.coins, 77)
         XCTAssertEqual(restoredStats.wins, 1)
         XCTAssertEqual(restoredStats.totalXP, 250)
+    }
+
+    // MARK: - Bestiar, hodnosti a povolani
+
+    func testBestiaryCountsDefeatsPerSubjectAndBoss() {
+        var stats = PlayerStats.initial
+        func battle(_ bossID: String, _ name: String, _ subject: StudySubject?, won: Bool = true) {
+            let summary = SessionSummary(id: UUID(), bossName: name, verifiedMinutes: 20, xpEarned: 200, completedAt: Date(), flawless: true, subject: subject, bossID: bossID)
+            stats.record(summary, bossDefeated: won)
+        }
+        battle("banana-bandit", "Banana Bandit", .english)
+        battle("banana-bandit", "Banana Bandit", .english)
+        battle("banana-bandit", "Banana Bandit", .economics)
+        battle("ballerina-cappuccina", "Ballerina Cappuccina", .economics)
+        battle("ballerina-cappuccina", "Ballerina Cappuccina", .economics)
+        battle("ballerina-cappuccina", "Ballerina Cappuccina", .economics)
+        battle("goggle-grunt", "Goggle Grunt", .math, won: false)
+
+        let groups = BestiaryGroup.groups(from: stats.bestiary)
+        XCTAssertEqual(groups.map(\.subject), [.economics, .english])
+        XCTAssertEqual(groups[0].totalDefeats, 4)
+        XCTAssertEqual(groups[0].entries.map(\.bossName), ["Ballerina Cappuccina", "Banana Bandit"])
+        XCTAssertEqual(groups[0].entries.map(\.defeats), [3, 1])
+        XCTAssertEqual(groups[1].entries.map(\.defeats), [2])
+    }
+
+    func testBestiarySurvivesRelaunchAndOlderStatsStillLoad() async throws {
+        let suiteName = "focusquest.tests.\(UUID().uuidString)"
+        let firstLaunch = LocalProfileSyncService(suiteName: suiteName)
+        let summary = SessionSummary(id: UUID(), bossName: "Banana Bandit", verifiedMinutes: 20, xpEarned: 200, completedAt: Date(), flawless: true, subject: .english, bossID: "banana-bandit")
+        _ = try await firstLaunch.recordBattle(summary, bossDefeated: true)
+        _ = try await firstLaunch.recordBattle(summary, bossDefeated: true)
+        let restored = try await LocalProfileSyncService(suiteName: suiteName).loadStats()
+        UserDefaults(suiteName: suiteName)?.removePersistentDomain(forName: suiteName)
+        XCTAssertEqual(restored.bestiary.count, 1)
+        XCTAssertEqual(restored.bestiary.first?.defeats, 2)
+        XCTAssertEqual(restored.bestiary.first?.subject, .english)
+
+        let legacy = Data(#"{"level":3,"totalXP":2100,"wins":4,"battles":5,"streakDays":2,"bestCombo":3,"totalHPDealt":210,"sessionHistory":[]}"#.utf8)
+        let older = try JSONDecoder().decode(PlayerStats.self, from: legacy)
+        XCTAssertEqual(older.level, 3)
+        XCTAssertTrue(older.bestiary.isEmpty)
+    }
+
+    func testRankFollowsLevel() {
+        XCTAssertEqual(HeroRank.current(forLevel: 1).title, "Novice Focuser")
+        XCTAssertEqual(HeroRank.current(forLevel: 4).title, "Apprentice Scholar")
+        XCTAssertEqual(HeroRank.current(forLevel: 5).title, "Deep Work Mage")
+        XCTAssertEqual(HeroRank.next(afterLevel: 5)?.minimumLevel, 8)
+        XCTAssertEqual(HeroRank.current(forLevel: 99).title, "Grandmaster of Stillness")
+        XCTAssertNil(HeroRank.next(afterLevel: 99))
+    }
+
+    func testDevBonusXPRaisesLevelWithoutCountingABattle() async throws {
+        let suiteName = "focusquest.tests.\(UUID().uuidString)"
+        let service = LocalProfileSyncService(suiteName: suiteName)
+        let stats = try await service.addBonusXP(5_000)
+        UserDefaults(suiteName: suiteName)?.removePersistentDomain(forName: suiteName)
+        XCTAssertEqual(stats.totalXP, 5_000)
+        XCTAssertEqual(stats.level, 6)
+        XCTAssertEqual(stats.battles, 0)
+    }
+
+    func testOlderHeroClassNamesMapToNewClasses() throws {
+        let decoded = try JSONDecoder().decode([HeroClass].self, from: Data(#"["voidKnight","arcaneScholar","alchemist","cyberRonin","archer","somethingNew"]"#.utf8))
+        XCTAssertEqual(decoded, [.warrior, .mage, .archer, .rogue, .archer, .warrior])
     }
 
     // MARK: - Sumy
