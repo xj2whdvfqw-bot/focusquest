@@ -149,10 +149,11 @@ final class ProgressionModelTests: XCTestCase {
     }
 
     func testEachClassLooksDifferent() {
-        let looks = HeroClass.allCases.map { heroClass in
-            AvatarSprite.layers(for: AvatarAppearance(), heroClass: heroClass).filter { $0.id.hasPrefix("class-") }.map(\.rows)
+        let looks: [String] = HeroClass.allCases.map { heroClass in
+            let marks = AvatarSprite.layers(for: AvatarAppearance(), heroClass: heroClass).filter { $0.id.hasPrefix("class-") }
+            return marks.map { $0.rows.joined(separator: "|") }.joined(separator: "/")
         }
-        XCTAssertEqual(Set(looks.map { $0.joined(separator: "|") }).count, HeroClass.allCases.count)
+        XCTAssertEqual(Set(looks).count, HeroClass.allCases.count)
         for heroClass in HeroClass.allCases {
             for mark in AvatarSprite.classMarks(heroClass) {
                 XCTAssertTrue(mark.layer.rows.contains(where: { $0.contains("#") }), "Layer \(mark.layer.id) is empty")
