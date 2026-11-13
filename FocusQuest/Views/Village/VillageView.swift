@@ -1,15 +1,15 @@
 import SwiftUI
 
-/// Zalozka Vesnice: obydli, ktere roste s porazenymi bossy.
-struct VillageView: View {
+/// Cast Vesnice v Obchodu: obydli, ktere roste s porazenymi bossy.
+/// Nema vlastni kostru obrazovky - vklada se do sloupce ShopView.
+struct VillagePanel: View {
     @ObservedObject var model: ProfileViewModel
 
     private var village: VillageState { model.profile.village }
     private var stageNumber: Int { (DwellingStage.allCases.firstIndex(of: village.stage) ?? 0) + 1 }
 
     var body: some View {
-        ScreenScaffold(scene: .castleKeep) {
-            ScreenHeader(eyebrow: "Village", title: "Your base")
+        VStack(alignment: .leading, spacing: FQSpace.xl) {
             dwellingCard
             ScreenSection(title: "Evolution", detail: "Stage \(stageNumber) of \(DwellingStage.allCases.count)") { evolutionStrip }
             HStack(spacing: FQSpace.md) {

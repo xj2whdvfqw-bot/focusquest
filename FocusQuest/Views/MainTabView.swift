@@ -1,13 +1,13 @@
 import SwiftUI
 
 private enum FocusQuestTab: String, CaseIterable, Identifiable {
-    case arena, village, shop, stats, profile
+    case arena, path, shop, stats, profile
     var id: String { rawValue }
     var title: String { rawValue.capitalized }
     var symbol: String {
         switch self {
         case .arena: "flame.fill"
-        case .village: "house.fill"
+        case .path: "map.fill"
         case .shop: "bag.fill"
         case .stats: "chart.bar.fill"
         case .profile: "person.crop.circle.fill"
@@ -16,7 +16,8 @@ private enum FocusQuestTab: String, CaseIterable, Identifiable {
 
     /// V debug buildu jde appku spustit s argumentem `-initialTab stats` (vychozi zalozka)
     /// nebo `-initialTab creator` (uvodni tvorba hrdiny) ci `-initialTab settings`
-    /// (Profil s otevrenym Nastavenim). Pouziva to CI pro screenshoty.
+    /// (Profil s otevrenym Nastavenim). `village` otevre Obchod na vesnici, `battle` obrazovku
+    /// bitvy pres Arenu. Pouziva to CI pro screenshoty.
     static var launchArgument: String? {
         #if DEBUG
         return UserDefaults.standard.string(forKey: "initialTab")
@@ -26,7 +27,12 @@ private enum FocusQuestTab: String, CaseIterable, Identifiable {
     }
 
     static var initial: FocusQuestTab {
-        if launchArgument == "settings" { return .profile }
+        switch launchArgument {
+        case "settings": return .profile
+        case "village": return .shop
+        case "battle": return .arena
+        default: break
+        }
         return launchArgument.flatMap(FocusQuestTab.init(rawValue:)) ?? .arena
     }
 }
@@ -37,6 +43,8 @@ struct MainTabView: View {
     @State private var showsHeroCreator = false
     /// Ozubene kolo na kazde zalozce otevira tentyz list Nastaveni.
     @State private var settingsPresenter = SettingsPresenter()
+    /// Bitva bezi pres celou obrazovku nad zalozkami, takze spodni lista neni videt.
+    @State private var battlePresenter = BattlePresenter()
 
     var body: some View {
         Group {
@@ -45,12 +53,12 @@ struct MainTabView: View {
             } else {
                 // Systemovy TabView: na iOS 26 dostane plovouci Liquid Glass listu sam od systemu.
                 TabView(selection: $selectedTab) {
-                    ArenaView(model: container.arenaViewModel, profileModel: container.profileViewModel)
+                    ArenaView(model: container.arenaViewModel, profileModel: container.profileViewModel) { selectedTab = .path }
                         .tabItem { Label(FocusQuestTab.arena.title, systemImage: FocusQuestTab.arena.symbol) }
                         .tag(FocusQuestTab.arena)
-                    VillageView(model: container.profileViewModel)
-                        .tabItem { Label(FocusQuestTab.village.title, systemImage: FocusQuestTab.village.symbol) }
-                        .tag(FocusQuestTab.village)
+                    PathTabView(model: container.arenaViewModel)
+                        .tabItem { Label(FocusQuestTab.path.title, systemImage: FocusQuestTab.path.symbol) }
+                        .tag(FocusQuestTab.path)
                     ShopView(model: container.profileViewModel)
                         .tabItem { Label(FocusQuestTab.shop.title, systemImage: FocusQuestTab.shop.symbol) }
                         .tag(FocusQuestTab.shop)
@@ -62,12 +70,24 @@ struct MainTabView: View {
                         .tag(FocusQuestTab.profile)
                 }
                 .environment(settingsPresenter)
+                .environment(battlePresenter)
                 .sheet(isPresented: Binding(get: { settingsPresenter.isPresented }, set: { settingsPresenter.isPresented = $0 })) {
                     SettingsView(model: container.settingsViewModel) { settingsPresenter.isPresented = false }
                         .presentationDragIndicator(.visible)
                 }
+                .fullScreenCover(isPresented: Binding(get: { battlePresenter.isPresented }, set: { battlePresenter.isPresented = $0 })) {
+                    BattleView(model: container.arenaViewModel, profileModel: container.profileViewModel) { battlePresenter.isPresented = false }
+                }
+                // Bezici bitva musi byt videt vzdy, at ji hrac spustil odkudkoli.
+                .onReceive(container.arenaViewModel.$state) { state in
+                    switch state {
+                    case .awaitingFlatPlacement, .focusing, .paused, .warningCountdown: battlePresenter.isPresented = true
+                    default: break
+                    }
+                }
                 .task {
                     if FocusQuestTab.launchArgument == "settings" { settingsPresenter.isPresented = true }
+                    if FocusQuestTab.launchArgument == "battle" { battlePresenter.isPresented = true }
                     await presentHeroCreatorIfNeeded()
                 }
                 // Odchod z appky behem bitvy se netresta: hodiny bitvy bezi dal i na pozadi.

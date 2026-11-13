@@ -1,68 +1,143 @@
 import SwiftUI
 
-/// Kam se v Arene da dojit: vyber sveta -> cesta sveta -> bitva.
-enum ArenaRoute: Hashable {
-    case path(BossWorld)
-    case battle
+/// Otevira bitvu pres celou obrazovku (bez spodni listy) odkudkoli: z Areny, z cesty sveta
+/// nebo z Custom Focus. MainTabView ho vlozi do prostredi a sam bitvu prezentuje.
+@Observable
+@MainActor
+final class BattlePresenter {
+    var isPresented = false
 }
 
-/// Arena: uvodni menu svetu. Kazdy svet ma vlastni cestu bossu jako v Duolingu.
+/// Arena: domovska obrazovka. Nahore velke tlacitko Custom Focus, pod nim stav hrdiny
+/// a dalsi uzel cesty. Samotne svety s cestami jsou na zalozce Path.
 struct ArenaView: View {
     @ObservedObject var model: ArenaViewModel
     @ObservedObject var profileModel: ProfileViewModel
-    @State private var route: [ArenaRoute] = ArenaView.initialRoute
+    /// Prepne na zalozku Path se vsemi svety.
+    let openPath: () -> Void
+    @Environment(BattlePresenter.self) private var battle
+    @State private var showsCustomFocus = false
+    /// Zvolena delka a predmet. Bitva zacne az po zavreni listu: bezici bitva se hned
+    /// prezentuje pres celou obrazovku a dve prezentace naraz SwiftUI neumi.
+    @State private var pendingCustom: (minutes: Int, subject: StudySubject)?
+
+    /// Svet, ve kterem hrac naposledy bojoval, a jeho dalsi neporazeny uzel.
+    private var world: BossWorld { model.selectedBoss.world }
+    private var cleared: Int { model.clearedNodes(in: world) }
+    private var nextNode: Boss? { cleared < world.bosses.count ? world.bosses[cleared] : nil }
 
     var body: some View {
-        NavigationStack(path: $route) {
-            ScreenScaffold(scene: .lanternGrove) {
-                ScreenHeader(eyebrow: "Arena", title: "Choose a world")
-                heroStatus
-                ForEach(BossWorld.allCases) { world in
-                    NavigationLink(value: ArenaRoute.path(world)) { WorldCard(world: world, cleared: model.clearedNodes(in: world)) }
-                        .buttonStyle(.plain)
-                }
-            }
-            .toolbar(.hidden, for: .navigationBar)
-            .navigationDestination(for: ArenaRoute.self) { destination in
-                switch destination {
-                case .path(let world):
-                    WorldPathView(model: model, world: world) { route.append(.battle) }
-                case .battle:
-                    BattleView(model: model, profileModel: profileModel) {
-                        // Po vitezstvi nebo prohre zpatky na cestu, kde je videt odemceny dalsi uzel.
-                        if route.last == .battle { route.removeLast() }
-                    }
-                }
-            }
+        ScreenScaffold(scene: .lanternGrove) {
+            ScreenHeader(eyebrow: "Arena", title: "Ready to focus?")
+            customFocusButton
+            heroStatus
+            continueCard
         }
-        .onChange(of: model.isBattleRunning) { _, running in
-            // Bezici bitva musi byt videt, i kdyby ji hrac spustil a pak odesel o obrazovku zpet.
-            if running, route.last != .battle { route = [.path(model.selectedBoss.world), .battle] }
+        .sheet(isPresented: $showsCustomFocus, onDismiss: {
+            guard let pending = pendingCustom else { return }
+            pendingCustom = nil
+            model.startCustomBattle(minutes: pending.minutes, subject: pending.subject)
+            battle.isPresented = true
+        }) {
+            CustomFocusSheet(model: model) { minutes, subject in
+                pendingCustom = (minutes, subject)
+                showsCustomFocus = false
+            }
         }
     }
 
-    /// Kratky prehled hrdiny nad svety: serie dni a zdravi.
+    /// Hlavni akce domovske obrazovky: vlastni delka a nahodny boss.
+    private var customFocusButton: some View {
+        Button { showsCustomFocus = true } label: {
+            HStack(spacing: FQSpace.lg) {
+                Image(systemName: "timer")
+                    .font(.system(size: 26, weight: .semibold, design: .rounded))
+                    .foregroundStyle(FQColor.onAccent)
+                    .frame(width: 60, height: 60)
+                    .background(FQColor.accent, in: Circle())
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: FQSpace.xs) {
+                    Text("Custom Focus").font(.fqTitle).foregroundStyle(FQColor.textPrimary)
+                    Text("25 min, 50 min or 1 h against a random boss")
+                        .font(.fqSecondary)
+                        .foregroundStyle(FQColor.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: FQSpace.sm)
+                Image(systemName: "chevron.right")
+                    .font(.fqLabel)
+                    .foregroundStyle(FQColor.textSecondary)
+                    .accessibilityHidden(true)
+            }
+            .padding(.horizontal, FQSpace.xl)
+            .padding(.vertical, FQSpace.xl)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .glassCard(tint: FQColor.accent.opacity(0.25))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(!model.isBetweenBattles)
+        .accessibilityHint("Choose a length and start a battle")
+    }
+
+    /// Kratky prehled hrdiny: serie dni a zdravi.
     private var heroStatus: some View {
         let stats = profileModel.stats
-        return HStack(spacing: FQSpace.md) {
+        return HStack(spacing: FQSpace.lg) {
             StreakBadge(days: stats.currentStreak())
             HeroHealthBar(hp: stats.heroHP, maxHP: PlayerStats.maxHeroHP)
         }
-        .padding(FQSpace.lg)
+        .padding(FQSpace.xl)
         .glassCard()
     }
 
-    /// V debug buildu: `-initialTab path` otevre cestu prvniho sveta, `-initialTab battle` rovnou bitvu (CI screenshoty).
-    static var initialRoute: [ArenaRoute] {
-        #if DEBUG
-        switch UserDefaults.standard.string(forKey: "initialTab") {
-        case "path": return [.path(.heroes)]
-        case "battle": return [.path(.heroes), .battle]
-        default: return []
+    /// Dalsi uzel cesty jednim klepnutim; vsechny svety jsou na zalozce Path.
+    private var continueCard: some View {
+        VStack(alignment: .leading, spacing: FQSpace.lg) {
+            Text("Continue your path").font(.fqLabel).foregroundStyle(FQColor.textSecondary)
+            if let node = nextNode {
+                HStack(spacing: FQSpace.lg) {
+                    PixelArtAvatarView(sprite: .boss(node.pixelSpriteConfig), size: 56)
+                        .frame(width: 72, height: 72)
+                        .background(world.accent.opacity(0.16), in: Circle())
+                    VStack(alignment: .leading, spacing: FQSpace.xs) {
+                        Text(node.name).font(.fqHeadline).foregroundStyle(FQColor.textPrimary)
+                        Text("Node \(node.nodeIndex + 1) · \(world.title) · \(ArenaView.durationText(minutes: node.maxHP))")
+                            .font(.fqMeta)
+                            .foregroundStyle(FQColor.textSecondary)
+                    }
+                    Spacer(minLength: 0)
+                }
+                .accessibilityElement(children: .combine)
+                Button {
+                    model.selectBoss(node)
+                    battle.isPresented = true
+                } label: {
+                    Label("Fight", systemImage: "play.fill")
+                        .font(.fqHeadline)
+                        .foregroundStyle(FQColor.onAccent)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 52)
+                        .background(world.accent, in: RoundedRectangle(cornerRadius: FQRadius.pill, style: .continuous))
+                }
+                .buttonStyle(.plain)
+                .disabled(!model.isBetweenBattles)
+            } else {
+                Label("\(world.title) conquered", systemImage: "checkmark.seal.fill")
+                    .font(.fqHeadline)
+                    .foregroundStyle(world.accent)
+            }
+            Button(action: openPath) {
+                Text("See all worlds")
+                    .font(.fqLabel)
+                    .foregroundStyle(FQColor.textSecondary)
+                    .frame(maxWidth: .infinity)
+                    .frame(minHeight: 44)
+            }
+            .buttonStyle(.plain)
         }
-        #else
-        return []
-        #endif
+        .padding(FQSpace.xl)
+        .glassCard()
     }
 
     /// "25 min" nebo "1 h 30 min".
@@ -70,6 +145,124 @@ struct ArenaView: View {
         guard minutes >= 60 else { return "\(minutes) min" }
         let rest = minutes % 60
         return rest == 0 ? "\(minutes / 60) h" : "\(minutes / 60) h \(rest) min"
+    }
+}
+
+/// List Custom Focus: delka 25 / 50 / 60 minut a predmet, pak bitva s nahodnym odemcenym bossem.
+struct CustomFocusSheet: View {
+    @ObservedObject var model: ArenaViewModel
+    /// Hrac zvolil delku a predmet; volajici zavre list a spusti bitvu.
+    let onStart: (Int, StudySubject) -> Void
+    @State private var minutes = 25
+    @State private var subject: StudySubject?
+
+    static let options = [25, 50, 60]
+
+    var body: some View {
+        VStack(spacing: FQSpace.xxl) {
+            VStack(spacing: FQSpace.sm) {
+                Text("Custom Focus").font(.system(size: 28, weight: .bold, design: .rounded)).foregroundStyle(FQColor.textPrimary)
+                Text("A random boss you've unlocked. Custom battles don't move you along the path.")
+                    .font(.fqSecondary)
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(FQColor.textSecondary)
+            }
+            HStack(spacing: FQSpace.md) {
+                ForEach(Self.options, id: \.self) { option in
+                    let isSelected = option == minutes
+                    Button { minutes = option } label: {
+                        VStack(spacing: 2) {
+                            Text(option == 60 ? "1" : "\(option)")
+                                .font(.system(size: 34, weight: .semibold, design: .rounded))
+                                .monospacedDigit()
+                            Text(option == 60 ? "hour" : "min").font(.fqMeta)
+                        }
+                        .foregroundStyle(isSelected ? FQColor.onAccent : FQColor.textPrimary)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 96)
+                        .background(isSelected ? AnyShapeStyle(FQColor.accent) : AnyShapeStyle(FQColor.fill), in: RoundedRectangle(cornerRadius: FQRadius.control, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(ArenaView.durationText(minutes: option))
+                    .accessibilityAddTraits(isSelected ? .isSelected : [])
+                }
+            }
+            VStack(spacing: FQSpace.md) {
+                Text("What are you studying?").font(.fqLabel).foregroundStyle(FQColor.textSecondary)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: FQSpace.sm) {
+                        ForEach(StudySubject.allCases) { item in
+                            let isSelected = item == subject
+                            Button { subject = item } label: {
+                                Label(item.title, systemImage: item.symbol)
+                                    .font(.fqLabel)
+                                    .foregroundStyle(isSelected ? FQColor.onAccent : FQColor.textPrimary)
+                                    .padding(.horizontal, FQSpace.lg)
+                                    .frame(height: 40)
+                                    .background(isSelected ? AnyShapeStyle(FQColor.accent) : AnyShapeStyle(FQColor.fill), in: RoundedRectangle(cornerRadius: FQRadius.pill, style: .continuous))
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityAddTraits(isSelected ? .isSelected : [])
+                        }
+                    }
+                }
+                .scrollClipDisabled()
+            }
+            Button {
+                guard let subject else { return }
+                onStart(minutes, subject)
+            } label: {
+                Label("Start \(ArenaView.durationText(minutes: minutes)) Focus", systemImage: "play.fill")
+                    .font(.fqHeadline)
+                    .foregroundStyle(FQColor.onAccent)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 56)
+                    .background(FQColor.accent, in: RoundedRectangle(cornerRadius: FQRadius.pill, style: .continuous))
+            }
+            .buttonStyle(.plain)
+            .disabled(subject == nil)
+            .opacity(subject == nil ? 0.35 : 1)
+        }
+        .padding(.horizontal, FQSpace.xl)
+        .padding(.top, FQSpace.xxl)
+        .padding(.bottom, FQSpace.lg)
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+        .presentationBackground(.ultraThinMaterial)
+        .preferredColorScheme(.dark)
+        .onAppear { subject = model.selectedSubject }
+    }
+}
+
+/// Zalozka Path: seznam svetu, kazdy s vlastni cestou bossu jako v Duolingu.
+struct PathTabView: View {
+    @ObservedObject var model: ArenaViewModel
+    @Environment(BattlePresenter.self) private var battle
+    @State private var route: [BossWorld] = PathTabView.initialRoute
+
+    var body: some View {
+        NavigationStack(path: $route) {
+            ScreenScaffold(scene: .enchantedForest) {
+                ScreenHeader(eyebrow: "Path", title: "Choose a world")
+                ForEach(BossWorld.allCases) { world in
+                    NavigationLink(value: world) { WorldCard(world: world, cleared: model.clearedNodes(in: world)) }
+                        .buttonStyle(.plain)
+                }
+            }
+            .toolbar(.hidden, for: .navigationBar)
+            .navigationDestination(for: BossWorld.self) { world in
+                WorldPathView(model: model, world: world) { battle.isPresented = true }
+            }
+        }
+    }
+
+    /// V debug buildu `-initialTab path` otevre cestu prvniho sveta (CI screenshoty).
+    static var initialRoute: [BossWorld] {
+        #if DEBUG
+        return UserDefaults.standard.string(forKey: "initialTab") == "path" ? [.heroes] : []
+        #else
+        return []
+        #endif
     }
 }
 

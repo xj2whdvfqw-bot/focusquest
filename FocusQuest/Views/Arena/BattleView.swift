@@ -1,20 +1,24 @@
 import SwiftUI
 
-/// Bitva s vybranym uzlem cesty. Delka je pevna podle uzlu - hrac ji nemeni.
+/// Bitva pres celou obrazovku (bez spodni listy): jedna velka plovouci karta uprostred
+/// s bossem, obrim odpoctem, kulatymi tlacitky a seznamem "Working on".
 struct BattleView: View {
     @ObservedObject var model: ArenaViewModel
     @ObservedObject var profileModel: ProfileViewModel
-    /// Zavola se po zavreni vysledku bitvy (navrat na cestu sveta).
+    /// Zavola se po zavreni vysledku bitvy nebo krizkem pred bitvou (zavre celou obrazovku).
     let onExit: () -> Void
     @State private var receipt: UIImage?
     @State private var showsRetreatConfirm = false
+    @State private var showsBattleSettings = false
     @State private var newTask = ""
     @FocusState private var taskFieldFocused: Bool
 
-    private var pill: RoundedRectangle { RoundedRectangle(cornerRadius: FQRadius.control, style: .continuous) }
+    private var pill: RoundedRectangle { RoundedRectangle(cornerRadius: FQRadius.pill, style: .continuous) }
+    private var cardShape: RoundedRectangle { RoundedRectangle(cornerRadius: 40, style: .continuous) }
     private var world: BossWorld { model.selectedBoss.world }
     private var isWarning: Bool { if case .warningCountdown = model.state { true } else { false } }
     private var isPaused: Bool { if case .paused = model.state { true } else { false } }
+    private var isFocusing: Bool { if case .focusing = model.state { true } else { false } }
     private var isIdle: Bool { if case .idle = model.state { true } else { false } }
     private var isVictory: Bool { if case .victory = model.state { true } else { false } }
     private var elapsed: Int {
@@ -34,22 +38,31 @@ struct BattleView: View {
         return hours > 0 ? String(format: "%d:%02d:%02d", hours, minutes, seconds) : String(format: "%02d:%02d", minutes, seconds)
     }
     private var durationText: String { ArenaView.durationText(minutes: model.selectedBoss.maxHP) }
+    private var battleTitle: String { model.isCustomBattle ? "Custom Focus" : "Node \(model.selectedBoss.nodeIndex + 1) · \(world.title)" }
 
     var body: some View {
         ZStack {
-            ScreenScaffold(alert: isWarning, scene: world.scene) {
-                subjectPicker
-                battleStage
-                workingOnCard
-                rulesCard
-                soundPlayer
-                #if targetEnvironment(simulator)
-                simulatorControls
-                #endif
-                if let receipt { BattleReceiptShareView(image: receipt) }
+            FocusQuestBackdrop(alert: isWarning, scene: world.scene)
+            GeometryReader { proxy in
+                ScrollView {
+                    VStack(spacing: FQSpace.xl) {
+                        topBar
+                        battleCard
+                        if let receipt { BattleReceiptShareView(image: receipt) }
+                        #if targetEnvironment(simulator)
+                        simulatorControls
+                        #endif
+                    }
+                    .padding(.horizontal, FQSpace.gutter)
+                    .padding(.vertical, FQSpace.lg)
+                    .frame(maxWidth: 520)
+                    // Karta stoji uprostred obrazovky; delsi seznam ukolu ji jen natahne a da se rolovat.
+                    .frame(maxWidth: .infinity, minHeight: proxy.size.height)
+                }
+                .scrollIndicators(.hidden)
+                .scrollDismissesKeyboard(.interactively)
             }
-            // Hlavni akce je pripnuta nad spodni listou, aby byla videt bez rolovani.
-            .pinnedBottomAction { sessionControls }
+            if showsRetreatConfirm { retreatDialog.transition(.opacity) }
             if case let .warningCountdown(seconds, _) = model.state { warningOverlay(seconds: seconds) }
             if case let .penalized(reason) = model.state {
                 resultOverlay(icon: "xmark.shield.fill", title: "Quest failed", detail: reason, color: FQColor.danger)
@@ -59,23 +72,13 @@ struct BattleView: View {
             }
             if case let .victory(victory) = model.state { victoryOverlay(victory) }
         }
-        .navigationTitle(model.isCustomBattle ? "Custom Battle" : "Node \(model.selectedBoss.nodeIndex + 1) · \(world.title)")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(.hidden, for: .navigationBar)
-        // Behem bitvy se z ni neda odejit tlacitkem zpet - jen vzdat.
-        .navigationBarBackButtonHidden(!model.isBetweenBattles)
-        // Cervena obrazovka s odpoctem ma zabrat opravdu cely displej.
-        .toolbar(isWarning ? .hidden : .visible, for: .tabBar)
-        .toolbar(isWarning ? .hidden : .visible, for: .navigationBar)
+        .preferredColorScheme(.dark)
         .animation(.easeOut(duration: 0.25), value: isVictory)
-        // Ustup stoji HP hrdiny a serii, proto se potvrzuje pojmenovanym tlacitkem.
-        .confirmationDialog("Retreat from \(model.selectedBoss.name)?", isPresented: $showsRetreatConfirm, titleVisibility: .visible) {
-            Button("Retreat Anyway", role: .destructive) { model.retreat() }
-            Button("Keep Fighting", role: .cancel) {}
-        } message: {
-            Text("You lose \(PlayerStats.heroHPLossPerFailedQuest) hero HP and your streak resets. Time focused in this battle won't count.")
-        }
+        .animation(.easeOut(duration: 0.2), value: showsRetreatConfirm)
+        .sheet(isPresented: $showsBattleSettings) { battleSettingsSheet }
         .onChange(of: model.state) { _, value in
+            // Ustupovy dialog nema smysl, kdyz bitva mezitim skoncila.
+            if !model.isBattleRunning { showsRetreatConfirm = false }
             // Odmenu uz pripsal model; obrazovka si jen pripravi sdilitelnou uctenku.
             if case let .victory(victory) = value {
                 receipt = BattleReceiptRenderer.render(profile: profileModel.profile, boss: victory.boss, focusMinutes: victory.verifiedMinutes, flawless: true)
@@ -89,102 +92,219 @@ struct BattleView: View {
         onExit()
     }
 
+    /// Krizek pred bitvou: vlastni bitva se zrusi a obrazovka se zavre.
+    private func closeBeforeBattle() {
+        model.endCustomBattle()
+        onExit()
+    }
+
     private func defeatDetail(_ defeat: BattleDefeat) -> String {
         let focused = ArenaView.durationText(minutes: defeat.focusedMinutes)
         let goal = ArenaView.durationText(minutes: defeat.goalMinutes)
         return "\(defeat.boss.name) escaped after \(focused) of \(goal). You lost \(defeat.heroHPLost) hero HP and your streak resets."
     }
 
-    // MARK: - Sekce
+    // MARK: - Horni lista
 
-    /// Predmet je povinny - bez nej tlacitko bitvy nejde zmacknout.
-    private var subjectPicker: some View {
-        VStack(alignment: .leading, spacing: FQSpace.sm) {
-            Text(model.selectedSubject == nil ? "Choose what you study" : "Studying")
-                .font(.fqLabel)
-                .foregroundStyle(model.selectedSubject == nil ? FQColor.caution : FQColor.textSecondary)
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: FQSpace.sm) {
-                    ForEach(StudySubject.allCases) { subject in
-                        let isSelected = subject == model.selectedSubject
-                        Button { model.selectSubject(subject) } label: {
-                            Label(subject.title, systemImage: subject.symbol)
-                                .font(.fqLabel)
-                                .foregroundStyle(FQColor.textPrimary)
-                                .padding(.horizontal, FQSpace.lg)
-                                .padding(.vertical, FQSpace.sm)
-                                .glassControl(in: pill, tint: isSelected ? FQColor.accent.opacity(0.35) : nil, interactive: true)
-                                .overlay { pill.strokeBorder(isSelected ? FQColor.accent : Color.clear, lineWidth: 1) }
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityAddTraits(isSelected ? .isSelected : [])
-                    }
-                }
-                .padding(.vertical, FQSpace.xs)
+    private var topBar: some View {
+        HStack(spacing: FQSpace.md) {
+            if isIdle {
+                circleIcon("xmark", label: "Close", action: closeBeforeBattle)
+            } else {
+                Color.clear.frame(width: 44, height: 44)
             }
-            .scrollClipDisabled()
+            Spacer(minLength: 0)
+            Text(battleTitle)
+                .font(.fqLabel)
+                .foregroundStyle(FQColor.textSecondary)
+                .lineLimit(1)
+                .shadow(color: .black.opacity(0.5), radius: 4, y: 1)
+            Spacer(minLength: 0)
+            circleIcon(model.preferences.isMusicEnabled ? "speaker.wave.2.fill" : "speaker.slash.fill", label: "Sound and battle rules") {
+                showsBattleSettings = true
+            }
         }
-        .disabled(!isIdle)
-        .opacity(isIdle ? 1 : 0.6)
     }
 
-    private var battleStage: some View {
+    private func circleIcon(_ symbol: String, label: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.system(size: 15, weight: .semibold, design: .rounded))
+                .foregroundStyle(FQColor.textPrimary)
+                .frame(width: 44, height: 44)
+                .glassControl(in: Circle(), interactive: true)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(label)
+    }
+
+    // MARK: - Hlavni karta
+
+    private var battleCard: some View {
+        VStack(spacing: FQSpace.xxl) {
+            bossHeader
+            VStack(spacing: FQSpace.md) {
+                timer
+                statusLine
+            }
+            controls
+            HairlineDivider()
+            workingOnSection
+        }
+        .padding(.horizontal, FQSpace.xl)
+        .padding(.top, FQSpace.xxl)
+        .padding(.bottom, FQSpace.xl)
+        .frame(maxWidth: .infinity)
+        .background(.ultraThinMaterial, in: cardShape)
+        .background((isWarning ? FQColor.danger : world.accent).opacity(0.06), in: cardShape)
+        .overlay { cardShape.strokeBorder(Color.white.opacity(0.14), lineWidth: 1) }
+        .shadow(color: .black.opacity(0.35), radius: 30, y: 12)
+    }
+
+    private var bossHeader: some View {
         VStack(spacing: FQSpace.md) {
             ZStack {
                 Circle()
-                    .fill(RadialGradient(colors: [(isWarning ? FQColor.danger : world.accent).opacity(0.28), Color.clear], center: .center, startRadius: 0, endRadius: 88))
-                    .frame(width: 176, height: 176)
-                PixelArtAvatarView(sprite: .boss(model.selectedBoss.pixelSpriteConfig), hitFlash: false, size: 112)
+                    .fill(RadialGradient(colors: [(isWarning ? FQColor.danger : world.accent).opacity(0.32), Color.clear], center: .center, startRadius: 0, endRadius: 80))
+                    .frame(width: 160, height: 160)
+                PixelArtAvatarView(sprite: .boss(model.selectedBoss.pixelSpriteConfig), hitFlash: false, size: 104)
             }
-            .frame(height: 120)
-
+            .frame(height: 112)
             VStack(spacing: FQSpace.xs) {
-                Text(model.selectedBoss.name).font(.fqTitle).foregroundStyle(FQColor.textPrimary).multilineTextAlignment(.center)
-                Text("\(model.selectedBoss.tier.rawValue.capitalized) · \(durationText) battle")
-                    .font(.fqMeta)
+                Text(model.selectedBoss.name)
+                    .font(.system(size: 26, weight: .bold, design: .rounded))
+                    .foregroundStyle(FQColor.textPrimary)
+                    .multilineTextAlignment(.center)
+                Text("\(model.selectedBoss.tier.rawValue.capitalized) · \(durationText)")
+                    .font(.fqSecondary)
                     .foregroundStyle(FQColor.textSecondary)
             }
-
-            // Odpocet primo pod bossem: hlavni informace obrazovky, proto obri cislice.
-            Text(clockText)
-                .font(.fqTimer)
-                .monospacedDigit()
-                .lineLimit(1)
-                .minimumScaleFactor(0.5)
-                .foregroundStyle(isPaused ? FQColor.textSecondary : FQColor.textPrimary)
-                .contentTransition(.numericText())
-                .animation(.default, value: elapsed)
-                .accessibilityLabel(isPaused ? "Paused, \(clockText) left" : "Time left \(clockText)")
-
-            if isPaused {
-                Label("Paused · the clock is stopped", systemImage: "pause.fill")
-                    .font(.fqLabel)
-                    .foregroundStyle(FQColor.caution)
-            }
-
-            HStack(spacing: FQSpace.sm) {
-                PixelArtAvatarView(sprite: .companion("lo-fi-cat"), startled: isWarning, size: 32)
-                Text("Combo \(comboValue)x").font(.fqLabel).foregroundStyle(FQColor.accent)
-            }
-            .padding(.leading, FQSpace.sm)
-            .padding(.trailing, FQSpace.lg)
-            .padding(.vertical, FQSpace.xs)
-            .background(FQColor.fill, in: pill)
-
-            HairlineDivider()
-
-            BossHealthBarView(currentHP: model.selectedBoss.currentHP, maxHP: model.selectedBoss.maxHP)
         }
-        .padding(.horizontal, FQSpace.xl)
-        .padding(.vertical, FQSpace.lg)
-        .frame(maxWidth: .infinity)
-        .glassCard(tint: isWarning ? FQColor.danger : nil)
+        .accessibilityElement(children: .combine)
     }
 
-    /// Karta "Working on": co chce hrac v teto bitve stihnout. Jde plnit pred bitvou i behem ni.
-    private var workingOnCard: some View {
+    /// Obri odpocet: hlavni informace obrazovky.
+    private var timer: some View {
+        Text(clockText)
+            .font(.system(size: remaining >= 3600 ? 72 : 92, weight: .light, design: .rounded))
+            .monospacedDigit()
+            .lineLimit(1)
+            .minimumScaleFactor(0.5)
+            .foregroundStyle(isPaused ? FQColor.textSecondary : FQColor.textPrimary)
+            .contentTransition(.numericText())
+            .animation(.default, value: elapsed)
+            .accessibilityLabel(isPaused ? "Paused, \(clockText) left" : "Time left \(clockText)")
+    }
+
+    /// Jeden tichy radek pod odpoctem: co se prave deje.
+    @ViewBuilder private var statusLine: some View {
+        switch model.state {
+        case .paused:
+            Label("Paused · the clock is stopped", systemImage: "pause.fill")
+                .font(.fqLabel)
+                .foregroundStyle(FQColor.caution)
+        case .focusing, .warningCountdown:
+            HStack(spacing: FQSpace.sm) {
+                PixelArtAvatarView(sprite: .companion("lo-fi-cat"), startled: isWarning, size: 24)
+                Text("Combo \(comboValue)x").font(.fqLabel).foregroundStyle(FQColor.accent)
+                Text("·").foregroundStyle(FQColor.textTertiary)
+                Text("\(max(0, model.selectedBoss.currentHP)) HP left").font(.fqLabel).monospacedDigit().foregroundStyle(FQColor.textSecondary)
+            }
+        case .awaitingFlatPlacement:
+            Label("Place your iPhone face-up on the desk", systemImage: "iphone.gen3.radiowaves.left.and.right")
+                .font(.fqLabel)
+                .foregroundStyle(FQColor.textPrimary)
+                .multilineTextAlignment(.center)
+        default:
+            Text(model.selectedSubject == nil ? "What are you studying?" : "Ready when you are")
+                .font(.fqLabel)
+                .foregroundStyle(model.selectedSubject == nil ? FQColor.caution : FQColor.textSecondary)
+        }
+    }
+
+    // MARK: - Ovladani
+
+    @ViewBuilder private var controls: some View {
+        switch model.state {
+        case .idle, .penalized, .victory, .defeated:
+            VStack(spacing: FQSpace.xl) {
+                subjectPicker
+                Button { model.startSession() } label: {
+                    Label("Begin Battle", systemImage: "play.fill")
+                        .font(.fqHeadline)
+                        .foregroundStyle(FQColor.onAccent)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 56)
+                        .background(FQColor.accent, in: pill)
+                }
+                .buttonStyle(.plain)
+                .disabled(model.selectedSubject == nil)
+                .opacity(model.selectedSubject == nil ? 0.35 : 1)
+                .accessibilityHint(model.selectedSubject == nil ? "Choose a subject first" : "")
+            }
+        case .awaitingFlatPlacement:
+            // Hodiny jeste nebezi, takze zruseni nic nestoji.
+            actionCircle("xmark", caption: "Cancel", tint: nil) { model.retreat() }
+        case .focusing, .paused, .warningCountdown:
+            HStack(spacing: FQSpace.xxxl) {
+                if isPaused {
+                    actionCircle("play.fill", caption: "Resume", tint: FQColor.accent) { model.resumeBattle() }
+                } else {
+                    actionCircle("pause.fill", caption: "Pause", tint: nil) { model.pauseBattle() }
+                }
+                actionCircle("flag.fill", caption: "Retreat", tint: FQColor.danger) { showsRetreatConfirm = true }
+            }
+        }
+    }
+
+    /// Predmet je povinny - bez nej bitva nezacne.
+    private var subjectPicker: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: FQSpace.sm) {
+                ForEach(StudySubject.allCases) { subject in
+                    let isSelected = subject == model.selectedSubject
+                    Button { model.selectSubject(subject) } label: {
+                        Label(subject.title, systemImage: subject.symbol)
+                            .font(.fqLabel)
+                            .foregroundStyle(isSelected ? FQColor.onAccent : FQColor.textPrimary)
+                            .padding(.horizontal, FQSpace.lg)
+                            .frame(height: 40)
+                            .background(isSelected ? AnyShapeStyle(FQColor.accent) : AnyShapeStyle(FQColor.fill), in: pill)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityAddTraits(isSelected ? .isSelected : [])
+                }
+            }
+        }
+        .scrollClipDisabled()
+    }
+
+    /// Velke kulate tlacitko s popiskem pod nim (Pause / Resume / Retreat / Cancel).
+    private func actionCircle(_ symbol: String, caption: String, tint: Color?, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            VStack(spacing: FQSpace.sm) {
+                Image(systemName: symbol)
+                    .font(.system(size: 26, weight: .semibold, design: .rounded))
+                    .foregroundStyle(tint ?? FQColor.textPrimary)
+                    .frame(width: 76, height: 76)
+                    .background((tint ?? Color.white).opacity(tint == nil ? 0.10 : 0.16), in: Circle())
+                    .overlay { Circle().strokeBorder((tint ?? Color.white).opacity(0.25), lineWidth: 1) }
+                Text(caption).font(.fqLabel).foregroundStyle(FQColor.textSecondary)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(caption)
+        .accessibilityAddTraits(.isButton)
+    }
+
+    // MARK: - Working on
+
+    /// Co chce hrac v teto bitve stihnout. Je soucasti hlavni karty, bez vlastniho ramecku.
+    private var workingOnSection: some View {
         let doneCount = model.tasks.filter(\.isDone).count
-        return VStack(alignment: .leading, spacing: FQSpace.md) {
+        return VStack(alignment: .leading, spacing: FQSpace.sm) {
             HStack(alignment: .firstTextBaseline) {
                 Text("Working on").font(.fqHeadline).foregroundStyle(FQColor.textPrimary)
                 Spacer(minLength: FQSpace.sm)
@@ -214,7 +334,7 @@ struct BattleView: View {
                     Button { model.removeTask(task.id) } label: {
                         Image(systemName: "xmark")
                             .font(.fqMeta.weight(.semibold))
-                            .foregroundStyle(FQColor.textSecondary)
+                            .foregroundStyle(FQColor.textTertiary)
                             .frame(width: 44, height: 44)
                             .contentShape(Rectangle())
                     }
@@ -223,7 +343,8 @@ struct BattleView: View {
                 }
             }
             if model.tasks.count < ArenaViewModel.maxTasks {
-                HStack(spacing: FQSpace.sm) {
+                HStack(spacing: FQSpace.md) {
+                    Image(systemName: "plus").font(.fqLabel).foregroundStyle(FQColor.textSecondary).accessibilityHidden(true)
                     TextField("Add a task", text: $newTask)
                         .font(.fqBody)
                         .foregroundStyle(FQColor.textPrimary)
@@ -237,13 +358,11 @@ struct BattleView: View {
                     }
                 }
                 .padding(.horizontal, FQSpace.lg)
-                .frame(minHeight: 44)
+                .frame(minHeight: 48)
                 .background(FQColor.fill, in: pill)
             }
         }
-        .padding(FQSpace.lg)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .glassCard()
     }
 
     private func addTask() {
@@ -251,6 +370,88 @@ struct BattleView: View {
         newTask = ""
         // Klavesnice zustane otevrena, aby slo pridat vic ukolu za sebou.
         taskFieldFocused = model.tasks.count < ArenaViewModel.maxTasks
+    }
+
+    // MARK: - Ustup
+
+    /// Varovani pred ustupem pres celou obrazovku: rozmazane pozadi, vyrazne "Stay and Fight"
+    /// a nenapadne "Retreat Anyway" pod nim.
+    private var retreatDialog: some View {
+        let streak = profileModel.stats.currentStreak()
+        let focused = ArenaView.durationText(minutes: elapsed / 60)
+        return ZStack {
+            Rectangle().fill(.regularMaterial).ignoresSafeArea()
+            VStack(spacing: FQSpace.xxl) {
+                ZStack {
+                    Circle()
+                        .fill(RadialGradient(colors: [FQColor.danger.opacity(0.35), Color.clear], center: .center, startRadius: 0, endRadius: 90))
+                        .frame(width: 180, height: 180)
+                    PixelArtAvatarView(sprite: .boss(model.selectedBoss.pixelSpriteConfig), hitFlash: false, size: 112)
+                }
+                .frame(height: 140)
+                .accessibilityHidden(true)
+                VStack(spacing: FQSpace.md) {
+                    Text("Don't let \(model.selectedBoss.name) win")
+                        .font(.system(size: 30, weight: .bold, design: .rounded))
+                        .multilineTextAlignment(.center)
+                        .foregroundStyle(FQColor.textPrimary)
+                    Text(elapsed >= 60
+                         ? "You've already focused for \(focused). Only \(clockText) to go. Your hero is counting on you."
+                         : "The battle has only just begun. Your hero is counting on you.")
+                        .font(.fqBody)
+                        .multilineTextAlignment(.center)
+                        .foregroundStyle(FQColor.textSecondary)
+                }
+                VStack(spacing: FQSpace.sm) {
+                    Label("You lose \(PlayerStats.heroHPLossPerFailedQuest) hero HP", systemImage: "heart.slash.fill")
+                    Label(streak > 0 ? "Your \(streak)-day streak resets" : "This battle's time won't count", systemImage: streak > 0 ? "flame.fill" : "clock.badge.xmark")
+                }
+                .font(.fqLabel)
+                .foregroundStyle(FQColor.danger)
+                VStack(spacing: FQSpace.md) {
+                    Button { showsRetreatConfirm = false } label: {
+                        Text("Stay and Fight")
+                            .font(.fqHeadline)
+                            .foregroundStyle(FQColor.onAccent)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 58)
+                            .background(FQColor.accent, in: pill)
+                    }
+                    .buttonStyle(.plain)
+                    Button {
+                        showsRetreatConfirm = false
+                        model.retreat()
+                    } label: {
+                        Text("Retreat Anyway")
+                            .font(.fqLabel)
+                            .foregroundStyle(FQColor.textSecondary)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 44)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, FQSpace.xxl)
+            .frame(maxWidth: 440)
+        }
+        .accessibilityAddTraits(.isModal)
+    }
+
+    // MARK: - Zvuk a pravidla (list)
+
+    private var battleSettingsSheet: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: FQSpace.xl) {
+                Text("Sound & rules").font(.fqTitle).foregroundStyle(FQColor.textPrimary)
+                soundPlayer
+                rulesCard
+            }
+            .padding(FQSpace.gutter)
+        }
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+        .presentationBackground(.ultraThinMaterial)
+        .preferredColorScheme(.dark)
     }
 
     /// Pravidla bitvy: pevna delka, telefon na stole, pauza kdykoli, ustup stoji HP.
@@ -295,7 +496,6 @@ struct BattleView: View {
 
     private var soundPlayer: some View {
         let preferences = model.preferences
-        let isFocusing = if case .focusing = model.state { true } else { false }
         let status = !preferences.isMusicEnabled ? "Sound is off" : (isFocusing ? "Now playing" : (isPaused ? "Paused" : "Plays when the battle starts"))
         return VStack(spacing: FQSpace.md) {
             HStack(spacing: FQSpace.md) {
@@ -329,75 +529,6 @@ struct BattleView: View {
         }
         .padding(FQSpace.lg)
         .glassCard()
-    }
-
-    // MARK: - Ovladani
-
-    @ViewBuilder private var sessionControls: some View {
-        switch model.state {
-        case .idle, .penalized, .victory, .defeated:
-            if model.selectedSubject == nil {
-                // Vypnute tlacitko by na skle bylo necitelne; misto nej jasna vyzva.
-                Label("Choose a subject above to start", systemImage: "books.vertical.fill")
-                    .font(.fqLabel)
-                    .foregroundStyle(FQColor.textPrimary)
-                    .frame(maxWidth: .infinity)
-                    .padding(FQSpace.lg)
-                    .glassCard(radius: FQRadius.control, tint: FQColor.caution)
-            } else {
-                Button { model.startSession() } label: {
-                    Label("Begin \(durationText) Battle", systemImage: "play.fill")
-                        .font(.fqHeadline)
-                        .foregroundStyle(FQColor.onAccent)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, FQSpace.xs)
-                }
-                .prominentGlassButtonStyle()
-                .buttonBorderShape(.roundedRectangle(radius: FQRadius.control))
-                .controlSize(.large)
-                .tint(FQColor.accent)
-            }
-        case .awaitingFlatPlacement:
-            HStack(spacing: FQSpace.md) {
-                Label("Place iPhone face-up on desk", systemImage: "iphone.gen3.radiowaves.left.and.right")
-                    .font(.fqLabel)
-                    .foregroundStyle(FQColor.textPrimary)
-                    .frame(maxWidth: .infinity)
-                    .padding(FQSpace.lg)
-                    .glassCard(radius: FQRadius.control)
-                // Hodiny jeste nebezi, takze zruseni nic nestoji (zpet tlacitko je behem bitvy skryte).
-                actionCircle("xmark", caption: "Cancel", tint: nil) { model.retreat() }
-            }
-        case .focusing, .paused, .warningCountdown:
-            HStack(spacing: FQSpace.xxl) {
-                if isPaused {
-                    actionCircle("play.fill", caption: "Resume", tint: FQColor.accent) { model.resumeBattle() }
-                } else {
-                    actionCircle("pause.fill", caption: "Pause", tint: nil) { model.pauseBattle() }
-                }
-                actionCircle("flag.fill", caption: "Retreat", tint: FQColor.danger) { showsRetreatConfirm = true }
-            }
-            .frame(maxWidth: .infinity)
-        }
-    }
-
-    /// Kulate tlacitko s popiskem pod nim (Pause / Resume / Retreat / Cancel).
-    private func actionCircle(_ symbol: String, caption: String, tint: Color?, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            VStack(spacing: FQSpace.xs) {
-                Image(systemName: symbol)
-                    .font(.system(size: 22, weight: .semibold, design: .rounded))
-                    .foregroundStyle(tint ?? FQColor.textPrimary)
-                    .frame(width: 64, height: 64)
-                    .glassControl(in: Circle(), tint: tint?.opacity(0.18), interactive: true)
-                Text(caption).font(.fqMeta).foregroundStyle(FQColor.textSecondary)
-            }
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(caption)
-        .accessibilityAddTraits(.isButton)
     }
 
     #if targetEnvironment(simulator)

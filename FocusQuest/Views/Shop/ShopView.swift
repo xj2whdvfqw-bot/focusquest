@@ -1,8 +1,26 @@
 import SwiftUI
 
-/// Obchod: za mince z bitev se kupuje vybaveni, ktere je hned videt na pixelovem hrdinovi.
+/// Obe casti jednoho obchodu: vybaveni hrdiny a stavby ve vesnici.
+enum ShopSection: String, CaseIterable, Identifiable {
+    case gear, village
+    var id: String { rawValue }
+    var title: String { self == .gear ? "Gear" : "Village" }
+
+    /// V debug buildu `-initialTab village` otevre obchod rovnou na vesnici (CI screenshoty).
+    static var initial: ShopSection {
+        #if DEBUG
+        return UserDefaults.standard.string(forKey: "initialTab") == "village" ? .village : .gear
+        #else
+        return .gear
+        #endif
+    }
+}
+
+/// Obchod: za mince z bitev se kupuje vybaveni (hned videt na pixelovem hrdinovi)
+/// a stavi se vesnice. Obe casti prepina prepinac pod nadpisem.
 struct ShopView: View {
     @ObservedObject var model: ProfileViewModel
+    @State private var section = ShopSection.initial
     /// Predmet, ktery si hrac prave zkousi v nahledu nahore.
     @State private var tryOnID: String?
 
@@ -16,22 +34,31 @@ struct ShopView: View {
     }
 
     var body: some View {
-        ScreenScaffold(scene: .lanternGrove) {
-            ForEach(EquipmentSlot.shopOrder, id: \.self) { slot in
-                ScreenSection(title: slot.displayName) {
-                    LazyVGrid(columns: [GridItem(.flexible(), spacing: FQSpace.md), GridItem(.flexible())], spacing: FQSpace.md) {
-                        ForEach(EquipmentItem.catalog.filter { $0.slot == slot }) { itemCard($0) }
+        ScreenScaffold(scene: section == .gear ? .lanternGrove : .castleKeep) {
+            switch section {
+            case .gear:
+                ForEach(EquipmentSlot.shopOrder, id: \.self) { slot in
+                    ScreenSection(title: slot.displayName) {
+                        LazyVGrid(columns: [GridItem(.flexible(), spacing: FQSpace.md), GridItem(.flexible())], spacing: FQSpace.md) {
+                            ForEach(EquipmentItem.catalog.filter { $0.slot == slot }) { itemCard($0) }
+                        }
                     }
                 }
+            case .village:
+                VillagePanel(model: model)
             }
         }
         // Nadpis je stejny jako na ostatnich zalozkach (nadtitulek, velky nadpis, ozubene kolo vpravo)
-        // a sedi na stejnem miste. Pod nim zustava pripnuty nahled hrdiny, aby bylo vyzkouseni
-        // predmetu videt i pri rolovani obchodu.
+        // a sedi na stejnem miste. Pod nim zustava pripnuty prepinac a u vybaveni i nahled hrdiny,
+        // aby bylo vyzkouseni predmetu videt i pri rolovani obchodu.
         .pinnedTopHeader {
             VStack(alignment: .leading, spacing: FQSpace.md) {
-                ScreenHeader(eyebrow: "Shop", title: "Gear up")
-                previewCard
+                ScreenHeader(eyebrow: "Shop", title: section == .gear ? "Gear up" : "Build your village")
+                Picker("Shop section", selection: $section) {
+                    ForEach(ShopSection.allCases) { Text($0.title).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                if section == .gear { previewCard }
             }
         }
     }
