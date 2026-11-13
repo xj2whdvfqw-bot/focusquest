@@ -73,7 +73,7 @@ enum SpritePalette {
     static func rows(for sprite: PixelSprite, startled: Bool) -> [String] {
         switch sprite {
         case .boss(let id):
-            return bossRows[id] ?? slimeRows
+            return bossRows[id] ?? worldBossRows[id] ?? slimeRows
         case .companion(let id):
             if id == "ember-dragonling" { return ["................", ".....OO..OO.....", "....OOOOOOOO....", "...OOOOWWOOOO...", "...OOOOOOOOOO...", "....OOOOOOOO....", ".....OOOOOO.....", "....OOO..OOO....", "...OO......OO...", "..OO........OO..", "................", "................", "................", "................", "................", "................"] }
             // Lo-fi kocka: svetle seda se zlutyma ocima, aby byla videt na tmavem pozadi.

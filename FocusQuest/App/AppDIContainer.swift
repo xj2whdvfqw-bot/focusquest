@@ -10,6 +10,8 @@ final class AppDIContainer {
     let statsViewModel: StatsViewModel
     let profileViewModel: ProfileViewModel
     let settingsViewModel: SettingsViewModel
+    /// Hlida odchod z appky behem bitvy a drzi vyber "blokovanych" appek z uvodu.
+    let appBlocker: AppBlockerManager
     let runtimeSecurity: any RuntimeSecurityServiceProtocol
     let isIntegrityCompromised: Bool
 
@@ -36,6 +38,7 @@ final class AppDIContainer {
         self.profileViewModel = profileViewModel
         self.statsViewModel = StatsViewModel(profileSync: profileSync)
         self.settingsViewModel = SettingsViewModel(store: preferences, profileSync: profileSync, keychain: keychain)
+        self.appBlocker = AppBlockerManager()
         self.runtimeSecurity = security
         self.isIntegrityCompromised = security.integrityReport().isCompromised
         if security.integrityReport().isCompromised { Task { try? await keychain.deleteAll() } }
@@ -49,5 +52,11 @@ final class AppDIContainer {
         settingsViewModel.onAddDevFunds = { [weak profileViewModel] in profileViewModel?.addDevFunds() }
         // Statistiky zmenene vitezstvim nebo bonusem se hned ukazi i na zalozce Stats.
         profileViewModel.onStatsChanged = { [weak stats = self.statsViewModel] updated in stats?.replace(with: updated) }
+
+        // Hlidac odchodu z appky behem bitvy.
+        appBlocker.isBattleRunning = { [weak arenaViewModel] in arenaViewModel?.isBattleRunning ?? false }
+        appBlocker.onEscapeTimeout = { [weak arenaViewModel] in await arenaViewModel?.failForLeavingApp() }
+        // Propadly quest stoji hrdinu HP a serii dni.
+        arenaViewModel.onQuestFailed = { [weak profileViewModel] in profileViewModel?.recordQuestFailure() }
     }
 }

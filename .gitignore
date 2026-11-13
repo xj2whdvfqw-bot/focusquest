@@ -12,3 +12,7 @@ dist/
 # Systemove soubory
 .DS_Store
 Thumbs.db
+
+# Lokalni sledovani prace - necommitovat
+runbook.html
+screenshoty/

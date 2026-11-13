@@ -57,7 +57,7 @@ struct ProfileView: View {
                     .frame(maxWidth: .infinity)
             }
             .glassButtonStyle()
-            .buttonBorderShape(.capsule)
+            .buttonBorderShape(.roundedRectangle(radius: FQRadius.control))
             .controlSize(.large)
             .tint(FQColor.textPrimary)
         }
@@ -248,7 +248,7 @@ struct AppearanceEditorSheet: View {
             Spacer(minLength: 0)
             Button(action: onClose) {
                 Image(systemName: "xmark")
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.system(size: 15, weight: .semibold, design: .rounded))
                     .foregroundStyle(FQColor.textPrimary)
                     .frame(width: 44, height: 44)
                     .glassControl(in: Circle(), interactive: true)

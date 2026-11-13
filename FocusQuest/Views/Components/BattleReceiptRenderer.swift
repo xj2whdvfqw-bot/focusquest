@@ -34,26 +34,26 @@ struct BattleReceiptCard: View {
                 .offset(x: -140, y: 180)
 
             VStack(spacing: FQSpace.xl) {
-                Text("FocusQuest battle record").font(.system(size: 13, weight: .medium)).foregroundStyle(FQColor.textSecondary)
+                Text("FocusQuest battle record").font(.system(size: 13, weight: .medium, design: .rounded)).foregroundStyle(FQColor.textSecondary)
                 StaticPixelSprite(sprite: .boss(boss.pixelSpriteConfig), size: 152)
                 VStack(spacing: FQSpace.xs) {
-                    Text("Boss defeated").font(.system(size: 28, weight: .semibold)).foregroundStyle(FQColor.textPrimary)
+                    Text("Boss defeated").font(.system(size: 28, weight: .semibold, design: .rounded)).foregroundStyle(FQColor.textPrimary)
                     Text(boss.name).font(.system(size: 17)).foregroundStyle(FQColor.textSecondary)
                 }
                 VStack(spacing: FQSpace.md) {
                     HStack(spacing: FQSpace.lg) {
                         StaticPixelSprite(sprite: .hero(profile.heroClass), size: 64)
                         VStack(alignment: .leading, spacing: FQSpace.xs) {
-                            Text(profile.username).font(.system(size: 17, weight: .semibold)).foregroundStyle(FQColor.textPrimary)
+                            Text(profile.username).font(.system(size: 17, weight: .semibold, design: .rounded)).foregroundStyle(FQColor.textPrimary)
                             Text(profile.title).font(.system(size: 13)).foregroundStyle(FQColor.textSecondary)
                         }
                         Spacer(minLength: 0)
                     }
                     Rectangle().fill(FQColor.hairline).frame(height: 1)
                     HStack {
-                        Text("\(focusMinutes) min verified focus").font(.system(size: 15, weight: .medium)).foregroundStyle(FQColor.accent)
+                        Text("\(focusMinutes) min verified focus").font(.system(size: 15, weight: .medium, design: .rounded)).foregroundStyle(FQColor.accent)
                         Spacer(minLength: FQSpace.sm)
-                        if flawless { Text("Flawless").font(.system(size: 13, weight: .medium)).foregroundStyle(FQColor.textPrimary) }
+                        if flawless { Text("Flawless").font(.system(size: 13, weight: .medium, design: .rounded)).foregroundStyle(FQColor.textPrimary) }
                     }
                 }
                 .padding(FQSpace.lg)
@@ -82,7 +82,7 @@ struct BattleReceiptShareView: View {
                 .padding(.vertical, FQSpace.xs)
         }
         .glassButtonStyle()
-        .buttonBorderShape(.capsule)
+        .buttonBorderShape(.roundedRectangle(radius: FQRadius.control))
         .controlSize(.large)
         .tint(FQColor.textPrimary)
     }

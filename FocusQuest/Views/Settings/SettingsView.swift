@@ -14,7 +14,7 @@ struct SettingsView: View {
                 if let onClose {
                     Button(action: onClose) {
                         Image(systemName: "xmark")
-                            .font(.system(size: 15, weight: .semibold))
+                            .font(.system(size: 15, weight: .semibold, design: .rounded))
                             .foregroundStyle(FQColor.textPrimary)
                             .frame(width: 44, height: 44)
                             .glassControl(in: Circle(), interactive: true)
@@ -123,14 +123,14 @@ struct SettingsView: View {
                         Label("Sign Out", systemImage: "rectangle.portrait.and.arrow.right").font(.fqHeadline).frame(maxWidth: .infinity)
                     }
                     .glassButtonStyle()
-                    .buttonBorderShape(.capsule)
+                    .buttonBorderShape(.roundedRectangle(radius: FQRadius.control))
                     .controlSize(.large)
                     .tint(FQColor.textPrimary)
                 } else {
                     SignInWithAppleButton(.signIn, onRequest: { request in request.requestedScopes = [.fullName, .email] }, onCompletion: handleAppleSignIn)
                         .signInWithAppleButtonStyle(.white)
                         .frame(height: 48)
-                        .clipShape(Capsule())
+                        .clipShape(RoundedRectangle(cornerRadius: FQRadius.tile, style: .continuous))
                 }
             }
             .padding(.vertical, FQSpace.md)

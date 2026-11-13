@@ -69,19 +69,31 @@ struct AppPreferences: Codable, Equatable, Sendable {
     var ambientVolume = 0.55
     var selectedTrack: AmbientTrack = .calmCurrents
     var soundscape: Soundscape = .lofi
-    /// HP kazdeho bosse zvlast (ID bosse -> minuty). Chybejici boss ma svoje vychozi HP.
-    var bossMinutesByID: [String: Int] = [:]
+    /// Pocet porazenych uzlu na ceste kazdeho sveta (rawValue sveta -> pocet). Dalsi uzel je odemceny.
+    var clearedNodesByWorld: [String: Int] = [:]
     /// Naposledy zvoleny predmet, aby ho hrac nemusel vybirat pred kazdou bitvou znovu.
     var lastSubject: StudySubject?
     var lastBossID: String?
 
     enum CodingKeys: String, CodingKey {
-        case isHapticsEnabled, isMusicEnabled, isSFXEnabled, ambientVolume, selectedTrack, soundscape, bossMinutesByID, lastSubject, lastBossID
+        case isHapticsEnabled, isMusicEnabled, isSFXEnabled, ambientVolume, selectedTrack, soundscape, clearedNodesByWorld, lastSubject, lastBossID
     }
 
-    /// HP (minuty) konkretniho bosse.
-    func bossMinutes(for bossID: String) -> Int {
-        bossMinutesByID[bossID].map(Boss.clampedMinutes) ?? Boss.initialMinutes(for: bossID)
+    /// Kolik uzlu sveta uz hrac porazil.
+    func clearedNodes(in world: BossWorld) -> Int {
+        min(world.bosses.count, max(0, clearedNodesByWorld[world.rawValue] ?? 0))
+    }
+
+    /// Uzel je hratelny, pokud je porazeny nebo je prave na rade.
+    func isUnlocked(_ boss: Boss) -> Bool {
+        boss.nodeIndex <= clearedNodes(in: boss.world)
+    }
+
+    /// Porazeni uzlu na rade posune cestu o krok dal; opakovana vyhra nad starsim uzlem nic nemeni.
+    mutating func markCleared(_ boss: Boss) {
+        let world = boss.world
+        guard boss.nodeIndex == clearedNodes(in: world) else { return }
+        clearedNodesByWorld[world.rawValue] = boss.nodeIndex + 1
     }
 }
 
@@ -96,9 +108,8 @@ extension AppPreferences {
         ambientVolume = try container.decodeIfPresent(Double.self, forKey: .ambientVolume) ?? fallback.ambientVolume
         selectedTrack = try container.decodeIfPresent(AmbientTrack.self, forKey: .selectedTrack) ?? fallback.selectedTrack
         soundscape = (try? container.decodeIfPresent(Soundscape.self, forKey: .soundscape)) ?? fallback.soundscape
-        // Starsi verze mela jedno HP pro vsechny bosse ("bossMinutes"); to se zamerne zahodi.
-        let storedMinutes = (try? container.decodeIfPresent([String: Int].self, forKey: .bossMinutesByID)) ?? nil
-        bossMinutesByID = (storedMinutes ?? [:]).mapValues(Boss.clampedMinutes)
+        // Starsi verze mely vlastni delku bitvy (bossMinutes, bossMinutesByID); ta se zamerne zahodi.
+        clearedNodesByWorld = (try? container.decodeIfPresent([String: Int].self, forKey: .clearedNodesByWorld)) ?? [:]
         lastSubject = try? container.decodeIfPresent(StudySubject.self, forKey: .lastSubject)
         lastBossID = try? container.decodeIfPresent(String.self, forKey: .lastBossID)
     }

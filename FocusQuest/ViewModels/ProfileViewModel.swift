@@ -68,6 +68,20 @@ final class ProfileViewModel: ObservableObject {
         }
     }
 
+    /// Hrac behem bitvy odesel z appky a nevratil se vcas: hrdina ztrati HP a serii dni.
+    func recordQuestFailure() {
+        Task {
+            do { apply(stats: try await sync.recordQuestFailure()) }
+            catch { errorMessage = "The failed quest could not be saved." }
+        }
+    }
+
+    /// Cile z uvodu ("Stop scrolling" ...). Ukazuji se v Profilu.
+    func updateFocusGoals(_ goals: Set<FocusGoal>) {
+        profile.focusGoals = FocusGoal.allCases.filter { goals.contains($0) }
+        save()
+    }
+
     /// DOCASNE pro testovani: +10 000 minci a +5 000 XP, aby slo hned zkouset vesnici a obchod.
     func addDevFunds() {
         profile.coins += Self.devFundsCoins

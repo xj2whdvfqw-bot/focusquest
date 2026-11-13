@@ -29,12 +29,12 @@ final class ArenaViewModel: ObservableObject {
     @Published private(set) var posture: DevicePostureState = .unavailable
     @Published private(set) var preferences: AppPreferences
     @Published private(set) var activeSession: StudySession?
-    /// HP vybraneho bosse; 1 HP = 1 minuta overeneho soustredeni. Kazdy boss ma vlastni.
-    @Published private(set) var bossMinutes: Int
-    /// Volano, kdyz se predvolby zmeni z Areny (prehravac, HP bosse), aby je znalo i Nastaveni.
+    /// Volano, kdyz se predvolby zmeni z Areny (prehravac, postup na ceste), aby je znalo i Nastaveni.
     var onPreferencesChanged: ((AppPreferences) -> Void)?
     /// Volano jednou za kazdou vyhranou bitvu - pripise XP, mince a loot do profilu.
     var onVictory: ((BattleVictory) -> Void)?
+    /// Volano, kdyz hrac behem bitvy opustil appku a nevratil se vcas (ztrata HP hrdiny a serie).
+    var onQuestFailed: (() -> Void)?
 
     private let validation: any FocusValidationServiceProtocol
     private let motion: any MotionMonitoringServiceProtocol
@@ -70,11 +70,9 @@ final class ArenaViewModel: ObservableObject {
         self.activity = activity
         self.notifications = notifications
         let stored = preferenceStore.load()
-        let boss = Boss.roster.first { $0.id == stored.lastBossID } ?? Boss.roster[0]
-        let minutes = stored.bossMinutes(for: boss.id)
+        let remembered = Boss.find(stored.lastBossID).flatMap { stored.isUnlocked($0) ? $0 : nil }
         self.preferences = stored
-        self.bossMinutes = minutes
-        self.selectedBoss = boss.withHP(minutes: minutes)
+        self.selectedBoss = remembered ?? BossWorld.allCases[0].bosses[0]
         self.selectedSubject = stored.lastSubject
         audio.onTrackAdvanced = { [weak self] track in self?.trackDidAdvance(track) }
         haptics.prepare()
@@ -118,23 +116,29 @@ final class ArenaViewModel: ObservableObject {
         resetBossHealth()
     }
 
+    /// Bitva prave bezi (hodiny tikaji nebo bezi odpocet zvednuteho telefonu).
+    var isBattleRunning: Bool {
+        switch state {
+        case .focusing, .warningCountdown: true
+        default: false
+        }
+    }
+
+    func clearedNodes(in world: BossWorld) -> Int { preferences.clearedNodes(in: world) }
+    func isUnlocked(_ boss: Boss) -> Bool { preferences.isUnlocked(boss) }
+
+    /// Vybere uzel na ceste. Zamcene uzly vybrat nejdou; delka bitvy je dana uzlem.
     func selectBoss(_ boss: Boss) {
-        guard isBetweenBattles else { return }
-        let minutes = preferences.bossMinutes(for: boss.id)
-        bossMinutes = minutes
-        selectedBoss = boss.withHP(minutes: minutes)
+        guard isBetweenBattles, isUnlocked(boss) else { return }
+        selectedBoss = Boss.find(boss.id) ?? boss
         changePreferences { $0.lastBossID = boss.id }
     }
 
-    /// HP vybraneho bosse = pocet minut soustredeni (10-240 po 5). Ostatni bossove se nemeni.
-    func setBossMinutes(_ value: Int) {
-        guard isBetweenBattles else { return }
-        let minutes = Boss.clampedMinutes(value)
-        guard minutes != bossMinutes else { return }
-        bossMinutes = minutes
-        selectedBoss = selectedBoss.withHP(minutes: minutes)
-        let bossID = selectedBoss.id
-        changePreferences { $0.bossMinutesByID[bossID] = minutes }
+    /// Hrac opustil appku behem bitvy a do limitu se nevratil: quest propadne.
+    func failForLeavingApp() async {
+        guard isBattleRunning else { return }
+        await penalize(reason: "You left FocusQuest mid-battle. The boss struck while you were away: you lost hero HP and your daily streak.")
+        onQuestFailed?()
     }
 
     func selectSubject(_ subject: StudySubject) {
@@ -144,7 +148,7 @@ final class ArenaViewModel: ObservableObject {
     }
 
     private func resetBossHealth() {
-        selectedBoss = selectedBoss.withHP(minutes: bossMinutes)
+        selectedBoss = Boss.find(selectedBoss.id) ?? selectedBoss.withHP(minutes: selectedBoss.maxHP)
     }
 
     // MARK: - Prehravac
@@ -175,13 +179,9 @@ final class ArenaViewModel: ObservableObject {
         preferences = updated
         preferenceStore.save(updated)
         audio.apply(preferences: updated)
-        // Nastaveni umi predvolby smazat (smazani uctu); HP bosse a predmet se pak vrati na vychozi.
+        // Nastaveni umi predvolby smazat (smazani uctu); postup na ceste a predmet se pak vrati na zacatek.
         guard isBetweenBattles else { return }
-        let minutes = updated.bossMinutes(for: selectedBoss.id)
-        if minutes != bossMinutes {
-            bossMinutes = minutes
-            resetBossHealth()
-        }
+        if !updated.isUnlocked(selectedBoss) { selectedBoss = selectedBoss.world.bosses[0] }
         if updated.lastSubject == nil { selectedSubject = nil }
     }
 
@@ -307,6 +307,8 @@ final class ArenaViewModel: ObservableObject {
             )
             tearDownBattle(keepNotification: true)
             selectedBoss.currentHP = result.boss.currentHP
+            // Porazeny uzel na rade odemkne dalsi uzel cesty.
+            if result.boss.isDefeated, let template = Boss.find(selectedBoss.id) { changePreferences { $0.markCleared(template) } }
             state = .victory(victory)
             activeSession = nil
             onVictory?(victory)

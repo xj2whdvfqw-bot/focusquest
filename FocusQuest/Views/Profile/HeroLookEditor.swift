@@ -49,7 +49,7 @@ struct HeroLookEditor: View {
                                 .foregroundStyle(isSelected ? FQColor.onAccent : FQColor.textPrimary)
                                 .padding(.horizontal, FQSpace.lg)
                                 .frame(minHeight: 36)
-                                .background(isSelected ? FQColor.accent : FQColor.fill, in: Capsule())
+                                .background(isSelected ? FQColor.accent : FQColor.fill, in: RoundedRectangle(cornerRadius: FQRadius.tile, style: .continuous))
                                 .frame(minHeight: 44)
                                 .contentShape(Rectangle())
                         }
@@ -89,11 +89,13 @@ struct HeroLookEditor: View {
     }
 }
 
-/// Uvodni obrazovka pri prvnim spusteni: hrac si pojmenuje a oblekne hrdinu.
+/// Uvodni obrazovka pri prvnim spusteni: cil, hrdina a appky, ktere hrace rozptyluji.
 struct HeroCreatorView: View {
     @ObservedObject var model: ProfileViewModel
+    @ObservedObject var blocker: AppBlockerManager
     let onDone: () -> Void
     @State private var nameDraft = ""
+    @State private var goals: Set<FocusGoal> = []
 
     var body: some View {
         ScreenScaffold(scene: .enchantedForest) {
@@ -114,6 +116,8 @@ struct HeroCreatorView: View {
                 .glassCard(radius: FQRadius.control)
             }
 
+            ScreenSection(title: "What do you want to change?", detail: "Pick any") { goalList }
+
             ScreenSection(title: "Choose your class") { classGrid }
 
             ScreenSection(title: "Look") {
@@ -121,6 +125,8 @@ struct HeroCreatorView: View {
                     .padding(FQSpace.lg)
                     .glassCard()
             }
+
+            ScreenSection(title: "Apps that distract you", detail: blocker.selectedAppIDs.isEmpty ? nil : "\(blocker.selectedAppIDs.count) selected") { appPicker }
         }
         // Nahled hrdiny je pripnuty nahore, takze je videt i pri rolovani barev a uceu.
         .pinnedTopHeader { avatarHeader }
@@ -133,12 +139,96 @@ struct HeroCreatorView: View {
                     .padding(.vertical, FQSpace.xs)
             }
             .prominentGlassButtonStyle()
-            .buttonBorderShape(.capsule)
+            .buttonBorderShape(.roundedRectangle(radius: FQRadius.control))
             .controlSize(.large)
             .tint(FQColor.accent)
         }
-        .onAppear { nameDraft = model.profile.username }
+        .onAppear {
+            nameDraft = model.profile.username
+            goals = Set(model.profile.focusGoals)
+        }
         .interactiveDismissDisabled()
+    }
+
+    // MARK: - Cile
+
+    private var goalList: some View {
+        VStack(spacing: 0) {
+            ForEach(Array(FocusGoal.allCases.enumerated()), id: \.element) { index, goal in
+                if index > 0 { HairlineDivider() }
+                goalRow(goal)
+            }
+        }
+        .padding(.horizontal, FQSpace.lg)
+        .padding(.vertical, FQSpace.xs)
+        .glassCard()
+    }
+
+    private func goalRow(_ goal: FocusGoal) -> some View {
+        let isSelected = goals.contains(goal)
+        return Button {
+            if isSelected { goals.remove(goal) } else { goals.insert(goal) }
+        } label: {
+            HStack(spacing: FQSpace.md) {
+                IconTile(symbol: goal.symbol)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(goal.title).font(.fqHeadline).foregroundStyle(FQColor.textPrimary)
+                    Text(goal.detail)
+                        .font(.fqMeta)
+                        .foregroundStyle(FQColor.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: FQSpace.sm)
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 22, weight: .semibold, design: .rounded))
+                    .foregroundStyle(isSelected ? FQColor.accent : FQColor.textSecondary)
+            }
+            .padding(.vertical, FQSpace.md)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+
+    // MARK: - Appky (zatim maketa bez FamilyControls)
+
+    private var appPicker: some View {
+        VStack(alignment: .leading, spacing: FQSpace.md) {
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: FQSpace.sm), count: 3), spacing: FQSpace.sm) {
+                ForEach(AppBlockerManager.catalog) { app in appTile(app) }
+            }
+            Label("Real app blocking arrives in a later update. Until then, leaving FocusQuest mid-battle for more than \(Int(AppBlockerManager.gracePeriod)) seconds fails the quest.", systemImage: "info.circle")
+                .font(.fqMeta)
+                .foregroundStyle(FQColor.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(FQSpace.lg)
+        .glassCard()
+    }
+
+    private func appTile(_ app: BlockableApp) -> some View {
+        let isSelected = blocker.isSelected(app)
+        return Button { blocker.toggle(app) } label: {
+            VStack(spacing: FQSpace.xs) {
+                Image(systemName: isSelected ? "lock.fill" : app.symbol)
+                    .font(.system(size: 20, weight: .semibold, design: .rounded))
+                    .foregroundStyle(isSelected ? FQColor.onAccent : FQColor.textPrimary)
+                    .frame(width: 44, height: 44)
+                    .background(isSelected ? FQColor.accent : FQColor.fill, in: RoundedRectangle(cornerRadius: FQRadius.tile, style: .continuous))
+                Text(app.name)
+                    .font(.fqMeta)
+                    .foregroundStyle(isSelected ? FQColor.textPrimary : FQColor.textSecondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
+            .frame(maxWidth: .infinity, minHeight: 72)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(app.name)
+        .accessibilityValue(isSelected ? "Blocked during battles" : "Not blocked")
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
     /// Povolani jako karty s nahledem hrdiny a kratkym popisem.
@@ -156,7 +246,7 @@ struct HeroCreatorView: View {
                     HeroAvatarView(appearance: model.profile.avatar, heroClass: hero, size: 56)
                     Spacer(minLength: 0)
                     Image(systemName: isSelected ? "checkmark.circle.fill" : hero.symbol)
-                        .font(.system(size: 17, weight: .semibold))
+                        .font(.system(size: 17, weight: .semibold, design: .rounded))
                         .foregroundStyle(isSelected ? FQColor.accent : FQColor.textSecondary)
                 }
                 Text(hero.displayName).font(.fqHeadline).foregroundStyle(FQColor.textPrimary)
@@ -207,6 +297,7 @@ struct HeroCreatorView: View {
             // Neplatne jmeno: zustaneme na obrazovce, chyba je videt pod polem.
             guard model.profile.username == name else { return }
         }
+        model.updateFocusGoals(goals)
         model.completeHeroCreation()
         onDone()
     }

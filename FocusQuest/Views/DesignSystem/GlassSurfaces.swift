@@ -6,9 +6,10 @@ import SwiftUI
 // Vsechno, co pouziva API z iOS 26, je jen v tomhle souboru.
 
 extension View {
-    /// Karta s obsahem: matne sklo, 1px svetelna hrana a mekky stin.
-    func glassCard(radius: CGFloat = FQRadius.card, tint: Color? = nil) -> some View {
-        modifier(GlassCardModifier(radius: radius, tint: tint))
+    /// Karta s obsahem: matne sklo (.ultraThinMaterial), 1px svetelna hrana a mekky stin.
+    /// `prominent` = hustsi sklo (.regularMaterial) pro dialogy a vysledky bitvy.
+    func glassCard(radius: CGFloat = FQRadius.card, tint: Color? = nil, prominent: Bool = false) -> some View {
+        modifier(GlassCardModifier(radius: radius, tint: tint, prominent: prominent))
     }
 
     /// Ovladaci prvek ve tvaru `shape`. Na iOS 26+ skutecny Liquid Glass.
@@ -77,6 +78,7 @@ extension View {
 struct GlassCardModifier: ViewModifier {
     let radius: CGFloat
     let tint: Color?
+    var prominent = false
     @Environment(\.colorScheme) private var colorScheme
 
     func body(content: Content) -> some View {
@@ -87,7 +89,7 @@ struct GlassCardModifier: ViewModifier {
         return content
             .background {
                 ZStack {
-                    shape.fill(.ultraThinMaterial)
+                    if prominent { shape.fill(.regularMaterial) } else { shape.fill(.ultraThinMaterial) }
                     shape.fill(Color.white.opacity(isDark ? 0.07 : 0.24))
                     if let tint { shape.fill(tint.opacity(0.22)) }
                     // Odlesk shora - svetlo dopadajici na sklo.
@@ -102,6 +104,8 @@ struct GlassCardModifier: ViewModifier {
                 )
             }
             .shadow(color: isDark ? Color.black.opacity(0.28) : Color(red: 0.30, green: 0.20, blue: 0.55).opacity(0.18), radius: 24, y: 12)
+            // Druhy, tesny stin - karta se "vznasi" nad krajinou.
+            .shadow(color: Color.black.opacity(isDark ? 0.22 : 0.08), radius: 3, y: 1)
     }
 }
 

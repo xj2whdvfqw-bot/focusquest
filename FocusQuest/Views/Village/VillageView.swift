@@ -57,7 +57,7 @@ struct VillageView: View {
                 }
                 .overlay(alignment: .topTrailing) {
                     if !isBuilt {
-                        Image(systemName: "lock.fill").font(.system(size: 11, weight: .semibold)).foregroundStyle(FQColor.textSecondary).padding(FQSpace.xs)
+                        Image(systemName: "lock.fill").font(.system(size: 11, weight: .semibold, design: .rounded)).foregroundStyle(FQColor.textSecondary).padding(FQSpace.xs)
                     }
                 }
             Text(stage.displayName).font(.fqMeta.weight(isCurrent ? .semibold : .regular)).foregroundStyle(isBuilt ? FQColor.textPrimary : FQColor.textSecondary).lineLimit(1)
@@ -150,7 +150,7 @@ struct VillageView: View {
                         .padding(.vertical, FQSpace.xs)
                 }
                 .prominentGlassButtonStyle()
-                .buttonBorderShape(.capsule)
+                .buttonBorderShape(.roundedRectangle(radius: FQRadius.control))
                 .controlSize(.large)
                 .tint(FQColor.accent)
                 .disabled(!model.canUpgradeVillage)

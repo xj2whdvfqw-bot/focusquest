@@ -13,7 +13,7 @@ struct LegalDocumentSheetView: View {
                     Button("Done") { dismiss() }
                         .font(.fqLabel)
                         .glassButtonStyle()
-                        .buttonBorderShape(.capsule)
+                        .buttonBorderShape(.roundedRectangle(radius: FQRadius.control))
                         .tint(FQColor.textPrimary)
                 }
                 Text(document.content)

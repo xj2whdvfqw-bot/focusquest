@@ -63,7 +63,7 @@ struct SettingsGearButton: View {
         if let presenter {
             Button { presenter.isPresented = true } label: {
                 Image(systemName: "gearshape.fill")
-                    .font(.system(size: 17, weight: .semibold))
+                    .font(.system(size: 17, weight: .semibold, design: .rounded))
                     .foregroundStyle(FQColor.textPrimary)
                     .frame(width: 44, height: 44)
                     .glassControl(in: Circle(), interactive: true)
@@ -133,7 +133,7 @@ struct StatusPill: View {
         }
         .padding(.horizontal, FQSpace.md)
         .padding(.vertical, FQSpace.sm)
-        .glassControl(in: Capsule())
+        .glassControl(in: RoundedRectangle(cornerRadius: FQRadius.tile, style: .continuous))
         .accessibilityElement(children: .combine)
     }
 }
@@ -145,7 +145,7 @@ struct IconTile: View {
 
     var body: some View {
         Image(systemName: symbol)
-            .font(.system(size: 15, weight: .semibold))
+            .font(.system(size: 15, weight: .semibold, design: .rounded))
             .foregroundStyle(color)
             .frame(width: 32, height: 32)
             .background(color.opacity(0.16), in: RoundedRectangle(cornerRadius: FQRadius.tile, style: .continuous))

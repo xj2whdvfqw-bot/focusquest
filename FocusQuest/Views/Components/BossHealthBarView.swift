@@ -18,7 +18,7 @@ struct BossHealthBarView: View {
             }
             HStack(spacing: FQSpace.xs) {
                 ForEach(0..<max(1, segments), id: \.self) { index in
-                    Capsule().fill(index < filledSegments ? FQColor.danger : FQColor.track)
+                    RoundedRectangle(cornerRadius: FQRadius.tile, style: .continuous).fill(index < filledSegments ? FQColor.danger : FQColor.track)
                         .frame(maxWidth: .infinity).frame(height: 8)
                         .animation(.easeOut(duration: 0.3), value: filledSegments)
                 }

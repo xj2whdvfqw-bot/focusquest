@@ -62,6 +62,10 @@ struct PlayerStats: Codable, Sendable {
     var sessionHistory: [SessionSummary]
     /// Porazeni bossove podle predmetu. Uklada se spolu se statistikami (UserDefaults).
     var bestiary: [BestiaryEntry] = []
+    /// Zdravi hrdiny. Utek z bitvy ho srazi, kazda vyhra kousek doplni.
+    var heroHP = PlayerStats.maxHeroHP
+    /// Kdy naposledy quest propadl utekem z appky (serie se tim prerusi).
+    var lastQuestFailedAt: Date?
 
     var winRate: Double { battles > 0 ? Double(wins) / Double(battles) : 0 }
     var xpIntoLevel: Int { totalXP % 1000 }
@@ -70,7 +74,7 @@ struct PlayerStats: Codable, Sendable {
     static let initial = PlayerStats(level: 1, totalXP: 0, wins: 0, battles: 0, streakDays: 0, bestCombo: 1, totalHPDealt: 0, sessionHistory: [])
 
     enum CodingKeys: String, CodingKey {
-        case level, totalXP, wins, battles, streakDays, bestCombo, totalHPDealt, sessionHistory, bestiary
+        case level, totalXP, wins, battles, streakDays, bestCombo, totalHPDealt, sessionHistory, bestiary, heroHP, lastQuestFailedAt
     }
 }
 
@@ -87,6 +91,9 @@ extension PlayerStats {
         totalHPDealt = try container.decode(Int.self, forKey: .totalHPDealt)
         sessionHistory = try container.decode([SessionSummary].self, forKey: .sessionHistory)
         bestiary = (try? container.decodeIfPresent([BestiaryEntry].self, forKey: .bestiary)) ?? []
+        let storedHP = (try? container.decodeIfPresent(Int.self, forKey: .heroHP)) ?? Self.maxHeroHP
+        heroHP = min(Self.maxHeroHP, max(0, storedHP))
+        lastQuestFailedAt = try? container.decodeIfPresent(Date.self, forKey: .lastQuestFailedAt)
     }
 }
 
@@ -105,8 +112,12 @@ extension PlayerStats {
         level = max(1, totalXP / Self.xpPerLevel + 1)
         totalHPDealt += max(0, summary.verifiedMinutes)
         sessionHistory.insert(summary, at: 0)
+        if bossDefeated { heroHP = min(Self.maxHeroHP, heroHP + Self.heroHPHealPerWin) }
 
-        if let previousDay {
+        // Po propadlem questu se serie pocita znovu od jedne, i kdyz byla posledni bitva vcera.
+        if let failed = lastQuestFailedAt, let previousDay, failed > previousDay {
+            streakDays = 1
+        } else if let previousDay {
             if calendar.isDate(previousDay, inSameDayAs: summary.completedAt) {
                 streakDays = max(1, streakDays)
             } else if let dayAfter = calendar.date(byAdding: .day, value: 1, to: previousDay), calendar.isDate(dayAfter, inSameDayAs: summary.completedAt) {
@@ -117,6 +128,39 @@ extension PlayerStats {
         } else {
             streakDays = 1
         }
+    }
+
+    // MARK: - Hrdina a serie
+
+    static let maxHeroHP = 100
+    /// Kolik HP hrdina ztrati, kdyz behem bitvy odejde z appky a nevrati se vcas.
+    static let heroHPLossPerFailedQuest = 25
+    static let heroHPHealPerWin = 10
+
+    /// Hrac odesel z appky behem bitvy a nevratil se vcas: ztrati HP hrdiny a serii dni.
+    mutating func recordQuestFailure(at date: Date = Date()) {
+        heroHP = max(0, heroHP - Self.heroHPLossPerFailedQuest)
+        streakDays = 0
+        lastQuestFailedAt = date
+    }
+
+    /// Serie, ktera plati dnes: kdyz hrac vcera ani dnes nebojoval, uz neplati.
+    func currentStreak(now: Date = Date(), calendar: Calendar = .current) -> Int {
+        guard let last = sessionHistory.first?.completedAt, streakDays > 0 else { return 0 }
+        if let failed = lastQuestFailedAt, failed > last { return 0 }
+        let gap = calendar.dateComponents([.day], from: calendar.startOfDay(for: last), to: calendar.startOfDay(for: now)).day ?? 0
+        return gap <= 1 ? streakDays : 0
+    }
+
+    /// Overene minuty po dnech za poslednich `days` dni, od nejstarsiho po dnesek.
+    func dailyFocusMinutes(days: Int = 7, now: Date = Date(), calendar: Calendar = .current) -> [DailyFocus] {
+        let today = calendar.startOfDay(for: now)
+        let starts = (0..<max(1, days)).reversed().compactMap { calendar.date(byAdding: .day, value: -$0, to: today) }
+        var minutesByDay: [Date: Int] = [:]
+        for session in sessionHistory {
+            minutesByDay[calendar.startOfDay(for: session.completedAt), default: 0] += max(0, session.verifiedMinutes)
+        }
+        return starts.map { DailyFocus(day: $0, minutes: minutesByDay[$0] ?? 0) }
     }
 
     /// Prida XP mimo bitvu (vyvojarske testovaci odmeny) a prepocita level.
@@ -133,4 +177,13 @@ extension PlayerStats {
             bestiary.append(BestiaryEntry(bossID: bossID, bossName: bossName, subject: subject, defeats: 1))
         }
     }
+}
+
+/// Jeden sloupec tydenniho grafu soustredeni.
+struct DailyFocus: Identifiable, Equatable, Sendable {
+    let day: Date
+    let minutes: Int
+
+    var id: Date { day }
+    var hours: Double { Double(minutes) / 60 }
 }

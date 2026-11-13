@@ -2,6 +2,16 @@ import Foundation
 
 enum BossTier: String, Codable, CaseIterable, Sendable {
     case novice, adept, elite, mythic
+
+    /// Obtiznost podle pozice na ceste: kazde dva uzly o stupen tezsi.
+    static func forNode(_ index: Int) -> BossTier {
+        switch index {
+        case ..<2: .novice
+        case 2..<4: .adept
+        case 4..<6: .elite
+        default: .mythic
+        }
+    }
 }
 
 struct Boss: Identifiable, Codable, Hashable, Sendable {
@@ -20,21 +30,21 @@ struct Boss: Identifiable, Codable, Hashable, Sendable {
         currentHP = max(0, currentHP - max(0, amount))
     }
 
-    // HP bosse si hrac voli sam: 1 HP = 1 minuta overeneho soustredeni.
-    // Nejkratsi bitva je 10 minut a delka se meni po 5 minutach.
+    // 1 HP = 1 minuta overeneho soustredeni. Delku bitvy hrac nevoli:
+    // uzel N na ceste trva 10 + 5*(N-1) minut. Rozsah nize hlida jen server.
     static let minutesRange = 10...240
     static let minutesStep = 5
-    static let defaultMinutes = 25
+    static let firstNodeMinutes = 10
+
+    /// Pevna delka uzlu na ceste (index od nuly): 10, 15, 20, 25 ... minut.
+    static func fixedMinutes(forNode index: Int) -> Int {
+        clampedMinutes(firstNodeMinutes + minutesStep * max(0, index))
+    }
 
     /// Zaokrouhli na nejblizsich 5 minut a drzi hodnotu v rozsahu 10-240.
     static func clampedMinutes(_ value: Int) -> Int {
         let snapped = Int((Double(value) / Double(minutesStep)).rounded()) * minutesStep
         return min(minutesRange.upperBound, max(minutesRange.lowerBound, snapped))
-    }
-
-    /// Vychozi HP konkretniho bosse, dokud si ho hrac nezmeni.
-    static func initialMinutes(for bossID: String) -> Int {
-        clampedMinutes(roster.first { $0.id == bossID }?.maxHP ?? defaultMinutes)
     }
 
     /// Stejny boss s plnym zdravim na zvoleny pocet minut.
@@ -45,41 +55,122 @@ struct Boss: Identifiable, Codable, Hashable, Sendable {
         return copy
     }
 
-    var category: BossCategory { Boss.categoryByID[id] ?? .brainrot }
+    var world: BossWorld { BossWorld.placement[id]?.world ?? .brainrot }
+    /// Pozice na ceste sveta (od nuly).
+    var nodeIndex: Int { BossWorld.placement[id]?.index ?? 0 }
 
-    /// Bossove podle kategorii; maxHP je jejich vychozi delka bitvy v minutach.
-    static let roster: [Boss] = [
-        Boss(id: "tung-tung-sahur", name: "Tung Tung Tung Sahur", tier: .novice, maxHP: 25, currentHP: 25, pixelSpriteConfig: "tung-tung-sahur", lootTable: ["chronos-shield"]),
-        Boss(id: "ballerina-cappuccina", name: "Ballerina Cappuccina", tier: .adept, maxHP: 30, currentHP: 30, pixelSpriteConfig: "ballerina-cappuccina", lootTable: ["scholars-tome"]),
-        Boss(id: "tralalero-tralala", name: "Tralalero Tralala", tier: .elite, maxHP: 45, currentHP: 45, pixelSpriteConfig: "tralalero-tralala", lootTable: ["ember-charm"]),
-        Boss(id: "banana-bandit", name: "Banana Bandit", tier: .novice, maxHP: 20, currentHP: 20, pixelSpriteConfig: "banana-bandit", lootTable: ["chronos-shield"]),
-        Boss(id: "goggle-grunt", name: "Goggle Grunt", tier: .adept, maxHP: 35, currentHP: 35, pixelSpriteConfig: "goggle-grunt", lootTable: ["scholars-tome"]),
-        Boss(id: "purple-chomper", name: "Purple Chomper", tier: .elite, maxHP: 50, currentHP: 50, pixelSpriteConfig: "purple-chomper", lootTable: ["chronos-shield", "scholars-tome"]),
-        Boss(id: "captain-procrastination", name: "Captain Procrastination", tier: .adept, maxHP: 40, currentHP: 40, pixelSpriteConfig: "captain-procrastination", lootTable: ["scholars-tome"]),
-        Boss(id: "dark-doomscroller", name: "The Dark Doomscroller", tier: .elite, maxHP: 60, currentHP: 60, pixelSpriteConfig: "dark-doomscroller", lootTable: ["chronos-shield"]),
-        Boss(id: "iron-distraction", name: "Iron Distraction", tier: .mythic, maxHP: 90, currentHP: 90, pixelSpriteConfig: "iron-distraction", lootTable: ["ember-charm"])
-    ]
+    /// Vsichni bossove vsech svetu v poradi cest.
+    static let roster: [Boss] = BossWorld.allCases.flatMap(\.bosses)
 
-    private static let categoryByID: [String: BossCategory] = [
-        "tung-tung-sahur": .brainrot, "ballerina-cappuccina": .brainrot, "tralalero-tralala": .brainrot,
-        "banana-bandit": .henchlings, "goggle-grunt": .henchlings, "purple-chomper": .henchlings,
-        "captain-procrastination": .heroes, "dark-doomscroller": .heroes, "iron-distraction": .heroes
-    ]
+    static func find(_ id: String?) -> Boss? {
+        guard let id else { return nil }
+        return roster.first { $0.id == id }
+    }
 }
 
-/// Skupiny bossu v Arene.
-enum BossCategory: String, CaseIterable, Sendable, Identifiable {
-    case brainrot, henchlings, heroes
+/// Tematicke svety. Kazdy ma vlastni cestu bossu; dalsi uzel se odemkne porazenim predchoziho.
+enum BossWorld: String, CaseIterable, Identifiable, Sendable {
+    case heroes, villains, sewerDojo, fairyTale, brainrot
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
-        case .brainrot: "Brainrot"
-        case .henchlings: "Henchlings"
-        case .heroes: "Super Slackers"
+        case .heroes: "Hero Heights"
+        case .villains: "Villain Vault"
+        case .sewerDojo: "Sewer Dojo"
+        case .fairyTale: "Swamp Kingdom"
+        case .brainrot: "Brainrot Badlands"
         }
     }
 
-    var bosses: [Boss] { Boss.roster.filter { $0.category == self } }
+    var tagline: String {
+        switch self {
+        case .heroes: "Caped slackers who'd rather nap than save the day."
+        case .villains: "Masterminds of the endless scroll."
+        case .sewerDojo: "Four shell-shocked ninjas who skipped training."
+        case .fairyTale: "Once upon a time, someone stopped studying."
+        case .brainrot: "Where focus goes to melt."
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .heroes: "bolt.shield.fill"
+        case .villains: "theatermasks.fill"
+        case .sewerDojo: "figure.martial.arts"
+        case .fairyTale: "crown.fill"
+        case .brainrot: "tornado"
+        }
+    }
+
+    var bosses: [Boss] { Self.builtBosses[self] ?? [] }
+
+    /// Uzel, ktery je na rade (prvni neporazeny); nil = cely svet je dobyty.
+    func frontierBoss(cleared: Int) -> Boss? {
+        let list = bosses
+        return cleared < list.count ? list[max(0, cleared)] : nil
+    }
+
+    // MARK: - Soupiska
+
+    private static let loot = ["chronos-shield", "scholars-tome", "ember-charm"]
+
+    /// (id, jmeno) v poradi uzlu na ceste.
+    private static let lineup: [BossWorld: [(String, String)]] = [
+        .heroes: [
+            ("web-slacker", "Web-Slacker"),
+            ("thunder-snooze", "Thunder Snooze"),
+            ("mr-incredulous", "Mr. Incredulous"),
+            ("elasti-snooze", "Elasti-Snooze"),
+            ("dash-distracted", "Dash Distracted"),
+            ("vanishing-violet", "Vanishing Violet"),
+            ("jack-jack-attack", "Jack-Jack Attack")
+        ],
+        .villains: [
+            ("the-jokester", "The Jokester"),
+            ("venomeme", "Venomeme"),
+            ("green-gobbler", "The Green Gobbler"),
+            ("sandbagman", "Sandbagman")
+        ],
+        .sewerDojo: [
+            ("leo-napardo", "Leo-Nap-ardo"),
+            ("raph-scroll", "Raph-Scroll"),
+            ("do-not-tello", "Do-Not-Tello"),
+            ("mikey-snackelangelo", "Mikey Snackelangelo")
+        ],
+        .fairyTale: [
+            ("swamp-ogre", "Grumbrek the Swamp Ogre"),
+            ("don-keyboard", "Don Keyboard"),
+            ("rapunzzzel", "Rapunzzzel"),
+            ("puss-in-popups", "Puss in Pop-ups")
+        ],
+        .brainrot: [
+            ("banana-bandit", "Banana Bandit"),
+            ("tung-tung-sahur", "Tung Tung Tung Sahur"),
+            ("goggle-grunt", "Goggle Grunt"),
+            ("ballerina-cappuccina", "Ballerina Cappuccina"),
+            ("captain-procrastination", "Captain Procrastination"),
+            ("purple-chomper", "Purple Chomper"),
+            ("tralalero-tralala", "Tralalero Tralala"),
+            ("dark-doomscroller", "The Dark Doomscroller"),
+            ("iron-distraction", "Iron Distraction")
+        ]
+    ]
+
+    private static let builtBosses: [BossWorld: [Boss]] = Dictionary(uniqueKeysWithValues: allCases.map { world in
+        let bosses = (lineup[world] ?? []).enumerated().map { index, entry in
+            let minutes = Boss.fixedMinutes(forNode: index)
+            return Boss(id: entry.0, name: entry.1, tier: .forNode(index), maxHP: minutes, currentHP: minutes, pixelSpriteConfig: entry.0, lootTable: [loot[index % loot.count]])
+        }
+        return (world, bosses)
+    })
+
+    fileprivate static let placement: [String: (world: BossWorld, index: Int)] = {
+        var result: [String: (world: BossWorld, index: Int)] = [:]
+        for world in allCases {
+            for (index, entry) in (lineup[world] ?? []).enumerated() { result[entry.0] = (world, index) }
+        }
+        return result
+    }()
 }

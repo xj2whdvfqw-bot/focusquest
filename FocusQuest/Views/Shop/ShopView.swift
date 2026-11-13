@@ -93,7 +93,7 @@ struct ShopView: View {
                     .frame(maxWidth: .infinity)
             }
             .glassButtonStyle()
-            .buttonBorderShape(.capsule)
+            .buttonBorderShape(.roundedRectangle(radius: FQRadius.control))
             .tint(FQColor.accent)
         } else {
             Button { withAnimation(.easeOut(duration: 0.2)) { model.buy(item); tryOnID = nil } } label: {
@@ -104,7 +104,7 @@ struct ShopView: View {
                     .frame(maxWidth: .infinity)
             }
             .prominentGlassButtonStyle()
-            .buttonBorderShape(.capsule)
+            .buttonBorderShape(.roundedRectangle(radius: FQRadius.control))
             .tint(FQColor.accent)
             .disabled(!model.canAfford(item))
             .accessibilityLabel(model.canAfford(item) ? "Buy \(item.name) for \(item.price) coins" : "\(item.name) costs \(item.price) coins, not enough coins")

@@ -18,10 +18,12 @@ struct UserProfile: Codable, Sendable {
     var ownedEquipmentIDs: [String] = []
     /// false = hrac jeste neprosel uvodni tvorbou hrdiny.
     var hasCreatedHero = false
+    /// Co chce hrac s FocusQuestem zmenit; vybira v uvodu.
+    var focusGoals: [FocusGoal] = []
 
     enum CodingKeys: String, CodingKey {
         case userID, username, title, heroClass, avatarMatrix, dailyFocusGoalMinutes, equippedLootIDs, unlockedLootIDs
-        case avatar, village, coins, bossesDefeated, hasCreatedHero, ownedEquipmentIDs
+        case avatar, village, coins, bossesDefeated, hasCreatedHero, ownedEquipmentIDs, focusGoals
     }
 
     static func fresh(deviceID: String) -> UserProfile {
@@ -49,5 +51,39 @@ extension UserProfile {
         bossesDefeated = max(0, storedBosses)
         hasCreatedHero = try container.decodeIfPresent(Bool.self, forKey: .hasCreatedHero) ?? false
         ownedEquipmentIDs = (try? container.decodeIfPresent([String].self, forKey: .ownedEquipmentIDs)) ?? []
+        // Neznamy cil z novejsi verze se zahodi, ostatni zustanou.
+        let storedGoals = (try? container.decodeIfPresent([String].self, forKey: .focusGoals)) ?? []
+        focusGoals = storedGoals.compactMap(FocusGoal.init(rawValue:))
+    }
+}
+
+/// Uvodni cil hrace. Urcuje, cim ho appka v Profilu povzbuzuje.
+enum FocusGoal: String, Codable, CaseIterable, Identifiable, Sendable {
+    case removeBrainFog, stopScrolling, studyDaily
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .removeBrainFog: "Remove brain fog"
+        case .stopScrolling: "Stop scrolling"
+        case .studyDaily: "Study every day"
+        }
+    }
+
+    var detail: String {
+        switch self {
+        case .removeBrainFog: "Long, calm focus blocks to clear your head."
+        case .stopScrolling: "Win back the hours your feed keeps stealing."
+        case .studyDaily: "A small battle every day keeps the streak alive."
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .removeBrainFog: "cloud.sun.fill"
+        case .stopScrolling: "hand.raised.fill"
+        case .studyDaily: "calendar.badge.checkmark"
+        }
     }
 }
