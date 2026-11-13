@@ -57,7 +57,8 @@ struct EscapeNotificationService: EscapeNotifying {
 /// Zbytek appky mluvi jen s timhle manazerem, takze se nic jineho menit nebude.
 @MainActor
 final class AppBlockerManager: ObservableObject {
-    static let gracePeriod: TimeInterval = 10
+    /// Konstanta; cte ji i notifikacni sluzba mimo hlavni vlakno.
+    nonisolated static let gracePeriod: TimeInterval = 10
     /// Kratka prodleva pred upozornenim: kdyz hrac jen zamkl displej, stihne se zrusit.
     static let warningDelay: TimeInterval = 1.5
     private static let selectionKey = "focusquest.blocked-apps"
