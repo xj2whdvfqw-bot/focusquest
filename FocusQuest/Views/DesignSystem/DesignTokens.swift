@@ -8,14 +8,20 @@ enum FQSpace {
     static let sm: CGFloat = 8
     static let md: CGFloat = 12
     static let lg: CGFloat = 16
+    /// Okraj obrazovky: o neco vzdusnejsi nez vnitrni rozestupy.
+    static let gutter: CGFloat = 20
     static let xl: CGFloat = 24
     static let xxl: CGFloat = 32
+    static let xxxl: CGFloat = 48
 }
 
+/// Velka zaobleni: vzdusny "frosted glass" vzhled.
 enum FQRadius {
-    static let card: CGFloat = 24
-    static let control: CGFloat = 16
-    static let tile: CGFloat = 8
+    static let card: CGFloat = 32
+    static let control: CGFloat = 20
+    /// Pilulky (appky v onboardingu, volby casu): skoro polokruhove konce.
+    static let pill: CGFloat = 26
+    static let tile: CGFloat = 12
 }
 
 /// Typografie: SF Pro Rounded (systemove pismo, zaoblena varianta), tri rezy (regular / medium / semibold), nic pod 12 pt.
@@ -28,4 +34,13 @@ extension Font {
     static let fqLabel = Font.system(.subheadline, design: .rounded, weight: .medium)
     static let fqSecondary = Font.system(.subheadline, design: .rounded)
     static let fqMeta = Font.system(.caption, design: .rounded)
+    /// Obri odpocet bitvy.
+    static let fqTimer = Font.system(size: 84, weight: .medium, design: .rounded)
+}
+
+extension Color {
+    /// Barva z 0xRRGGBB (barvy znacek v onboardingu).
+    init(hex: UInt32) {
+        self.init(red: Double((hex >> 16) & 0xFF) / 255, green: Double((hex >> 8) & 0xFF) / 255, blue: Double(hex & 0xFF) / 255)
+    }
 }

@@ -53,10 +53,8 @@ final class AppDIContainer {
         // Statistiky zmenene vitezstvim nebo bonusem se hned ukazi i na zalozce Stats.
         profileViewModel.onStatsChanged = { [weak stats = self.statsViewModel] updated in stats?.replace(with: updated) }
 
-        // Hlidac odchodu z appky behem bitvy.
-        appBlocker.isBattleRunning = { [weak arenaViewModel] in arenaViewModel?.isBattleRunning ?? false }
-        appBlocker.onEscapeTimeout = { [weak arenaViewModel] in await arenaViewModel?.failForLeavingApp() }
-        // Propadly quest stoji hrdinu HP a serii dni.
+        // Ustup z bitvy ("Retreat Anyway") stoji hrdinu HP a serii dni.
+        // Odchod z appky uz se netresta: bitva bezi dal i na pozadi.
         arenaViewModel.onQuestFailed = { [weak profileViewModel] in profileViewModel?.recordQuestFailure() }
     }
 }

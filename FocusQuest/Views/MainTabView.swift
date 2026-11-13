@@ -37,7 +37,6 @@ struct MainTabView: View {
     @State private var showsHeroCreator = false
     /// Ozubene kolo na kazde zalozce otevira tentyz list Nastaveni.
     @State private var settingsPresenter = SettingsPresenter()
-    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         Group {
@@ -68,12 +67,10 @@ struct MainTabView: View {
                         .presentationDragIndicator(.visible)
                 }
                 .task {
-                    container.appBlocker.startObservingScreenLock()
                     if FocusQuestTab.launchArgument == "settings" { settingsPresenter.isPresented = true }
                     await presentHeroCreatorIfNeeded()
                 }
-                // Odchod z appky behem bitvy: upozorneni a po 10 s propadly quest.
-                .onChange(of: scenePhase) { _, phase in container.appBlocker.handleScenePhase(phase) }
+                // Odchod z appky behem bitvy se netresta: hodiny bitvy bezi dal i na pozadi.
                 .fullScreenCover(isPresented: $showsHeroCreator) {
                     HeroCreatorView(model: container.profileViewModel, blocker: container.appBlocker) { showsHeroCreator = false }
                 }

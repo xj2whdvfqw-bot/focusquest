@@ -194,36 +194,52 @@ struct HeroCreatorView: View {
     // MARK: - Appky (zatim maketa bez FamilyControls)
 
     private var appPicker: some View {
-        VStack(alignment: .leading, spacing: FQSpace.md) {
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: FQSpace.sm), count: 3), spacing: FQSpace.sm) {
-                ForEach(AppBlockerManager.catalog) { app in appTile(app) }
+        VStack(alignment: .leading, spacing: FQSpace.lg) {
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: FQSpace.md), GridItem(.flexible())], spacing: FQSpace.md) {
+                ForEach(AppBlockerManager.catalog) { app in appPill(app) }
             }
-            Label("Real app blocking arrives in a later update. Until then, leaving FocusQuest mid-battle for more than \(Int(AppBlockerManager.gracePeriod)) seconds fails the quest.", systemImage: "info.circle")
+            Label("Real app blocking arrives in a later update.", systemImage: "info.circle")
                 .font(.fqMeta)
                 .foregroundStyle(FQColor.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(FQSpace.lg)
+        .padding(FQSpace.xl)
         .glassCard()
     }
 
-    private func appTile(_ app: BlockableApp) -> some View {
+    /// Sklenena pilulka v barvach znacky; vybrana appka dostane barevny nadech a zamek.
+    private func appPill(_ app: BlockableApp) -> some View {
         let isSelected = blocker.isSelected(app)
+        let colors = app.brandHex.map(Color.init(hex:))
+        let brand = LinearGradient(colors: colors.count > 1 ? colors : colors + colors, startPoint: .topLeading, endPoint: .bottomTrailing)
+        let shape = RoundedRectangle(cornerRadius: FQRadius.pill, style: .continuous)
         return Button { blocker.toggle(app) } label: {
-            VStack(spacing: FQSpace.xs) {
-                Image(systemName: isSelected ? "lock.fill" : app.symbol)
-                    .font(.system(size: 20, weight: .semibold, design: .rounded))
-                    .foregroundStyle(isSelected ? FQColor.onAccent : FQColor.textPrimary)
-                    .frame(width: 44, height: 44)
-                    .background(isSelected ? FQColor.accent : FQColor.fill, in: RoundedRectangle(cornerRadius: FQRadius.tile, style: .continuous))
+            HStack(spacing: FQSpace.sm) {
+                Image(systemName: app.symbol)
+                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+                    .foregroundStyle(Color.white)
+                    .frame(width: 34, height: 34)
+                    .background(brand, in: Circle())
+                    .overlay { Circle().strokeBorder(Color.white.opacity(0.35), lineWidth: 1) }
+                    .accessibilityHidden(true)
                 Text(app.name)
-                    .font(.fqMeta)
-                    .foregroundStyle(isSelected ? FQColor.textPrimary : FQColor.textSecondary)
+                    .font(.fqLabel)
+                    .foregroundStyle(FQColor.textPrimary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
+                Spacer(minLength: 0)
+                Image(systemName: isSelected ? "lock.fill" : "plus")
+                    .font(.system(size: 12, weight: .bold, design: .rounded))
+                    .foregroundStyle(isSelected ? Color.white : FQColor.textSecondary)
+                    .accessibilityHidden(true)
             }
-            .frame(maxWidth: .infinity, minHeight: 72)
-            .contentShape(Rectangle())
+            .padding(.leading, FQSpace.sm)
+            .padding(.trailing, FQSpace.lg)
+            .frame(minHeight: 52)
+            .glassControl(in: shape, tint: isSelected ? colors.first?.opacity(0.55) : nil, interactive: true)
+            .overlay { shape.strokeBorder(isSelected ? AnyShapeStyle(brand) : AnyShapeStyle(Color.white.opacity(0.12)), lineWidth: isSelected ? 1.5 : 1) }
+            .contentShape(shape)
+            .animation(.easeOut(duration: 0.2), value: isSelected)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(app.name)

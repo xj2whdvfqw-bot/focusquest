@@ -5,9 +5,29 @@ enum ArenaState: Equatable {
     case idle
     case awaitingFlatPlacement
     case focusing(elapsedSeconds: Int, combo: Int)
+    /// Hrac bitvu pozastavil tlacitkem Pause; cas se nepocita.
+    case paused(elapsedSeconds: Int)
     case warningCountdown(secondsRemaining: Double, frozenElapsedSeconds: Int)
     case penalized(reason: String)
     case victory(BattleVictory)
+    /// Hrac ustoupil z bitvy ("Retreat Anyway"): obrazovka porazky.
+    case defeated(BattleDefeat)
+}
+
+/// Ustup z bitvy: co ukaze obrazovka porazky.
+struct BattleDefeat: Equatable, Sendable {
+    let boss: Boss
+    let goalMinutes: Int
+    let focusedMinutes: Int
+    let heroHPLost: Int
+    var missedMinutes: Int { max(0, goalMinutes - focusedMinutes) }
+}
+
+/// Ukol na karte "Working on" behem bitvy.
+struct BattleTask: Identifiable, Equatable, Sendable {
+    let id: UUID
+    var title: String
+    var isDone = false
 }
 
 /// Vyhrana bitva: co ukaze obrazovka vitezstvi a co se pripise do profilu.
@@ -18,6 +38,8 @@ struct BattleVictory: Equatable, Sendable {
     let xpEarned: Int
     let coinsEarned: Int
     let droppedLoot: LootItem?
+    /// Vlastni bitva z Areny: neposouva cestu sveta.
+    var isCustom = false
 }
 
 @MainActor
@@ -29,11 +51,15 @@ final class ArenaViewModel: ObservableObject {
     @Published private(set) var posture: DevicePostureState = .unavailable
     @Published private(set) var preferences: AppPreferences
     @Published private(set) var activeSession: StudySession?
+    /// Vlastni bitva (Custom Battle): libovolna delka, nahodny boss, cestu sveta neposouva.
+    @Published private(set) var isCustomBattle = false
+    /// Karta "Working on": ukoly, ktere si hrac behem bitvy odskrtava. Jen v pameti.
+    @Published private(set) var tasks: [BattleTask] = []
     /// Volano, kdyz se predvolby zmeni z Areny (prehravac, postup na ceste), aby je znalo i Nastaveni.
     var onPreferencesChanged: ((AppPreferences) -> Void)?
     /// Volano jednou za kazdou vyhranou bitvu - pripise XP, mince a loot do profilu.
     var onVictory: ((BattleVictory) -> Void)?
-    /// Volano, kdyz hrac behem bitvy opustil appku a nevratil se vcas (ztrata HP hrdiny a serie).
+    /// Volano, kdyz hrac z bitvy ustoupi (ztrata HP hrdiny a serie).
     var onQuestFailed: (() -> Void)?
 
     private let validation: any FocusValidationServiceProtocol
@@ -55,6 +81,7 @@ final class ArenaViewModel: ObservableObject {
     private var hasUsedGraceRelic = false
     private var warningStartedAt: TimeInterval?
     private var warningFrozenElapsed = 0
+    private var pausedAt: TimeInterval?
     private var isFinishing = false
 
     init(validation: any FocusValidationServiceProtocol, motion: any MotionMonitoringServiceProtocol, haptics: any HapticEngineServiceProtocol, audio: any AudioAtmosphereServiceProtocol, security: any RuntimeSecurityServiceProtocol, preferenceStore: any PreferencesStoreProtocol, profileProvider: @escaping @MainActor () -> UserProfile, signer: any CryptoSignerProtocol = CryptoSigner(), simulationSigningKey: Data = Data(), activity: (any FocusBattleActivityServiceProtocol)? = nil, notifications: (any BattleNotificationServiceProtocol)? = nil) {
@@ -83,7 +110,7 @@ final class ArenaViewModel: ObservableObject {
 
     var isBetweenBattles: Bool {
         switch state {
-        case .idle, .penalized, .victory: true
+        case .idle, .penalized, .victory, .defeated: true
         default: false
         }
     }
@@ -114,12 +141,101 @@ final class ArenaViewModel: ObservableObject {
         activeSession = nil
         // Boss se pred dalsi bitvou vrati na plne zdravi podle svych minut.
         resetBossHealth()
+        endCustomBattle()
     }
 
-    /// Bitva prave bezi (hodiny tikaji nebo bezi odpocet zvednuteho telefonu).
+    // MARK: - Vlastni bitva
+
+    /// Custom Battle z Areny: zvolena delka a nahodny odemceny boss. Bitva se hned pripravi.
+    func startCustomBattle(minutes: Int, subject: StudySubject) {
+        guard isBetweenBattles else { return }
+        let pool = Boss.roster.filter { preferences.isUnlocked($0) }
+        guard let boss = pool.randomElement() else { return }
+        selectSubject(subject)
+        isCustomBattle = true
+        selectedBoss = boss.withHP(minutes: minutes)
+        startSession()
+    }
+
+    /// Konec vlastni bitvy: vybrany je zase posledni uzel cesty.
+    func endCustomBattle() {
+        guard isCustomBattle, isBetweenBattles else { return }
+        isCustomBattle = false
+        let stored = Boss.find(preferences.lastBossID).flatMap { preferences.isUnlocked($0) ? $0 : nil }
+        selectedBoss = stored ?? BossWorld.allCases[0].bosses[0]
+    }
+
+    // MARK: - Karta "Working on"
+
+    static let maxTasks = 12
+    static let maxTaskLength = 80
+
+    func addTask(_ title: String) {
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, tasks.count < Self.maxTasks else { return }
+        tasks.append(BattleTask(id: UUID(), title: String(trimmed.prefix(Self.maxTaskLength))))
+    }
+
+    func toggleTask(_ id: UUID) {
+        guard let index = tasks.firstIndex(where: { $0.id == id }) else { return }
+        tasks[index].isDone.toggle()
+    }
+
+    func removeTask(_ id: UUID) { tasks.removeAll { $0.id == id } }
+
+    // MARK: - Pauza a ustup
+
+    /// Pause: hodiny stoji, zvednuti telefonu se netresta a cas pauzy se do bitvy nepocita.
+    func pauseBattle() {
+        guard case let .focusing(elapsed, _) = state, !isFinishing else { return }
+        timerTask?.cancel()
+        timerTask = nil
+        pausedAt = MonotonicClock.now
+        state = .paused(elapsedSeconds: elapsed)
+        audio.stop()
+        let bossHP = selectedBoss.currentHP
+        Task { await notifications?.cancelVictory() }
+        Task { await activity?.update(bossHP: bossHP, elapsedSeconds: elapsed, warningSecondsRemaining: nil) }
+    }
+
+    func resumeBattle() {
+        guard case let .paused(elapsed) = state else { return }
+        if let pausedAt {
+            let pausedDuration = MonotonicClock.now - pausedAt
+            sessionStartUptime += pausedDuration
+            sessionStartWallClock.addTimeInterval(pausedDuration)
+        }
+        pausedAt = nil
+        beginFocusing(elapsed: elapsed)
+        // Kdo pri pauze telefon zvedl, musi ho zase polozit - plati stejne pravidlo jako behem bitvy.
+        if posture == .liftedOrTilted { beginWarning(elapsed: elapsed) }
+    }
+
+    /// "Retreat Anyway": bitva konci porazkou, hrdina ztrati HP a serie zacne znovu.
+    func retreat() {
+        guard !isFinishing else { return }
+        let elapsed: Int
+        switch state {
+        case .focusing(let value, _), .paused(let value), .warningCountdown(_, let value): elapsed = value
+        case .awaitingFlatPlacement:
+            // Hodiny se jeste nerozbehly: odchod nic nestoji.
+            stopSession()
+            return
+        default: return
+        }
+        let goal = targetSeconds / 60
+        let defeat = BattleDefeat(boss: selectedBoss, goalMinutes: goal, focusedMinutes: min(goal, elapsed / 60), heroHPLost: PlayerStats.heroHPLossPerFailedQuest)
+        tearDownBattle()
+        activeSession = nil
+        state = .defeated(defeat)
+        haptics.triggerPenaltyFailure(enabled: preferences.isHapticsEnabled)
+        onQuestFailed?()
+    }
+
+    /// Bitva prave bezi (hodiny tikaji, je pozastavena nebo bezi odpocet zvednuteho telefonu).
     var isBattleRunning: Bool {
         switch state {
-        case .focusing, .warningCountdown: true
+        case .focusing, .paused, .warningCountdown: true
         default: false
         }
     }
@@ -130,15 +246,9 @@ final class ArenaViewModel: ObservableObject {
     /// Vybere uzel na ceste. Zamcene uzly vybrat nejdou; delka bitvy je dana uzlem.
     func selectBoss(_ boss: Boss) {
         guard isBetweenBattles, isUnlocked(boss) else { return }
+        isCustomBattle = false
         selectedBoss = Boss.find(boss.id) ?? boss
         changePreferences { $0.lastBossID = boss.id }
-    }
-
-    /// Hrac opustil appku behem bitvy a do limitu se nevratil: quest propadne.
-    func failForLeavingApp() async {
-        guard isBattleRunning else { return }
-        await penalize(reason: "You left FocusQuest mid-battle. The boss struck while you were away: you lost hero HP and your daily streak.")
-        onQuestFailed?()
     }
 
     func selectSubject(_ subject: StudySubject) {
@@ -148,6 +258,8 @@ final class ArenaViewModel: ObservableObject {
     }
 
     private func resetBossHealth() {
+        // Vlastni bitva si drzi zvolenou delku; uzel cesty se vrati na svou pevnou delku.
+        if isCustomBattle { selectedBoss = selectedBoss.withHP(minutes: selectedBoss.maxHP); return }
         selectedBoss = Boss.find(selectedBoss.id) ?? selectedBoss.withHP(minutes: selectedBoss.maxHP)
     }
 
@@ -303,12 +415,13 @@ final class ArenaViewModel: ObservableObject {
                 verifiedMinutes: minutes,
                 xpEarned: result.xpEarned,
                 coinsEarned: RewardRules.coins(verifiedMinutes: minutes, bossDefeated: result.boss.isDefeated),
-                droppedLoot: result.loot
+                droppedLoot: result.loot,
+                isCustom: isCustomBattle
             )
             tearDownBattle(keepNotification: true)
             selectedBoss.currentHP = result.boss.currentHP
             // Porazeny uzel na rade odemkne dalsi uzel cesty.
-            if result.boss.isDefeated, let template = Boss.find(selectedBoss.id) { changePreferences { $0.markCleared(template) } }
+            if result.boss.isDefeated, !isCustomBattle, let template = Boss.find(selectedBoss.id) { changePreferences { $0.markCleared(template) } }
             state = .victory(victory)
             activeSession = nil
             onVictory?(victory)
@@ -382,6 +495,7 @@ final class ArenaViewModel: ObservableObject {
         postureTask?.cancel(); timerTask?.cancel()
         postureTask = nil; timerTask = nil
         warningStartedAt = nil
+        pausedAt = nil
         audio.stop()
         Task { await activity?.end() }
         if !keepNotification { Task { await notifications?.cancelVictory() } }
