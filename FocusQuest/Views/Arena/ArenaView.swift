@@ -195,7 +195,7 @@ struct HeroHealthBar: View {
                 ZStack(alignment: .leading) {
                     RoundedRectangle(cornerRadius: 3, style: .continuous).fill(FQColor.track)
                     RoundedRectangle(cornerRadius: 3, style: .continuous)
-                        .fill(fraction > 0.3 ? FQColor.success : FQColor.danger)
+                        .fill(fraction > 0.3 ? FQColor.accent : FQColor.danger)
                         .frame(width: proxy.size.width * fraction)
                 }
             }

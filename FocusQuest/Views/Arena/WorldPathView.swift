@@ -109,7 +109,7 @@ struct WorldPathView: View {
                     if isCleared {
                         Image(systemName: "checkmark.circle.fill")
                             .font(.system(size: 22, weight: .bold, design: .rounded))
-                            .foregroundStyle(Color.white, FQColor.success)
+                            .foregroundStyle(Color.white, FQColor.accent)
                             .offset(x: 28, y: -28)
                     }
                 }
