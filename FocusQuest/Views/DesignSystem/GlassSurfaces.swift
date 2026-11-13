@@ -46,6 +46,24 @@ extension View {
         }
     }
 
+    /// Hlavicka pripnuta k hornimu okraji; obsah pod ni roluje a rozmaze se.
+    @ViewBuilder func pinnedTopHeader<Header: View>(@ViewBuilder _ header: () -> Header) -> some View {
+        let bar = header()
+            .frame(maxWidth: 640)
+            .padding(.horizontal, FQSpace.lg)
+            .padding(.top, FQSpace.sm)
+            .padding(.bottom, FQSpace.md)
+            .frame(maxWidth: .infinity)
+        if #available(iOS 26.0, *) {
+            safeAreaBar(edge: .top, spacing: 0) { bar }
+                .scrollEdgeEffectStyle(.soft, for: .top)
+        } else {
+            safeAreaInset(edge: .top, spacing: 0) {
+                bar.background { ScrollFadeBackground(edge: .top) }
+            }
+        }
+    }
+
     /// Vedlejsi akce (pruhledne sklo).
     @ViewBuilder func glassButtonStyle() -> some View {
         if #available(iOS 26.0, *) {
@@ -65,38 +83,43 @@ struct GlassCardModifier: ViewModifier {
         let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
         // Ve svetlem rezimu je sklo mlecne bile, v tmavem jen lehce prosvetlene.
         let isDark = colorScheme == .dark
+        // Silne rozmazane pruhledne sklo: barevne pozadi prosvita, jen je zjemnene.
         return content
             .background {
                 ZStack {
                     shape.fill(.ultraThinMaterial)
-                    shape.fill((tint ?? Color.white).opacity(tint == nil ? (isDark ? 0.04 : 0.36) : 0.18))
-                    // Odlesk shora - dodava skleneny dojem bez tvrdych stinu.
-                    shape.fill(LinearGradient(colors: [Color.white.opacity(isDark ? 0.10 : 0.45), Color.white.opacity(0)], startPoint: .top, endPoint: .center))
+                    shape.fill(Color.white.opacity(isDark ? 0.07 : 0.24))
+                    if let tint { shape.fill(tint.opacity(0.22)) }
+                    // Odlesk shora - svetlo dopadajici na sklo.
+                    shape.fill(LinearGradient(colors: [Color.white.opacity(isDark ? 0.16 : 0.42), Color.white.opacity(0)], startPoint: .top, endPoint: .center))
                 }
             }
             .overlay {
+                // Jemna bila hrana, nahore a vlevo nejjasnejsi.
                 shape.strokeBorder(
-                    LinearGradient(colors: [Color.white.opacity(isDark ? 0.32 : 0.95), Color.white.opacity(isDark ? 0.08 : 0.50), Color.white.opacity(isDark ? 0.14 : 0.75)], startPoint: .topLeading, endPoint: .bottomTrailing),
+                    LinearGradient(colors: [Color.white.opacity(isDark ? 0.55 : 0.95), Color.white.opacity(isDark ? 0.12 : 0.40), Color.white.opacity(isDark ? 0.28 : 0.70)], startPoint: .topLeading, endPoint: .bottomTrailing),
                     lineWidth: 1
                 )
             }
-            .shadow(color: isDark ? Color.black.opacity(0.18) : Color(red: 0.20, green: 0.24, blue: 0.45).opacity(0.14), radius: 16, y: 8)
+            .shadow(color: isDark ? Color.black.opacity(0.28) : Color(red: 0.30, green: 0.20, blue: 0.55).opacity(0.18), radius: 24, y: 12)
     }
 }
 
-/// Rozmazany prechod pod pripnutou akci: nahore pruhledny, dole plny material.
+/// Rozmazany prechod pod pripnutou listou: u obsahu pruhledny, u okraje obrazovky plny material.
 private struct ScrollFadeBackground: View {
+    var edge: VerticalEdge = .bottom
+
     var body: some View {
         Rectangle()
             .fill(.regularMaterial)
             .mask {
                 LinearGradient(
                     stops: [.init(color: .clear, location: 0), .init(color: .black, location: 0.3)],
-                    startPoint: .top,
-                    endPoint: .bottom
+                    startPoint: edge == .bottom ? .top : .bottom,
+                    endPoint: edge == .bottom ? .bottom : .top
                 )
             }
-            .ignoresSafeArea(edges: .bottom)
+            .ignoresSafeArea(edges: edge == .bottom ? .bottom : .top)
             .allowsHitTesting(false)
     }
 }

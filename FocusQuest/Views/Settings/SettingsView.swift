@@ -3,10 +3,27 @@ import AuthenticationServices
 
 struct SettingsView: View {
     @ObservedObject var model: SettingsViewModel
+    /// Nastaveni se otevira jako list z Profilu; tohle ho zavre.
+    var onClose: (() -> Void)? = nil
 
     var body: some View {
         ScreenScaffold {
-            ScreenTitle(title: "Settings")
+            HStack(alignment: .center) {
+                ScreenTitle(title: "Settings")
+                Spacer(minLength: FQSpace.sm)
+                if let onClose {
+                    Button(action: onClose) {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(FQColor.textPrimary)
+                            .frame(width: 44, height: 44)
+                            .glassControl(in: Circle(), interactive: true)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Close settings")
+                }
+            }
+            .padding(.top, onClose == nil ? 0 : FQSpace.md)
             ScreenSection(title: "Sensory") { sensoryCard }
             ScreenSection(title: "Soundscape") { soundscapeCard }
             ScreenSection(title: "Privacy & fair play") { legalCard }

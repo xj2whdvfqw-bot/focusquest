@@ -97,15 +97,6 @@ struct HeroCreatorView: View {
 
     var body: some View {
         ScreenScaffold {
-            ScreenTitle(eyebrow: "Welcome to FocusQuest", title: "Create your hero")
-            VStack(spacing: FQSpace.sm) {
-                HeroAvatarView(appearance: model.profile.avatar, heroClass: model.profile.heroClass, size: 144)
-                Text(model.profile.heroClass.displayName).font(.fqLabel).foregroundStyle(FQColor.accent)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(FQSpace.lg)
-            .glassCard()
-
             ScreenSection(title: "Hero name") {
                 VStack(alignment: .leading, spacing: FQSpace.xs) {
                     TextField("3-20 letters or numbers", text: $nameDraft)
@@ -143,6 +134,8 @@ struct HeroCreatorView: View {
                     .glassCard()
             }
         }
+        // Nahled hrdiny je pripnuty nahore, takze je videt i pri rolovani barev a uceu.
+        .pinnedTopHeader { avatarHeader }
         .pinnedBottomAction {
             Button { start() } label: {
                 Label("Start Adventure", systemImage: "sparkles")
@@ -158,6 +151,25 @@ struct HeroCreatorView: View {
         }
         .onAppear { nameDraft = model.profile.username }
         .interactiveDismissDisabled()
+    }
+
+    private var avatarHeader: some View {
+        HStack(spacing: FQSpace.lg) {
+            HeroAvatarView(appearance: model.profile.avatar, heroClass: model.profile.heroClass, size: 112)
+            VStack(alignment: .leading, spacing: FQSpace.xs) {
+                Text("Welcome to FocusQuest").font(.fqLabel).foregroundStyle(FQColor.textSecondary)
+                Text("Create your hero").font(.fqTitle).foregroundStyle(FQColor.textPrimary)
+                Text(nameDraft.isEmpty ? model.profile.heroClass.displayName : "\(nameDraft) · \(model.profile.heroClass.displayName)")
+                    .font(.fqLabel)
+                    .foregroundStyle(FQColor.accent)
+                    .lineLimit(1)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(FQSpace.md)
+        .glassCard()
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isHeader)
     }
 
     private func start() {

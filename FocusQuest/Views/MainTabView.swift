@@ -1,7 +1,7 @@
 import SwiftUI
 
 private enum FocusQuestTab: String, CaseIterable, Identifiable {
-    case arena, village, stats, profile, settings
+    case arena, village, stats, profile
     var id: String { rawValue }
     var title: String { rawValue.capitalized }
     var symbol: String {
@@ -10,12 +10,12 @@ private enum FocusQuestTab: String, CaseIterable, Identifiable {
         case .village: "house.fill"
         case .stats: "chart.bar.fill"
         case .profile: "person.crop.circle.fill"
-        case .settings: "gearshape.fill"
         }
     }
 
     /// V debug buildu jde appku spustit s argumentem `-initialTab stats` (vychozi zalozka)
-    /// nebo `-initialTab creator` (uvodni tvorba hrdiny). Pouziva to CI pro screenshoty.
+    /// nebo `-initialTab creator` (uvodni tvorba hrdiny) ci `-initialTab settings`
+    /// (Profil s otevrenym Nastavenim). Pouziva to CI pro screenshoty.
     static var launchArgument: String? {
         #if DEBUG
         return UserDefaults.standard.string(forKey: "initialTab")
@@ -25,7 +25,8 @@ private enum FocusQuestTab: String, CaseIterable, Identifiable {
     }
 
     static var initial: FocusQuestTab {
-        launchArgument.flatMap(FocusQuestTab.init(rawValue:)) ?? .arena
+        if launchArgument == "settings" { return .profile }
+        return launchArgument.flatMap(FocusQuestTab.init(rawValue:)) ?? .arena
     }
 }
 
@@ -50,12 +51,9 @@ struct MainTabView: View {
                     StatsView(model: container.statsViewModel, profile: container.profileViewModel)
                         .tabItem { Label(FocusQuestTab.stats.title, systemImage: FocusQuestTab.stats.symbol) }
                         .tag(FocusQuestTab.stats)
-                    ProfileView(model: container.profileViewModel)
+                    ProfileView(model: container.profileViewModel, settingsModel: container.settingsViewModel, opensSettingsAtLaunch: FocusQuestTab.launchArgument == "settings")
                         .tabItem { Label(FocusQuestTab.profile.title, systemImage: FocusQuestTab.profile.symbol) }
                         .tag(FocusQuestTab.profile)
-                    SettingsView(model: container.settingsViewModel)
-                        .tabItem { Label(FocusQuestTab.settings.title, systemImage: FocusQuestTab.settings.symbol) }
-                        .tag(FocusQuestTab.settings)
                 }
                 .task { await presentHeroCreatorIfNeeded() }
                 .fullScreenCover(isPresented: $showsHeroCreator) {
@@ -88,7 +86,7 @@ private struct IntegrityLockdownView: View {
                     .accessibilityHidden(true)
                 VStack(spacing: FQSpace.sm) {
                     Text("Integrity check failed").font(.fqTitle).foregroundStyle(FQColor.textPrimary)
-                    Text("FocusQuest has disabled battles on this device to protect account and raid integrity.")
+                    Text("FocusQuest has disabled battles on this device to protect account integrity.")
                         .font(.fqSecondary)
                         .multilineTextAlignment(.center)
                         .foregroundStyle(FQColor.textSecondary)

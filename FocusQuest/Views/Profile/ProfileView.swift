@@ -2,7 +2,11 @@ import SwiftUI
 
 struct ProfileView: View {
     @ObservedObject var model: ProfileViewModel
+    @ObservedObject var settingsModel: SettingsViewModel
+    var opensSettingsAtLaunch = false
     @State private var usernameDraft = ""
+    @State private var showsSettings = false
+    @State private var didOpenSettingsAtLaunch = false
 
     private let titles = ["Novice Focuser", "Deep Work Mage", "Grandmaster of Stillness"]
     private var dailyProgress: Double {
@@ -11,7 +15,20 @@ struct ProfileView: View {
 
     var body: some View {
         ScreenScaffold {
-            ScreenTitle(eyebrow: "Profile", title: "Hero profile")
+            HStack(alignment: .top) {
+                ScreenTitle(eyebrow: "Profile", title: "Hero profile")
+                Spacer(minLength: FQSpace.sm)
+                // Nastaveni uz neni zalozka; otevira se ozubenym kolem v Profilu.
+                Button { showsSettings = true } label: {
+                    Image(systemName: "gearshape.fill")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(FQColor.textPrimary)
+                        .frame(width: 44, height: 44)
+                        .glassControl(in: Circle(), interactive: true)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Settings")
+            }
             heroCard
             ScreenSection(title: "Identity") { identityCard }
             ScreenSection(title: "Hero look") {
@@ -28,7 +45,17 @@ struct ProfileView: View {
                     .foregroundStyle(FQColor.caution)
             }
         }
-        .onAppear { usernameDraft = model.profile.username }
+        .onAppear {
+            usernameDraft = model.profile.username
+            if opensSettingsAtLaunch, !didOpenSettingsAtLaunch {
+                didOpenSettingsAtLaunch = true
+                showsSettings = true
+            }
+        }
+        .sheet(isPresented: $showsSettings) {
+            SettingsView(model: settingsModel) { showsSettings = false }
+                .presentationDragIndicator(.visible)
+        }
         .task { await model.refresh(); await model.refreshProgress() }
     }
 
