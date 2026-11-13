@@ -171,17 +171,18 @@ private struct SceneConfig {
 }
 
 extension BackdropScene {
-    // Mesic je vzdy vpravo mezi nadpisem a ozubenym kolem, aby nebyl za textem nadpisu.
+    // Mesic je vzdy vpravo mezi koncem nadpisu a ozubenym kolem (0.75-0.77 sirky)
+    // a nad radkem nadpisu (viz moonY), aby nikdy nebyl za textem.
     fileprivate var config: SceneConfig {
         switch self {
         case .enchantedForest:
-            SceneConfig(seed: 11, moonX: 0.74, castleX: 0.30, castleScale: 1, ruinsX: nil, bareTrees: [0.34, 0.66], lanternPosts: [0.50], mountainHeight: 0.10, mist: 1.0)
+            SceneConfig(seed: 11, moonX: 0.76, castleX: 0.30, castleScale: 1, ruinsX: nil, bareTrees: [0.34, 0.66], lanternPosts: [0.50], mountainHeight: 0.10, mist: 1.0)
         case .dungeonRuins:
-            SceneConfig(seed: 23, moonX: 0.72, castleX: 0.74, castleScale: 1, ruinsX: 0.46, bareTrees: [0.28, 0.78], lanternPosts: [0.62], mountainHeight: 0.08, mist: 1.6)
+            SceneConfig(seed: 23, moonX: 0.75, castleX: 0.74, castleScale: 1, ruinsX: 0.46, bareTrees: [0.28, 0.78], lanternPosts: [0.62], mountainHeight: 0.08, mist: 1.6)
         case .castleKeep:
-            SceneConfig(seed: 37, moonX: 0.78, castleX: 0.44, castleScale: 2, ruinsX: nil, bareTrees: [0.76], lanternPosts: [0.22, 0.58], mountainHeight: 0.09, mist: 1.0)
+            SceneConfig(seed: 37, moonX: 0.77, castleX: 0.44, castleScale: 2, ruinsX: nil, bareTrees: [0.76], lanternPosts: [0.22, 0.58], mountainHeight: 0.09, mist: 1.0)
         case .lanternGrove:
-            SceneConfig(seed: 53, moonX: 0.70, castleX: nil, castleScale: 1, ruinsX: 0.70, bareTrees: [0.24, 0.48, 0.76], lanternPosts: [0.36, 0.62], mountainHeight: 0.07, mist: 1.2)
+            SceneConfig(seed: 53, moonX: 0.76, castleX: nil, castleScale: 1, ruinsX: 0.70, bareTrees: [0.24, 0.48, 0.76], lanternPosts: [0.36, 0.62], mountainHeight: 0.07, mist: 1.2)
         case .starlitPeaks:
             SceneConfig(seed: 71, moonX: 0.76, castleX: 0.28, castleScale: 1, ruinsX: nil, bareTrees: [0.58], lanternPosts: [], mountainHeight: 0.16, mist: 0.8)
         }
@@ -253,9 +254,11 @@ private struct PixelLayout: Sendable {
         skyBottom = Int(rowsD * 0.46)
 
         // Mesic
-        moonRadius = max(5, cols / 14)
+        // Mensi a vys nez drive: sedi vedle nadtitulku, nad radkem velkeho nadpisu
+        // (drive zasahoval do konce dlouhych nadpisu jako "Choose a world").
+        moonRadius = max(5, cols / 16)
         moonX = Int(Double(cols) * config.moonX)
-        moonY = Int(rowsD * 0.11)
+        moonY = Int(rowsD * 0.075)
 
         // Vzdalene hory: spicate hrebeny ze slozenych sinusovek.
         let farBase = rowsD * 0.33

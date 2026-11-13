@@ -25,18 +25,24 @@ struct ShopView: View {
                 }
             }
         }
-        // Nahled hrdiny zustava nahore i pri rolovani obchodu.
-        .pinnedTopHeader { previewHeader }
+        // Nadpis je stejny jako na ostatnich zalozkach (nadtitulek, velky nadpis, ozubene kolo vpravo)
+        // a sedi na stejnem miste. Pod nim zustava pripnuty nahled hrdiny, aby bylo vyzkouseni
+        // predmetu videt i pri rolovani obchodu.
+        .pinnedTopHeader {
+            VStack(alignment: .leading, spacing: FQSpace.md) {
+                ScreenHeader(eyebrow: "Shop", title: "Gear up")
+                previewCard
+            }
+        }
     }
 
-    private var previewHeader: some View {
-        HStack(alignment: .top, spacing: FQSpace.lg) {
-            HeroAvatarView(appearance: previewAppearance, heroClass: model.profile.heroClass, size: 104)
+    private var previewCard: some View {
+        HStack(spacing: FQSpace.lg) {
+            HeroAvatarView(appearance: previewAppearance, heroClass: model.profile.heroClass, size: 72)
                 .animation(.easeOut(duration: 0.2), value: previewAppearance)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: FQSpace.xs) {
-                Text("Shop").font(.fqLabel).foregroundStyle(FQColor.textSecondary)
-                Text(tryOn.map { "Trying on \($0.name)" } ?? "Gear up your hero")
+                Text(tryOn.map { "Trying on \($0.name)" } ?? "Tap an item to try it on")
                     .font(.fqHeadline)
                     .foregroundStyle(FQColor.textPrimary)
                     .lineLimit(2)
@@ -48,7 +54,6 @@ struct ShopView: View {
             }
             .accessibilityElement(children: .combine)
             Spacer(minLength: 0)
-            SettingsGearButton()
         }
         .padding(FQSpace.md)
         .glassCard()

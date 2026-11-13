@@ -46,28 +46,75 @@ struct VillageView: View {
         }
     }
 
+    /// Splnuje hrac vsechny podminky stupne (level, bossove, mince)?
+    private func requirementMet(_ stage: DwellingStage) -> Bool {
+        stage.requirement.isMet(level: model.level, bossesDefeated: model.profile.bossesDefeated, coins: model.profile.coins)
+    }
+
+    /// Stupen, ktery jde postavit hned: je na rade a podminky jsou splnene.
+    private func isReadyToBuild(_ stage: DwellingStage) -> Bool {
+        stage == village.nextStage && requirementMet(stage)
+    }
+
+    /// Podminky stupne jako kratky radek s ikonami: level, bossove, mince.
+    /// Splnena cast je v akcentu, chybejici sede.
+    private func requirementLine(_ stage: DwellingStage) -> Text {
+        let requirement = stage.requirement
+        func part(_ symbol: String, _ value: Int, met: Bool) -> Text {
+            Text("\(Image(systemName: symbol))\u{2009}\(value)").foregroundStyle(met ? FQColor.accent : FQColor.textTertiary)
+        }
+        let level = part("star.fill", requirement.level, met: model.level >= requirement.level)
+        let bosses = part("trophy.fill", requirement.bossesDefeated, met: model.profile.bossesDefeated >= requirement.bossesDefeated)
+        let coins = part("dollarsign.circle.fill", requirement.coins, met: model.profile.coins >= requirement.coins)
+        return Text("\(level)  \(bosses)  \(coins)")
+    }
+
+    private func requirementSummary(_ stage: DwellingStage) -> String {
+        let requirement = stage.requirement
+        return "needs level \(requirement.level), \(requirement.bossesDefeated) bosses defeated and \(requirement.coins) coins"
+    }
+
     private func evolutionTile(_ stage: DwellingStage, isBuilt: Bool, isCurrent: Bool) -> some View {
-        VStack(spacing: FQSpace.xs) {
-            DwellingArtView(stage: stage, size: 64, isLocked: !isBuilt)
+        let isMet = requirementMet(stage)
+        let isReady = isReadyToBuild(stage)
+        return VStack(spacing: FQSpace.xs) {
+            DwellingArtView(stage: stage, size: 64, isLocked: !isBuilt && !isReady)
                 .frame(width: 72, height: 72)
-                .background(isCurrent ? FQColor.accent.opacity(0.18) : Color.clear, in: RoundedRectangle(cornerRadius: FQRadius.control, style: .continuous))
+                .background(isCurrent || isReady ? FQColor.accent.opacity(isCurrent ? 0.18 : 0.10) : Color.clear, in: RoundedRectangle(cornerRadius: FQRadius.control, style: .continuous))
                 .overlay {
                     RoundedRectangle(cornerRadius: FQRadius.control, style: .continuous)
-                        .strokeBorder(isCurrent ? FQColor.accent : Color.clear, lineWidth: 2)
+                        .strokeBorder(isCurrent ? FQColor.accent : (isReady ? FQColor.accent.opacity(0.5) : Color.clear), lineWidth: isCurrent ? 2 : 1.5)
                 }
                 .overlay(alignment: .topTrailing) {
-                    if !isBuilt {
+                    // Zamek jen tam, kde jeste neco chybi.
+                    if !isBuilt && !isMet {
                         Image(systemName: "lock.fill").font(.system(size: 11, weight: .semibold, design: .rounded)).foregroundStyle(FQColor.textSecondary).padding(FQSpace.xs)
                     }
                 }
-            Text(stage.displayName).font(.fqMeta.weight(isCurrent ? .semibold : .regular)).foregroundStyle(isBuilt ? FQColor.textPrimary : FQColor.textSecondary).lineLimit(1)
-            Text(isBuilt ? (isCurrent ? "You are here" : "Built") : "Level \(stage.requirement.level)")
-                .font(.fqMeta)
-                .foregroundStyle(isCurrent ? FQColor.accent : FQColor.textTertiary)
+            Text(stage.displayName).font(.fqMeta.weight(isCurrent || isReady ? .semibold : .regular)).foregroundStyle(isBuilt || isReady ? FQColor.textPrimary : FQColor.textSecondary).lineLimit(1)
+            Group {
+                if isBuilt {
+                    Text(isCurrent ? "You are here" : "Built").foregroundStyle(isCurrent ? FQColor.accent : FQColor.textTertiary)
+                } else if isReady {
+                    Text("Ready to build").foregroundStyle(FQColor.accent)
+                } else {
+                    requirementLine(stage)
+                }
+            }
+            .font(.fqMeta)
+            .monospacedDigit()
+            .lineLimit(1)
+            .minimumScaleFactor(0.75)
         }
-        .frame(width: 96)
+        .frame(width: 104)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(stage.displayName), \(isBuilt ? (isCurrent ? "current" : "built") : "locked, needs level \(stage.requirement.level)")")
+        .accessibilityLabel(evolutionLabel(stage, isBuilt: isBuilt, isCurrent: isCurrent, isReady: isReady))
+    }
+
+    private func evolutionLabel(_ stage: DwellingStage, isBuilt: Bool, isCurrent: Bool, isReady: Bool) -> String {
+        if isBuilt { return "\(stage.displayName), \(isCurrent ? "current" : "built")" }
+        if isReady { return "\(stage.displayName), ready to build" }
+        return "\(stage.displayName), \(requirementMet(stage) ? "build the previous stage first" : "locked"), \(requirementSummary(stage))"
     }
 
     private static let nightSky: [Color] = [
@@ -201,9 +248,19 @@ struct VillageView: View {
                         Text("Current").font(.fqMeta.weight(.medium)).foregroundStyle(FQColor.accent)
                     } else if isBuilt {
                         Image(systemName: "checkmark").font(.fqMeta.weight(.semibold)).foregroundStyle(FQColor.textSecondary).accessibilityLabel("Built")
+                    } else if isReadyToBuild(stage) {
+                        Text("Ready to build").font(.fqMeta.weight(.medium)).foregroundStyle(FQColor.accent)
                     } else {
-                        Label("\(stage.requirement.coins)", systemImage: "lock.fill").font(.fqMeta.weight(.medium)).monospacedDigit().foregroundStyle(FQColor.textTertiary)
-                            .accessibilityLabel("Locked, costs \(stage.requirement.coins) coins")
+                        HStack(spacing: FQSpace.xs) {
+                            if !requirementMet(stage) {
+                                Image(systemName: "lock.fill").foregroundStyle(FQColor.textTertiary)
+                            }
+                            requirementLine(stage)
+                        }
+                        .font(.fqMeta.weight(.medium))
+                        .monospacedDigit()
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel(requirementMet(stage) ? "Build the previous stage first" : "Locked, \(requirementSummary(stage))")
                     }
                 }
                 .padding(.vertical, FQSpace.sm)

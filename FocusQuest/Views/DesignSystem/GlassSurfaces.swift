@@ -28,8 +28,9 @@ extension View {
 
     /// Hlavni akce pripnuta ke spodnimu okraji. Obsah, ktery pod ni odroluje,
     /// se plynule rozmaze do ztracena, misto aby byl ostre useknuty.
-    /// Na iOS 26+ to dela system (scroll edge effect pod `safeAreaBar`),
-    /// na starsich iOS vlastni rozmazany prechod.
+    /// Matny prechod je pod tlacitkem na vsech iOS: samotny scroll edge effect z iOS 26
+    /// je nad pixelovou krajinou skoro neviditelny a karty pak presvitaly kolem tlacitka.
+    /// Bar zaroven odsadi obsah, takze posledni karta jde vzdy odrolovat nad tlacitko.
     @ViewBuilder func pinnedBottomAction<Action: View>(@ViewBuilder _ action: () -> Action) -> some View {
         let bar = action()
             .frame(maxWidth: 640)
@@ -37,13 +38,12 @@ extension View {
             .padding(.top, FQSpace.xl)
             .padding(.bottom, FQSpace.sm)
             .frame(maxWidth: .infinity)
+            .background { ScrollFadeBackground() }
         if #available(iOS 26.0, *) {
             safeAreaBar(edge: .bottom, spacing: 0) { bar }
                 .scrollEdgeEffectStyle(.soft, for: .bottom)
         } else {
-            safeAreaInset(edge: .bottom, spacing: 0) {
-                bar.background { ScrollFadeBackground() }
-            }
+            safeAreaInset(edge: .bottom, spacing: 0) { bar }
         }
     }
 
@@ -55,13 +55,12 @@ extension View {
             .padding(.top, FQSpace.sm)
             .padding(.bottom, FQSpace.md)
             .frame(maxWidth: .infinity)
+            .background { ScrollFadeBackground(edge: .top) }
         if #available(iOS 26.0, *) {
             safeAreaBar(edge: .top, spacing: 0) { bar }
                 .scrollEdgeEffectStyle(.soft, for: .top)
         } else {
-            safeAreaInset(edge: .top, spacing: 0) {
-                bar.background { ScrollFadeBackground(edge: .top) }
-            }
+            safeAreaInset(edge: .top, spacing: 0) { bar }
         }
     }
 
