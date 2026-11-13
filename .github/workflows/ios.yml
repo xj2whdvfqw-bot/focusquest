@@ -45,6 +45,9 @@ jobs:
       - name: Screenshot aplikace ze simulatoru
         if: success() || failure()
         continue-on-error: true
+        # Vlastni limit kroku: kdyz se simulator zasekne, screenshoty se i tak nahraji
+        # a build nespadne na limit celeho jobu.
+        timeout-minutes: 15
         run: bash scripts/ci-screenshot.sh
 
       - name: Nahrani screenshotu

@@ -25,13 +25,27 @@ MAX_WAIT=75        # sekund od spusteni aplikace
 
 png_size() { wc -c < "$1" | tr -d ' '; }
 
+# macOS nema `timeout`. Spusti prikaz a po $1 sekundach ho natvrdo ukonci,
+# aby zaseknuta diagnostika (sample, log show) nevycerpala casovy limit celeho buildu.
+with_timeout() {
+  local SECS="$1"; shift
+  "$@" &
+  local CMD_PID=$!
+  ( sleep "$SECS"; kill -9 "$CMD_PID" ) >/dev/null 2>&1 &
+  local WATCH_PID=$!
+  local RC=0
+  wait "$CMD_PID" 2>/dev/null || RC=$?
+  kill "$WATCH_PID" >/dev/null 2>&1 || true
+  return "$RC"
+}
+
 # Kdyz se obrazovka nevykresli ani po MAX_WAIT, vypise do logu, jestli aplikace spadla nebo se zasekla a kde.
 diagnose() {
   local TAB="$1" PID="$2"
   echo "::warning::Zalozka '$TAB' se v simulatoru nevykreslila ani po ${MAX_WAIT} s (cerna obrazovka)."
   if [ -n "$PID" ] && kill -0 "$PID" 2>/dev/null; then
     echo "--- [$TAB] proces $PID bezi => aplikace se zasekla. Zasobnik hlavniho vlakna:"
-    sample "$PID" 3 -mayDie -file "build/sample-$TAB.txt" >/dev/null 2>&1 || true
+    with_timeout 30 sample "$PID" 3 -mayDie -file "build/sample-$TAB.txt" >/dev/null 2>&1 || echo "(sample nedobehl do 30 s)"
     head -n 160 "build/sample-$TAB.txt" 2>/dev/null || echo "(sample se nepodarilo ziskat)"
   else
     echo "--- [$TAB] proces ${PID:-?} uz nebezi => aplikace spadla. Posledni crash report:"
@@ -40,7 +54,7 @@ diagnose() {
     if [ -n "$REPORT" ]; then head -n 120 "$REPORT"; else echo "(zadny crash report nenalezen)"; fi
   fi
   echo "--- [$TAB] poslednich 60 radku logu aplikace:"
-  xcrun simctl spawn "$UDID" log show --last 3m --style compact --predicate 'process == "FocusQuest"' 2>/dev/null | tail -n 60 || true
+  with_timeout 30 xcrun simctl spawn "$UDID" log show --last 3m --style compact --predicate 'process == "FocusQuest"' 2>/dev/null | tail -n 60 || true
 }
 
 INDEX=1
