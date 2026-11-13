@@ -13,7 +13,7 @@ struct FocusQuestBackdrop: View {
         let isDark = colorScheme == .dark
         ZStack {
             if #available(iOS 18.0, *) {
-                MeshGradient(width: 3, height: 3, points: meshPoints, colors: meshColors(isDark: isDark), smoothsColors: true)
+                MeshGradient(width: 3, height: 3, points: meshPoints, colors: isDark ? Self.darkMesh : Self.lightMesh, smoothsColors: true)
             } else {
                 fallbackGlows(isDark: isDark)
             }
@@ -34,26 +34,30 @@ struct FocusQuestBackdrop: View {
 
     /// Prostredni body mesh site se pomalu posouvaji, okraje zustavaji na miste.
     private var meshPoints: [SIMD2<Float>] {
-        [
-            [0, 0], [drift ? 0.62 : 0.38, 0], [1, 0],
-            [0, drift ? 0.38 : 0.58], [drift ? 0.34 : 0.66, drift ? 0.60 : 0.42], [1, drift ? 0.62 : 0.40],
-            [0, 1], [drift ? 0.40 : 0.64, 1], [1, 1]
+        let topX: Float = drift ? 0.62 : 0.38
+        let leftY: Float = drift ? 0.38 : 0.58
+        let centerX: Float = drift ? 0.34 : 0.66
+        let centerY: Float = drift ? 0.60 : 0.42
+        let rightY: Float = drift ? 0.62 : 0.40
+        let bottomX: Float = drift ? 0.40 : 0.64
+        return [
+            SIMD2(0, 0), SIMD2(topX, 0), SIMD2(1, 0),
+            SIMD2(0, leftY), SIMD2(centerX, centerY), SIMD2(1, rightY),
+            SIMD2(0, 1), SIMD2(bottomX, 1), SIMD2(1, 1)
         ]
     }
 
-    private func meshColors(isDark: Bool) -> [Color] {
-        isDark
-            ? [
-                Color(red: 0.16, green: 0.06, blue: 0.42), Color(red: 0.46, green: 0.12, blue: 0.78), Color(red: 0.86, green: 0.18, blue: 0.58),
-                Color(red: 0.06, green: 0.26, blue: 0.86), Color(red: 0.30, green: 0.10, blue: 0.58), Color(red: 0.96, green: 0.38, blue: 0.32),
-                Color(red: 0.00, green: 0.52, blue: 0.62), Color(red: 0.12, green: 0.18, blue: 0.66), Color(red: 0.52, green: 0.14, blue: 0.74)
-            ]
-            : [
-                Color(red: 0.50, green: 0.60, blue: 1.00), Color(red: 0.78, green: 0.56, blue: 1.00), Color(red: 1.00, green: 0.60, blue: 0.78),
-                Color(red: 0.42, green: 0.82, blue: 0.98), Color(red: 0.72, green: 0.66, blue: 1.00), Color(red: 1.00, green: 0.74, blue: 0.56),
-                Color(red: 0.44, green: 0.92, blue: 0.80), Color(red: 0.56, green: 0.66, blue: 1.00), Color(red: 0.88, green: 0.60, blue: 1.00)
-            ]
-    }
+    private static let darkMesh: [Color] = [
+        Color(red: 0.16, green: 0.06, blue: 0.42), Color(red: 0.46, green: 0.12, blue: 0.78), Color(red: 0.86, green: 0.18, blue: 0.58),
+        Color(red: 0.06, green: 0.26, blue: 0.86), Color(red: 0.30, green: 0.10, blue: 0.58), Color(red: 0.96, green: 0.38, blue: 0.32),
+        Color(red: 0.00, green: 0.52, blue: 0.62), Color(red: 0.12, green: 0.18, blue: 0.66), Color(red: 0.52, green: 0.14, blue: 0.74)
+    ]
+
+    private static let lightMesh: [Color] = [
+        Color(red: 0.50, green: 0.60, blue: 1.00), Color(red: 0.78, green: 0.56, blue: 1.00), Color(red: 1.00, green: 0.60, blue: 0.78),
+        Color(red: 0.42, green: 0.82, blue: 0.98), Color(red: 0.72, green: 0.66, blue: 1.00), Color(red: 1.00, green: 0.74, blue: 0.56),
+        Color(red: 0.44, green: 0.92, blue: 0.80), Color(red: 0.56, green: 0.66, blue: 1.00), Color(red: 0.88, green: 0.60, blue: 1.00)
+    ]
 
     private func fallbackGlows(isDark: Bool) -> some View {
         GeometryReader { proxy in

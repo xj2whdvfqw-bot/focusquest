@@ -13,7 +13,7 @@ final class ProgressionModelTests: XCTestCase {
         XCTAssertEqual(Boss.clampedMinutes(1), 10)
         XCTAssertEqual(Boss.roster[0].withHP(minutes: 0).maxHP, 10)
         XCTAssertEqual(Boss.roster[0].withHP(minutes: 9_999).maxHP, Boss.minutesRange.upperBound)
-        for boss in Boss.roster { XCTAssertEqual(Boss.defaultMinutes(for: boss.id) % Boss.minutesStep, 0) }
+        for boss in Boss.roster { XCTAssertEqual(Boss.initialMinutes(for: boss.id) % Boss.minutesStep, 0) }
     }
 
     func testSimulatedBackendUsesCustomHPForEachBattle() async throws {
@@ -35,7 +35,7 @@ final class ProgressionModelTests: XCTestCase {
         XCTAssertEqual(preferences.soundscape, .lofi)
         XCTAssertNil(preferences.lastSubject)
         // Stare spolecne HP pro vsechny bosse se nepouzije; kazdy boss ma sve vychozi.
-        for boss in Boss.roster { XCTAssertEqual(preferences.bossMinutes(for: boss.id), Boss.defaultMinutes(for: boss.id)) }
+        for boss in Boss.roster { XCTAssertEqual(preferences.bossMinutes(for: boss.id), Boss.initialMinutes(for: boss.id)) }
     }
 
     func testEachBossKeepsItsOwnHP() throws {

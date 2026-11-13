@@ -81,7 +81,7 @@ struct AppPreferences: Codable, Equatable, Sendable {
 
     /// HP (minuty) konkretniho bosse.
     func bossMinutes(for bossID: String) -> Int {
-        bossMinutesByID[bossID].map(Boss.clampedMinutes) ?? Boss.defaultMinutes(for: bossID)
+        bossMinutesByID[bossID].map(Boss.clampedMinutes) ?? Boss.initialMinutes(for: bossID)
     }
 }
 

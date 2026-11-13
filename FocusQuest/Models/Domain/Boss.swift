@@ -33,7 +33,7 @@ struct Boss: Identifiable, Codable, Hashable, Sendable {
     }
 
     /// Vychozi HP konkretniho bosse, dokud si ho hrac nezmeni.
-    static func defaultMinutes(for bossID: String) -> Int {
+    static func initialMinutes(for bossID: String) -> Int {
         clampedMinutes(roster.first { $0.id == bossID }?.maxHP ?? defaultMinutes)
     }
 

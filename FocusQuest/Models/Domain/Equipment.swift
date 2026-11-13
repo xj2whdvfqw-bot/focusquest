@@ -29,7 +29,15 @@ struct EquipmentItem: Identifiable, Hashable, Sendable {
     let drawsBehindBody: Bool
     let layers: [AvatarLayer]
 
-    init(id: String, name: String, summary: String, slot: EquipmentSlot, price: Int, drawsBehindBody: Bool = false, parts: [(name: String, spans: [Int: [ClosedRange<Int>]], rgb: RGB)]) {
+    /// Jedna barevna cast predmetu: radky mrizky a v nich sloupce.
+    struct Part {
+        let name: String
+        let spans: [Int: [ClosedRange<Int>]]
+        let rgb: RGB
+        init(_ name: String, _ spans: [Int: [ClosedRange<Int>]], _ rgb: RGB) { self.name = name; self.spans = spans; self.rgb = rgb }
+    }
+
+    init(id: String, name: String, summary: String, slot: EquipmentSlot, price: Int, drawsBehindBody: Bool = false, parts: [Part]) {
         self.id = id
         self.name = name
         self.summary = summary
@@ -54,55 +62,55 @@ struct EquipmentItem: Identifiable, Hashable, Sendable {
     static let catalog: [EquipmentItem] = [
         // Hlava
         EquipmentItem(id: "viking-helmet", name: "Viking Helmet", summary: "Steel dome with two proud horns.", slot: .head, price: 150, parts: [
-            ("dome", [0: [6...9], 1: [5...10]], steel),
-            ("rim", [2: [4...11]], gold),
-            ("horns", [0: [3...3, 12...12], 1: [3...4, 11...12]], ivory)
+            Part("dome", [0: [6...9], 1: [5...10]], steel),
+            Part("rim", [2: [4...11]], gold),
+            Part("horns", [0: [3...3, 12...12], 1: [3...4, 11...12]], ivory)
         ]),
         EquipmentItem(id: "wizard-hat", name: "Wizard Hat", summary: "Pointy, starry and full of answers.", slot: .head, price: 220, parts: [
-            ("cone", [0: [7...8], 1: [6...9], 2: [4...11]], RGB(0.45, 0.30, 0.85)),
-            ("star", [1: [7...7]], gold)
+            Part("cone", [0: [7...8], 1: [6...9], 2: [4...11]], RGB(0.45, 0.30, 0.85)),
+            Part("star", [1: [7...7]], gold)
         ]),
         EquipmentItem(id: "royal-crown", name: "Royal Crown", summary: "For the ruler of deep focus.", slot: .head, price: 600, parts: [
-            ("gold", [0: [5...5, 7...8, 10...10], 1: [5...10]], gold),
-            ("gems", [1: [6...6, 9...9]], RGB(0.90, 0.22, 0.35))
+            Part("gold", [0: [5...5, 7...8, 10...10], 1: [5...10]], gold),
+            Part("gems", [1: [6...6, 9...9]], RGB(0.90, 0.22, 0.35))
         ]),
         // Zbrane (v prave ruce)
         EquipmentItem(id: "wooden-sword", name: "Wooden Sword", summary: "Every hero's first blade.", slot: .weapon, price: 60, parts: [
-            ("blade", [3: [13...13], 4: [13...13], 5: [13...13], 6: [13...13], 7: [13...13]], wood),
-            ("guard", [8: [12...14]], darkWood),
-            ("grip", [9: [13...13], 10: [13...13]], darkWood)
+            Part("blade", [3: [13...13], 4: [13...13], 5: [13...13], 6: [13...13], 7: [13...13]], wood),
+            Part("guard", [8: [12...14]], darkWood),
+            Part("grip", [9: [13...13], 10: [13...13]], darkWood)
         ]),
         EquipmentItem(id: "excalibur", name: "Excalibur", summary: "Pulled from the stone of procrastination.", slot: .weapon, price: 400, parts: [
-            ("blade", [0: [13...13], 1: [13...13], 2: [13...13], 3: [13...13], 4: [13...13], 5: [13...13], 6: [13...13], 7: [13...13]], blade),
-            ("guard", [8: [12...14], 11: [13...13]], gold),
-            ("gem", [8: [13...13]], RGB(0.25, 0.45, 0.95)),
-            ("grip", [9: [13...13], 10: [13...13]], darkWood)
+            Part("blade", [0: [13...13], 1: [13...13], 2: [13...13], 3: [13...13], 4: [13...13], 5: [13...13], 6: [13...13], 7: [13...13]], blade),
+            Part("guard", [8: [12...14], 11: [13...13]], gold),
+            Part("gem", [8: [13...13]], RGB(0.25, 0.45, 0.95)),
+            Part("grip", [9: [13...13], 10: [13...13]], darkWood)
         ]),
         EquipmentItem(id: "magic-staff", name: "Magic Staff", summary: "Glows brighter the longer you focus.", slot: .weapon, price: 300, parts: [
-            ("staff", [3: [13...13], 4: [13...13], 5: [13...13], 6: [13...13], 7: [13...13], 8: [13...13], 9: [13...13], 10: [13...13], 11: [13...13], 12: [13...13], 13: [13...13], 14: [13...13]], wood),
-            ("orb", [0: [13...13], 1: [12...14], 2: [12...14]], cyan)
+            Part("staff", [3: [13...13], 4: [13...13], 5: [13...13], 6: [13...13], 7: [13...13], 8: [13...13], 9: [13...13], 10: [13...13], 11: [13...13], 12: [13...13], 13: [13...13], 14: [13...13]], wood),
+            Part("orb", [0: [13...13], 1: [12...14], 2: [12...14]], cyan)
         ]),
         // Boty
         EquipmentItem(id: "flying-boots", name: "Flying Boots", summary: "Winged boots. Mind the ceiling.", slot: .feet, price: 250, parts: [
-            ("boots", [14: [4...6, 9...11]], gold),
-            ("wings", [12: [2...2, 13...13], 13: [2...3, 12...13]], RGB(0.96, 0.97, 1.00))
+            Part("boots", [14: [4...6, 9...11]], gold),
+            Part("wings", [12: [2...2, 13...13], 13: [2...3, 12...13]], RGB(0.96, 0.97, 1.00))
         ]),
         EquipmentItem(id: "rocket-boots", name: "Rocket Boots", summary: "Zero to library in three seconds.", slot: .feet, price: 180, parts: [
-            ("boots", [14: [4...6, 9...11]], RGB(0.85, 0.22, 0.28)),
-            ("flame", [15: [4...6, 9...11]], flame)
+            Part("boots", [14: [4...6, 9...11]], RGB(0.85, 0.22, 0.28)),
+            Part("flame", [15: [4...6, 9...11]], flame)
         ]),
         // Gadgety
         EquipmentItem(id: "focus-headphones", name: "Focus Headphones", summary: "Noise-cancelling, distraction-cancelling.", slot: .gadget, price: 100, parts: [
-            ("band", [0: [5...10], 1: [4...4, 11...11], 2: [4...4, 11...11]], ink),
-            ("cups", [3: [3...4, 11...12], 4: [3...4, 11...12]], cyan)
+            Part("band", [0: [5...10], 1: [4...4, 11...11], 2: [4...4, 11...11]], ink),
+            Part("cups", [3: [3...4, 11...12], 4: [3...4, 11...12]], cyan)
         ]),
         EquipmentItem(id: "pocket-calculator", name: "Pocket Calculator", summary: "Math class's secret weapon.", slot: .gadget, price: 80, parts: [
-            ("body", [8: [1...2], 9: [1...2], 10: [1...2], 11: [1...2]], RGB(0.30, 0.32, 0.40)),
-            ("screen", [8: [1...2]], RGB(0.55, 0.95, 0.55))
+            Part("body", [8: [1...2], 9: [1...2], 10: [1...2], 11: [1...2]], RGB(0.30, 0.32, 0.40)),
+            Part("screen", [8: [1...2]], RGB(0.55, 0.95, 0.55))
         ]),
         EquipmentItem(id: "jetpack", name: "Jetpack", summary: "Strapped on, fuelled by coffee.", slot: .gadget, price: 350, drawsBehindBody: true, parts: [
-            ("tanks", [6: [2...3, 12...13], 7: [2...3, 12...13], 8: [2...3, 12...13], 9: [2...3, 12...13], 10: [2...3, 12...13]], steel),
-            ("flame", [11: [2...3, 12...13], 12: [2...2, 13...13]], flame)
+            Part("tanks", [6: [2...3, 12...13], 7: [2...3, 12...13], 8: [2...3, 12...13], 9: [2...3, 12...13], 10: [2...3, 12...13]], steel),
+            Part("flame", [11: [2...3, 12...13], 12: [2...2, 13...13]], flame)
         ])
     ]
 }
