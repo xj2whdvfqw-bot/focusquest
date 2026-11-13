@@ -11,20 +11,82 @@ struct VillageView: View {
         ScreenScaffold {
             ScreenTitle(eyebrow: "Village", title: "Your base")
             dwellingCard
+            ScreenSection(title: "Evolution", detail: "Stage \(stageNumber) of \(DwellingStage.allCases.count)") { evolutionStrip }
             HStack(spacing: FQSpace.md) {
                 resource("Coins", value: "\(model.profile.coins)", icon: "dollarsign.circle.fill")
                 resource("Bosses", value: "\(model.profile.bossesDefeated)", icon: "trophy.fill")
                 resource("Level", value: "\(model.level)", icon: "star.fill")
             }
             ScreenSection(title: "Next upgrade") { upgradeCard }
-            ScreenSection(title: "Building path", detail: "Stage \(stageNumber) of \(DwellingStage.allCases.count)") { pathCard }
+            ScreenSection(title: "Building path") { pathCard }
         }
         .task { await model.refreshProgress() }
     }
 
+    /// Cela cesta od chatrce po mesto na jeden pohled: postavene barevne, zamcene jako silueta.
+    private var evolutionStrip: some View {
+        ScrollViewReader { proxy in
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: FQSpace.xs) {
+                    ForEach(Array(DwellingStage.allCases.enumerated()), id: \.element.id) { index, stage in
+                        if index > 0 {
+                            Image(systemName: "chevron.right")
+                                .font(.fqMeta.weight(.semibold))
+                                .foregroundStyle(index < stageNumber ? FQColor.accent : FQColor.textTertiary)
+                                .accessibilityHidden(true)
+                        }
+                        evolutionTile(stage, isBuilt: index < stageNumber, isCurrent: stage == village.stage)
+                            .id(stage)
+                    }
+                }
+                .padding(FQSpace.md)
+            }
+            .glassCard()
+            .onAppear { proxy.scrollTo(village.stage, anchor: .center) }
+        }
+    }
+
+    private func evolutionTile(_ stage: DwellingStage, isBuilt: Bool, isCurrent: Bool) -> some View {
+        VStack(spacing: FQSpace.xs) {
+            DwellingArtView(stage: stage, size: 64, isLocked: !isBuilt)
+                .frame(width: 72, height: 72)
+                .background(isCurrent ? FQColor.accent.opacity(0.18) : Color.clear, in: RoundedRectangle(cornerRadius: FQRadius.control, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: FQRadius.control, style: .continuous)
+                        .strokeBorder(isCurrent ? FQColor.accent : Color.clear, lineWidth: 2)
+                }
+                .overlay(alignment: .topTrailing) {
+                    if !isBuilt {
+                        Image(systemName: "lock.fill").font(.system(size: 11, weight: .semibold)).foregroundStyle(FQColor.textSecondary).padding(FQSpace.xs)
+                    }
+                }
+            Text(stage.displayName).font(.fqMeta.weight(isCurrent ? .semibold : .regular)).foregroundStyle(isBuilt ? FQColor.textPrimary : FQColor.textSecondary).lineLimit(1)
+            Text(isBuilt ? (isCurrent ? "You are here" : "Built") : "Level \(stage.requirement.level)")
+                .font(.fqMeta)
+                .foregroundStyle(isCurrent ? FQColor.accent : FQColor.textTertiary)
+        }
+        .frame(width: 96)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(stage.displayName), \(isBuilt ? (isCurrent ? "current" : "built") : "locked, needs level \(stage.requirement.level)")")
+    }
+
     private var dwellingCard: some View {
         VStack(spacing: FQSpace.md) {
-            DwellingArtView(stage: village.stage, size: 168)
+            // Obydli stoji v male scene: obloha a travnaty kopec.
+            ZStack(alignment: .bottom) {
+                LinearGradient(colors: [Color(red: 0.55, green: 0.78, blue: 1.0).opacity(0.55), Color.white.opacity(0.05)], startPoint: .top, endPoint: .bottom)
+                Ellipse()
+                    .fill(LinearGradient(colors: [Color(red: 0.42, green: 0.80, blue: 0.45), Color(red: 0.22, green: 0.58, blue: 0.34)], startPoint: .top, endPoint: .bottom))
+                    .frame(height: 64)
+                    .offset(y: 30)
+                DwellingArtView(stage: village.stage, size: 176)
+                    .offset(y: -8)
+                    .id(village.stage)
+                    .transition(.scale(scale: 0.8).combined(with: .opacity))
+            }
+            .frame(height: 200)
+            .frame(maxWidth: .infinity)
+            .clipShape(RoundedRectangle(cornerRadius: FQRadius.control, style: .continuous))
             VStack(spacing: FQSpace.xs) {
                 Text(village.stage.displayName).font(.fqTitle).foregroundStyle(FQColor.textPrimary)
                 Text(village.stage.summary)
@@ -34,7 +96,7 @@ struct VillageView: View {
             }
         }
         .frame(maxWidth: .infinity)
-        .padding(FQSpace.xl)
+        .padding(FQSpace.lg)
         .glassCard()
     }
 
@@ -147,8 +209,16 @@ struct VillageView: View {
 struct DwellingArtView: View {
     let stage: DwellingStage
     var size: CGFloat = 160
+    /// Zamceny stupen se kresli jako tmava silueta.
+    var isLocked = false
 
     var body: some View {
+        art
+            .colorMultiply(isLocked ? Color.black : Color.white)
+            .opacity(isLocked ? 0.3 : 1)
+    }
+
+    private var art: some View {
         Group {
             switch stage {
             case .woodenHut: building(.hut, scale: 1)

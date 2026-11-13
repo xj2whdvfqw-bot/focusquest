@@ -1,13 +1,14 @@
 import SwiftUI
 
 private enum FocusQuestTab: String, CaseIterable, Identifiable {
-    case arena, village, stats, profile
+    case arena, village, shop, stats, profile
     var id: String { rawValue }
     var title: String { rawValue.capitalized }
     var symbol: String {
         switch self {
         case .arena: "flame.fill"
         case .village: "house.fill"
+        case .shop: "bag.fill"
         case .stats: "chart.bar.fill"
         case .profile: "person.crop.circle.fill"
         }
@@ -48,6 +49,9 @@ struct MainTabView: View {
                     VillageView(model: container.profileViewModel)
                         .tabItem { Label(FocusQuestTab.village.title, systemImage: FocusQuestTab.village.symbol) }
                         .tag(FocusQuestTab.village)
+                    ShopView(model: container.profileViewModel)
+                        .tabItem { Label(FocusQuestTab.shop.title, systemImage: FocusQuestTab.shop.symbol) }
+                        .tag(FocusQuestTab.shop)
                     StatsView(model: container.statsViewModel, profile: container.profileViewModel)
                         .tabItem { Label(FocusQuestTab.stats.title, systemImage: FocusQuestTab.stats.symbol) }
                         .tag(FocusQuestTab.stats)

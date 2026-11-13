@@ -71,6 +71,28 @@ final class ProfileViewModel: ObservableObject {
         todayVerifiedMinutes = updated.sessionHistory.filter { Calendar.current.isDateInToday($0.completedAt) }.reduce(0) { $0 + $1.verifiedMinutes }
     }
 
+    // MARK: - Obchod s vybavenim
+
+    func owns(_ item: EquipmentItem) -> Bool { profile.ownedEquipmentIDs.contains(item.id) }
+    func isEquipped(_ item: EquipmentItem) -> Bool { profile.avatar.equippedItemID(in: item.slot) == item.id }
+    func canAfford(_ item: EquipmentItem) -> Bool { profile.coins >= item.price }
+
+    /// Koupi predmet za mince a rovnou ho nasadi, aby byl hned videt na hrdinovi.
+    func buy(_ item: EquipmentItem) {
+        guard !owns(item), canAfford(item) else { return }
+        profile.coins -= item.price
+        profile.ownedEquipmentIDs.append(item.id)
+        profile.avatar.equip(item.id, in: item.slot)
+        save()
+    }
+
+    /// Nasadi koupeny predmet, nebo ho sundá, pokud uz je nasazeny.
+    func toggleEquip(_ item: EquipmentItem) {
+        guard owns(item) else { return }
+        profile.avatar.equip(isEquipped(item) ? nil : item.id, in: item.slot)
+        save()
+    }
+
     func unlockLoot(_ item: LootItem?) {
         guard let item, !profile.unlockedLootIDs.contains(item.id) else { return }
         profile.unlockedLootIDs.append(item.id)

@@ -9,7 +9,7 @@ enum DwellingStage: String, Codable, CaseIterable, Sendable, Identifiable {
     var displayName: String {
         switch self {
         case .woodenHut: "Wooden Hut"
-        case .brickCottage: "Brick Cottage"
+        case .brickCottage: "Brick House"
         case .stoneHouse: "Stone House"
         case .castle: "Castle"
         case .village: "Thriving Village"

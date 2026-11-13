@@ -4,6 +4,8 @@ struct ArenaView: View {
     @ObservedObject var model: ArenaViewModel
     @ObservedObject var profileModel: ProfileViewModel
     @State private var receipt: UIImage?
+    /// Kategorie bossu, kterou si hrac prohlizi; nil = kategorie vybraneho bosse.
+    @State private var shownCategory: BossCategory?
 
     private var isWarning: Bool { if case .warningCountdown = model.state { true } else { false } }
     private var isIdle: Bool { if case .idle = model.state { true } else { false } }
@@ -189,9 +191,21 @@ struct ArenaView: View {
     }
 
     private var bossSelector: some View {
+        VStack(alignment: .leading, spacing: FQSpace.sm) {
+            Picker("Boss category", selection: Binding(get: { shownCategory ?? model.selectedBoss.category }, set: { shownCategory = $0 })) {
+                ForEach(BossCategory.allCases) { Text($0.title).tag($0) }
+            }
+            .pickerStyle(.segmented)
+            bossRow(shownCategory ?? model.selectedBoss.category)
+        }
+        .disabled(!isIdle)
+        .opacity(isIdle ? 1 : 0.6)
+    }
+
+    private func bossRow(_ category: BossCategory) -> some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: FQSpace.sm) {
-                ForEach(Boss.roster) { boss in
+                ForEach(category.bosses) { boss in
                     let isSelected = boss.id == model.selectedBoss.id
                     Button { model.selectBoss(boss) } label: {
                         HStack(spacing: FQSpace.sm) {
@@ -214,8 +228,6 @@ struct ArenaView: View {
             .padding(.vertical, FQSpace.xs)
         }
         .scrollClipDisabled()
-        .disabled(!isIdle)
-        .opacity(isIdle ? 1 : 0.6)
     }
 
     private var battleStage: some View {

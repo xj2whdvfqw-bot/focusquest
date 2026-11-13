@@ -45,9 +45,41 @@ struct Boss: Identifiable, Codable, Hashable, Sendable {
         return copy
     }
 
+    var category: BossCategory { Boss.categoryByID[id] ?? .brainrot }
+
+    /// Bossove podle kategorii; maxHP je jejich vychozi delka bitvy v minutach.
     static let roster: [Boss] = [
-        Boss(id: "chronos-slime", name: "Chronos Slime", tier: .novice, maxHP: 45, currentHP: 45, pixelSpriteConfig: "chronos-slime", lootTable: ["chronos-shield", "scholars-tome"]),
-        Boss(id: "shadow-golem", name: "Shadow Golem", tier: .adept, maxHP: 90, currentHP: 90, pixelSpriteConfig: "shadow-golem", lootTable: ["scholars-tome"]),
-        Boss(id: "void-dragon", name: "Void Dragon", tier: .mythic, maxHP: 180, currentHP: 180, pixelSpriteConfig: "void-dragon", lootTable: ["ember-charm"])
+        Boss(id: "tung-tung-sahur", name: "Tung Tung Tung Sahur", tier: .novice, maxHP: 25, currentHP: 25, pixelSpriteConfig: "tung-tung-sahur", lootTable: ["chronos-shield"]),
+        Boss(id: "ballerina-cappuccina", name: "Ballerina Cappuccina", tier: .adept, maxHP: 30, currentHP: 30, pixelSpriteConfig: "ballerina-cappuccina", lootTable: ["scholars-tome"]),
+        Boss(id: "tralalero-tralala", name: "Tralalero Tralala", tier: .elite, maxHP: 45, currentHP: 45, pixelSpriteConfig: "tralalero-tralala", lootTable: ["ember-charm"]),
+        Boss(id: "banana-bandit", name: "Banana Bandit", tier: .novice, maxHP: 20, currentHP: 20, pixelSpriteConfig: "banana-bandit", lootTable: ["chronos-shield"]),
+        Boss(id: "goggle-grunt", name: "Goggle Grunt", tier: .adept, maxHP: 35, currentHP: 35, pixelSpriteConfig: "goggle-grunt", lootTable: ["scholars-tome"]),
+        Boss(id: "purple-chomper", name: "Purple Chomper", tier: .elite, maxHP: 50, currentHP: 50, pixelSpriteConfig: "purple-chomper", lootTable: ["chronos-shield", "scholars-tome"]),
+        Boss(id: "captain-procrastination", name: "Captain Procrastination", tier: .adept, maxHP: 40, currentHP: 40, pixelSpriteConfig: "captain-procrastination", lootTable: ["scholars-tome"]),
+        Boss(id: "dark-doomscroller", name: "The Dark Doomscroller", tier: .elite, maxHP: 60, currentHP: 60, pixelSpriteConfig: "dark-doomscroller", lootTable: ["chronos-shield"]),
+        Boss(id: "iron-distraction", name: "Iron Distraction", tier: .mythic, maxHP: 90, currentHP: 90, pixelSpriteConfig: "iron-distraction", lootTable: ["ember-charm"])
     ]
+
+    private static let categoryByID: [String: BossCategory] = [
+        "tung-tung-sahur": .brainrot, "ballerina-cappuccina": .brainrot, "tralalero-tralala": .brainrot,
+        "banana-bandit": .henchlings, "goggle-grunt": .henchlings, "purple-chomper": .henchlings,
+        "captain-procrastination": .heroes, "dark-doomscroller": .heroes, "iron-distraction": .heroes
+    ]
+}
+
+/// Skupiny bossu v Arene.
+enum BossCategory: String, CaseIterable, Sendable, Identifiable {
+    case brainrot, henchlings, heroes
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .brainrot: "Brainrot"
+        case .henchlings: "Henchlings"
+        case .heroes: "Super Slackers"
+        }
+    }
+
+    var bosses: [Boss] { Boss.roster.filter { $0.category == self } }
 }

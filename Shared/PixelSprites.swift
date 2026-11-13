@@ -58,6 +58,14 @@ enum SpritePalette {
         case "S": Color(red: 0.24, green: 0.3, blue: 0.43)
         case "G": Color(red: 0.36, green: 0.73, blue: 0.46)
         case "D": Color(red: 0.13, green: 0.17, blue: 0.27)
+        case "T": Color(red: 0.62, green: 0.40, blue: 0.20)   // drevo
+        case "E": Color(red: 0.98, green: 0.93, blue: 0.80)   // smetana, slonovina
+        case "K": Color(red: 0.09, green: 0.09, blue: 0.12)   // skoro cerna
+        case "F": Color(red: 0.97, green: 0.80, blue: 0.64)   // kuze
+        case "N": Color(red: 1.00, green: 0.60, blue: 0.78)   // ruzova
+        case "A": Color(red: 0.62, green: 0.67, blue: 0.75)   // sediva
+        case "L": Color(red: 0.55, green: 0.86, blue: 1.00)   // svitici modra
+        case "U": Color(red: 0.17, green: 0.29, blue: 0.70)   // namornicka modra
         default: .clear
         }
     }
@@ -65,11 +73,7 @@ enum SpritePalette {
     static func rows(for sprite: PixelSprite, startled: Bool) -> [String] {
         switch sprite {
         case .boss(let id):
-            return switch id {
-            case "shadow-golem": ["......SSSS......", ".....SDDDS.....", "....SDDDDS.....", "...SDDWWDDS....", "...SDDDDDDS....", "..SSDDDDDDSS...", "..SDDDDDDDDDS..", ".SSDDDDDDDDSS..", ".SDDDDDDDDDDDS.", ".SDDSSDDDDSSDS.", "..SDDSSSSDDDS..", "..SDDDDDDDDD...", "...SDDDDDDS....", "...SS....SS....", "..SS......SS...", "................"]
-            case "void-dragon": ["...PP......PP...", "..PPPP....PPPP..", ".PPPPPP..PPPPPP.", "PPWWPPPPPPPPWWPP", ".PPPPPPPPPPPPPP.", "..PPPPPPPPPPPP..", "...PPPPPPPPPP...", "....PPPPPPPP....", "...PPPPPPPPPP...", "..PPPPPPPPPPPP..", ".PPPPPPPPPPPPPP.", "PP...PP..PP...PP", ".....PP..PP.....", "....PP....PP....", "...PP......PP...", "................"]
-            default: ["................", "......GGGG......", "....GGGGGGGG....", "...GGGGGGGGGG...", "..GGGGGGGGGGGG..", "..GGWWGGGGWWGG..", ".GGGGGGGGGGGGGG.", ".GGGGGGGGGGGGGG.", ".GGGGGGGGGGGGGG.", "..GGGGGGGGGGGG..", "...GGGGGGGGGG...", "....GGGGGGGG....", ".....GGGGGG.....", "......GGGG......", "................", "................"]
-            }
+            return bossRows[id] ?? slimeRows
         case .companion(let id):
             if id == "ember-dragonling" { return ["................", ".....OO..OO.....", "....OOOOOOOO....", "...OOOOWWOOOO...", "...OOOOOOOOOO...", "....OOOOOOOO....", ".....OOOOOO.....", "....OOO..OOO....", "...OO......OO...", "..OO........OO..", "................", "................", "................", "................", "................", "................"] }
             return ["................", "..DD........DD..", ".DDD........DDD.", ".DDDD......DDDD.", "..DDDDDDDDDDDD..", "..DDWWDDDDWWDD..", "..DDDDDDDDDDDD..", "...DDDDDDDDDD...", "....DDDDDDDD....", "....DDDDDDDD....", ".....DDDDDD.....", "....DD......DD..", "...DD........DD.", "................", "................", "................"]
@@ -86,4 +90,70 @@ enum SpritePalette {
         case .hero(let value): value.displayName
         }
     }
+}
+// MARK: - Bossove (16x16, kazdy znak = jeden pixel, "." = pruhledne)
+
+extension SpritePalette {
+    /// Zaloha pro neznameho bosse (napr. ze starsi verze appky).
+    static let slimeRows = ["................", "......GGGG......", "....GGGGGGGG....", "...GGGGGGGGGG...", "..GGGGGGGGGGGG..", "..GGWWGGGGWWGG..", ".GGGGGGGGGGGGGG.", ".GGGGGGGGGGGGGG.", ".GGGGGGGGGGGGGG.", "..GGGGGGGGGGGG..", "...GGGGGGGGGG...", "....GGGGGGGG....", ".....GGGGGG.....", "......GGGG......", "................", "................"]
+
+    static let bossRows: [String: [String]] = [
+        // Brainrot
+        "tung-tung-sahur": [
+            "....TTTTTT......", "...TTTTTTTT....E", "...TWWTTWWT...EE", "...TWKTTWKT...EE",
+            "...TTTTTTTT...E.", "...TTKKKKTT..E..", "...TTTTTTTT.E...", "..TTTTTTTTTTF...",
+            ".T.TTTTTTTT.T...", "T..TTTTTTTT.....", "...TTTTTTTT.....", "...TTTTTTTT.....",
+            "....TT..TT......", "....TT..TT......", "...KKK..KKK.....", "................"
+        ],
+        "ballerina-cappuccina": [
+            "................", ".....EEEEEE.....", "....EEEEEEEE....", "....WWWWWWWW....",
+            "....WKWWWWKW....", "....WWWNNWWW....", ".....WWWWWW.....", "......FFFF......",
+            "..F..NNNNNN..F..", "...FNNNNNNNNF...", "..NNNNNNNNNNNN..", ".NNNNNNNNNNNNNN.",
+            "......F..F......", "......F..F......", ".....NF..FN.....", "................"
+        ],
+        "tralalero-tralala": [
+            "................", ".......A........", "......AA........", ".....AAAA.......",
+            "..AAAAAAAAAAA..A", ".AAWKAAAAAAAAAAA", "AAAAAAAAAAAAAA.A", "AWWWWWAAAAAAAA..",
+            ".AWWWWWWWWWAA...", "..AAAAAAAAAA....", "...A..A...A.....", "...A..A...A.....",
+            "...A..A...A.....", "..BB.BB..BB.....", "..WB.WB..WB.....", "................"
+        ],
+        // Henchlings (parodie zlutych pomocniku)
+        "banana-bandit": [
+            "......K.K.......", ".....YYYYYY.....", "....YYYYYYYY....", "...KKAAAAAAKK...",
+            "...YYAWWKWAYY...", "....YAAAAAAY....", "....YYYYYYYY....", "....YYKKKKYY....",
+            "....YYYYYYYY....", "...YUUUUUUUUY...", "....UUUKKUUU....", "....UUUUUUUU....",
+            ".....UU..UU.....", ".....KK..KK.....", "....KKK..KKK....", "................"
+        ],
+        "goggle-grunt": [
+            "................", ".....YYYYYY.....", "....YYYYYYYY....", "...KAAAKKAAAK...",
+            "...KAWKAAKWAK...", "....AAAYYAAA....", "....YYYYYYYY....", "....YYWWWWYY....",
+            "....YYYYYYYY....", "....YYYYYYYY....", "...YUUUUUUUUY...", "....UUUUUUUU....",
+            ".....UU..UU.....", ".....KK..KK.....", "....KKK..KKK....", "................"
+        ],
+        "purple-chomper": [
+            "...K.K.K.K.K....", "....KKKKKKKK....", "....PPPPPPPP....", "...KKAAAAAAKK...",
+            "...PPAWWRWAPP...", "....PAAAAAAP....", "....PPPPPPPP....", "....PWKWKWKP....",
+            "....PPPPPPPP....", "...PUUUUUUUUP...", "....UUUKKUUU....", "....UUUUUUUU....",
+            ".....UU..UU.....", ".....KK..KK.....", "....KKK..KKK....", "................"
+        ],
+        // Super Slackers (parodie superhrdinu)
+        "captain-procrastination": [
+            "................", ".....UUUUUU.....", "....UUUWWUUU....", "....UFFFFFFU....",
+            "....UFKFFKFU....", ".....FFFFFF.....", ".....FFKKFF.....", "...UUUUWWUUUU...",
+            ".RRR.UUWWUU.F...", "RWWWR.RRRRRR.F..", "RWUWR.WWWWWW....", "RWWWR.RRRRRR....",
+            ".RRR..UU..UU....", "......UU..UU....", ".....RRR..RRR...", "................"
+        ],
+        "dark-doomscroller": [
+            "....K......K....", "....KK....KK....", "....KKKKKKKK....", "....KWWKKWWK....",
+            "....KKKKKKKK....", ".....KFFFFK.....", ".....FFKKFF.....", "..KKAAAAAAAAKK..",
+            ".KKAAAKKKKAAAKK.", ".KKAAAAAAAAAAKL.", ".KKAYYYYYYYYAKL.", ".KKAAAAAAAAAAK..",
+            ".KK..AA..AA..K..", ".K...AA..AA...K.", ".....KK..KK.....", "................"
+        ],
+        "iron-distraction": [
+            "................", ".....RRRRRR.....", "....RRRRRRRR....", "....RYYYYYYR....",
+            "....RYLYYLYR....", "....RYYYYYYR....", ".....RYYYYR.....", "...RRRRRRRRRR...",
+            "..RRRRRLLRRRRR..", "..YR.RRLLRR.RY..", "..YR.RRRRRR.RY..", ".LL..YYYYYY..LL.",
+            ".....RR..RR.....", ".....RR..RR.....", "....YYY..YYY....", "................"
+        ]
+    ]
 }

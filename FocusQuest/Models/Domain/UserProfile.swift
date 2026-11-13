@@ -14,12 +14,14 @@ struct UserProfile: Codable, Sendable {
     /// Herni mena za overene minuty a porazene bosse.
     var coins = 0
     var bossesDefeated = 0
+    /// Vybaveni koupene v obchode (ID z EquipmentItem.catalog).
+    var ownedEquipmentIDs: [String] = []
     /// false = hrac jeste neprosel uvodni tvorbou hrdiny.
     var hasCreatedHero = false
 
     enum CodingKeys: String, CodingKey {
         case userID, username, title, heroClass, avatarMatrix, dailyFocusGoalMinutes, equippedLootIDs, unlockedLootIDs
-        case avatar, village, coins, bossesDefeated, hasCreatedHero
+        case avatar, village, coins, bossesDefeated, hasCreatedHero, ownedEquipmentIDs
     }
 
     static func fresh(deviceID: String) -> UserProfile {
@@ -46,5 +48,6 @@ extension UserProfile {
         coins = max(0, storedCoins)
         bossesDefeated = max(0, storedBosses)
         hasCreatedHero = try container.decodeIfPresent(Bool.self, forKey: .hasCreatedHero) ?? false
+        ownedEquipmentIDs = (try? container.decodeIfPresent([String].self, forKey: .ownedEquipmentIDs)) ?? []
     }
 }

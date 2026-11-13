@@ -123,7 +123,10 @@ enum AvatarSprite {
     static let gridSize = 16
 
     static func layers(for appearance: AvatarAppearance, heroClass: HeroClass) -> [AvatarLayer] {
-        var layers = [
+        // Nasazene vybaveni z obchodu; neznama ID (napr. ze starsi verze) se preskoci.
+        let gear = EquipmentSlot.allCases.compactMap { appearance.equippedItemID(in: $0).flatMap(EquipmentItem.item(withID:)) }
+        var layers = gear.filter(\.drawsBehindBody).flatMap(\.layers)
+        layers += [
             AvatarLayer(id: "skin", rows: grid([2: [5...10], 3: [5...10], 4: [5...10], 5: [5...10], 6: [7...8], 9: [3...3, 12...12], 10: [3...3, 12...12]]), rgb: appearance.skin.rgb),
             AvatarLayer(id: "outfit", rows: grid([7: [4...11], 8: [3...12], 9: [4...11], 10: [5...10], 12: [5...6, 9...10], 13: [5...6, 9...10]]), rgb: appearance.outfitColor.rgb),
             AvatarLayer(id: "belt", rows: grid([11: [5...10]]), rgb: classAccent(heroClass)),
@@ -133,6 +136,8 @@ enum AvatarSprite {
             layers.append(AvatarLayer(id: "hair", rows: grid(hair), rgb: appearance.hairColor.rgb))
         }
         layers.append(AvatarLayer(id: "eyes", rows: grid([4: [6...6, 9...9]]), rgb: RGB(0.10, 0.10, 0.16)))
+        // Helmy, zbrane a gadgety jsou nakreslene pres hrdinu.
+        layers += gear.filter { !$0.drawsBehindBody }.flatMap(\.layers)
         return layers
     }
 

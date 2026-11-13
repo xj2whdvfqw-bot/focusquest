@@ -60,7 +60,7 @@ diagnose() {
 INDEX=1
 # Kazda polozka je "rezim:zalozka". Vsechny zalozky se foti v tmavem rezimu, hlavni i ve svetlem.
 # "creator" neni zalozka, ale uvodni tvorba hrdiny pri prvnim spusteni.
-for ENTRY in dark:arena dark:village dark:stats dark:profile dark:settings dark:creator light:arena light:village light:profile; do
+for ENTRY in dark:arena dark:village dark:shop dark:stats dark:profile dark:settings dark:creator light:arena light:village light:profile; do
   MODE="${ENTRY%%:*}"
   TAB="${ENTRY##*:}"
   xcrun simctl ui "$UDID" appearance "$MODE" || true

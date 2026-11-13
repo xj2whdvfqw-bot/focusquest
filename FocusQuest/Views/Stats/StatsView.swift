@@ -18,11 +18,45 @@ struct StatsView: View {
                 metric("Best combo", value: "\(model.stats.bestCombo)x", icon: "flame.fill")
                 metric("Focus hours", value: focusHours, icon: "clock.fill")
             }
+            ScreenSection(title: "Subjects") { subjectsCard }
             ScreenSection(title: "Verified battle log", detail: "\(model.stats.sessionHistory.count) battles") {
                 battleLog
             }
         }
         .task { await model.load() }
+    }
+
+    /// Kolik minut hrac venoval kteremu predmetu.
+    @ViewBuilder private var subjectsCard: some View {
+        let progress = SubjectProgress.summarize(model.stats.sessionHistory)
+        let maxMinutes = max(1, progress.first?.minutes ?? 1)
+        if progress.isEmpty {
+            Label("Pick a subject before a battle to track your study time here.", systemImage: "books.vertical.fill")
+                .font(.fqSecondary)
+                .foregroundStyle(FQColor.textSecondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(FQSpace.lg)
+                .glassCard()
+        } else {
+            VStack(spacing: FQSpace.md) {
+                ForEach(progress) { entry in
+                    VStack(alignment: .leading, spacing: FQSpace.xs) {
+                        HStack {
+                            Label(entry.subject.title, systemImage: entry.subject.symbol).font(.fqLabel).foregroundStyle(FQColor.textPrimary)
+                            Spacer(minLength: FQSpace.sm)
+                            Text("\(ArenaView.durationText(minutes: entry.minutes)) · \(entry.battles) \(entry.battles == 1 ? "battle" : "battles")")
+                                .font(.fqMeta)
+                                .monospacedDigit()
+                                .foregroundStyle(FQColor.textSecondary)
+                        }
+                        ProgressView(value: Double(entry.minutes), total: Double(maxMinutes)).tint(FQColor.accent)
+                    }
+                    .accessibilityElement(children: .combine)
+                }
+            }
+            .padding(FQSpace.lg)
+            .glassCard()
+        }
     }
 
     private var levelCard: some View {

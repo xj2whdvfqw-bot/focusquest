@@ -126,6 +126,54 @@ final class ProgressionModelTests: XCTestCase {
         }
     }
 
+    // MARK: - Obchod a bossove
+
+    func testEquippedGearIsDrawnOnTheHero() {
+        XCTAssertEqual(Set(EquipmentItem.catalog.map(\.id)).count, EquipmentItem.catalog.count, "Duplicate item IDs")
+        for item in EquipmentItem.catalog {
+            var appearance = AvatarAppearance()
+            appearance.equip(item.id, in: item.slot)
+            let layers = AvatarSprite.layers(for: appearance, heroClass: .arcaneScholar)
+            let itemLayers = layers.filter { $0.id.hasPrefix("\(item.id)-") }
+            XCTAssertFalse(itemLayers.isEmpty, "\(item.name) is not drawn")
+            XCTAssertEqual(Set(layers.map(\.id)).count, layers.count, "Layer IDs must be unique for \(item.name)")
+            for layer in itemLayers {
+                XCTAssertEqual(layer.rows.count, AvatarSprite.gridSize)
+                XCTAssertTrue(layer.rows.contains(where: { $0.contains("#") }), "Layer \(layer.id) is empty")
+            }
+            // Za telem se kresli jen batoh; ostatni vybaveni je navrchu.
+            let index = layers.firstIndex { $0.id.hasPrefix("\(item.id)-") }!
+            let skinIndex = layers.firstIndex { $0.id == "skin" }!
+            XCTAssertEqual(index < skinIndex, item.drawsBehindBody)
+        }
+    }
+
+    func testUnknownEquipmentIsIgnored() {
+        var appearance = AvatarAppearance()
+        appearance.equip("item-from-the-future", in: .head)
+        XCTAssertEqual(AvatarSprite.layers(for: appearance, heroClass: .alchemist).count, AvatarSprite.layers(for: AvatarAppearance(), heroClass: .alchemist).count)
+    }
+
+    func testProfileKeepsOwnedEquipment() throws {
+        var profile = UserProfile.fresh(deviceID: "test")
+        profile.ownedEquipmentIDs = ["excalibur"]
+        profile.avatar.equip("excalibur", in: .weapon)
+        let decoded = try JSONDecoder().decode(UserProfile.self, from: JSONEncoder().encode(profile))
+        XCTAssertEqual(decoded.ownedEquipmentIDs, ["excalibur"])
+        XCTAssertEqual(decoded.avatar.equippedItemID(in: .weapon), "excalibur")
+    }
+
+    func testEveryBossHasAFullSpriteAndACategory() {
+        XCTAssertEqual(Boss.roster.count, 9)
+        for category in BossCategory.allCases { XCTAssertEqual(category.bosses.count, 3, category.title) }
+        for boss in Boss.roster {
+            let rows = SpritePalette.bossRows[boss.pixelSpriteConfig]
+            XCTAssertNotNil(rows, "\(boss.name) has no sprite")
+            XCTAssertEqual(rows?.count, 16, boss.name)
+            XCTAssertTrue(rows?.allSatisfy { $0.count == 16 } ?? false, boss.name)
+        }
+    }
+
     // MARK: - Vesnice a odmeny
 
     func testVillageUpgradeNeedsLevelBossesAndCoins() {
