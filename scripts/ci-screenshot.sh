@@ -58,9 +58,11 @@ diagnose() {
 }
 
 INDEX=1
-# Kazda polozka je "rezim:zalozka". Vsechny zalozky se foti v tmavem rezimu, hlavni i ve svetlem.
+PREV_SHOT=""
+# Kazda polozka je "rezim:zalozka". Appka ma vynuceny tmavy rezim, svetle snimky by byly stejne.
 # "creator" neni zalozka, ale uvodni tvorba hrdiny pri prvnim spusteni.
-for ENTRY in dark:arena dark:village dark:shop dark:stats dark:profile dark:settings dark:creator light:arena light:village light:profile; do
+# Poradi = priorita: kdyz je simulator pomaly a krok narazi na limit, chybi az ty posledni.
+for ENTRY in dark:arena dark:creator dark:profile dark:village dark:shop dark:stats dark:settings; do
   MODE="${ENTRY%%:*}"
   TAB="${ENTRY##*:}"
   xcrun simctl ui "$UDID" appearance "$MODE" || true
@@ -75,11 +77,14 @@ for ENTRY in dark:arena dark:village dark:shop dark:stats dark:profile dark:sett
   while :; do
     xcrun simctl io "$UDID" screenshot "$SHOT"
     SIZE=$(png_size "$SHOT")
-    if [ "$SIZE" -ge "$MIN_BYTES" ]; then break; fi
+    # Na pomalem stroji muze na obrazovce jeste viset posledni snimek predchozi zalozky;
+    # stejny obrazek jako minule tedy znamena, ze nova zalozka se jeste nevykreslila.
+    if [ "$SIZE" -ge "$MIN_BYTES" ] && { [ -z "$PREV_SHOT" ] || ! cmp -s "$SHOT" "$PREV_SHOT"; }; then break; fi
     if [ "$SECONDS" -ge "$DEADLINE" ]; then diagnose "$TAB" "$PID"; break; fi
     echo "[$TAB] obrazovka jeste neni vykreslena (${SIZE} B), zkousim znovu..."
     sleep 4
   done
+  PREV_SHOT="$SHOT"
   INDEX=$((INDEX + 1))
 done
 ls -lh build/screenshots
