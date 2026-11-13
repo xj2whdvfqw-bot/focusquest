@@ -275,8 +275,27 @@ struct ArenaView: View {
     @ViewBuilder private var sessionControls: some View {
         switch model.state {
         case .idle, .penalized, .victory:
+            if model.selectedSubject == nil {
+                // Vypnute tlacitko by na skle bylo necitelne; misto nej jasna vyzva.
+                Label("Choose a subject above to start", systemImage: "books.vertical.fill")
+                    .font(.fqLabel)
+                    .foregroundStyle(FQColor.textPrimary)
+                    .frame(maxWidth: .infinity)
+                    .padding(FQSpace.lg)
+                    .glassCard(radius: FQRadius.control, tint: FQColor.caution)
+            } else {
+                startButton
+            }
+        case .awaitingFlatPlacement:
+            placementHint
+        case .focusing, .warningCountdown:
+            surrenderButton
+        }
+    }
+
+    private var startButton: some View {
             Button { model.startSession() } label: {
-                Label(model.selectedSubject == nil ? "Choose a subject first" : "Begin Focus Battle", systemImage: "play.fill")
+                Label("Begin Focus Battle", systemImage: "play.fill")
                     .font(.fqHeadline)
                     .foregroundStyle(FQColor.onAccent)
                     .frame(maxWidth: .infinity)
@@ -286,26 +305,28 @@ struct ArenaView: View {
             .buttonBorderShape(.capsule)
             .controlSize(.large)
             .tint(FQColor.accent)
-            .disabled(model.selectedSubject == nil)
-        case .awaitingFlatPlacement:
-            Label("Place iPhone face-up on desk", systemImage: "iphone.gen3.radiowaves.left.and.right")
-                .font(.fqLabel)
-                .foregroundStyle(FQColor.textPrimary)
+    }
+
+    private var placementHint: some View {
+        Label("Place iPhone face-up on desk", systemImage: "iphone.gen3.radiowaves.left.and.right")
+            .font(.fqLabel)
+            .foregroundStyle(FQColor.textPrimary)
+            .frame(maxWidth: .infinity)
+            .padding(FQSpace.lg)
+            .glassCard(radius: FQRadius.control)
+    }
+
+    private var surrenderButton: some View {
+        Button(role: .destructive) { model.stopSession() } label: {
+            Label("Surrender Battle", systemImage: "flag.fill")
+                .font(.fqHeadline)
                 .frame(maxWidth: .infinity)
-                .padding(FQSpace.lg)
-                .glassCard(radius: FQRadius.control)
-        case .focusing, .warningCountdown:
-            Button(role: .destructive) { model.stopSession() } label: {
-                Label("Surrender Battle", systemImage: "flag.fill")
-                    .font(.fqHeadline)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, FQSpace.xs)
-            }
-            .glassButtonStyle()
-            .buttonBorderShape(.capsule)
-            .controlSize(.large)
-            .tint(FQColor.danger)
+                .padding(.vertical, FQSpace.xs)
         }
+        .glassButtonStyle()
+        .buttonBorderShape(.capsule)
+        .controlSize(.large)
+        .tint(FQColor.danger)
     }
 
     #if targetEnvironment(simulator)
