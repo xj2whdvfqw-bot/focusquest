@@ -7,6 +7,8 @@ struct SessionSummary: Identifiable, Codable, Sendable {
     let xpEarned: Int
     let completedAt: Date
     let flawless: Bool
+    /// Predmet bitvy; starsi zaznamy ho nemaji.
+    var subject: StudySubject? = nil
 }
 
 struct PlayerStats: Codable, Sendable {

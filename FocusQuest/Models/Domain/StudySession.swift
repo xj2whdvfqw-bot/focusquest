@@ -1,6 +1,7 @@
 import Foundation
 
-enum SessionMode: String, Codable, Sendable { case solo, raid }
+/// Rezim bitvy. Co-op raid byl odstranen, zustava jen samostatna bitva.
+enum SessionMode: String, Codable, Sendable { case solo }
 enum StudySessionStatus: String, Codable, Sendable { case awaitingPlacement, focusing, warning, penalized, completed, abandoned }
 
 struct StudySession: Identifiable, Codable, Sendable {

@@ -66,7 +66,7 @@ actor SimulatedSecureBackendService: FocusValidationServiceProtocol {
 
     func startSession(bossID: String, mode: SessionMode, targetMinutes: Int) async throws -> StartSessionResponse {
         guard let template = bosses[bossID] else { throw SimulationError.unknownBoss }
-        let now = ProcessInfo.processInfo.systemUptime
+        let now = MonotonicClock.now
         let id = UUID().uuidString
         // Kazda bitva ma vlastniho bosse s HP, ktere si hrac zvolil (1 HP = 1 minuta).
         sessions[id] = ActiveSession(id: id, boss: template.withHP(minutes: targetMinutes), startedAt: now, lastAuthorizedAt: now)
@@ -80,7 +80,7 @@ actor SimulatedSecureBackendService: FocusValidationServiceProtocol {
         let heartbeat = HeartbeatRequest(sessionID: sessionID, monotonicElapsedSeconds: monotonicElapsedSeconds, motionIntegrityToken: motionIntegrityToken, clientNonce: clientNonce)
         let payload = try JSONEncoder.focusQuest.encode(heartbeat)
         guard let requestSignature, signer.verify(requestSignature, payload: payload, key: signingKey, nonce: clientNonce) else { throw SimulationError.invalidSignature }
-        let elapsed = ProcessInfo.processInfo.systemUptime - session.startedAt
+        let elapsed = MonotonicClock.now - session.startedAt
         // Klient nesmi hlasit vic casu, nez opravdu ubehlo. Mene hlasit smi: pauzy pri zvednuti telefonu se do soustredeni nepocitaji.
         guard monotonicElapsedSeconds <= elapsed + 2 else { throw SimulationError.invalidClock }
         let available = Int((monotonicElapsedSeconds - (session.lastAuthorizedAt - session.startedAt)) / 60)

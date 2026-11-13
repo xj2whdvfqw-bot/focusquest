@@ -97,6 +97,8 @@ extension JSONEncoder {
     static var focusQuest: JSONEncoder {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
+        // Podepisovany payload musi mit stale stejne poradi klicu.
+        encoder.outputFormatting = [.sortedKeys]
         return encoder
     }
 }

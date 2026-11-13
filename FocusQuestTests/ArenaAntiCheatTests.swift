@@ -61,7 +61,8 @@ final class ArenaAntiCheatTests: XCTestCase {
         let motion = MotionSpy()
         let haptics = HapticsSpy()
         let audio = AudioSpy()
-        let model = ArenaViewModel(validation: validation, motion: motion, haptics: haptics, audio: audio, security: SecuritySpy(), raid: RaidSessionService(), preferenceStore: PreferencesSpy(value: prefs), profileProvider: { .fresh(deviceID: "test-device") })
+        let model = ArenaViewModel(validation: validation, motion: motion, haptics: haptics, audio: audio, security: SecuritySpy(), preferenceStore: PreferencesSpy(value: prefs), profileProvider: { .fresh(deviceID: "test-device") })
+        model.selectSubject(.math)
         return Rig(model: model, validation: validation, haptics: haptics, audio: audio)
     }
 

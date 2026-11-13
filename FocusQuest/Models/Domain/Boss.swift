@@ -21,11 +21,20 @@ struct Boss: Identifiable, Codable, Hashable, Sendable {
     }
 
     // HP bosse si hrac voli sam: 1 HP = 1 minuta overeneho soustredeni.
-    static let minutesRange = 1...240
+    // Nejkratsi bitva je 10 minut a delka se meni po 5 minutach.
+    static let minutesRange = 10...240
+    static let minutesStep = 5
     static let defaultMinutes = 25
 
+    /// Zaokrouhli na nejblizsich 5 minut a drzi hodnotu v rozsahu 10-240.
     static func clampedMinutes(_ value: Int) -> Int {
-        min(minutesRange.upperBound, max(minutesRange.lowerBound, value))
+        let snapped = Int((Double(value) / Double(minutesStep)).rounded()) * minutesStep
+        return min(minutesRange.upperBound, max(minutesRange.lowerBound, snapped))
+    }
+
+    /// Vychozi HP konkretniho bosse, dokud si ho hrac nezmeni.
+    static func defaultMinutes(for bossID: String) -> Int {
+        clampedMinutes(roster.first { $0.id == bossID }?.maxHP ?? defaultMinutes)
     }
 
     /// Stejny boss s plnym zdravim na zvoleny pocet minut.

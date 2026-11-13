@@ -4,41 +4,73 @@ import XCTest
 final class ProgressionModelTests: XCTestCase {
     // MARK: - HP bosse
 
-    func testBossHPFollowsChosenMinutesAndStaysInRange() {
-        let boss = Boss.roster[0].withHP(minutes: 37)
-        XCTAssertEqual(boss.maxHP, 37)
-        XCTAssertEqual(boss.currentHP, 37)
-        XCTAssertEqual(Boss.roster[0].withHP(minutes: 0).maxHP, Boss.minutesRange.lowerBound)
+    func testBossHPStartsAtTenMinutesAndMovesInFiveMinuteSteps() {
+        let boss = Boss.roster[0].withHP(minutes: 35)
+        XCTAssertEqual(boss.maxHP, 35)
+        XCTAssertEqual(boss.currentHP, 35)
+        XCTAssertEqual(Boss.clampedMinutes(37), 35)
+        XCTAssertEqual(Boss.clampedMinutes(38), 40)
+        XCTAssertEqual(Boss.clampedMinutes(1), 10)
+        XCTAssertEqual(Boss.roster[0].withHP(minutes: 0).maxHP, 10)
         XCTAssertEqual(Boss.roster[0].withHP(minutes: 9_999).maxHP, Boss.minutesRange.upperBound)
+        for boss in Boss.roster { XCTAssertEqual(Boss.defaultMinutes(for: boss.id) % Boss.minutesStep, 0) }
     }
 
     func testSimulatedBackendUsesCustomHPForEachBattle() async throws {
         let backend = SimulatedSecureBackendService()
-        let session = try await backend.startSession(bossID: Boss.roster[0].id, mode: .solo, targetMinutes: 12)
+        let session = try await backend.startSession(bossID: Boss.roster[0].id, mode: .solo, targetMinutes: 15)
         let result = try await backend.completeSession(sessionID: session.sessionID)
-        XCTAssertEqual(result.boss.maxHP, 12)
-        XCTAssertEqual(result.boss.currentHP, 12)
+        XCTAssertEqual(result.boss.maxHP, 15)
+        XCTAssertEqual(result.boss.currentHP, 15)
     }
 
     // MARK: - Predvolby
 
     func testPreferencesSavedByOlderVersionKeepTheirValues() throws {
-        let legacy = Data(#"{"isHapticsEnabled":false,"isMusicEnabled":true,"isSFXEnabled":true,"ambientVolume":0.3,"selectedTrack":"tokyoSunset"}"#.utf8)
+        let legacy = Data(#"{"isHapticsEnabled":false,"isMusicEnabled":true,"isSFXEnabled":true,"ambientVolume":0.3,"selectedTrack":"tokyoSunset","bossMinutes":1}"#.utf8)
         let preferences = try JSONDecoder().decode(AppPreferences.self, from: legacy)
         XCTAssertFalse(preferences.isHapticsEnabled)
         XCTAssertEqual(preferences.ambientVolume, 0.3, accuracy: 0.0001)
         XCTAssertEqual(preferences.selectedTrack, .tokyoSunset)
         XCTAssertEqual(preferences.soundscape, .lofi)
-        XCTAssertEqual(preferences.bossMinutes, Boss.defaultMinutes)
+        XCTAssertNil(preferences.lastSubject)
+        // Stare spolecne HP pro vsechny bosse se nepouzije; kazdy boss ma sve vychozi.
+        for boss in Boss.roster { XCTAssertEqual(preferences.bossMinutes(for: boss.id), Boss.defaultMinutes(for: boss.id)) }
     }
 
-    func testPreferencesRoundTripKeepsSoundscapeAndBossMinutes() throws {
+    func testEachBossKeepsItsOwnHP() throws {
+        var preferences = AppPreferences()
+        let first = Boss.roster[0].id
+        let second = Boss.roster[1].id
+        let secondBefore = preferences.bossMinutes(for: second)
+        preferences.bossMinutesByID[first] = 60
+        XCTAssertEqual(preferences.bossMinutes(for: first), 60)
+        XCTAssertEqual(preferences.bossMinutes(for: second), secondBefore)
+    }
+
+    func testPreferencesRoundTripKeepsSoundscapeBossHPAndSubject() throws {
         var preferences = AppPreferences()
         preferences.soundscape = .brownNoise
-        preferences.bossMinutes = 90
+        preferences.bossMinutesByID = [Boss.roster[0].id: 90, Boss.roster[1].id: 15]
+        preferences.lastSubject = .german
+        preferences.lastBossID = Boss.roster[1].id
         let data = try JSONEncoder().encode(preferences)
         let decoded = try JSONDecoder().decode(AppPreferences.self, from: data)
         XCTAssertEqual(decoded, preferences)
+    }
+
+    func testSubjectProgressSumsMinutesPerSubject() {
+        let now = Date()
+        let history = [
+            SessionSummary(id: UUID(), bossName: "A", verifiedMinutes: 25, xpEarned: 250, completedAt: now, flawless: true, subject: .math),
+            SessionSummary(id: UUID(), bossName: "B", verifiedMinutes: 40, xpEarned: 400, completedAt: now, flawless: true, subject: .german),
+            SessionSummary(id: UUID(), bossName: "C", verifiedMinutes: 20, xpEarned: 200, completedAt: now, flawless: true, subject: .math),
+            SessionSummary(id: UUID(), bossName: "D", verifiedMinutes: 30, xpEarned: 300, completedAt: now, flawless: true)
+        ]
+        let progress = SubjectProgress.summarize(history)
+        XCTAssertEqual(progress.map(\.subject), [.math, .german])
+        XCTAssertEqual(progress.first?.minutes, 45)
+        XCTAssertEqual(progress.first?.battles, 2)
     }
 
     // MARK: - Hrdina a profil

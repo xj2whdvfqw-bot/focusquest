@@ -53,15 +53,15 @@ final class ProfileViewModel: ObservableObject {
     }
 
     /// Porazeny boss: mince, pocitadlo bossu, pripadny relikt a zapis do statistik.
-    func recordVictory(boss: Boss, xpEarned: Int, loot: LootItem?) {
-        let minutes = boss.maxHP
-        profile.coins += RewardRules.coins(verifiedMinutes: minutes, bossDefeated: true)
-        profile.bossesDefeated += 1
-        if let loot, !profile.unlockedLootIDs.contains(loot.id) { profile.unlockedLootIDs.append(loot.id) }
+    func recordVictory(_ victory: BattleVictory) {
+        let defeated = victory.boss.isDefeated
+        profile.coins += victory.coinsEarned
+        if defeated { profile.bossesDefeated += 1 }
+        if let loot = victory.droppedLoot, !profile.unlockedLootIDs.contains(loot.id) { profile.unlockedLootIDs.append(loot.id) }
         save()
-        let summary = SessionSummary(id: UUID(), bossName: boss.name, verifiedMinutes: minutes, xpEarned: xpEarned, completedAt: Date(), flawless: true)
+        let summary = SessionSummary(id: UUID(), bossName: victory.boss.name, verifiedMinutes: victory.verifiedMinutes, xpEarned: victory.xpEarned, completedAt: Date(), flawless: true, subject: victory.subject)
         Task {
-            do { apply(stats: try await sync.recordBattle(summary, bossDefeated: true)) }
+            do { apply(stats: try await sync.recordBattle(summary, bossDefeated: defeated)) }
             catch { errorMessage = "Battle could not be added to your stats." }
         }
     }

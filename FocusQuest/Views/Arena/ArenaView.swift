@@ -15,24 +15,22 @@ struct ArenaView: View {
         }
     }
     private var comboValue: Int { if case let .focusing(_, combo) = model.state { combo } else { model.activeSession?.comboMultiplier ?? 1 } }
-    private var clockText: String { String(format: "%02d:%02d:%02d", elapsed / 3600, (elapsed / 60) % 60, elapsed % 60) }
+    /// Odpocet do konce bitvy; pred bitvou ukazuje celou delku.
+    private var remaining: Int { max(0, model.targetSeconds - elapsed) }
+    private var clockText: String { String(format: "%02d:%02d:%02d", remaining / 3600, (remaining / 60) % 60, remaining % 60) }
 
     var body: some View {
         ZStack {
             ScreenScaffold(alert: isWarning) {
                 header
-                VStack(alignment: .leading, spacing: FQSpace.md) {
-                    modePicker
-                    bossSelector
-                    if model.mode == .raid { raidPartyBar }
-                }
+                subjectPicker
+                bossSelector
                 battleStage
                 bossHPCard
                 soundPlayer
                 #if targetEnvironment(simulator)
                 simulatorControls
                 #endif
-                if let partyAlert = model.partyAlert { partyAlertBanner(partyAlert) }
                 if let receipt { BattleReceiptShareView(image: receipt) }
             }
             // Hlavni akce je pripnuta nad spodni listou, aby byla videt bez rolovani.
@@ -41,25 +39,20 @@ struct ArenaView: View {
             if case let .penalized(reason) = model.state {
                 resultOverlay(icon: "xmark.shield.fill", title: "Combo broken", detail: reason, color: FQColor.danger)
             }
-            if case let .victory(boss, xp, loot) = model.state {
-                resultOverlay(icon: "trophy.fill", title: "Victory", detail: victoryDetail(boss: boss, xp: xp, loot: loot), color: FQColor.accent)
-            }
+            if case let .victory(victory) = model.state { victoryOverlay(victory) }
         }
         // Cervena obrazovka s odpoctem ma zabrat opravdu cely displej.
         .toolbar(isWarning ? .hidden : .visible, for: .tabBar)
+        .animation(.easeOut(duration: 0.25), value: isVictory)
         .onChange(of: model.state) { _, value in
-            if case let .victory(boss, xp, loot) = value {
-                profileModel.recordVictory(boss: boss, xpEarned: xp, loot: loot)
-                receipt = BattleReceiptRenderer.render(profile: profileModel.profile, boss: boss, focusMinutes: boss.maxHP, flawless: true)
+            // Odmenu uz pripsal model; obrazovka si jen pripravi sdilitelnou uctenku.
+            if case let .victory(victory) = value {
+                receipt = BattleReceiptRenderer.render(profile: profileModel.profile, boss: victory.boss, focusMinutes: victory.verifiedMinutes, flawless: true)
             }
         }
     }
 
-    private func victoryDetail(boss: Boss, xp: Int, loot: LootItem?) -> String {
-        let coins = RewardRules.coins(verifiedMinutes: boss.maxHP, bossDefeated: true)
-        let rewards = "\(boss.name) defeated. +\(xp) XP, +\(coins) coins."
-        return loot.map { "\(rewards) \($0.name) found." } ?? rewards
-    }
+    private var isVictory: Bool { if case .victory = model.state { true } else { false } }
 
     /// "25 min" nebo "1 h 30 min".
     static func durationText(minutes: Int) -> String {
@@ -82,17 +75,20 @@ struct ArenaView: View {
                         .contentTransition(.numericText())
                 }
                 Spacer(minLength: FQSpace.sm)
-                roundButton("minus", label: "One minute less") { model.setBossMinutes(model.bossMinutes - 1) }
-                roundButton("plus", label: "One minute more") { model.setBossMinutes(model.bossMinutes + 1) }
+                roundButton("minus", label: "Five minutes less") { model.setBossMinutes(model.bossMinutes - Boss.minutesStep) }
+                    .disabled(model.bossMinutes <= Boss.minutesRange.lowerBound)
+                roundButton("plus", label: "Five minutes more") { model.setBossMinutes(model.bossMinutes + Boss.minutesStep) }
+                    .disabled(model.bossMinutes >= Boss.minutesRange.upperBound)
             }
             Slider(
-                value: Binding(get: { Double(model.bossMinutes) }, set: { model.setBossMinutes(Self.snappedMinutes($0)) }),
-                in: Double(Boss.minutesRange.lowerBound)...Double(Boss.minutesRange.upperBound)
+                value: Binding(get: { Double(model.bossMinutes) }, set: { model.setBossMinutes(Int($0.rounded())) }),
+                in: Double(Boss.minutesRange.lowerBound)...Double(Boss.minutesRange.upperBound),
+                step: Double(Boss.minutesStep)
             )
             .tint(FQColor.accent)
             .accessibilityLabel("Boss HP")
             .accessibilityValue("\(model.bossMinutes) minutes")
-            Text("1 HP = 1 minute of verified focus. This battle takes \(Self.durationText(minutes: model.bossMinutes)).")
+            Text("\(model.selectedBoss.name) only. 1 HP = 1 minute of verified focus. This battle takes \(Self.durationText(minutes: model.bossMinutes)).")
                 .font(.fqMeta)
                 .foregroundStyle(FQColor.textSecondary)
         }
@@ -100,12 +96,6 @@ struct ArenaView: View {
         .glassCard()
         .disabled(!isIdle)
         .opacity(isIdle ? 1 : 0.6)
-    }
-
-    /// Posuvnik skace po 5 minutach (pod 10 minut po jedne); presnou hodnotu doladi tlacitka +/-.
-    static func snappedMinutes(_ value: Double) -> Int {
-        let minutes = Int(value.rounded())
-        return minutes < 10 ? minutes : Int((Double(minutes) / 5).rounded()) * 5
     }
 
     private func roundButton(_ symbol: String, label: String, action: @escaping () -> Void) -> some View {
@@ -163,24 +153,39 @@ struct ArenaView: View {
     // MARK: - Sekce
 
     private var header: some View {
-        HStack(alignment: .bottom) {
-            ScreenTitle(eyebrow: "Arena", title: "Study battle")
-            Spacer(minLength: FQSpace.sm)
-            StatusPill(
-                text: model.posture == .flatFaceUp ? "Phone flat" : "Place phone flat",
-                color: model.posture == .flatFaceUp ? FQColor.accent : FQColor.caution
-            )
-            .padding(.bottom, FQSpace.xs)
-        }
+        ScreenTitle(eyebrow: "Arena", title: "Study battle")
+            .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private var modePicker: some View {
-        Picker("Battle mode", selection: $model.mode) {
-            Text("Solo battle").tag(SessionMode.solo)
-            Text("Co-op raid").tag(SessionMode.raid)
+    /// Predmet je povinny - bez nej tlacitko bitvy nejde zmacknout.
+    private var subjectPicker: some View {
+        VStack(alignment: .leading, spacing: FQSpace.sm) {
+            Text(model.selectedSubject == nil ? "Choose what you study" : "Studying")
+                .font(.fqLabel)
+                .foregroundStyle(model.selectedSubject == nil ? FQColor.caution : FQColor.textSecondary)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: FQSpace.sm) {
+                    ForEach(StudySubject.allCases) { subject in
+                        let isSelected = subject == model.selectedSubject
+                        Button { model.selectSubject(subject) } label: {
+                            Label(subject.title, systemImage: subject.symbol)
+                                .font(.fqLabel)
+                                .foregroundStyle(FQColor.textPrimary)
+                                .padding(.horizontal, FQSpace.lg)
+                                .padding(.vertical, FQSpace.sm)
+                                .glassControl(in: Capsule(), tint: isSelected ? FQColor.accent.opacity(0.35) : nil, interactive: true)
+                                .overlay { Capsule().strokeBorder(isSelected ? FQColor.accent : Color.clear, lineWidth: 1) }
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityAddTraits(isSelected ? .isSelected : [])
+                    }
+                }
+                .padding(.vertical, FQSpace.xs)
+            }
+            .scrollClipDisabled()
         }
-        .pickerStyle(.segmented)
         .disabled(!isIdle)
+        .opacity(isIdle ? 1 : 0.6)
     }
 
     private var bossSelector: some View {
@@ -191,7 +196,10 @@ struct ArenaView: View {
                     Button { model.selectBoss(boss) } label: {
                         HStack(spacing: FQSpace.sm) {
                             PixelArtAvatarView(sprite: .boss(boss.pixelSpriteConfig), size: 32)
-                            Text(boss.name).font(.fqLabel).foregroundStyle(FQColor.textPrimary)
+                            VStack(alignment: .leading, spacing: 0) {
+                                Text(boss.name).font(.fqLabel).foregroundStyle(FQColor.textPrimary)
+                                Text("\(model.preferences.bossMinutes(for: boss.id)) HP").font(.fqMeta).monospacedDigit().foregroundStyle(FQColor.textSecondary)
+                            }
                         }
                         .padding(.leading, FQSpace.sm)
                         .padding(.trailing, FQSpace.lg)
@@ -208,28 +216,6 @@ struct ArenaView: View {
         .scrollClipDisabled()
         .disabled(!isIdle)
         .opacity(isIdle ? 1 : 0.6)
-    }
-
-    private var raidPartyBar: some View {
-        HStack(spacing: FQSpace.sm) {
-            if model.partyMembers.isEmpty {
-                Label("Raid party - up to 4 players", systemImage: "person.3.fill")
-                    .font(.fqSecondary)
-                    .foregroundStyle(FQColor.textSecondary)
-            }
-            ForEach(model.partyMembers) { member in
-                HStack(spacing: FQSpace.sm) {
-                    Circle().fill(member.isFocusing ? FQColor.accent : FQColor.caution).frame(width: 8, height: 8)
-                    Text(member.displayName).font(.fqMeta.weight(.medium))
-                }
-                .padding(.horizontal, FQSpace.md)
-                .padding(.vertical, FQSpace.sm)
-                .background(FQColor.fill, in: Capsule())
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(FQSpace.md)
-        .glassCard(radius: FQRadius.control)
     }
 
     private var battleStage: some View {
@@ -253,7 +239,7 @@ struct ArenaView: View {
                 .foregroundStyle(FQColor.textPrimary)
                 .contentTransition(.numericText())
                 .animation(.default, value: elapsed)
-                .accessibilityLabel("Focus time \(clockText)")
+                .accessibilityLabel("Time left \(clockText)")
 
             HStack(spacing: FQSpace.sm) {
                 PixelArtAvatarView(sprite: .companion("lo-fi-cat"), startled: isWarning, size: 32)
@@ -278,7 +264,7 @@ struct ArenaView: View {
         switch model.state {
         case .idle, .penalized, .victory:
             Button { model.startSession() } label: {
-                Label("Begin Focus Battle", systemImage: "play.fill")
+                Label(model.selectedSubject == nil ? "Choose a subject first" : "Begin Focus Battle", systemImage: "play.fill")
                     .font(.fqHeadline)
                     .foregroundStyle(FQColor.onAccent)
                     .frame(maxWidth: .infinity)
@@ -288,6 +274,7 @@ struct ArenaView: View {
             .buttonBorderShape(.capsule)
             .controlSize(.large)
             .tint(FQColor.accent)
+            .disabled(model.selectedSubject == nil)
         case .awaitingFlatPlacement:
             Label("Place iPhone face-up on desk", systemImage: "iphone.gen3.radiowaves.left.and.right")
                 .font(.fqLabel)
@@ -322,16 +309,74 @@ struct ArenaView: View {
     }
     #endif
 
-    private func partyAlertBanner(_ text: String) -> some View {
-        Label(text, systemImage: "exclamationmark.triangle.fill")
-            .font(.fqLabel)
-            .foregroundStyle(FQColor.textPrimary)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(FQSpace.lg)
-            .glassCard(radius: FQRadius.control, tint: FQColor.danger)
+    // MARK: - Prekryvy
+
+    /// Obrazovka vitezstvi: porazeny boss, ziskane XP, mince a pripadny loot.
+    private func victoryOverlay(_ victory: BattleVictory) -> some View {
+        ZStack {
+            Color.black.opacity(0.55).ignoresSafeArea()
+            VStack(spacing: FQSpace.lg) {
+                ZStack {
+                    Circle()
+                        .fill(RadialGradient(colors: [FQColor.accent.opacity(0.45), Color.clear], center: .center, startRadius: 0, endRadius: 80))
+                        .frame(width: 160, height: 160)
+                    PixelArtAvatarView(sprite: .boss(victory.boss.pixelSpriteConfig), size: 96)
+                        .opacity(0.55)
+                    Image(systemName: "trophy.fill")
+                        .font(.system(size: 44, weight: .semibold))
+                        .foregroundStyle(FQColor.accent)
+                        .offset(x: 44, y: 40)
+                        .accessibilityHidden(true)
+                }
+                .frame(height: 140)
+                VStack(spacing: FQSpace.xs) {
+                    Text("Victory!").font(.system(size: 34, weight: .bold, design: .rounded)).foregroundStyle(FQColor.textPrimary)
+                    Text("\(victory.boss.name) defeated · \(victory.subject.title), \(Self.durationText(minutes: victory.verifiedMinutes))")
+                        .font(.fqSecondary)
+                        .multilineTextAlignment(.center)
+                        .foregroundStyle(FQColor.textSecondary)
+                }
+                HStack(spacing: FQSpace.sm) {
+                    rewardTile(value: "+\(victory.xpEarned)", label: "XP", symbol: "sparkles")
+                    rewardTile(value: "+\(victory.coinsEarned)", label: "Coins", symbol: "dollarsign.circle.fill")
+                }
+                if let loot = victory.droppedLoot {
+                    Label("\(loot.name) found", systemImage: "gift.fill")
+                        .font(.fqLabel)
+                        .foregroundStyle(FQColor.textPrimary)
+                }
+                Button { model.stopSession() } label: {
+                    Text("Collect Loot")
+                        .font(.fqHeadline)
+                        .foregroundStyle(FQColor.onAccent)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, FQSpace.xs)
+                }
+                .prominentGlassButtonStyle()
+                .buttonBorderShape(.capsule)
+                .controlSize(.large)
+                .tint(FQColor.accent)
+            }
+            .padding(FQSpace.xl)
+            .frame(maxWidth: 360)
+            .glassCard()
+            .padding(.horizontal, FQSpace.xl)
+            .transition(.scale(scale: 0.92).combined(with: .opacity))
+        }
+        .accessibilityAddTraits(.isModal)
     }
 
-    // MARK: - Prekryvy
+    private func rewardTile(value: String, label: String, symbol: String) -> some View {
+        VStack(spacing: FQSpace.xs) {
+            Image(systemName: symbol).font(.fqLabel).foregroundStyle(FQColor.accent).accessibilityHidden(true)
+            Text(value).font(.fqTitle).monospacedDigit().foregroundStyle(FQColor.textPrimary)
+            Text(label).font(.fqMeta).foregroundStyle(FQColor.textSecondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, FQSpace.md)
+        .background(FQColor.fill, in: RoundedRectangle(cornerRadius: FQRadius.control, style: .continuous))
+        .accessibilityElement(children: .combine)
+    }
 
     private func warningOverlay(seconds: Double) -> some View {
         ZStack {

@@ -7,75 +7,97 @@ enum ArenaState: Equatable {
     case focusing(elapsedSeconds: Int, combo: Int)
     case warningCountdown(secondsRemaining: Double, frozenElapsedSeconds: Int)
     case penalized(reason: String)
-    case victory(boss: Boss, xpEarned: Int, droppedLoot: LootItem?)
+    case victory(BattleVictory)
+}
+
+/// Vyhrana bitva: co ukaze obrazovka vitezstvi a co se pripise do profilu.
+struct BattleVictory: Equatable, Sendable {
+    let boss: Boss
+    let subject: StudySubject
+    let verifiedMinutes: Int
+    let xpEarned: Int
+    let coinsEarned: Int
+    let droppedLoot: LootItem?
 }
 
 @MainActor
 final class ArenaViewModel: ObservableObject {
     @Published private(set) var state: ArenaState = .idle
-    @Published var selectedBoss: Boss = Boss.roster[0]
-    @Published var mode: SessionMode = .solo
+    @Published private(set) var selectedBoss: Boss
+    /// Predmet bitvy. Bez nej bitva nezacne.
+    @Published private(set) var selectedSubject: StudySubject?
     @Published private(set) var posture: DevicePostureState = .unavailable
-    @Published private(set) var partyMembers: [RaidMember] = []
-    @Published private(set) var partyAlert: String?
     @Published private(set) var preferences: AppPreferences
     @Published private(set) var activeSession: StudySession?
-    /// HP bosse zvolene hracem; 1 HP = 1 minuta overeneho soustredeni.
+    /// HP vybraneho bosse; 1 HP = 1 minuta overeneho soustredeni. Kazdy boss ma vlastni.
     @Published private(set) var bossMinutes: Int
     /// Volano, kdyz se predvolby zmeni z Areny (prehravac, HP bosse), aby je znalo i Nastaveni.
     var onPreferencesChanged: ((AppPreferences) -> Void)?
+    /// Volano jednou za kazdou vyhranou bitvu - pripise XP, mince a loot do profilu.
+    var onVictory: ((BattleVictory) -> Void)?
 
     private let validation: any FocusValidationServiceProtocol
     private let motion: any MotionMonitoringServiceProtocol
     private let haptics: any HapticEngineServiceProtocol
     private let audio: any AudioAtmosphereServiceProtocol
     private let security: any RuntimeSecurityServiceProtocol
-    private let raid: any RaidSessionServiceProtocol
     private let preferenceStore: any PreferencesStoreProtocol
     private let profileProvider: @MainActor () -> UserProfile
     private let signer: any CryptoSignerProtocol
     private let simulationSigningKey: Data
     private let activity: (any FocusBattleActivityServiceProtocol)?
+    private let notifications: (any BattleNotificationServiceProtocol)?
     private var postureTask: Task<Void, Never>?
     private var timerTask: Task<Void, Never>?
-    private var raidTask: Task<Void, Never>?
     private var sessionStartUptime: TimeInterval = 0
     private var sessionStartWallClock = Date()
     private var nextHeartbeatAt: TimeInterval = 60
     private var hasUsedGraceRelic = false
     private var warningStartedAt: TimeInterval?
     private var warningFrozenElapsed = 0
+    private var isFinishing = false
 
-    init(validation: any FocusValidationServiceProtocol, motion: any MotionMonitoringServiceProtocol, haptics: any HapticEngineServiceProtocol, audio: any AudioAtmosphereServiceProtocol, security: any RuntimeSecurityServiceProtocol, raid: any RaidSessionServiceProtocol, preferenceStore: any PreferencesStoreProtocol, profileProvider: @escaping @MainActor () -> UserProfile, signer: any CryptoSignerProtocol = CryptoSigner(), simulationSigningKey: Data = Data(), activity: (any FocusBattleActivityServiceProtocol)? = nil) {
+    init(validation: any FocusValidationServiceProtocol, motion: any MotionMonitoringServiceProtocol, haptics: any HapticEngineServiceProtocol, audio: any AudioAtmosphereServiceProtocol, security: any RuntimeSecurityServiceProtocol, preferenceStore: any PreferencesStoreProtocol, profileProvider: @escaping @MainActor () -> UserProfile, signer: any CryptoSignerProtocol = CryptoSigner(), simulationSigningKey: Data = Data(), activity: (any FocusBattleActivityServiceProtocol)? = nil, notifications: (any BattleNotificationServiceProtocol)? = nil) {
         self.validation = validation
         self.motion = motion
         self.haptics = haptics
         self.audio = audio
         self.security = security
-        self.raid = raid
         self.preferenceStore = preferenceStore
         self.profileProvider = profileProvider
         self.signer = signer
         self.simulationSigningKey = simulationSigningKey
         self.activity = activity
-        let storedPreferences = preferenceStore.load()
-        self.preferences = storedPreferences
-        self.bossMinutes = Boss.clampedMinutes(storedPreferences.bossMinutes)
-        selectedBoss = selectedBoss.withHP(minutes: bossMinutes)
+        self.notifications = notifications
+        let stored = preferenceStore.load()
+        let boss = Boss.roster.first { $0.id == stored.lastBossID } ?? Boss.roster[0]
+        let minutes = stored.bossMinutes(for: boss.id)
+        self.preferences = stored
+        self.bossMinutes = minutes
+        self.selectedBoss = boss.withHP(minutes: minutes)
+        self.selectedSubject = stored.lastSubject
         audio.onTrackAdvanced = { [weak self] track in self?.trackDidAdvance(track) }
         haptics.prepare()
-        observeRaidEvents()
+    }
+
+    /// Delka bitvy v sekundach.
+    var targetSeconds: Int { selectedBoss.maxHP * 60 }
+
+    var isBetweenBattles: Bool {
+        switch state {
+        case .idle, .penalized, .victory: true
+        default: false
+        }
     }
 
     func startSession() {
-        guard !security.integrityReport().isCompromised else { return }
-        switch state {
-        case .idle, .penalized, .victory: break
-        default: return
-        }
-        selectedBoss = selectedBoss.withHP(minutes: bossMinutes)
+        guard selectedSubject != nil, isBetweenBattles, !security.integrityReport().isCompromised else { return }
+        resetBossHealth()
         state = .awaitingFlatPlacement
-        Task { partyMembers = await raid.partyMembers() }
+        activeSession = nil
+        isFinishing = false
+        Task { await notifications?.requestAuthorizationIfNeeded() }
+        postureTask?.cancel()
         postureTask = Task { [weak self] in
             guard let self else { return }
             let stream = await motion.postureUpdates()
@@ -87,27 +109,42 @@ final class ArenaViewModel: ObservableObject {
         Task { [weak self] in await self?.createServerSession() }
     }
 
+    /// Vzdat bitvu nebo zavrit obrazovku s vysledkem.
     func stopSession() {
-        postureTask?.cancel(); timerTask?.cancel()
-        postureTask = nil; timerTask = nil
-        audio.stop()
-        Task { await activity?.end() }
+        tearDownBattle()
         state = .idle
         activeSession = nil
-        // Boss se pred dalsi bitvou vrati na plne zdravi podle zvolenych minut.
-        selectedBoss = selectedBoss.withHP(minutes: bossMinutes)
+        // Boss se pred dalsi bitvou vrati na plne zdravi podle svych minut.
+        resetBossHealth()
     }
 
-    func selectBoss(_ boss: Boss) { guard case .idle = state else { return }; selectedBoss = boss.withHP(minutes: bossMinutes) }
+    func selectBoss(_ boss: Boss) {
+        guard isBetweenBattles else { return }
+        let minutes = preferences.bossMinutes(for: boss.id)
+        bossMinutes = minutes
+        selectedBoss = boss.withHP(minutes: minutes)
+        changePreferences { $0.lastBossID = boss.id }
+    }
 
-    /// HP bosse = pocet minut soustredeni. Menit jde jen mimo bitvu.
+    /// HP vybraneho bosse = pocet minut soustredeni (10-240 po 5). Ostatni bossove se nemeni.
     func setBossMinutes(_ value: Int) {
-        guard case .idle = state else { return }
+        guard isBetweenBattles else { return }
         let minutes = Boss.clampedMinutes(value)
         guard minutes != bossMinutes else { return }
         bossMinutes = minutes
         selectedBoss = selectedBoss.withHP(minutes: minutes)
-        changePreferences { $0.bossMinutes = minutes }
+        let bossID = selectedBoss.id
+        changePreferences { $0.bossMinutesByID[bossID] = minutes }
+    }
+
+    func selectSubject(_ subject: StudySubject) {
+        guard isBetweenBattles else { return }
+        selectedSubject = subject
+        changePreferences { $0.lastSubject = subject }
+    }
+
+    private func resetBossHealth() {
+        selectedBoss = selectedBoss.withHP(minutes: bossMinutes)
     }
 
     // MARK: - Prehravac
@@ -138,11 +175,14 @@ final class ArenaViewModel: ObservableObject {
         preferences = updated
         preferenceStore.save(updated)
         audio.apply(preferences: updated)
-        // Nastaveni umi predvolby smazat (smazani uctu); HP bosse se pak vrati na vychozi.
-        if case .idle = state, updated.bossMinutes != bossMinutes {
-            bossMinutes = Boss.clampedMinutes(updated.bossMinutes)
-            selectedBoss = selectedBoss.withHP(minutes: bossMinutes)
+        // Nastaveni umi predvolby smazat (smazani uctu); HP bosse a predmet se pak vrati na vychozi.
+        guard isBetweenBattles else { return }
+        let minutes = updated.bossMinutes(for: selectedBoss.id)
+        if minutes != bossMinutes {
+            bossMinutes = minutes
+            resetBossHealth()
         }
+        if updated.lastSubject == nil { selectedSubject = nil }
     }
 
     func setSimulatedPosture(_ value: DevicePostureState) async {
@@ -152,18 +192,19 @@ final class ArenaViewModel: ObservableObject {
         #endif
     }
 
+    // MARK: - Prubeh bitvy
+
     private func createServerSession() async {
         do {
-            let response = try await validation.startSession(bossID: selectedBoss.id, mode: mode, targetMinutes: selectedBoss.maxHP)
-            activeSession = StudySession(serverSessionID: response.sessionID, bossID: selectedBoss.id, mode: mode)
+            let response = try await validation.startSession(bossID: selectedBoss.id, mode: .solo, targetMinutes: selectedBoss.maxHP)
+            // Hrac mohl bitvu vzdat driv, nez server odpovedel.
+            guard case .awaitingFlatPlacement = state else { return }
+            activeSession = StudySession(serverSessionID: response.sessionID, bossID: selectedBoss.id, mode: .solo)
             await activity?.start(boss: selectedBoss)
-            sessionStartUptime = ProcessInfo.processInfo.systemUptime
-            sessionStartWallClock = Date()
-            nextHeartbeatAt = 60
             hasUsedGraceRelic = false
             warningStartedAt = nil
             warningFrozenElapsed = 0
-            if posture == .flatFaceUp { beginFocusing(elapsed: 0) }
+            if posture == .flatFaceUp, case .awaitingFlatPlacement = state { startFocusClock() }
         } catch {
             state = .penalized(reason: "Unable to verify a secure session.")
             postureTask?.cancel()
@@ -174,15 +215,27 @@ final class ArenaViewModel: ObservableObject {
         posture = value
         if value == .flatFaceUp {
             if case let .warningCountdown(_, frozenElapsed) = state { recoverFocus(elapsed: frozenElapsed) }
-            else if case .awaitingFlatPlacement = state, activeSession != nil { beginFocusing(elapsed: 0) }
-        } else if value == .liftedOrTilted, case let .focusing(elapsed, _) = state {
+            else if case .awaitingFlatPlacement = state, activeSession != nil { startFocusClock() }
+        } else if value == .liftedOrTilted, !isFinishing, case let .focusing(elapsed, _) = state {
             beginWarning(elapsed: elapsed)
         }
+    }
+
+    /// Hodiny bitvy se rozbehnou az ve chvili, kdy telefon poprve lezi na stole.
+    private func startFocusClock() {
+        sessionStartUptime = MonotonicClock.now
+        sessionStartWallClock = Date()
+        nextHeartbeatAt = 60
+        beginFocusing(elapsed: 0)
     }
 
     private func beginFocusing(elapsed: Int) {
         state = .focusing(elapsedSeconds: elapsed, combo: activeSession?.comboMultiplier ?? 1)
         audio.beginFocus(preferences: preferences)
+        // Notifikace prijde v cas konce bitvy i se zamcenou obrazovkou.
+        let bossName = selectedBoss.name
+        let remaining = targetSeconds - elapsed
+        Task { await notifications?.scheduleVictory(bossName: bossName, after: remaining) }
         timerTask?.cancel()
         timerTask = Task { [weak self] in await self?.runFocusTicker() }
     }
@@ -190,43 +243,84 @@ final class ArenaViewModel: ObservableObject {
     private func runFocusTicker() async {
         let clock = ContinuousClock()
         while !Task.isCancelled {
-            do { try await clock.sleep(for: .seconds(1)) } catch { break }
-            guard case .focusing = state, let session = activeSession else { continue }
-            let now = ProcessInfo.processInfo.systemUptime
+            do { try await clock.sleep(for: .seconds(1)) } catch { return }
+            guard case .focusing = state, let session = activeSession, !isFinishing else { continue }
+            let now = MonotonicClock.now
             let elapsed = max(0, Int(now - sessionStartUptime))
             let wallElapsed = Date().timeIntervalSince(sessionStartWallClock)
             if AntiCheatRules.clockIsTampered(wallDelta: wallElapsed, monotonicDelta: now - sessionStartUptime) {
                 await penalize(reason: "Clock integrity check failed.")
-                continue
+                return
             }
-            state = .focusing(elapsedSeconds: elapsed, combo: session.comboMultiplier)
-            await activity?.update(bossHP: selectedBoss.currentHP, elapsedSeconds: elapsed, warningSecondsRemaining: nil)
-            if TimeInterval(elapsed) >= nextHeartbeatAt { await sendHeartbeat(elapsed: elapsed) }
+            let shown = min(elapsed, targetSeconds)
+            state = .focusing(elapsedSeconds: shown, combo: session.comboMultiplier)
+            await activity?.update(bossHP: selectedBoss.currentHP, elapsedSeconds: shown, warningSecondsRemaining: nil)
+            // Konec bitvy hlida klient podle casu; nespoleha na to, ze heartbeat zrovna srazi HP na nulu.
+            if elapsed >= targetSeconds {
+                await finishBattle(elapsed: targetSeconds)
+                return
+            }
+            if TimeInterval(elapsed) >= nextHeartbeatAt {
+                do { try await sendHeartbeat(elapsed: elapsed) } catch {
+                    await penalize(reason: "Session verification failed.")
+                    return
+                }
+                if selectedBoss.isDefeated {
+                    await finishBattle(elapsed: elapsed)
+                    return
+                }
+            }
         }
     }
 
-    private func sendHeartbeat(elapsed: Int) async {
+    /// Server overi uplynuly cas a vrati skutecne HP bosse.
+    private func sendHeartbeat(elapsed: Int) async throws {
         guard let session = activeSession else { return }
+        let clientNonce = signer.makeNonce(byteCount: 24)
+        let heartbeat = HeartbeatRequest(sessionID: session.serverSessionID, monotonicElapsedSeconds: TimeInterval(elapsed), motionIntegrityToken: "flat-face-up", clientNonce: clientNonce)
+        let payload = try JSONEncoder.focusQuest.encode(heartbeat)
+        let signature = signer.sign(payload, key: simulationSigningKey, nonce: clientNonce)
+        let result = try await validation.sendHeartbeat(sessionID: session.serverSessionID, monotonicElapsedSeconds: TimeInterval(elapsed), motionIntegrityToken: "flat-face-up", attestationAssertion: nil, clientNonce: clientNonce, requestSignature: signature)
+        selectedBoss.currentHP = result.authoritativeBossHP
+        // Po uspani appky muze byt zpozdeni vic nez minuta; dalsi heartbeat az na pristi celou minutu.
+        nextHeartbeatAt = TimeInterval((elapsed / 60 + 1) * 60)
+        haptics.triggerBossDamageHit(enabled: preferences.isHapticsEnabled)
+    }
+
+    /// Cas vyprsel: posledni heartbeat dorovna HP, server bitvu uzavre a hrac dostane odmenu.
+    private func finishBattle(elapsed: Int) async {
+        guard let session = activeSession, !isFinishing else { return }
+        isFinishing = true
+        defer { isFinishing = false }
+        let subject = selectedSubject ?? .math
         do {
-            let clientNonce = signer.makeNonce(byteCount: 24)
-            let heartbeat = HeartbeatRequest(sessionID: session.serverSessionID, monotonicElapsedSeconds: TimeInterval(elapsed), motionIntegrityToken: "flat-face-up", clientNonce: clientNonce)
-            let payload = try JSONEncoder.focusQuest.encode(heartbeat)
-            let signature = signer.sign(payload, key: simulationSigningKey, nonce: clientNonce)
-            let result = try await validation.sendHeartbeat(sessionID: session.serverSessionID, monotonicElapsedSeconds: TimeInterval(elapsed), motionIntegrityToken: "flat-face-up", attestationAssertion: nil, clientNonce: clientNonce, requestSignature: signature)
-            selectedBoss.currentHP = result.authoritativeBossHP
-            nextHeartbeatAt += 60
-            haptics.triggerBossDamageHit(enabled: preferences.isHapticsEnabled)
-            if selectedBoss.isDefeated { await completeSession() }
+            if !selectedBoss.isDefeated { try await sendHeartbeat(elapsed: elapsed) }
+            let result = try await validation.completeSession(sessionID: session.serverSessionID)
+            let minutes = result.boss.isDefeated ? result.boss.maxHP : max(0, result.boss.maxHP - result.boss.currentHP)
+            let victory = BattleVictory(
+                boss: result.boss,
+                subject: subject,
+                verifiedMinutes: minutes,
+                xpEarned: result.xpEarned,
+                coinsEarned: RewardRules.coins(verifiedMinutes: minutes, bossDefeated: result.boss.isDefeated),
+                droppedLoot: result.loot
+            )
+            tearDownBattle(keepNotification: true)
+            selectedBoss.currentHP = result.boss.currentHP
+            state = .victory(victory)
+            activeSession = nil
+            onVictory?(victory)
         } catch {
-            await penalize(reason: "Session verification failed.")
+            await penalize(reason: "Could not finalize the verified battle.")
         }
     }
 
     private func beginWarning(elapsed: Int) {
         timerTask?.cancel()
+        Task { await notifications?.cancelVictory() }
         let duration = AntiCheatRules.warningDuration(equippedLootIDs: profileProvider().equippedLootIDs, graceAlreadyUsed: hasUsedGraceRelic)
         hasUsedGraceRelic = hasUsedGraceRelic || duration > 5
-        warningStartedAt = ProcessInfo.processInfo.systemUptime
+        warningStartedAt = MonotonicClock.now
         warningFrozenElapsed = elapsed
         state = .warningCountdown(secondsRemaining: Double(duration), frozenElapsedSeconds: elapsed)
         haptics.triggerPickupWarningInitial(enabled: preferences.isHapticsEnabled)
@@ -258,7 +352,7 @@ final class ArenaViewModel: ObservableObject {
     private func recoverFocus(elapsed: Int) {
         timerTask?.cancel()
         if let warningStartedAt {
-            let pausedDuration = ProcessInfo.processInfo.systemUptime - warningStartedAt
+            let pausedDuration = MonotonicClock.now - warningStartedAt
             sessionStartUptime += pausedDuration
             sessionStartWallClock.addTimeInterval(pausedDuration)
         }
@@ -270,35 +364,25 @@ final class ArenaViewModel: ObservableObject {
     }
 
     private func penalize(reason: String) async {
-        timerTask?.cancel()
+        let elapsed = warningStartedAt == nil ? MonotonicClock.now - sessionStartUptime : TimeInterval(warningFrozenElapsed)
+        tearDownBattle()
         state = .penalized(reason: reason)
         haptics.triggerPenaltyFailure(enabled: preferences.isHapticsEnabled)
-        audio.recover(preferences: preferences)
-        Task { await activity?.end() }
         if let session = activeSession {
-            let elapsed = warningStartedAt == nil ? ProcessInfo.processInfo.systemUptime - sessionStartUptime : TimeInterval(warningFrozenElapsed)
             try? await validation.reportViolation(sessionID: session.serverSessionID, reason: reason, monotonicElapsedSeconds: elapsed)
-            if session.mode == .raid { await raid.broadcastComboBroken(memberName: profileProvider().username) }
             activeSession?.comboMultiplier = 1
         }
     }
 
-    private func completeSession() async {
-        guard let session = activeSession else { return }
-        timerTask?.cancel()
-        do {
-            let result = try await validation.completeSession(sessionID: session.serverSessionID)
-            state = .victory(boss: result.boss, xpEarned: result.xpEarned, droppedLoot: result.loot)
-            await activity?.end()
-        } catch { state = .penalized(reason: "Could not finalize the verified battle.") }
-    }
-
-    private func observeRaidEvents() {
-        raidTask = Task { [weak self] in
-            guard let self else { return }
-            let stream = await raid.events()
-            for await event in stream { partyAlert = "\(event.memberName) lifted their phone! Party combo lost." }
-        }
+    /// Zastavi vse, co bitva rozbehla: casovace, senzory, hudbu, Live Activity a notifikaci.
+    /// Po vitezstvi notifikace zustava - pokud je appka na pozadi, prave ona hrace zavola zpatky.
+    private func tearDownBattle(keepNotification: Bool = false) {
+        postureTask?.cancel(); timerTask?.cancel()
+        postureTask = nil; timerTask = nil
+        warningStartedAt = nil
+        audio.stop()
+        Task { await activity?.end() }
+        if !keepNotification { Task { await notifications?.cancelVictory() } }
     }
 }
 

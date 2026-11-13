@@ -48,10 +48,3 @@ struct CompleteSessionResponse: Codable, Sendable {
     let loot: LootItem?
     let xpEarned: Int
 }
-
-struct PartyComboBrokenEvent: Codable, Sendable, Identifiable {
-    var id: UUID { eventID }
-    let eventID: UUID
-    let memberName: String
-    let occurredAt: Date
-}

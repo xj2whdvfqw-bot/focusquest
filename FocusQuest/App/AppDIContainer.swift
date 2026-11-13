@@ -29,7 +29,6 @@ final class AppDIContainer {
         let haptics = HapticEngineService()
         let audio = AudioAtmosphereService()
         let security = RuntimeSecurityService()
-        let raid = RaidSessionService()
 
         self.keychain = keychain
         self.profileSync = profileSync
@@ -40,7 +39,9 @@ final class AppDIContainer {
         self.runtimeSecurity = security
         self.isIntegrityCompromised = security.integrityReport().isCompromised
         if security.integrityReport().isCompromised { Task { try? await keychain.deleteAll() } }
-        self.arenaViewModel = ArenaViewModel(validation: validation, motion: motion, haptics: haptics, audio: audio, security: security, raid: raid, preferenceStore: preferences, profileProvider: { [weak profileViewModel] in profileViewModel?.profile ?? profile }, simulationSigningKey: previewSigningKey, activity: activity)
+        self.arenaViewModel = ArenaViewModel(validation: validation, motion: motion, haptics: haptics, audio: audio, security: security, preferenceStore: preferences, profileProvider: { [weak profileViewModel] in profileViewModel?.profile ?? profile }, simulationSigningKey: previewSigningKey, activity: activity, notifications: BattleNotificationService())
+        // Odmenu pripisuje model Areny, ne obrazovka - prijde i kdyz bitva skonci na pozadi.
+        arenaViewModel.onVictory = { [weak profileViewModel] victory in profileViewModel?.recordVictory(victory) }
         // Zmeny v Nastaveni (hudba, hlasitost, skladba) se maji projevit hned i v bezici bitve.
         settingsViewModel.onPreferencesChanged = { [weak arenaViewModel] updated in arenaViewModel?.updatePreferences(updated) }
         arenaViewModel.onPreferencesChanged = { [weak settingsViewModel] updated in settingsViewModel?.syncPreferences(updated) }

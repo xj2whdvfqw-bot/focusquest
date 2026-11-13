@@ -1,4 +1,5 @@
 import SwiftUI
+import UserNotifications
 
 @main
 struct FocusQuestApp: App {
@@ -6,6 +7,7 @@ struct FocusQuestApp: App {
 
     init() {
         _ = RuntimeSecurityService().integrityReport()
+        UNUserNotificationCenter.current().delegate = ForegroundNotificationPresenter.shared
     }
 
     var body: some Scene {
