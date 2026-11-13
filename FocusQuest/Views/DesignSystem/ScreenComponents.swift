@@ -39,6 +39,8 @@ struct ScreenTitle: View {
                 Text(eyebrow).font(.fqLabel).foregroundStyle(FQColor.textSecondary)
             }
             Text(title).font(.fqLargeTitle).foregroundStyle(FQColor.textPrimary)
+                // Nadpis lezi primo na pixelove krajine; stin ho oddeli od hvezd a mesice.
+                .shadow(color: .black.opacity(0.55), radius: 6, y: 1)
         }
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isHeader)

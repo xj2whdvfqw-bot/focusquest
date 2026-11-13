@@ -125,7 +125,11 @@ enum AvatarSprite {
     static func layers(for appearance: AvatarAppearance, heroClass: HeroClass) -> [AvatarLayer] {
         // Nasazene vybaveni z obchodu; neznama ID (napr. ze starsi verze) se preskoci.
         let gear = EquipmentSlot.allCases.compactMap { appearance.equippedItemID(in: $0).flatMap(EquipmentItem.item(withID:)) }
-        var layers = gear.filter(\.drawsBehindBody).flatMap(\.layers)
+        // Znak povolani ve slotu, kam hrac nasadil predmet z obchodu, ustoupi predmetu.
+        let occupied = Set(gear.map(\.slot))
+        let marks = classMarks(heroClass).filter { mark in mark.slot.map { !occupied.contains($0) } ?? true }
+        var layers = marks.filter(\.behindBody).map(\.layer)
+        layers += gear.filter(\.drawsBehindBody).flatMap(\.layers)
         layers += [
             AvatarLayer(id: "skin", rows: grid([2: [5...10], 3: [5...10], 4: [5...10], 5: [5...10], 6: [7...8], 9: [3...3, 12...12], 10: [3...3, 12...12]]), rgb: appearance.skin.rgb),
             AvatarLayer(id: "outfit", rows: grid([7: [4...11], 8: [3...12], 9: [4...11], 10: [5...10], 12: [5...6, 9...10], 13: [5...6, 9...10]]), rgb: appearance.outfitColor.rgb),
@@ -136,9 +140,54 @@ enum AvatarSprite {
             layers.append(AvatarLayer(id: "hair", rows: grid(hair), rgb: appearance.hairColor.rgb))
         }
         layers.append(AvatarLayer(id: "eyes", rows: grid([4: [6...6, 9...9]]), rgb: RGB(0.10, 0.10, 0.16)))
+        layers += marks.filter { !$0.behindBody }.map(\.layer)
         // Helmy, zbrane a gadgety jsou nakreslene pres hrdinu.
         layers += gear.filter { !$0.drawsBehindBody }.flatMap(\.layers)
         return layers
+    }
+
+    /// Kousek vybavy, podle ktereho se povolani pozna na prvni pohled.
+    struct ClassMark: Sendable {
+        /// Slot, ktery znak zabira; nil = nezavisi na vybaveni (plast, maska).
+        let slot: EquipmentSlot?
+        let behindBody: Bool
+        let layer: AvatarLayer
+    }
+
+    static func classMarks(_ heroClass: HeroClass) -> [ClassMark] {
+        let steel = RGB(0.72, 0.76, 0.84)
+        let wood = RGB(0.55, 0.36, 0.18)
+        func mark(_ id: String, _ slot: EquipmentSlot?, behind: Bool = false, _ spans: [Int: [ClosedRange<Int>]], _ rgb: RGB) -> ClassMark {
+            ClassMark(slot: slot, behindBody: behind, layer: AvatarLayer(id: "class-\(id)", rows: grid(spans), rgb: rgb))
+        }
+        let hood: [Int: [ClosedRange<Int>]] = [0: [6...9], 1: [5...10], 2: [4...11], 3: [4...4, 11...11], 4: [4...4, 11...11], 5: [4...4, 11...11]]
+        switch heroClass {
+        case .warrior:
+            return [
+                mark("helmet", .head, [1: [5...10], 2: [5...10], 3: [5...5, 7...8, 10...10]], steel),
+                mark("shield", .gadget, [8: [0...2], 9: [0...2], 10: [0...2], 11: [1...1]], steel),
+                mark("crest", .gadget, [9: [1...1]], classAccent(.warrior))
+            ]
+        case .mage:
+            return [
+                mark("cape", nil, behind: true, [7: [3...12], 8: [2...13], 9: [4...11], 10: [4...11], 11: [4...11], 12: [4...11], 13: [4...11]], RGB(0.36, 0.22, 0.62)),
+                mark("orb", .gadget, [8: [1...2], 9: [1...2]], RGB(0.55, 0.86, 1.00)),
+                mark("spark", .gadget, [7: [0...0], 6: [3...3]], RGB(1.00, 0.95, 0.70))
+            ]
+        case .archer:
+            return [
+                mark("hood", .head, hood, RGB(0.24, 0.52, 0.30)),
+                mark("bow", .gadget, [5: [2...2], 6: [1...1], 7: [0...0], 8: [0...0], 9: [0...0], 10: [0...0], 11: [0...0], 12: [1...1], 13: [2...2]], wood),
+                mark("string", .gadget, [6: [2...2], 7: [2...2], 8: [2...2], 9: [2...2], 10: [2...2], 11: [2...2], 12: [2...2]], RGB(0.92, 0.90, 0.82))
+            ]
+        case .rogue:
+            return [
+                mark("hood", .head, hood, RGB(0.22, 0.22, 0.30)),
+                mark("mask", nil, [5: [5...10]], RGB(0.14, 0.14, 0.20)),
+                mark("dagger", .weapon, [6: [13...13], 7: [13...13], 8: [13...13]], steel),
+                mark("hilt", .weapon, [9: [12...14], 10: [13...13]], wood)
+            ]
+        }
     }
 
     static func classAccent(_ heroClass: HeroClass) -> RGB {

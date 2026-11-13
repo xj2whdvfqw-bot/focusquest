@@ -10,7 +10,7 @@ struct StatsView: View {
 
     var body: some View {
         ScreenScaffold(scene: .starlitPeaks) {
-            ScreenHeader(eyebrow: "Stats", title: "Your progression")
+            ScreenHeader(eyebrow: "Stats", title: "Your progress")
             levelCard
             LazyVGrid(columns: [GridItem(.flexible(), spacing: FQSpace.md), GridItem(.flexible())], spacing: FQSpace.md) {
                 metric("Win rate", value: "\(Int(model.stats.winRate * 100))%", icon: "scope")

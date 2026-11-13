@@ -70,13 +70,24 @@ struct VillageView: View {
         .accessibilityLabel("\(stage.displayName), \(isBuilt ? (isCurrent ? "current" : "built") : "locked, needs level \(stage.requirement.level)")")
     }
 
+    private static let nightSky: [Color] = [
+        Color(red: 0.10, green: 0.10, blue: 0.26),
+        Color(red: 0.26, green: 0.20, blue: 0.42)
+    ]
+    private static let nightHill: [Color] = [
+        Color(red: 0.20, green: 0.42, blue: 0.32),
+        Color(red: 0.10, green: 0.24, blue: 0.20)
+    ]
+
     private var dwellingCard: some View {
         VStack(spacing: FQSpace.md) {
-            // Obydli stoji v male scene: obloha a travnaty kopec.
+            // Obydli stoji v male nocni scene (ladi s pixelovou krajinou za obrazovkou):
+            // hvezdna obloha a kopec v mesicnim svetle.
             ZStack(alignment: .bottom) {
-                LinearGradient(colors: [Color(red: 0.55, green: 0.78, blue: 1.0).opacity(0.55), Color.white.opacity(0.05)], startPoint: .top, endPoint: .bottom)
+                LinearGradient(colors: Self.nightSky, startPoint: .top, endPoint: .bottom)
+                VillageStars()
                 Ellipse()
-                    .fill(LinearGradient(colors: [Color(red: 0.42, green: 0.80, blue: 0.45), Color(red: 0.22, green: 0.58, blue: 0.34)], startPoint: .top, endPoint: .bottom))
+                    .fill(LinearGradient(colors: Self.nightHill, startPoint: .top, endPoint: .bottom))
                     .frame(height: 64)
                     .offset(y: 30)
                 DwellingArtView(stage: village.stage, size: 176)
@@ -290,5 +301,25 @@ private enum BuildingSprite {
             AvatarLayer(id: "shade", rows: AvatarSprite.grid([2: [7...7], 3: [7...7], 4: [7...7], 5: [3...3, 7...7, 12...12], 9: [5...5, 10...10], 11: [7...8], 12: [7...8], 13: [7...8]]), rgb: shade),
             AvatarLayer(id: "flag", rows: AvatarSprite.grid([2: [8...9], 3: [8...9]]), rgb: RGB(0.85, 0.25, 0.33))
         ]
+    }
+}
+
+/// Par pixelovych hvezd na nocni obloze nad obydlim.
+private struct VillageStars: View {
+    // Pozice jako zlomky sirky a vysky, velikost v bodech.
+    private static let stars: [(x: Double, y: Double, size: Double)] = [
+        (0.08, 0.12, 3), (0.20, 0.30, 2), (0.31, 0.08, 2), (0.70, 0.10, 3),
+        (0.82, 0.28, 2), (0.92, 0.14, 2), (0.58, 0.22, 2), (0.14, 0.50, 2), (0.88, 0.48, 2)
+    ]
+
+    var body: some View {
+        Canvas { context, size in
+            for star in Self.stars {
+                let rect = CGRect(x: star.x * size.width, y: star.y * size.height, width: star.size, height: star.size)
+                context.fill(Path(rect), with: .color(.white.opacity(0.8)))
+            }
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
     }
 }

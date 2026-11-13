@@ -148,6 +148,27 @@ final class ProgressionModelTests: XCTestCase {
         }
     }
 
+    func testEachClassLooksDifferent() {
+        let looks = HeroClass.allCases.map { heroClass in
+            AvatarSprite.layers(for: AvatarAppearance(), heroClass: heroClass).filter { $0.id.hasPrefix("class-") }.map(\.rows)
+        }
+        XCTAssertEqual(Set(looks.map { $0.joined(separator: "|") }).count, HeroClass.allCases.count)
+        for heroClass in HeroClass.allCases {
+            for mark in AvatarSprite.classMarks(heroClass) {
+                XCTAssertTrue(mark.layer.rows.contains(where: { $0.contains("#") }), "Layer \(mark.layer.id) is empty")
+            }
+        }
+    }
+
+    func testShopGearReplacesTheClassMarkInItsSlot() {
+        var appearance = AvatarAppearance()
+        appearance.equip("viking-helmet", in: .head)
+        let ids = AvatarSprite.layers(for: appearance, heroClass: .warrior).map(\.id)
+        XCTAssertFalse(ids.contains("class-helmet"))
+        XCTAssertTrue(ids.contains("class-shield"))
+        XCTAssertTrue(ids.contains("viking-helmet-dome"))
+    }
+
     func testUnknownEquipmentIsIgnored() {
         var appearance = AvatarAppearance()
         appearance.equip("item-from-the-future", in: .head)
