@@ -13,8 +13,37 @@ struct BattleView: View {
     @State private var newTask = ""
     @FocusState private var taskFieldFocused: Bool
 
-    private var pill: RoundedRectangle { RoundedRectangle(cornerRadius: FQRadius.pill, style: .continuous) }
-    private var cardShape: RoundedRectangle { RoundedRectangle(cornerRadius: 40, style: .continuous) }
+    /// Rozmery ladene v Battle Card Lab (webovy prototyp). Pill je tu vlastni, aby se nezmenily ostatni obrazovky.
+    private enum Layout {
+        static let pillRadius: CGFloat = 15
+        static let cardRadius: CGFloat = 45
+        static let screenGutter: CGFloat = 15
+        static let stackGap: CGFloat = 12
+        static let topIcon: CGFloat = 56
+        static let cardPadX: CGFloat = 15
+        static let cardPadTop: CGFloat = 26
+        static let cardPadBottom: CGFloat = 46
+        static let cardSpacing: CGFloat = 29
+        static let cardBorder: Double = 0.10
+        static let headerHeight: CGFloat = 121
+        static let glowSize: CGFloat = 124
+        static let glowOpacity: Double = 0.12
+        static let spriteSize: CGFloat = 120
+        static let bossGap: CGFloat = 8
+        static let timerSize: CGFloat = 114
+        static let timerSizeLong: CGFloat = 89
+        static let timerGap: CGFloat = 3
+        static let chipHeight: CGFloat = 43
+        static let idleGap: CGFloat = 25
+        static let actionSize: CGFloat = 69
+        static let actionGap: CGFloat = 50
+        static let listGap: CGFloat = 3
+        static let rowHeight: CGFloat = 38
+        static let addFieldHeight: CGFloat = 58
+    }
+
+    private var pill: RoundedRectangle { RoundedRectangle(cornerRadius: Layout.pillRadius, style: .continuous) }
+    private var cardShape: RoundedRectangle { RoundedRectangle(cornerRadius: Layout.cardRadius, style: .continuous) }
     private var world: BossWorld { model.selectedBoss.world }
     private var isWarning: Bool { if case .warningCountdown = model.state { true } else { false } }
     private var isPaused: Bool { if case .paused = model.state { true } else { false } }
@@ -45,7 +74,7 @@ struct BattleView: View {
             FocusQuestBackdrop(alert: isWarning, scene: world.scene)
             GeometryReader { proxy in
                 ScrollView {
-                    VStack(spacing: FQSpace.xl) {
+                    VStack(spacing: Layout.stackGap) {
                         topBar
                         battleCard
                         if let receipt { BattleReceiptShareView(image: receipt) }
@@ -53,7 +82,7 @@ struct BattleView: View {
                         simulatorControls
                         #endif
                     }
-                    .padding(.horizontal, FQSpace.gutter)
+                    .padding(.horizontal, Layout.screenGutter)
                     .padding(.vertical, FQSpace.lg)
                     .frame(maxWidth: 520)
                     // Karta stoji uprostred obrazovky; delsi seznam ukolu ji jen natahne a da se rolovat.
@@ -111,7 +140,7 @@ struct BattleView: View {
             if isIdle {
                 circleIcon("xmark", label: "Close", action: closeBeforeBattle)
             } else {
-                Color.clear.frame(width: 44, height: 44)
+                Color.clear.frame(width: Layout.topIcon, height: Layout.topIcon)
             }
             Spacer(minLength: 0)
             Text(battleTitle)
@@ -131,7 +160,7 @@ struct BattleView: View {
             Image(systemName: symbol)
                 .font(.system(size: 15, weight: .semibold, design: .rounded))
                 .foregroundStyle(FQColor.textPrimary)
-                .frame(width: 44, height: 44)
+                .frame(width: Layout.topIcon, height: Layout.topIcon)
                 .glassControl(in: Circle(), interactive: true)
         }
         .buttonStyle(.plain)
@@ -141,9 +170,9 @@ struct BattleView: View {
     // MARK: - Hlavni karta
 
     private var battleCard: some View {
-        VStack(spacing: FQSpace.xxl) {
+        VStack(spacing: Layout.cardSpacing) {
             bossHeader
-            VStack(spacing: FQSpace.md) {
+            VStack(spacing: Layout.timerGap) {
                 timer
                 statusLine
             }
@@ -151,25 +180,25 @@ struct BattleView: View {
             HairlineDivider()
             workingOnSection
         }
-        .padding(.horizontal, FQSpace.xl)
-        .padding(.top, FQSpace.xxl)
-        .padding(.bottom, FQSpace.xl)
+        .padding(.horizontal, Layout.cardPadX)
+        .padding(.top, Layout.cardPadTop)
+        .padding(.bottom, Layout.cardPadBottom)
         .frame(maxWidth: .infinity)
         .background(.ultraThinMaterial, in: cardShape)
         .background((isWarning ? FQColor.danger : world.accent).opacity(0.06), in: cardShape)
-        .overlay { cardShape.strokeBorder(Color.white.opacity(0.14), lineWidth: 1) }
+        .overlay { cardShape.strokeBorder(Color.white.opacity(Layout.cardBorder), lineWidth: 1) }
         .shadow(color: .black.opacity(0.35), radius: 30, y: 12)
     }
 
     private var bossHeader: some View {
-        VStack(spacing: FQSpace.md) {
+        VStack(spacing: Layout.bossGap) {
             ZStack {
                 Circle()
-                    .fill(RadialGradient(colors: [(isWarning ? FQColor.danger : world.accent).opacity(0.32), Color.clear], center: .center, startRadius: 0, endRadius: 80))
-                    .frame(width: 160, height: 160)
-                PixelArtAvatarView(sprite: .boss(model.selectedBoss.pixelSpriteConfig), hitFlash: false, size: 104)
+                    .fill(RadialGradient(colors: [(isWarning ? FQColor.danger : world.accent).opacity(Layout.glowOpacity), Color.clear], center: .center, startRadius: 0, endRadius: Layout.glowSize / 2))
+                    .frame(width: Layout.glowSize, height: Layout.glowSize)
+                PixelArtAvatarView(sprite: .boss(model.selectedBoss.pixelSpriteConfig), hitFlash: false, size: Layout.spriteSize)
             }
-            .frame(height: 112)
+            .frame(height: Layout.headerHeight)
             VStack(spacing: FQSpace.xs) {
                 Text(model.selectedBoss.name)
                     .font(.system(size: 26, weight: .bold, design: .rounded))
@@ -186,7 +215,7 @@ struct BattleView: View {
     /// Obri odpocet: hlavni informace obrazovky.
     private var timer: some View {
         Text(clockText)
-            .font(.system(size: remaining >= 3600 ? 72 : 92, weight: .light, design: .rounded))
+            .font(.system(size: remaining >= 3600 ? Layout.timerSizeLong : Layout.timerSize, weight: .light, design: .rounded))
             .monospacedDigit()
             .lineLimit(1)
             .minimumScaleFactor(0.5)
@@ -227,7 +256,7 @@ struct BattleView: View {
     @ViewBuilder private var controls: some View {
         switch model.state {
         case .idle, .penalized, .victory, .defeated:
-            VStack(spacing: FQSpace.xl) {
+            VStack(spacing: Layout.idleGap) {
                 subjectPicker
                 Button { model.startSession() } label: {
                     Label("Begin Battle", systemImage: "play.fill")
@@ -246,7 +275,7 @@ struct BattleView: View {
             // Hodiny jeste nebezi, takze zruseni nic nestoji.
             actionCircle("xmark", caption: "Cancel", tint: nil) { model.retreat() }
         case .focusing, .paused, .warningCountdown:
-            HStack(spacing: FQSpace.xxxl) {
+            HStack(spacing: Layout.actionGap) {
                 if isPaused {
                     actionCircle("play.fill", caption: "Resume", tint: FQColor.accent) { model.resumeBattle() }
                 } else {
@@ -268,7 +297,7 @@ struct BattleView: View {
                             .font(.fqLabel)
                             .foregroundStyle(isSelected ? FQColor.onAccent : FQColor.textPrimary)
                             .padding(.horizontal, FQSpace.lg)
-                            .frame(height: 40)
+                            .frame(height: Layout.chipHeight)
                             .background(isSelected ? AnyShapeStyle(FQColor.accent) : AnyShapeStyle(FQColor.fill), in: pill)
                     }
                     .buttonStyle(.plain)
@@ -286,7 +315,7 @@ struct BattleView: View {
                 Image(systemName: symbol)
                     .font(.system(size: 26, weight: .semibold, design: .rounded))
                     .foregroundStyle(tint ?? FQColor.textPrimary)
-                    .frame(width: 76, height: 76)
+                    .frame(width: Layout.actionSize, height: Layout.actionSize)
                     .background((tint ?? Color.white).opacity(tint == nil ? 0.10 : 0.16), in: Circle())
                     .overlay { Circle().strokeBorder((tint ?? Color.white).opacity(0.25), lineWidth: 1) }
                 Text(caption).font(.fqLabel).foregroundStyle(FQColor.textSecondary)
@@ -304,7 +333,7 @@ struct BattleView: View {
     /// Co chce hrac v teto bitve stihnout. Je soucasti hlavni karty, bez vlastniho ramecku.
     private var workingOnSection: some View {
         let doneCount = model.tasks.filter(\.isDone).count
-        return VStack(alignment: .leading, spacing: FQSpace.sm) {
+        return VStack(alignment: .leading, spacing: Layout.listGap) {
             HStack(alignment: .firstTextBaseline) {
                 Text("Working on").font(.fqHeadline).foregroundStyle(FQColor.textPrimary)
                 Spacer(minLength: FQSpace.sm)
@@ -326,7 +355,7 @@ struct BattleView: View {
                                 .multilineTextAlignment(.leading)
                             Spacer(minLength: 0)
                         }
-                        .frame(minHeight: 44)
+                        .frame(minHeight: Layout.rowHeight)
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
@@ -358,7 +387,7 @@ struct BattleView: View {
                     }
                 }
                 .padding(.horizontal, FQSpace.lg)
-                .frame(minHeight: 48)
+                .frame(minHeight: Layout.addFieldHeight)
                 .background(FQColor.fill, in: pill)
             }
         }
