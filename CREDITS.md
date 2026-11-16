@@ -22,3 +22,12 @@ a bez povinnosti uvádět autora). Autora přesto uvádíme tady i v Nastavení 
 2. Přidej `case` do `AmbientTrack` v [AppPreferences.swift](FocusQuest/Models/Domain/AppPreferences.swift)
    (název, `title` a `resourceName` = název souboru bez přípony).
 3. Doplň název souboru do kontroly v [scripts/ci-build-ipa.sh](scripts/ci-build-ipa.sh).
+
+## Písmo
+
+`FocusQuest/Resources/Fonts/PixelifySans-Medium.ttf` je **Pixelify Sans** (řez Medium 500), © 2021 The Pixelify Sans Project Authors,
+licence **SIL Open Font License 1.1** (smí se vkládat do aplikací a šířit s nimi, nesmí se prodávat samostatně).
+
+- Zdroj: Google Fonts, <https://fonts.google.com/specimen/Pixelify+Sans> (projekt: <https://github.com/eifetx/Pixelify-Sans>)
+- Licence: <https://openfontlicense.org/open-font-license-official-text/>
+- Soubor je beze změny. Používá se jen pro nadpisy obrazovek.

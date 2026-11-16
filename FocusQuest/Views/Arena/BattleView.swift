@@ -272,10 +272,10 @@ struct BattleView: View {
                 Button { model.startSession() } label: {
                     Label("Begin Battle", systemImage: "play.fill")
                         .font(.fqHeadline)
-                        .foregroundStyle(FQColor.onAccent)
+                        .foregroundStyle(FQColor.onCta)
                         .frame(maxWidth: .infinity)
                         .frame(height: 56)
-                        .background(FQColor.accent, in: pill)
+                        .background(FQColor.cta, in: pill)
                 }
                 .buttonStyle(.plain)
                 .disabled(model.selectedSubject == nil)
@@ -304,7 +304,7 @@ struct BattleView: View {
                 ForEach(StudySubject.allCases) { subject in
                     let isSelected = subject == model.selectedSubject
                     Button { model.selectSubject(subject) } label: {
-                        Label(subject.title, systemImage: subject.symbol)
+                        Text(subject.title)
                             .font(.fqLabel)
                             .foregroundStyle(isSelected ? FQColor.onAccent : FQColor.textPrimary)
                             .padding(.horizontal, FQSpace.lg)

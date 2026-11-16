@@ -13,10 +13,10 @@ struct StatsView: View {
             ScreenHeader(eyebrow: "Stats", title: "Your progress")
             levelCard
             LazyVGrid(columns: [GridItem(.flexible(), spacing: FQSpace.md), GridItem(.flexible())], spacing: FQSpace.md) {
-                metric("Win rate", value: "\(Int(model.stats.winRate * 100))%", icon: "scope")
-                metric("HP dealt", value: "\(model.stats.totalHPDealt)", icon: "bolt.fill")
-                metric("Best combo", value: "\(model.stats.bestCombo)x", icon: "flame.fill")
-                metric("Focus hours", value: focusHours, icon: "clock.fill")
+                metric("Win rate", value: "\(Int(model.stats.winRate * 100))%")
+                metric("HP dealt", value: "\(model.stats.totalHPDealt)")
+                metric("Best combo", value: "\(model.stats.bestCombo)x")
+                metric("Focus hours", value: focusHours)
             }
             ScreenSection(title: "Subjects") { subjectsCard }
             ScreenSection(title: "Bestiary", detail: bestiaryDetail) { bestiaryCard }
@@ -43,7 +43,7 @@ struct StatsView: View {
                 ForEach(progress) { entry in
                     VStack(alignment: .leading, spacing: FQSpace.xs) {
                         HStack {
-                            Label(entry.subject.title, systemImage: entry.subject.symbol).font(.fqLabel).foregroundStyle(FQColor.textPrimary)
+                            Text(entry.subject.title).font(.fqLabel).foregroundStyle(FQColor.textPrimary)
                             Spacer(minLength: FQSpace.sm)
                             Text("\(ArenaView.durationText(minutes: entry.minutes)) · \(entry.battles) \(entry.battles == 1 ? "battle" : "battles")")
                                 .font(.fqMeta)
@@ -89,7 +89,7 @@ struct StatsView: View {
     private func bestiaryGroupCard(_ group: BestiaryGroup) -> some View {
         VStack(spacing: 0) {
             HStack(spacing: FQSpace.sm) {
-                Label(group.subject?.title ?? "No subject", systemImage: group.subject?.symbol ?? "questionmark.circle")
+                Text(group.subject?.title ?? "No subject")
                     .font(.fqHeadline)
                     .foregroundStyle(FQColor.textPrimary)
                 Spacer(minLength: FQSpace.sm)
@@ -188,13 +188,10 @@ struct StatsView: View {
         }
     }
 
-    private func metric(_ title: String, value: String, icon: String) -> some View {
-        VStack(alignment: .leading, spacing: FQSpace.md) {
-            IconTile(symbol: icon)
-            VStack(alignment: .leading, spacing: FQSpace.xs) {
-                Text(value).font(.fqTitle).monospacedDigit().foregroundStyle(FQColor.textPrimary)
-                Text(title).font(.fqSecondary).foregroundStyle(FQColor.textSecondary)
-            }
+    private func metric(_ title: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: FQSpace.xs) {
+            Text(value).font(.fqTitle).monospacedDigit().foregroundStyle(FQColor.textPrimary)
+            Text(title).font(.fqSecondary).foregroundStyle(FQColor.textSecondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(FQSpace.lg)

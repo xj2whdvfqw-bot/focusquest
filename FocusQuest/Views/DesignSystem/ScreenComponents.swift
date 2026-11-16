@@ -22,9 +22,36 @@ struct ScreenScaffold<Content: View>: View {
                 .frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden)
+            // Obsah roluje pod stavovy radek a Dynamic Island; tmavy prechod ho tam ztlumi.
+            StatusBarFade()
         }
         // Krajina je vzdy nocni, takze text a sklo musi byt vzdy v tmavem rezimu (i v listech).
         .preferredColorScheme(.dark)
+    }
+}
+
+/// Prechod za stavovym radkem: rgba(6,5,16,.55) -> .25 v 55 % -> pruhledna, 84 pt od horni hrany displeje.
+/// V listu (sheet) zadny stavovy radek neni (horni bezpecna zona je 0), tam se nekresli.
+struct StatusBarFade: View {
+    var body: some View {
+        GeometryReader { proxy in
+            if proxy.safeAreaInsets.top > 0 {
+                let ink = Color(red: 6 / 255, green: 5 / 255, blue: 16 / 255)
+                LinearGradient(
+                    stops: [
+                        .init(color: ink.opacity(0.55), location: 0),
+                        .init(color: ink.opacity(0.25), location: 0.55),
+                        .init(color: ink.opacity(0), location: 1),
+                    ],
+                    startPoint: .top, endPoint: .bottom
+                )
+                .frame(height: 84)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                .ignoresSafeArea(edges: .top)
+            }
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
     }
 }
 
@@ -38,12 +65,30 @@ struct ScreenTitle: View {
             if let eyebrow {
                 Text(eyebrow).font(.fqLabel).foregroundStyle(FQColor.textSecondary)
             }
-            Text(title).font(.fqLargeTitle).foregroundStyle(FQColor.textPrimary)
-                // Nadpis lezi primo na pixelove krajine; stin ho oddeli od hvezd a mesice.
-                .shadow(color: .black.opacity(0.55), radius: 6, y: 1)
+            Text(Self.styled(title))
+                .font(.fqPixelTitle())
+                .foregroundStyle(FQColor.textPrimary)
+                // Nadpis lezi primo na pixelove krajine; mekka zare ho oddeli od hvezd a mesice.
+                .shadow(color: .black.opacity(0.45), radius: 6)
         }
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isHeader)
+    }
+
+    /// Pixelove pismo potrebuje vic vzduchu: +5 % mezi pismeny a +12 % navic za kazdou mezerou,
+    /// jinak splyvaji slova i tvary jako G.
+    static func styled(_ title: String, size: CGFloat = FQType.screenTitleSize) -> AttributedString {
+        var text = AttributedString(title)
+        text.tracking = size * FQType.titleTracking
+        var index = text.startIndex
+        while index < text.endIndex {
+            let next = text.index(afterCharacter: index)
+            if text.characters[index] == " " {
+                text[index..<next].tracking = size * (FQType.titleTracking + FQType.titleWordSpacing)
+            }
+            index = next
+        }
+        return text
     }
 }
 

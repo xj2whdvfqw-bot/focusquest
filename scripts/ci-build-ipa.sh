@@ -32,7 +32,9 @@ test -d "$APP/PlugIns/FocusQuestWidgets.appex" || { echo "V appce chybi PlugIns/
 for track in calm-currents tokyo-sunset peaceful-drift; do
   test -f "$APP/$track.mp3" || { echo "V appce chybi skladba $track.mp3"; exit 1; }
 done
-echo "Obsah appky OK: Widget Extension + 3 skladby"
+# Bez fontu by nadpisy tise spadly na systemove pismo.
+test -f "$APP/PixelifySans-Medium.ttf" || { echo "V appce chybi font PixelifySans-Medium.ttf"; exit 1; }
+echo "Obsah appky OK: Widget Extension + 3 skladby + pixelovy font"
 
 rm -rf build/ipa build/FocusQuest.ipa
 mkdir -p build/ipa/Payload

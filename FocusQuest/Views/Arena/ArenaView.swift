@@ -99,10 +99,10 @@ struct ArenaView: View {
                 } label: {
                     Label("Fight", systemImage: "play.fill")
                         .font(.fqHeadline)
-                        .foregroundStyle(FQColor.onAccent)
+                        .foregroundStyle(FQColor.onCta)
                         .frame(maxWidth: .infinity)
                         .frame(height: 52)
-                        .background(world.accent, in: RoundedRectangle(cornerRadius: FQRadius.pill, style: .continuous))
+                        .background(FQColor.cta, in: RoundedRectangle(cornerRadius: FQRadius.pill, style: .continuous))
                 }
                 .buttonStyle(.plain)
                 .disabled(!model.isBetweenBattles)
@@ -178,7 +178,7 @@ struct CustomFocusSheet: View {
                         ForEach(StudySubject.allCases) { item in
                             let isSelected = item == subject
                             Button { subject = item } label: {
-                                Label(item.title, systemImage: item.symbol)
+                                Text(item.title)
                                     .font(.fqLabel)
                                     .foregroundStyle(isSelected ? FQColor.onAccent : FQColor.textPrimary)
                                     .padding(.horizontal, FQSpace.lg)
@@ -198,10 +198,10 @@ struct CustomFocusSheet: View {
             } label: {
                 Label("Start \(ArenaView.durationText(minutes: minutes)) Focus", systemImage: "play.fill")
                     .font(.fqHeadline)
-                    .foregroundStyle(FQColor.onAccent)
+                    .foregroundStyle(FQColor.onCta)
                     .frame(maxWidth: .infinity)
                     .frame(height: 56)
-                    .background(FQColor.accent, in: RoundedRectangle(cornerRadius: FQRadius.pill, style: .continuous))
+                    .background(FQColor.cta, in: RoundedRectangle(cornerRadius: FQRadius.pill, style: .continuous))
             }
             .buttonStyle(.plain)
             .disabled(subject == nil)
@@ -236,6 +236,8 @@ struct PathTabView: View {
             .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(for: BossWorld.self) { world in
                 WorldPathView(model: model, world: world) { battle.isPresented = true }
+                    // Vlastni lista zalozek kresli MainTabView; systemova nesmi naskocit ani po prechodu.
+                    .toolbar(.hidden, for: .tabBar)
             }
         }
     }
@@ -290,12 +292,6 @@ private struct WorldCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: FQSpace.md) {
             HStack(alignment: .top, spacing: FQSpace.md) {
-                Image(systemName: world.symbol)
-                    .font(.system(size: 20, weight: .semibold, design: .rounded))
-                    .foregroundStyle(world.accent)
-                    .frame(width: 44, height: 44)
-                    .background(world.accent.opacity(0.16), in: RoundedRectangle(cornerRadius: FQRadius.control, style: .continuous))
-                    .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: FQSpace.xs) {
                     Text(world.title).font(.fqHeadline).foregroundStyle(FQColor.textPrimary)
                     Text(world.tagline).font(.fqMeta).foregroundStyle(FQColor.textSecondary).fixedSize(horizontal: false, vertical: true)

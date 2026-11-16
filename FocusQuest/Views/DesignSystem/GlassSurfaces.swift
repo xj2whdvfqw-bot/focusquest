@@ -6,7 +6,7 @@ import SwiftUI
 // Vsechno, co pouziva API z iOS 26, je jen v tomhle souboru.
 
 extension View {
-    /// Karta s obsahem: matne sklo (.ultraThinMaterial), 1px svetelna hrana a mekky stin.
+    /// Karta s obsahem: tmave matne sklo (rozmazani + FQColor.card) a mekky stin.
     /// `prominent` = hustsi sklo (.regularMaterial) pro dialogy a vysledky bitvy.
     func glassCard(radius: CGFloat = FQRadius.card, tint: Color? = nil, prominent: Bool = false) -> some View {
         modifier(GlassCardModifier(radius: radius, tint: tint, prominent: prominent))
@@ -78,33 +78,19 @@ struct GlassCardModifier: ViewModifier {
     let radius: CGFloat
     let tint: Color?
     var prominent = false
-    @Environment(\.colorScheme) private var colorScheme
 
     func body(content: Content) -> some View {
         let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
-        // Ve svetlem rezimu je sklo mlecne bile, v tmavem jen lehce prosvetlene.
-        let isDark = colorScheme == .dark
-        // Silne rozmazane pruhledne sklo: barevne pozadi prosvita, jen je zjemnene.
+        // Tmave sklo: rozmazani + rgba(13,11,28,.60). Bez svetle hrany a odlesku, text na nem vynikne.
         return content
             .background {
                 ZStack {
                     if prominent { shape.fill(.regularMaterial) } else { shape.fill(.ultraThinMaterial) }
-                    shape.fill(Color.white.opacity(isDark ? 0.07 : 0.24))
+                    shape.fill(FQColor.card)
                     if let tint { shape.fill(tint.opacity(0.22)) }
-                    // Odlesk shora - svetlo dopadajici na sklo.
-                    shape.fill(LinearGradient(colors: [Color.white.opacity(isDark ? 0.16 : 0.42), Color.white.opacity(0)], startPoint: .top, endPoint: .center))
                 }
             }
-            .overlay {
-                // Jemna bila hrana, nahore a vlevo nejjasnejsi.
-                shape.strokeBorder(
-                    LinearGradient(colors: [Color.white.opacity(isDark ? 0.55 : 0.95), Color.white.opacity(isDark ? 0.12 : 0.40), Color.white.opacity(isDark ? 0.28 : 0.70)], startPoint: .topLeading, endPoint: .bottomTrailing),
-                    lineWidth: 1
-                )
-            }
-            .shadow(color: isDark ? Color.black.opacity(0.28) : Color(red: 0.30, green: 0.20, blue: 0.55).opacity(0.18), radius: 24, y: 12)
-            // Druhy, tesny stin - karta se "vznasi" nad krajinou.
-            .shadow(color: Color.black.opacity(isDark ? 0.22 : 0.08), radius: 3, y: 1)
+            .shadow(color: Color.black.opacity(0.24), radius: 12, y: 12)
     }
 }
 

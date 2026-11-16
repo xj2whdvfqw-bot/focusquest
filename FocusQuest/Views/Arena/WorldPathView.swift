@@ -25,12 +25,6 @@ struct WorldPathView: View {
 
     private var header: some View {
         HStack(spacing: FQSpace.md) {
-            Image(systemName: world.symbol)
-                .font(.system(size: 22, weight: .semibold, design: .rounded))
-                .foregroundStyle(world.accent)
-                .frame(width: 48, height: 48)
-                .background(world.accent.opacity(0.16), in: RoundedRectangle(cornerRadius: FQRadius.control, style: .continuous))
-                .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: FQSpace.xs) {
                 Text(world.tagline).font(.fqSecondary).foregroundStyle(FQColor.textPrimary)
                 Text("\(cleared) of \(world.bosses.count) bosses defeated · fixed timers \(world.durationRange)")
