@@ -1,0 +1,480 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="refresh" content="30">
+<title>FocusQuest – postup designu</title>
+<style>
+  :root {
+    --bg: #0b0a16;
+    --card: #15132a;
+    --card-2: #1c1a36;
+    --line: #2a2748;
+    --text: #f2f1fa;
+    --text2: rgba(242, 241, 250, .72);
+    --text3: rgba(242, 241, 250, .5);
+    --accent: rgb(107, 230, 199);
+    --s-cekam: #8a88a3;
+    --s-pracuje: #5aa9ff;
+    --s-build: #ffc14d;
+    --s-spadl: #ff5466;
+    --s-hotovo: #6be6c7;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); }
+  body {
+    font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
+    padding: 24px 16px 48px;
+  }
+  main { max-width: 860px; margin: 0 auto; }
+  h1 { font-size: 24px; margin: 0 0 4px; letter-spacing: .01em; }
+  .sub { color: var(--text3); font-size: 13px; margin: 0 0 20px; }
+  code { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: .92em; background: var(--card-2); padding: 1px 5px; border-radius: 5px; }
+
+  .summary { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 18px; margin-bottom: 24px; }
+  .count { font-size: 20px; font-weight: 700; margin-bottom: 10px; }
+  .count span { color: var(--accent); }
+  .bar { height: 12px; background: var(--card-2); border-radius: 99px; overflow: hidden; display: flex; }
+  .bar i { display: block; height: 100%; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 10px; font-size: 13px; color: var(--text2); }
+  .legend b { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
+  .meta { display: grid; grid-template-columns: max-content 1fr; gap: 6px 14px; margin-top: 16px; font-size: 14px; }
+  .meta dt { color: var(--text3); }
+  .meta dd { margin: 0; }
+
+  .grid { display: grid; gap: 14px; }
+  .sec { background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--c); border-radius: 14px; padding: 16px; }
+  .sec.current { box-shadow: 0 0 0 2px var(--c); }
+  .sec-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+  .sec h2 { font-size: 17px; margin: 0; line-height: 1.3; }
+  .sec h2 small { color: var(--text3); font-weight: 600; margin-right: 6px; }
+  .pill { flex: none; font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 99px; color: #0b0a16; background: var(--c); white-space: nowrap; }
+  .done-count { font-size: 13px; color: var(--text3); margin: 4px 0 10px; }
+  ul.items { list-style: none; margin: 0; padding: 0; }
+  ul.items li { display: flex; gap: 10px; padding: 5px 0; color: var(--text2); }
+  ul.items li.ok { color: var(--text); }
+  .box { flex: none; width: 18px; height: 18px; margin-top: 2px; border-radius: 5px; border: 1.5px solid var(--text3); display: grid; place-items: center; font-size: 12px; font-weight: 800; }
+  li.ok .box { background: var(--accent); border-color: var(--accent); color: #0b0a16; }
+  .info { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); font-size: 13px; color: var(--text2); }
+  .info a { color: var(--s-pracuje); }
+  .note { margin-top: 10px; font-size: 14px; color: var(--text2); background: var(--card-2); border-radius: 10px; padding: 10px 12px; }
+  .note b { color: var(--text); }
+
+  .next { margin-top: 24px; background: var(--card); border: 1px solid var(--accent); border-radius: 16px; padding: 18px; }
+  .next h2 { margin: 0 0 6px; font-size: 15px; color: var(--accent); text-transform: uppercase; letter-spacing: .08em; }
+  .next p { margin: 0; font-size: 17px; font-weight: 600; }
+  .err { color: var(--s-spadl); }
+</style>
+</head>
+<body>
+<main id="app"><p>Načítám…</p></main>
+
+<!-- ======================================================================
+     DATA. Při aktualizaci měň jen tento JSON blok, HTML a skript nech být.
+     status: "cekam" | "pracuje" | "build" | "spadl" | "hotovo"
+     build.result: "běží" | "prošel" | "spadl" | null
+     ====================================================================== -->
+<script id="data" type="application/json">
+{
+  "updated": "2026-11-17T00:53:00+01:00",
+  "current": "Nic. Sekce 0 a 1 jsou hotové, další na řadě je sekce 2 (Arena).",
+  "nextStep": "Stáhni IPA z buildu #21 a nahraj ji přes Sideloadly, pak na iPhonu projdi poznámky u sekcí 0 a 1.",
+  "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
+  "sections": [
+    {
+      "id": 0,
+      "title": "Globální tokeny",
+      "status": "hotovo",
+      "items": [
+        { "text": "Žlutá barva `cta` #FFD83D s textem #2A1E00 jen pro hlavní tlačítka (Fight, Start Battle, Next boss)", "done": true },
+        { "text": "`accent` rgb(107,230,199) pro postup, úspěch a odškrtnutí", "done": true },
+        { "text": "`danger` rgb(255,84,102) pro ústup, mazání a naštvaného bosse", "done": true },
+        { "text": "Skleněné karty všude: rgba(13,11,28,.60) + rozmazání 16, bez světlé hrany", "done": true },
+        { "text": "Tmavší karty na světlých pozadích (.64, karty .40): přesunuto do sekce 12, kde vzniknou světlá pozadí", "done": false },
+        { "text": "Vedlejší text bílá 78 %, terciární text bílá 50 %", "done": true },
+        { "text": "Pixelové písmo Pixelify Sans jen pro nadpisy obrazovek (řez 500, prostrkání +5 %, mezery mezi slovy +12 %); všechno ostatní zaoblené systémové písmo", "done": true },
+        { "text": "Vedlejší text nejméně 13 pt", "done": true },
+        { "text": "Pryč dekorativní ikony: mapa na kartách světů, ikony u předmětů, ikony v dlaždicích statistik", "done": true },
+        { "text": "Obsah roluje pod status bar a Dynamic Island; za status barem přechod rgba(6,5,16,.55) → průhledná na 84 pt", "done": true }
+      ],
+      "commit": "0061600",
+      "build": { "number": 21, "runId": 43979908168, "result": "prošel" },
+      "note": "Build #21 prošel (IPA, unit testy i screenshot). Na iPhonu otestuj: nadpisy obrazovek jsou v pixelovém písmu, karty jsou tmavé sklo a při rolování obsah zajíždí pod status bar se ztmavením (v Nastavení ztmavení být nemá)."
+    },
+    {
+      "id": 1,
+      "title": "Tab bar",
+      "status": "hotovo",
+      "items": [
+        { "text": "5 záložek: Arena, Path, Shop, Stats, Hero; Stats je samostatná záložka (dřív byla v profilu)", "done": true },
+        { "text": "Jen ikony velikosti 26, bez popisků (popisky zůstávají pro VoiceOver)", "done": true },
+        { "text": "Arena: obrysový domek s klenutými dveřmi; Hero: obrysová postava v kruhu; Path, Shop a Stats mají dál plné ikony", "done": true },
+        { "text": "Během bitvy je tab bar úplně schovaný", "done": true },
+        { "text": "Shop zamčený do 3 výher: průhlednost 45 %, odznak „🔒 1/3“, ťuknutí ukáže toast „The Shop opens after 3 wins (1/3)“", "done": true },
+        { "text": "Přechod pod tab barem: průhledná → rgba(6,5,16,.92) na 45 % → #060510 na 70 %, výška = tab bar + spodní okraj + 36", "done": true }
+      ],
+      "commit": "0061600",
+      "build": { "number": 21, "runId": 43979908168, "result": "prošel" },
+      "note": "Systémový TabView zůstal (každá záložka si drží stav), jen je skrytý a nad ním je vlastní plovoucí lišta. Toast je nová komponenta PixelToast, sekce 11 ji převezme. Na iPhonu otestuj: 5 ikon bez popisků, Shop s 🔒 x/3 a toastem po ťuknutí, tab bar zmizí v bitvě a vrátí se po ní, Path si po přepnutí záložek pamatuje, kam jsi odroloval."
+    },
+    {
+      "id": 2,
+      "title": "Arena",
+      "status": "cekam",
+      "items": [
+        { "text": "Nadpis „Ready to focus?“ bez malého štítku nad ním", "done": false },
+        { "text": "Vlevo nahoře pilulka série: plamínek + číslo + „days streak“", "done": false },
+        { "text": "Úplně odstranit Hero HP (lišta i z celé aplikace)", "done": false },
+        { "text": "Uprostřed „Continue your path“, velký sprite bosse 128 pt bez karty a kruhu, jméno bosse a pod ním „Boss 3 of 4 · Villain Vault“ (nikdy „Node 3“)", "done": false },
+        { "text": "Dole v dosahu palce žluté tlačítko „▶ Fight · 20 min“ (zaoblené písmo, velké jen první písmeno) a pod ním odkaz „Not feeling it? Just 5 minutes“", "done": false },
+        { "text": "Odstranit kartu Custom Focus a „See all worlds“", "done": false },
+        { "text": "2a: ťuknutí na bosse ukáže na ~2,2 s bublinu s náhodnou hláškou (8 hlášek, nikdy dvakrát stejná po sobě, {m} = minuty bosse) a boss poskočí", "done": false },
+        { "text": "2a: 4+ ťuknutí s rozestupem do 1,5 s = naštvaný boss: třese se, měkká červená záře za ním, zvuk zásahu, červená bublina s jednou ze 4 naštvaných hlášek", "done": false },
+        { "text": "2b: každé ťuknutí na pilulku série ji zvětší na 1,06", "done": false },
+        { "text": "2b: 5 ťuknutí s rozestupem do 600 ms zapálí pilulku pixelovým ohněm (mřížka 3 pt, 5 barev), zapálení od středu nahoře po směru hodin za 0,9 s, hoří 1,5 s, mizí 0,8 s", "done": false },
+        { "text": "2b: jiskry z hořící části obrysu ven a nahoru (3×3 → 2×2 → 1×1, tmavnou), 1px žhavá linka po obrysu, oranžový okraj pilulky, vítězná znělka", "done": false },
+        { "text": "2b: opětovné zapálení během hoření funguje a nikdy se nezasekne (úklid po ~4,5 s); kreslit přes Canvas + TimelineView", "done": false }
+      ],
+      "commit": null,
+      "build": null,
+      "note": ""
+    },
+    {
+      "id": 3,
+      "title": "Path",
+      "status": "cekam",
+      "items": [
+        { "text": "Nadpis „Choose a world“; všechny světy na začátku sbalené, rozbalí se ťuknutím na kartu", "done": false },
+        { "text": "Karta světa: název, podtitul, „2 / 4 cleared“, lišta postupu v barvě světa, bez ikony", "done": false },
+        { "text": "Bossové v mřížce 3 sloupce: číslo, sprite, jméno (max 2 řádky), délka „20 min“; žádný zvýrazněný „další“ boss", "done": false },
+        { "text": "Poražený boss: zelená pilulka na spritu s ✓ a počtem výher, např. „✓ 3×“ (z battle logu, minimálně 1)", "done": false },
+        { "text": "Pevná délka bosse: minuty = 10 + 5 × pořadí (od 0)", "done": false },
+        { "text": "Obrazovka vítězství ukazuje bosse, kterého jsi opravdu porazil (uložit lastBeaten před posunem cesty)", "done": false },
+        { "text": "Pořadí a barvy světů: Hero Heights, Villain Vault, Dojo, Swamp Kingdom, Farm, History Hall, Orbit (názvy, podtituly a barvy podle tabulky)", "done": false },
+        { "text": "Dojo místo želvích ninja parodií (ty úplně pryč): 9 bossů od Kara-Tea Break po Sumo More Snacks", "done": false },
+        { "text": "Farm místo Brainrot Badlands (všechna brainrot jména pryč): 7 bossů od Snooze Bunny po Neigh-ver Mind", "done": false },
+        { "text": "Nový svět History Hall: 9 bossů od Nap-oleon po Komenský's Homework", "done": false },
+        { "text": "Nový svět Orbit (planety s hlavou na těle astronauta): 8 bossů od Retro Mercury po Sea-Ya Neptune", "done": false },
+        { "text": "Pixel art 16×16 pro všechny nové postavy podle přílohy CHANGES.md", "done": false }
+      ],
+      "commit": null,
+      "build": null,
+      "note": "Před vydáním nahradit parodie v Hero Heights, Villain Vault a Swamp Kingdom vlastními postavami (autorská práva)."
+    },
+    {
+      "id": 4,
+      "title": "Fight sheet",
+      "status": "cekam",
+      "items": [
+        { "text": "Zavírací ✕ vpravo nahoře, zavření i tažením dolů; nadpis „Fight {jméno bosse}“", "done": false },
+        { "text": "Studying: řada čipů předmětů + „+ Subject“ + odkaz „Edit“ vpravo u popisku", "done": false },
+        { "text": "Čipy v pevném pořadí podle seznamu předmětů; výběr mění jen zvýraznění, nikdy pořadí", "done": false },
+        { "text": "Zobrazit prvních 5; vybraný předmět níž v seznamu se ukáže na 5. místě; „More…“ rozbalí celý seznam", "done": false },
+        { "text": "Naposledy použitý předmět je předvybraný (ukládá se)", "done": false },
+        { "text": "Sound: čipy Off · Lo-fi · Brown noise · White noise", "done": false },
+        { "text": "Vybraný čip v celé aplikaci: pozadí rgba(0,0,0,.55), bílý tučný text, vnitřní okraj 1,5 pt rgba(255,216,61,.6); žádná žlutá ani mátová výplň", "done": false },
+        { "text": "Bez výběru délky; jedno velké žluté tlačítko „▶ Start 20 min Battle“ (výška 72, písmo 22 tučně)", "done": false },
+        { "text": "4a: „+ Subject“ se změní na textové pole přímo v řadě (bez modálu) s návrhy (Math, English, Economics … Design)", "done": false },
+        { "text": "4a: Return nebo ťuknutí na návrh předmět vytvoří a rovnou vybere", "done": false },
+        { "text": "4a: kontrola duplicit (bez ohledu na velikost písmen a diakritiku, shoda prvních 4+ písmen) vybere existující a ukáže toast „You already have Math. Picked it.“", "done": false },
+        { "text": "4a: dlouhý stisk čipu nebo „Edit subjects“ ve Stats otevře „Your subjects“ (sekce 7)", "done": false },
+        { "text": "4a: režim Edit: čipy mají červené ✕, první ťuknutí zčervená „Delete Math?“, druhé smaže (měkké smazání)", "done": false }
+      ],
+      "commit": null,
+      "build": null,
+      "note": ""
+    },
+    {
+      "id": 5,
+      "title": "Bitva",
+      "status": "cekam",
+      "items": [
+        { "text": "Krok položení: „Lay the phone face-down. The battle starts when it lies still.“ Start podle pohybového senzoru, ne po 1,6 s", "done": false },
+        { "text": "Karta: sprite, jméno, „Novice · 10 min“, velký časovač, tenká lišta HP bosse bez čísla, řádek „Phone down. The boss is losing.“", "done": false },
+        { "text": "Z karty pryč: combo, „13 HP left“, seznam úkolů a tlačítka vpravo nahoře (pravidla, hudba)", "done": false },
+        { "text": "Jedna pauza za bitvu, max 2:00, živé odpočítávání „Paused · back in 1:43 or the boss escapes“; po vypršení boss uteče", "done": false },
+        { "text": "Ústup → potvrzení „Don't let {boss} win“ / „The boss escapes: no XP and no coins for this battle“ / „Stay and Fight“, „Retreat Anyway“", "done": false },
+        { "text": "Bossové dýchají (měřítko 1,02) a nikdy neblednou (průhlednost vždy 1)", "done": false },
+        { "text": "Kulatá tlačítka na světlém pozadí: výplň rgba(13,11,28,.55) (danger rgba(60,8,20,.6), accent rgba(8,40,34,.6)), stín, 1pt vnitřní okraj, bílé popisky se silným stínem", "done": false },
+        { "text": "5a: zvednutý telefon = statická tmavě červená #4A0710, žádné blikání; jen číslo pomalu pulzuje (1 → .55, 2,4 s), s Reduce Motion bez animace", "done": false },
+        { "text": "5a: text „Put it back on the desk“ / „Lay it face-down. Your first slip in a battle is forgiven.“; bez tlačítka „I put it back“, alarm skončí, až senzor hlásí klid", "done": false },
+        { "text": "5a: první zvednutí v bitvě odpuštěno („Slip forgiven“ / „Nothing lost this time. Next slip and the boss escapes.“), při druhém boss uteče", "done": false },
+        { "text": "5b: odstranit Hero HP, lektvary (Health, Time-Freeze), relikvie, combo, automat a vesnici; jediný trest je „boss uteče“ (bez XP a mincí), série a mince se nikdy neberou", "done": false },
+        { "text": "5b: obrazovka prohry: „{boss} escaped“, důvod („You retreated.“ / „The phone stayed up.“ / „The pause ran out.“), „No loot this time, your streak and coins are safe.“, tlačítko „Back“", "done": false }
+      ],
+      "commit": null,
+      "build": null,
+      "note": ""
+    },
+    {
+      "id": 6,
+      "title": "Vítězství a přestávka",
+      "status": "cekam",
+      "items": [
+        { "text": "Výplata: XP = minuty × 12, mince = minuty × 3; level up při XP ≥ potřebné XP", "done": false },
+        { "text": "Série +1 jednou za kalendářní den", "done": false },
+        { "text": "Zápis do battle logu (boss, datum, xp, minuty) a přičtení minut a bitev k předmětu (nebo „General“)", "done": false },
+        { "text": "Když to byl aktuální boss na cestě, posunout svět a ukázat „Next up: {další boss} · {min} min“", "done": false },
+        { "text": "Sprite poraženého bosse (bez trofeje); XP a mince se načítají 0,9 s se zpomalením", "done": false },
+        { "text": "Po 5minutové bitvě navíc „Keep going · 20 min battle“", "done": false },
+        { "text": "Přestávka (spodní panel po Collect Loot): štítek „Break“, velký tenký časovač 5:00, který opravdu odpočítává, text „Stand up, drink some water. The next boss waits.“", "done": false },
+        { "text": "V 0:00 „Break's over“, časovač žlutě, zvuk", "done": false },
+        { "text": "Hlavní žluté tlačítko ze 3 částí: ▶ kolečko · „NEXT BOSS“ malými kapitálkami + jméno bosse (zkrácené) · pilulka „25 min“", "done": false },
+        { "text": "Dvě dlaždice: „Same again“ (otevře fight sheet posledního bosse) a „Change boss“ („Pick on the Path“, otevře Path)", "done": false },
+        { "text": "Kompaktní obrysové tlačítko „Done for today“ (ne přes celou šířku)", "done": false },
+        { "text": "„Just 5 minutes“: rychlá 5minutová bitva proti bossovi aktuálního světa, cestu neposouvá", "done": false }
+      ],
+      "commit": null,
+      "build": null,
+      "note": ""
+    },
+    {
+      "id": 7,
+      "title": "Your subjects (správa předmětů)",
+      "status": "cekam",
+      "items": [
+        { "text": "Řádky: upravitelné jméno · Hide/Show · ikona koše", "done": false },
+        { "text": "Hide: předmět zmizí z fight sheetu i ze Stats, data zůstanou; řádek šedý přeškrtnutý, tlačítko „Show“", "done": false },
+        { "text": "Delete: řádek zčervená „Delete Math? You can restore it for 24 hours.“ s Cancel a Delete", "done": false },
+        { "text": "Po smazání: předmět zmizí z bitev a Stats a přesune se do „Recently deleted“ („Gone for good in 23 h, with its stats“, Restore)", "done": false },
+        { "text": "Po 24 h se předmět i jeho statistiky trvale smažou", "done": false },
+        { "text": "Toast s Undo na 5 s", "done": false },
+        { "text": "Text v hlavičce: „Hidden subjects disappear from fights and Stats. Nothing is lost, tap Show to bring them back.“", "done": false },
+        { "text": "Dole „+ Subject“ a kompaktní „✓ Done“", "done": false },
+        { "text": "Oprava dat při spuštění: předmět, který má statistiky, ale chybí v seznamu, se vrátí do seznamu", "done": false }
+      ],
+      "commit": null,
+      "build": null,
+      "note": ""
+    },
+    {
+      "id": 8,
+      "title": "Záložka Stats",
+      "status": "cekam",
+      "items": [
+        { "text": "Nadpis „Your progress“; sekce Habits, dlaždice metrik, Subjects; pryč Bestiary a battle log", "done": false },
+        { "text": "Habits: čísla týdnů 1, 3, 5 … nad mřížkou, každé vycentrované nad svým sloupcem (HStack, šířka buňky = šířka sloupce)", "done": false },
+        { "text": "Ťuknutí na den ukáže malou bublinu s datem a minutami", "done": false },
+        { "text": "Dlaždice metrik v jedné skleněné kartě bez vnitřních rámečků", "done": false },
+        { "text": "Seznam předmětů bez skrytých a smazaných; odkaz „Edit subjects“ otevře sekci 7", "done": false },
+        { "text": "Prázdné stavy mají tlačítko „▶ Start a battle“", "done": false }
+      ],
+      "commit": null,
+      "build": null,
+      "note": ""
+    },
+    {
+      "id": 9,
+      "title": "Záložka Hero (profil)",
+      "status": "cekam",
+      "items": [
+        { "text": "Jedna kompaktní karta hrdiny ve 3 sloupcích", "done": false },
+        { "text": "1. sloupec: avatar 76 a pod ním malé kulaté tlačítko se štětcem (otevře Edit Appearance), bez textového tlačítka", "done": false },
+        { "text": "2. sloupec: jméno (22 pt) a třída s ikonou (16 pt)", "done": false },
+        { "text": "Nikde žádné hodnosti: pryč názvy hodností, tlačítko „i“ a seznam hodností", "done": false },
+        { "text": "3. sloupec: odznak levelu = kruh jen s číslem (30 pt tučně), bez „LEVEL“; pod ním krátká lišta v barvě kruhu a „340 / 600 XP to 8“", "done": false },
+        { "text": "Barva kruhu (plná, bez přechodu): 1–4 bronz #C97A3E, 5–9 stříbro #B9C2D2, 10–14 zlato #FFC233, 15–19 safír #4AA3FF, 20+ duha #A274FF", "done": false },
+        { "text": "Od zlata výš křídla: 3 pera na každé straně v barvě kruhu (cesty z rankBlock() v HTML)", "done": false },
+        { "text": "Denní cíl: kruh + „60 minutes a day“ / „35 of 60 min verified today“ + posuvník 30–180 po 15", "done": false },
+        { "text": "Kruh denního cíle se mění živě při tažení (dnes ÷ cíl, animace 0,15 s)", "done": false },
+        { "text": "Karta Identity zůstává", "done": false }
+      ],
+      "commit": null,
+      "build": null,
+      "note": ""
+    },
+    {
+      "id": 10,
+      "title": "Shop",
+      "status": "cekam",
+      "items": [
+        { "text": "Nadpis „Gear up“ / „Change the scenery“; segmenty Gear · Backgrounds (pryč Potions a Slot)", "done": false },
+        { "text": "Připnutá hlavička bez ostré hrany: tmavé rozmazané pozadí se vytrácí ~60 pt pod ní a sahá až pod status bar", "done": false },
+        { "text": "Tlačítka koupě nikdy žlutá: pozadí bílá 14 %, bílý text", "done": false },
+        { "text": "Gear beze změny kromě stylu tlačítek", "done": false },
+        { "text": "Backgrounds: sekce „FREE“ a „FOR COINS“; karta s náhledem, jménem, popiskem, tlačítkem (Use / In use / Buy for N / „need N more“) a Preview", "done": false },
+        { "text": "10 pozadí podle tabulky: World scenes, Daybreak, Sunset (zdarma); Pyramids, Farm (800); Neon City, Crystal Cave (1000); Race Track (1200); Deep Space, Wind Farm (1500)", "done": false },
+        { "text": "Všechny scény jako pixel art na mřížce 3 pt přes Canvas (port extraBg() z HTML)", "done": false },
+        { "text": "Animace: mraky (Daybreak, Farm, Wind Farm), mávající ptáci (Sunset), kráčející velbloud (Pyramids), 3 auta dokola (Race Track), točící se vrtule (Wind Farm)", "done": false }
+      ],
+      "commit": null,
+      "build": null,
+      "note": ""
+    },
+    {
+      "id": 11,
+      "title": "Toasty a bubliny (pixelová bublina)",
+      "status": "cekam",
+      "items": [
+        { "text": "Krémová výplň #FFFAF0, 3pt tmavý obrys #1B1630, schodovité pixelové rohy (kroky 4 pt), tvrdý stín 0 4 0 rgba(10,8,24,.45)", "done": false },
+        { "text": "Text: zaoblené písmo 15 pt, řez 800, barva #1B1630, tabulková čísla; ne pixelové písmo", "done": false },
+        { "text": "Toasty nahoře uprostřed, šířka podle obsahu, objeví se 3krokovým sjetím dolů; Undo barvou #B4530A", "done": false },
+        { "text": "Bubliny bossů: stejný tvar + schodovitý ocásek dole uprostřed; naštvaná varianta s výplní danger a bílým textem", "done": false }
+      ],
+      "commit": null,
+      "build": null,
+      "note": "Základ už existuje: PixelToast.swift ze sekce 1 (toast zamčeného Shopu). Tady se dotáhne podle přesné specifikace a přidají se bubliny bossů."
+    },
+    {
+      "id": 12,
+      "title": "Světlá pozadí",
+      "status": "cekam",
+      "items": [
+        { "text": "Světlá pozadí (isBright): Daybreak, Sunset, Pyramids, Farm, Wind Farm", "done": false },
+        { "text": "Karty zůstanou skleněné, ale tmavší (rgba(13,11,28,.64), karty .40, rozmazání 16) a s větším stínem 0 12 30 rgba(0,0,0,.32)", "done": false },
+        { "text": "Každý bílý popisek dostane silný stín (0 1 2 rgba(0,0,0,.85) + 0 0 12 rgba(0,0,0,.55)), včetně popisků sekcí, segmentů a textu karet; kromě tmavého textu na žlutých tlačítkách a vybraných čipech", "done": false },
+        { "text": "Daybreak, Pyramids, Farm a Wind Farm navíc ztmaví horní a dolní okraj obrazovky", "done": false },
+        { "text": "Na těchto pozadích zmizí kruh za bossem v Areně, místo něj vržený stín pod spritem", "done": false }
+      ],
+      "commit": null,
+      "build": null,
+      "note": "Sem patří i tmavší varianta karet, která v sekci 0 zůstala nezaškrtnutá."
+    },
+    {
+      "id": 13,
+      "title": "Nastavení",
+      "status": "cekam",
+      "items": [
+        { "text": "„Sounds & notifications“ (ikona zvonku) otevře samostatnou stránku se zpětným „‹ Settings“", "done": false },
+        { "text": "Battle sound: Off / Lo-fi / Brown noise / White noise", "done": false },
+        { "text": "Sound effects: Tap and battle sounds · Achievement sounds · Alarm sound · Vibrate on the alarm", "done": false },
+        { "text": "Notifications: Daily reminder (17:00) · Battle finished · Break is over", "done": false },
+        { "text": "Background: aktuální název, otevře Shop › Backgrounds; skryté, dokud je Shop zamčený", "done": false },
+        { "text": "Feedback: Contact the developer (ikona obálky), Rate this app (ikona hvězdy)", "done": false },
+        { "text": "Patička „FocusQuest version 1.0.0“ a „Privacy Policy · Terms of Use“; kompaktní „✓ Done“", "done": false },
+        { "text": "Ikony obrysové, 24 pt, bez podkladového čtverce", "done": false },
+        { "text": "Zvuk: vždy hraje jen jedna stopa (stopAllAudio() před spuštěním další)", "done": false },
+        { "text": "Lo-fi bez šumové vrstvy pod ním; brown noise gain 0,17, white noise gain 0,04", "done": false },
+        { "text": "Přepínače opravdu ztlumí své zvuky; s vypnutým Alarm sound telefon jen vibruje", "done": false }
+      ],
+      "commit": null,
+      "build": null,
+      "note": ""
+    },
+    {
+      "id": 14,
+      "title": "Onboarding (první spuštění)",
+      "status": "cekam",
+      "items": [
+        { "text": "3 stránky s tlačítkem „Skip“", "done": false },
+        { "text": "1. „Put your phone down. Beat the boss.“ se 3 pravidly", "done": false },
+        { "text": "2. „What are you studying?“: dlaždice předmětů (víc najednou) + „+ Subject“; „Continue“ / „Skip for now“", "done": false },
+        { "text": "3. „Two quick permissions“: pohybový senzor a notifikace; tlačítka „▶ Start a 5 min battle“ a „Look around first“", "done": false }
+      ],
+      "commit": null,
+      "build": null,
+      "note": ""
+    },
+    {
+      "id": 15,
+      "title": "Jen pro ladění (ne ve vydání)",
+      "status": "cekam",
+      "items": [
+        { "text": "Za #if DEBUG tlačítka mincí: +1 000, +10 000, vynulovat", "done": false },
+        { "text": "Za #if DEBUG tlačítka levelu: −1, +1, Bronze 1, Silver 5, Gold 10, Sapphire 15, Rainbow 20", "done": false }
+      ],
+      "commit": null,
+      "build": null,
+      "note": ""
+    }
+  ]
+}
+</script>
+
+<script>
+(function () {
+  var STATUS = {
+    cekam:   { label: "Čeká",        color: "var(--s-cekam)" },
+    pracuje: { label: "Pracuje se",  color: "var(--s-pracuje)" },
+    build:   { label: "Build běží",  color: "var(--s-build)" },
+    spadl:   { label: "Build spadl", color: "var(--s-spadl)" },
+    hotovo:  { label: "Hotovo",      color: "var(--s-hotovo)" }
+  };
+  var ORDER = ["hotovo", "build", "spadl", "pracuje", "cekam"];
+
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+  // `kód` v textu se vykreslí jako <code>
+  function rich(s) { return esc(s).replace(/`([^`]+)`/g, "<code>$1</code>"); }
+
+  var app = document.getElementById("app");
+  var d;
+  try {
+    d = JSON.parse(document.getElementById("data").textContent);
+  } catch (e) {
+    app.innerHTML = '<p class="err">Chyba v JSON bloku s daty: ' + esc(e.message) + "</p>";
+    return;
+  }
+
+  var secs = d.sections || [];
+  var total = secs.length;
+  var counts = {};
+  secs.forEach(function (s) { counts[s.status] = (counts[s.status] || 0) + 1; });
+  var done = counts.hotovo || 0;
+
+  var updated = d.updated ? new Date(d.updated) : null;
+  var updatedText = updated && !isNaN(updated)
+    ? updated.toLocaleString("cs-CZ", { timeZone: "Europe/Prague", day: "numeric", month: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" })
+    : "neznámé";
+
+  var bar = ORDER.map(function (k) {
+    var n = counts[k] || 0;
+    if (!n || k === "cekam") return "";
+    return '<i style="width:' + (n / total * 100) + "%;background:" + STATUS[k].color + '"></i>';
+  }).join("");
+  var legend = ORDER.filter(function (k) { return counts[k]; }).map(function (k) {
+    return '<span><b style="background:' + STATUS[k].color + '"></b>' + STATUS[k].label + ": " + counts[k] + "</span>";
+  }).join("");
+
+  var html = "";
+  html += "<h1>FocusQuest: přepis designu do Swiftu</h1>";
+  html += '<p class="sub">Podle <code>design/CHANGES.md</code>. Stránka se sama obnovuje každých 30 s.</p>';
+
+  html += '<section class="summary">';
+  html += '<div class="count"><span>' + done + "</span> z " + total + " sekcí hotovo</div>";
+  html += '<div class="bar" role="img" aria-label="' + done + " z " + total + ' sekcí hotovo">' + bar + "</div>";
+  html += '<div class="legend">' + legend + "</div>";
+  html += '<dl class="meta"><dt>Právě se pracuje na</dt><dd>' + esc(d.current || "nic") + "</dd>";
+  html += "<dt>Poslední aktualizace</dt><dd>" + esc(updatedText) + "</dd></dl>";
+  html += "</section>";
+
+  html += '<div class="grid">';
+  secs.forEach(function (s) {
+    var st = STATUS[s.status] || STATUS.cekam;
+    var items = s.items || [];
+    var nDone = items.filter(function (i) { return i.done; }).length;
+    var isCurrent = d.current && new RegExp("\\b" + s.id + "\\b").test(d.current) && s.status !== "cekam" && s.status !== "hotovo";
+
+    html += '<article class="sec' + (isCurrent ? " current" : "") + '" style="--c:' + st.color + '">';
+    html += '<div class="sec-head"><h2><small>' + s.id + ".</small>" + esc(s.title) + '</h2><span class="pill">' + st.label + "</span></div>";
+    html += '<div class="done-count">' + nDone + " z " + items.length + " bodů hotovo</div>";
+    html += '<ul class="items">';
+    items.forEach(function (i) {
+      html += "<li" + (i.done ? ' class="ok"' : "") + '><span class="box" aria-hidden="true">' + (i.done ? "✓" : "") + "</span><span>" + rich(i.text) + "</span></li>";
+    });
+    html += "</ul>";
+
+    var info = [];
+    info.push("Commit: " + (s.commit ? '<a href="' + esc(d.repo) + "/commit/" + esc(s.commit) + '"><code>' + esc(s.commit) + "</code></a>" : "–"));
+    if (s.build && s.build.number) {
+      var link = s.build.runId ? '<a href="' + esc(d.repo) + "/actions/runs/" + esc(s.build.runId) + '">#' + esc(s.build.number) + "</a>" : "#" + esc(s.build.number);
+      info.push("Build: " + link + " · " + esc(s.build.result || "?"));
+    } else {
+      info.push("Build: –");
+    }
+    html += '<div class="info"><span>' + info.join("</span><span>") + "</span></div>";
+    if (s.note) html += '<div class="note"><b>Poznámka:</b> ' + rich(s.note) + "</div>";
+    html += "</article>";
+  });
+  html += "</div>";
+
+  html += '<section class="next"><h2>Další krok</h2><p>' + rich(d.nextStep || "") + "</p></section>";
+  app.innerHTML = html;
+})();
+</script>
+</body>
+</html>
