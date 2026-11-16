@@ -30,6 +30,7 @@ struct BattleView: View {
         static let glowOpacity: Double = 0.12
         static let spriteSize: CGFloat = 120
         static let bossGap: CGFloat = 8
+        static let healthBarWidth: CGFloat = 220
         static let timerSize: CGFloat = 114
         static let timerSizeLong: CGFloat = 89
         static let timerGap: CGFloat = 3
@@ -199,17 +200,27 @@ struct BattleView: View {
                 PixelArtAvatarView(sprite: .boss(model.selectedBoss.pixelSpriteConfig), hitFlash: false, size: Layout.spriteSize)
             }
             .frame(height: Layout.headerHeight)
-            VStack(spacing: FQSpace.xs) {
-                Text(model.selectedBoss.name)
-                    .font(.system(size: 26, weight: .bold, design: .rounded))
-                    .foregroundStyle(FQColor.textPrimary)
-                    .multilineTextAlignment(.center)
-                Text("\(model.selectedBoss.tier.rawValue.capitalized) · \(durationText)")
-                    .font(.fqSecondary)
-                    .foregroundStyle(FQColor.textSecondary)
-            }
+            // Jmeno a tier bosse se v bitve neukazuji; misto nich je pruh zdravi.
+            BossHealthBarView(
+                currentHP: model.selectedBoss.currentHP,
+                maxHP: model.selectedBoss.maxHP,
+                fraction: bossHealthFraction,
+                tint: isWarning ? FQColor.danger : world.accent
+            )
+            .frame(maxWidth: Layout.healthBarWidth)
         }
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(model.selectedBoss.name), \(max(0, model.selectedBoss.currentHP)) of \(model.selectedBoss.maxHP) HP")
+    }
+
+    /// Behem bitvy ubyva pruh po sekundach podle odpoctu; jinak ukazuje skutecne HP bosse.
+    private var bossHealthFraction: Double {
+        switch model.state {
+        case .focusing, .paused, .warningCountdown:
+            model.targetSeconds > 0 ? Double(remaining) / Double(model.targetSeconds) : 0
+        default:
+            model.selectedBoss.healthFraction
+        }
     }
 
     /// Obri odpocet: hlavni informace obrazovky.

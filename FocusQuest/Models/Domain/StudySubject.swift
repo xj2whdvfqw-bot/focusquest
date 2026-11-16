@@ -2,7 +2,7 @@ import Foundation
 
 /// Predmet, ktery se hrac v bitve uci. Vybira se pred kazdou bitvou a pocita se do profilu.
 enum StudySubject: String, Codable, CaseIterable, Sendable, Identifiable {
-    case math, english, czech, german, economics
+    case math, english, czech, german, economics, history, it
 
     var id: String { rawValue }
 
@@ -13,6 +13,8 @@ enum StudySubject: String, Codable, CaseIterable, Sendable, Identifiable {
         case .czech: "Czech"
         case .german: "German"
         case .economics: "Economics"
+        case .history: "History"
+        case .it: "IT"
         }
     }
 
@@ -23,6 +25,8 @@ enum StudySubject: String, Codable, CaseIterable, Sendable, Identifiable {
         case .czech: "character.book.closed"
         case .german: "text.book.closed"
         case .economics: "chart.line.uptrend.xyaxis"
+        case .history: "building.columns"
+        case .it: "desktopcomputer"
         }
     }
 

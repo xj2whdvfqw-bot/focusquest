@@ -8,7 +8,7 @@ final class BattlePresenter {
     var isPresented = false
 }
 
-/// Arena: domovska obrazovka. Nahore velke tlacitko Custom Focus, pod nim stav hrdiny
+/// Arena: domovska obrazovka. Nahore kulate tlacitko Custom Focus, pod nim stav hrdiny
 /// a dalsi uzel cesty. Samotne svety s cestami jsou na zalozce Path.
 struct ArenaView: View {
     @ObservedObject var model: ArenaViewModel
@@ -46,37 +46,21 @@ struct ArenaView: View {
         }
     }
 
-    /// Hlavni akce domovske obrazovky: vlastni delka a nahodny boss.
+    /// Hlavni akce domovske obrazovky: vlastni delka a nahodny boss. Jen kolecko s ikonou,
+    /// bez karty a textu; nazev zustava pro VoiceOver.
     private var customFocusButton: some View {
         Button { showsCustomFocus = true } label: {
-            HStack(spacing: FQSpace.lg) {
-                Image(systemName: "timer")
-                    .font(.system(size: 26, weight: .semibold, design: .rounded))
-                    .foregroundStyle(FQColor.onAccent)
-                    .frame(width: 60, height: 60)
-                    .background(FQColor.accent, in: Circle())
-                    .accessibilityHidden(true)
-                VStack(alignment: .leading, spacing: FQSpace.xs) {
-                    Text("Custom Focus").font(.fqTitle).foregroundStyle(FQColor.textPrimary)
-                    Text("25 min, 50 min or 1 h against a random boss")
-                        .font(.fqSecondary)
-                        .foregroundStyle(FQColor.textSecondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                Spacer(minLength: FQSpace.sm)
-                Image(systemName: "chevron.right")
-                    .font(.fqLabel)
-                    .foregroundStyle(FQColor.textSecondary)
-                    .accessibilityHidden(true)
-            }
-            .padding(.horizontal, FQSpace.xl)
-            .padding(.vertical, FQSpace.xl)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .glassCard(tint: FQColor.accent.opacity(0.25))
-            .contentShape(Rectangle())
+            Image(systemName: "timer")
+                .font(.system(size: 26, weight: .semibold, design: .rounded))
+                .foregroundStyle(FQColor.onAccent)
+                .frame(width: 60, height: 60)
+                .background(FQColor.accent, in: Circle())
+                .contentShape(Circle())
         }
         .buttonStyle(.plain)
         .disabled(!model.isBetweenBattles)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityLabel("Custom Focus")
         .accessibilityHint("Choose a length and start a battle")
     }
 
@@ -148,15 +132,15 @@ struct ArenaView: View {
     }
 }
 
-/// List Custom Focus: delka 25 / 50 / 60 minut a predmet, pak bitva s nahodnym odemcenym bossem.
+/// List Custom Focus: delka 15 / 30 / 45 / 60 minut a predmet, pak bitva s nahodnym odemcenym bossem.
 struct CustomFocusSheet: View {
     @ObservedObject var model: ArenaViewModel
     /// Hrac zvolil delku a predmet; volajici zavre list a spusti bitvu.
     let onStart: (Int, StudySubject) -> Void
-    @State private var minutes = 25
+    @State private var minutes = CustomFocusSheet.options[0]
     @State private var subject: StudySubject?
 
-    static let options = [25, 50, 60]
+    static let options = [15, 30, 45, 60]
 
     var body: some View {
         VStack(spacing: FQSpace.xxl) {
