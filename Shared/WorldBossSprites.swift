@@ -4,30 +4,6 @@ import Foundation
 // Vlastni parodicke postavicky: jmena i vzhled jsou jen volne inspirovane archetypy.
 
 extension SpritePalette {
-    /// Zelvi ninjove sdileji jedno telo; "M" je barva satku a "X" zbran.
-    private static func turtle(mask: Character, weapon: Character) -> [String] {
-        [
-            "................",
-            ".....GGGGGG.....",
-            "....GGGGGGGG....",
-            "...MMMMMMMMMMM..",
-            "...MWKMMMWKMMMM.",
-            "....GGGGGGGG..M.",
-            "....GGKKKKGG....",
-            "..X..GGGGGG..X..",
-            "..XGTTYYYYTTGX..",
-            "..XGTYYYYYYTGX..",
-            "..GGTTTTTTTTGG..",
-            "....TYYYYYYT....",
-            ".....GG..GG.....",
-            ".....GG..GG.....",
-            "....GGG..GGG....",
-            "................"
-        ].map { row in
-            String(row.map { $0 == "M" ? mask : ($0 == "X" ? weapon : $0) })
-        }
-    }
-
     static let worldBossRows: [String: [String]] = [
         // Hero Heights
         "web-slacker": [
@@ -97,11 +73,6 @@ extension SpritePalette {
             "..EEGTGTGTGTEE..", ".EYYGTGTGTGTYYE.", "EYYYGTGTGTGTYYYE", ".EY.TTTTTTTT.YE.",
             "..YYYTT..TTYYY..", ".EYYYYEEEEYYYYE.", "EEYYYYYYYYYYYYEE", "................"
         ],
-        // Sewer Dojo
-        "leo-napardo": turtle(mask: "U", weapon: "A"),
-        "raph-scroll": turtle(mask: "R", weapon: "A"),
-        "do-not-tello": turtle(mask: "P", weapon: "T"),
-        "mikey-snackelangelo": turtle(mask: "O", weapon: "T"),
         // Swamp Kingdom
         "swamp-ogre": [
             "................", ".GG..GGGGGG..GG.", "..GGGGGGGGGGGG..", "....GGGGGGGG....",

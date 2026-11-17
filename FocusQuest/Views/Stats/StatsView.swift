@@ -108,7 +108,7 @@ struct StatsView: View {
     }
 
     private func bestiaryRow(_ entry: BestiaryEntry) -> some View {
-        let spriteID = Boss.roster.first { $0.id == entry.bossID }?.pixelSpriteConfig
+        let spriteID = Boss.find(entry.bossID)?.pixelSpriteConfig
         return HStack(spacing: FQSpace.md) {
             Group {
                 if let spriteID {

@@ -311,9 +311,11 @@ extension BossWorld {
         switch self {
         case .heroes: Color(red: 0.95, green: 0.35, blue: 0.38)
         case .villains: Color(red: 0.66, green: 0.47, blue: 0.95)
-        case .sewerDojo: Color(red: 0.38, green: 0.82, blue: 0.48)
+        case .dojo: Color(red: 0.38, green: 0.82, blue: 0.48)
         case .fairyTale: Color(red: 0.98, green: 0.78, blue: 0.36)
-        case .brainrot: Color(red: 0.36, green: 0.80, blue: 0.92)
+        case .farm: Color(red: 0.96, green: 0.58, blue: 0.70)
+        case .history: Color(red: 0.45, green: 0.72, blue: 0.98)
+        case .planets: Color(red: 0.98, green: 0.62, blue: 0.30)
         }
     }
 
@@ -321,9 +323,11 @@ extension BossWorld {
         switch self {
         case .heroes: .castleKeep
         case .villains: .dungeonRuins
-        case .sewerDojo: .lanternGrove
+        case .dojo: .lanternGrove
         case .fairyTale: .enchantedForest
-        case .brainrot: .starlitPeaks
+        case .farm: .enchantedForest
+        case .history: .castleKeep
+        case .planets: .starlitPeaks
         }
     }
 }

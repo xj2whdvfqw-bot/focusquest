@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-17T09:49:22+01:00",
-  "current": "Sekce 3 (Path), část 1: běží build #23 (logika Path).",
-  "nextStep": "Počkat na build #23; mezitím připravit nové světy a postavy.",
+  "updated": "2026-11-17T10:53:20+01:00",
+  "current": "Sekce 3 (Path), část 2: nové světy a 33 postav hotové v kódu; build #23 (část 1) ještě běží.",
+  "nextStep": "Po dokončení buildu #23 spustit build #24 s novými světy (dřív ne, souběžný build na stejné větvi by #23 zrušil).",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -151,16 +151,16 @@
         { "text": "Poražený boss: zelená pilulka na spritu s ✓ a počtem výher, např. „✓ 3×“ (z battle logu, minimálně 1)", "done": true },
         { "text": "Pevná délka bosse: minuty = 10 + 5 × pořadí (od 0)", "done": true },
         { "text": "Obrazovka vítězství ukazuje bosse, kterého jsi opravdu porazil (uložit lastBeaten před posunem cesty)", "done": true },
-        { "text": "Pořadí a barvy světů: Hero Heights, Villain Vault, Dojo, Swamp Kingdom, Farm, History Hall, Orbit (názvy, podtituly a barvy podle tabulky)", "done": false },
-        { "text": "Dojo místo želvích ninja parodií (ty úplně pryč): 9 bossů od Kara-Tea Break po Sumo More Snacks", "done": false },
-        { "text": "Farm místo Brainrot Badlands (všechna brainrot jména pryč): 7 bossů od Snooze Bunny po Neigh-ver Mind", "done": false },
-        { "text": "Nový svět History Hall: 9 bossů od Nap-oleon po Komenský's Homework", "done": false },
-        { "text": "Nový svět Orbit (planety s hlavou na těle astronauta): 8 bossů od Retro Mercury po Sea-Ya Neptune", "done": false },
-        { "text": "Pixel art 16×16 pro všechny nové postavy podle přílohy CHANGES.md", "done": false }
+        { "text": "Pořadí a barvy světů: Hero Heights, Villain Vault, Dojo, Swamp Kingdom, Farm, History Hall, Orbit (názvy, podtituly a barvy podle tabulky)", "done": true },
+        { "text": "Dojo místo želvích ninja parodií (ty úplně pryč): 9 bossů od Kara-Tea Break po Sumo More Snacks", "done": true },
+        { "text": "Farm místo Brainrot Badlands (všechna brainrot jména pryč): 7 bossů od Snooze Bunny po Neigh-ver Mind", "done": true },
+        { "text": "Nový svět History Hall: 9 bossů od Nap-oleon po Komenský's Homework", "done": true },
+        { "text": "Nový svět Orbit (planety s hlavou na těle astronauta): 8 bossů od Retro Mercury po Sea-Ya Neptune", "done": true },
+        { "text": "Pixel art 16×16 pro všechny nové postavy podle přílohy CHANGES.md", "done": true }
       ],
       "commit": "4ed7663",
       "build": { "number": 23, "runId": 44059047451, "result": "běží" },
-      "note": "Před vydáním nahradit parodie v Hero Heights, Villain Vault a Swamp Kingdom vlastními postavami (autorská práva)."
+      "note": "Část 2: Dojo a Farm nahrazeny, přidány History Hall a Orbit, 33 spritů z přílohy. Stará id Dojo a Farm se převádějí na nové bosse (rawValue světů beze změny, uložený postup platí). Farm má jen 7 bossů, starší postup nad 7 se ořízne. Před vydáním nahradit parodie v Hero Heights, Villain Vault a Swamp Kingdom vlastními postavami (autorská práva). Na iPhonu otestovat: 7 světů na Path, sprity nových bossů, starý postup ve Farm a Dojo."
     },
     {
       "id": 4,

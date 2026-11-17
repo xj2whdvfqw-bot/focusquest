@@ -79,7 +79,7 @@ final class ProgressionModelTests: XCTestCase {
     func testPreferencesRoundTripKeepsSoundscapePathProgressAndSubject() throws {
         var preferences = AppPreferences()
         preferences.soundscape = .brownNoise
-        preferences.clearedNodesByWorld = [BossWorld.heroes.rawValue: 3, BossWorld.brainrot.rawValue: 1]
+        preferences.clearedNodesByWorld = [BossWorld.heroes.rawValue: 3, BossWorld.farm.rawValue: 1]
         preferences.lastSubject = .german
         preferences.lastBossID = Boss.roster[1].id
         let data = try JSONEncoder().encode(preferences)
@@ -228,6 +228,16 @@ final class ProgressionModelTests: XCTestCase {
             XCTAssertEqual(rows?.count, 16, boss.name)
             XCTAssertTrue(rows?.allSatisfy { $0.count == 16 } ?? false, boss.name)
         }
+    }
+
+    func testLegacyDojoAndFarmBossIDsMapToNewBosses() {
+        XCTAssertEqual(BossWorld(rawValue: "sewerDojo"), .dojo)
+        XCTAssertEqual(BossWorld(rawValue: "brainrot"), .farm)
+        XCTAssertEqual(Boss.find("leo-napardo")?.id, "dojo-karate")
+        XCTAssertEqual(Boss.find("banana-bandit")?.id, "farm-bunny")
+        XCTAssertEqual(Boss.find("iron-distraction")?.id, "farm-horse")
+        XCTAssertEqual(Boss.find("web-slacker")?.id, "web-slacker")
+        XCTAssertNil(Boss.find("no-such-boss"))
     }
 
     // MARK: - Vesnice a odmeny

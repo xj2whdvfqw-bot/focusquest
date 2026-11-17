@@ -58,22 +58,32 @@ struct Boss: Identifiable, Codable, Hashable, Sendable {
         return copy
     }
 
-    var world: BossWorld { BossWorld.placement[id]?.world ?? .brainrot }
+    var world: BossWorld { BossWorld.placement[id]?.world ?? .heroes }
     /// Pozice na ceste sveta (od nuly).
     var nodeIndex: Int { BossWorld.placement[id]?.index ?? 0 }
 
     /// Vsichni bossove vsech svetu v poradi cest.
     static let roster: [Boss] = BossWorld.allCases.flatMap(\.bosses)
 
+    /// Najde bosse podle id; id ze starsich verzi Dojo a Farm prevede na nove bosse.
     static func find(_ id: String?) -> Boss? {
         guard let id else { return nil }
-        return roster.first { $0.id == id }
+        let current = currentID(id)
+        return roster.first { $0.id == current }
     }
+
+    /// Aktualni id bosse (stare id z Dojo a Farm se prevede, ostatni zustanou).
+    static func currentID(_ id: String) -> String { BossWorld.legacyBossIDs[id] ?? id }
 }
 
 /// Tematicke svety. Kazdy ma vlastni cestu bossu; hrac si muze vybrat kohokoli, postup pocita souvislou radu porazenych.
+/// rawValue Dojo a Farm zustava ze starsich verzi ("sewerDojo", "brainrot"), aby ulozeny postup platil dal.
 enum BossWorld: String, CaseIterable, Identifiable, Sendable {
-    case heroes, villains, sewerDojo, fairyTale, brainrot
+    case heroes, villains
+    case dojo = "sewerDojo"
+    case fairyTale
+    case farm = "brainrot"
+    case history, planets
 
     var id: String { rawValue }
 
@@ -81,9 +91,11 @@ enum BossWorld: String, CaseIterable, Identifiable, Sendable {
         switch self {
         case .heroes: "Hero Heights"
         case .villains: "Villain Vault"
-        case .sewerDojo: "Sewer Dojo"
+        case .dojo: "Dojo"
         case .fairyTale: "Swamp Kingdom"
-        case .brainrot: "Brainrot Badlands"
+        case .farm: "Farm"
+        case .history: "History Hall"
+        case .planets: "Orbit"
         }
     }
 
@@ -91,19 +103,11 @@ enum BossWorld: String, CaseIterable, Identifiable, Sendable {
         switch self {
         case .heroes: "Caped slackers who'd rather nap than save the day."
         case .villains: "Masterminds of the endless scroll."
-        case .sewerDojo: "Four shell-shocked ninjas who skipped training."
+        case .dojo: "A whole dojo of fighters who skip every single training."
         case .fairyTale: "Once upon a time, someone stopped studying."
-        case .brainrot: "Where focus goes to melt."
-        }
-    }
-
-    var symbol: String {
-        switch self {
-        case .heroes: "bolt.shield.fill"
-        case .villains: "theatermasks.fill"
-        case .sewerDojo: "figure.martial.arts"
-        case .fairyTale: "crown.fill"
-        case .brainrot: "tornado"
+        case .farm: "Nobody on this farm has done a single chore."
+        case .history: "Great minds who'd rather do it tomorrow."
+        case .planets: "Eight planets, zero homework done."
         }
     }
 
@@ -136,11 +140,16 @@ enum BossWorld: String, CaseIterable, Identifiable, Sendable {
             ("green-gobbler", "The Green Gobbler"),
             ("sandbagman", "Sandbagman")
         ],
-        .sewerDojo: [
-            ("leo-napardo", "Leo-Nap-ardo"),
-            ("raph-scroll", "Raph-Scroll"),
-            ("do-not-tello", "Do-Not-Tello"),
-            ("mikey-snackelangelo", "Mikey Snackelangelo")
+        .dojo: [
+            ("dojo-karate", "Kara-Tea Break"),
+            ("dojo-master", "Master Someday"),
+            ("dojo-monk", "Monk Mañana"),
+            ("dojo-boxer", "Rope-a-Dope Ray"),
+            ("dojo-mma", "Tap-Out Tyler"),
+            ("dojo-judo", "Ju-Don't"),
+            ("dojo-kendo", "Ken-Doze"),
+            ("dojo-muaythai", "Muay Thai-red"),
+            ("dojo-sumo", "Sumo More Snacks")
         ],
         .fairyTale: [
             ("swamp-ogre", "Grumbrek the Swamp Ogre"),
@@ -148,18 +157,50 @@ enum BossWorld: String, CaseIterable, Identifiable, Sendable {
             ("rapunzzzel", "Rapunzzzel"),
             ("puss-in-popups", "Puss in Pop-ups")
         ],
-        .brainrot: [
-            ("banana-bandit", "Banana Bandit"),
-            ("tung-tung-sahur", "Tung Tung Tung Sahur"),
-            ("goggle-grunt", "Goggle Grunt"),
-            ("ballerina-cappuccina", "Ballerina Cappuccina"),
-            ("captain-procrastination", "Captain Procrastination"),
-            ("purple-chomper", "Purple Chomper"),
-            ("tralalero-tralala", "Tralalero Tralala"),
-            ("dark-doomscroller", "The Dark Doomscroller"),
-            ("iron-distraction", "Iron Distraction")
+        .farm: [
+            ("farm-bunny", "Snooze Bunny"),
+            ("farm-hen", "Procrasti-Hen"),
+            ("farm-sheep", "Baa-ck in Five"),
+            ("farm-cow", "Moo-ve It Later"),
+            ("farm-pig", "Couch Hog"),
+            ("farm-donkey", "Hee-Haw Hold-On"),
+            ("farm-horse", "Neigh-ver Mind")
+        ],
+        .history: [
+            ("hist-napoleon", "Nap-oleon"),
+            ("hist-cleo", "Cleo, Queen of De-Nile"),
+            ("hist-caesar", "Veni, Vidi, Scrolli"),
+            ("hist-bard", "Will Do It Tomorrow"),
+            ("hist-leonardo", "Leonardo da Wi-Fi"),
+            ("hist-mozart", "Amadeus Pause"),
+            ("hist-newton", "Isaac Inertia"),
+            ("hist-karel", "Karel IV-get It"),
+            ("hist-komensky", "Komenský's Homework")
+        ],
+        .planets: [
+            ("planet-mercury", "Retro Mercury"),
+            ("planet-venus", "Meme Venus"),
+            ("planet-earth", "Day-Off Earth"),
+            ("planet-mars", "Binge Mars"),
+            ("planet-jupiter", "Jupi-Later"),
+            ("planet-saturn", "Ring-Ring Saturn"),
+            ("planet-uranus", "Tilted Uranus"),
+            ("planet-neptune", "Sea-Ya Neptune")
         ]
     ]
+
+    /// Bossove starsich verzi Dojo a Farm (stare id -> nove id na stejne pozici cesty).
+    /// Farm ma jen 7 bossu, takze stare uzly 8 a 9 pripadnou poslednimu.
+    static let legacyBossIDs: [String: String] = {
+        let oldDojo = ["leo-napardo", "raph-scroll", "do-not-tello", "mikey-snackelangelo"]
+        let oldFarm = ["banana-bandit", "tung-tung-sahur", "goggle-grunt", "ballerina-cappuccina", "captain-procrastination", "purple-chomper", "tralalero-tralala", "dark-doomscroller", "iron-distraction"]
+        var result: [String: String] = [:]
+        for (world, old) in [(BossWorld.dojo, oldDojo), (.farm, oldFarm)] {
+            let ids = (lineup[world] ?? []).map(\.0)
+            for (index, id) in old.enumerated() where !ids.isEmpty { result[id] = ids[min(index, ids.count - 1)] }
+        }
+        return result
+    }()
 
     private static let builtBosses: [BossWorld: [Boss]] = Dictionary(uniqueKeysWithValues: allCases.map { world in
         let bosses = (lineup[world] ?? []).enumerated().map { index, entry in
