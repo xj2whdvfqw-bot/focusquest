@@ -71,7 +71,7 @@ struct Boss: Identifiable, Codable, Hashable, Sendable {
     }
 }
 
-/// Tematicke svety. Kazdy ma vlastni cestu bossu; dalsi uzel se odemkne porazenim predchoziho.
+/// Tematicke svety. Kazdy ma vlastni cestu bossu; hrac si muze vybrat kohokoli, postup pocita souvislou radu porazenych.
 enum BossWorld: String, CaseIterable, Identifiable, Sendable {
     case heroes, villains, sewerDojo, fairyTale, brainrot
 

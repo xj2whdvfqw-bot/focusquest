@@ -104,7 +104,7 @@ struct MainTabView: View {
             ArenaView(model: container.arenaViewModel, profileModel: container.profileViewModel) { selectedTab = .path }
                 .tabPage(reserve: reserve)
                 .tag(FocusQuestTab.arena)
-            PathTabView(model: container.arenaViewModel)
+            PathTabView(model: container.arenaViewModel, profileModel: container.profileViewModel)
                 .tabPage(reserve: reserve)
                 .tag(FocusQuestTab.path)
             ShopView(model: container.profileViewModel)

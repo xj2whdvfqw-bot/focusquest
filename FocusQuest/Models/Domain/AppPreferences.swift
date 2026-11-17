@@ -84,12 +84,8 @@ struct AppPreferences: Codable, Equatable, Sendable {
         min(world.bosses.count, max(0, clearedNodesByWorld[world.rawValue] ?? 0))
     }
 
-    /// Uzel je hratelny, pokud je porazeny nebo je prave na rade.
-    func isUnlocked(_ boss: Boss) -> Bool {
-        boss.nodeIndex <= clearedNodes(in: boss.world)
-    }
-
-    /// Porazeni uzlu na rade posune cestu o krok dal; opakovana vyhra nad starsim uzlem nic nemeni.
+    /// Porazeni uzlu na rade posune cestu o krok dal; vyhra nad jinym uzlem postup nemeni
+    /// (na Path si hrac muze vybrat kohokoli, "2 / 4 cleared" pocita jen souvislou radu od zacatku).
     mutating func markCleared(_ boss: Boss) {
         let world = boss.world
         guard boss.nodeIndex == clearedNodes(in: world) else { return }

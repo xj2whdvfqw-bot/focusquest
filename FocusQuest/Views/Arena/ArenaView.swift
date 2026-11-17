@@ -304,40 +304,6 @@ private struct PokeButtonStyle: ButtonStyle {
     }
 }
 
-/// Zalozka Path: seznam svetu, kazdy s vlastni cestou bossu jako v Duolingu.
-struct PathTabView: View {
-    @ObservedObject var model: ArenaViewModel
-    @Environment(BattlePresenter.self) private var battle
-    @State private var route: [BossWorld] = PathTabView.initialRoute
-
-    var body: some View {
-        NavigationStack(path: $route) {
-            ScreenScaffold(scene: .enchantedForest) {
-                ScreenHeader(eyebrow: "Path", title: "Choose a world")
-                ForEach(BossWorld.allCases) { world in
-                    NavigationLink(value: world) { WorldCard(world: world, cleared: model.clearedNodes(in: world)) }
-                        .buttonStyle(.plain)
-                }
-            }
-            .toolbar(.hidden, for: .navigationBar)
-            .navigationDestination(for: BossWorld.self) { world in
-                WorldPathView(model: model, world: world) { battle.isPresented = true }
-                    // Vlastni lista zalozek kresli MainTabView; systemova nesmi naskocit ani po prechodu.
-                    .toolbar(.hidden, for: .tabBar)
-            }
-        }
-    }
-
-    /// V debug buildu `-initialTab path` otevre cestu prvniho sveta (CI screenshoty).
-    static var initialRoute: [BossWorld] {
-        #if DEBUG
-        return UserDefaults.standard.string(forKey: "initialTab") == "path" ? [.heroes] : []
-        #else
-        return []
-        #endif
-    }
-}
-
 // MARK: - Vzhled svetu
 
 extension BossWorld {
@@ -359,57 +325,6 @@ extension BossWorld {
         case .fairyTale: .enchantedForest
         case .brainrot: .starlitPeaks
         }
-    }
-
-    /// "10-40 min" - rozsah pevnych delek uzlu ve svete.
-    var durationRange: String {
-        guard let first = bosses.first, let last = bosses.last else { return "" }
-        return "\(first.maxHP)–\(last.maxHP) min"
-    }
-}
-
-private struct WorldCard: View {
-    let world: BossWorld
-    let cleared: Int
-
-    private var total: Int { world.bosses.count }
-    private var isComplete: Bool { cleared >= total }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: FQSpace.md) {
-            HStack(alignment: .top, spacing: FQSpace.md) {
-                VStack(alignment: .leading, spacing: FQSpace.xs) {
-                    Text(world.title).font(.fqHeadline).foregroundStyle(FQColor.textPrimary)
-                    Text(world.tagline).font(.fqMeta).foregroundStyle(FQColor.textSecondary).fixedSize(horizontal: false, vertical: true)
-                }
-                Spacer(minLength: FQSpace.sm)
-                Image(systemName: "chevron.right")
-                    .font(.fqLabel)
-                    .foregroundStyle(FQColor.textSecondary)
-                    .accessibilityHidden(true)
-            }
-            HStack(spacing: -FQSpace.sm) {
-                ForEach(Array(world.bosses.prefix(5))) { boss in
-                    PixelArtAvatarView(sprite: .boss(boss.pixelSpriteConfig), size: 36)
-                        .padding(2)
-                        .background(Color.black.opacity(0.35), in: RoundedRectangle(cornerRadius: FQRadius.tile, style: .continuous))
-                }
-                Spacer(minLength: FQSpace.sm)
-                VStack(alignment: .trailing, spacing: 2) {
-                    Text(isComplete ? "Conquered" : "\(cleared) / \(total) cleared")
-                        .font(.fqLabel)
-                        .foregroundStyle(isComplete ? world.accent : FQColor.textPrimary)
-                    Text(world.durationRange).font(.fqMeta).monospacedDigit().foregroundStyle(FQColor.textSecondary)
-                }
-            }
-            ProgressView(value: Double(cleared), total: Double(max(1, total)))
-                .tint(world.accent)
-        }
-        .padding(FQSpace.lg)
-        .glassCard(tint: world.accent.opacity(0.35))
-        .contentShape(Rectangle())
-        .accessibilityElement(children: .combine)
-        .accessibilityHint("Opens the boss path")
     }
 }
 

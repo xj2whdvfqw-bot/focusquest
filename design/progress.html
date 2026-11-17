@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-17T10:41:00+01:00",
-  "current": "Nic. Sekce 0–2 jsou hotové, další na řadě je sekce 3 (Path).",
-  "nextStep": "Stáhni IPA z buildu #22 a nahraj ji přes Sideloadly, pak na iPhonu projdi poznámku u sekce 2.",
+  "updated": "2026-11-17T09:49:02+01:00",
+  "current": "Sekce 3 (Path), část 1: logika Path je hotová, commituji a spouštím build.",
+  "nextStep": "Počkat na výsledek buildu; pak nové světy a postavy (Dojo, Farm, History Hall, Orbit).",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -143,14 +143,14 @@
     {
       "id": 3,
       "title": "Path",
-      "status": "cekam",
+      "status": "pracuje",
       "items": [
-        { "text": "Nadpis „Choose a world“; všechny světy na začátku sbalené, rozbalí se ťuknutím na kartu", "done": false },
-        { "text": "Karta světa: název, podtitul, „2 / 4 cleared“, lišta postupu v barvě světa, bez ikony", "done": false },
-        { "text": "Bossové v mřížce 3 sloupce: číslo, sprite, jméno (max 2 řádky), délka „20 min“; žádný zvýrazněný „další“ boss", "done": false },
-        { "text": "Poražený boss: zelená pilulka na spritu s ✓ a počtem výher, např. „✓ 3×“ (z battle logu, minimálně 1)", "done": false },
-        { "text": "Pevná délka bosse: minuty = 10 + 5 × pořadí (od 0)", "done": false },
-        { "text": "Obrazovka vítězství ukazuje bosse, kterého jsi opravdu porazil (uložit lastBeaten před posunem cesty)", "done": false },
+        { "text": "Nadpis „Choose a world“; všechny světy na začátku sbalené, rozbalí se ťuknutím na kartu", "done": true },
+        { "text": "Karta světa: název, podtitul, „2 / 4 cleared“, lišta postupu v barvě světa, bez ikony", "done": true },
+        { "text": "Bossové v mřížce 3 sloupce: číslo, sprite, jméno (max 2 řádky), délka „20 min“; žádný zvýrazněný „další“ boss", "done": true },
+        { "text": "Poražený boss: zelená pilulka na spritu s ✓ a počtem výher, např. „✓ 3×“ (z battle logu, minimálně 1)", "done": true },
+        { "text": "Pevná délka bosse: minuty = 10 + 5 × pořadí (od 0)", "done": true },
+        { "text": "Obrazovka vítězství ukazuje bosse, kterého jsi opravdu porazil (uložit lastBeaten před posunem cesty)", "done": true },
         { "text": "Pořadí a barvy světů: Hero Heights, Villain Vault, Dojo, Swamp Kingdom, Farm, History Hall, Orbit (názvy, podtituly a barvy podle tabulky)", "done": false },
         { "text": "Dojo místo želvích ninja parodií (ty úplně pryč): 9 bossů od Kara-Tea Break po Sumo More Snacks", "done": false },
         { "text": "Farm místo Brainrot Badlands (všechna brainrot jména pryč): 7 bossů od Snooze Bunny po Neigh-ver Mind", "done": false },

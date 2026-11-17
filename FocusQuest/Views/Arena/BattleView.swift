@@ -587,14 +587,16 @@ struct BattleView: View {
 
     /// Obrazovka vitezstvi: porazeny boss, ziskane XP, mince a pripadny loot.
     private func victoryOverlay(_ victory: BattleVictory) -> some View {
-        ZStack {
+        // Boss ulozeny pred posunem cesty; obrazovka nikdy neukaze az toho dalsiho.
+        let beaten = model.lastBeaten ?? victory.boss
+        return ZStack {
             Color.black.opacity(0.55).ignoresSafeArea()
             VStack(spacing: FQSpace.lg) {
                 ZStack {
                     Circle()
                         .fill(RadialGradient(colors: [world.accent.opacity(0.45), Color.clear], center: .center, startRadius: 0, endRadius: 80))
                         .frame(width: 160, height: 160)
-                    PixelArtAvatarView(sprite: .boss(victory.boss.pixelSpriteConfig), size: 96)
+                    PixelArtAvatarView(sprite: .boss(beaten.pixelSpriteConfig), size: 96)
                         .opacity(0.55)
                     Image(systemName: "trophy.fill")
                         .font(.system(size: 44, weight: .semibold, design: .rounded))
@@ -605,11 +607,11 @@ struct BattleView: View {
                 .frame(height: 140)
                 VStack(spacing: FQSpace.xs) {
                     Text("Victory!").font(.system(size: 34, weight: .bold, design: .rounded)).foregroundStyle(FQColor.textPrimary)
-                    Text("\(victory.boss.name) defeated · \(victory.subject.title), \(ArenaView.durationText(minutes: victory.verifiedMinutes))")
+                    Text("\(beaten.name) defeated · \(victory.subject.title), \(ArenaView.durationText(minutes: victory.verifiedMinutes))")
                         .font(.fqSecondary)
                         .multilineTextAlignment(.center)
                         .foregroundStyle(FQColor.textSecondary)
-                    if victory.boss.isDefeated, !victory.isCustom, let next = nextNode(after: victory.boss) {
+                    if victory.boss.isDefeated, !victory.isCustom, let next = nextNode(after: beaten) {
                         Label("Unlocked: \(next.name) · \(ArenaView.durationText(minutes: next.maxHP))", systemImage: "lock.open.fill")
                             .font(.fqLabel)
                             .foregroundStyle(world.accent)

@@ -54,6 +54,8 @@ final class ArenaViewModel: ObservableObject {
     @Published private(set) var isCustomBattle = false
     /// Karta "Working on": ukoly, ktere si hrac behem bitvy odskrtava. Jen v pameti.
     @Published private(set) var tasks: [BattleTask] = []
+    /// Boss, ktery v posledni bitve opravdu padl (pred posunem cesty). Ukazuje ho obrazovka vitezstvi.
+    @Published private(set) var lastBeaten: Boss?
     /// Volano, kdyz se predvolby zmeni z Areny (prehravac, postup na ceste), aby je znalo i Nastaveni.
     var onPreferencesChanged: ((AppPreferences) -> Void)?
     /// Volano jednou za kazdou vyhranou bitvu - pripise XP, mince a loot do profilu.
@@ -96,7 +98,7 @@ final class ArenaViewModel: ObservableObject {
         self.activity = activity
         self.notifications = notifications
         let stored = preferenceStore.load()
-        let remembered = Boss.find(stored.lastBossID).flatMap { stored.isUnlocked($0) ? $0 : nil }
+        let remembered = Boss.find(stored.lastBossID)
         self.preferences = stored
         self.selectedBoss = remembered ?? BossWorld.allCases[0].bosses[0]
         self.selectedSubject = stored.lastSubject
@@ -116,6 +118,7 @@ final class ArenaViewModel: ObservableObject {
 
     func startSession() {
         guard selectedSubject != nil, isBetweenBattles, !security.integrityReport().isCompromised else { return }
+        lastBeaten = nil
         resetBossHealth()
         state = .awaitingFlatPlacement
         activeSession = nil
@@ -148,7 +151,7 @@ final class ArenaViewModel: ObservableObject {
     /// "Not feeling it? Just 5 minutes": stejny boss jako na tlacitku Fight, jen na 5 minut.
     /// Je to vlastni bitva, takze cestu sveta neposouva. Spusti se z obrazovky bitvy jako Fight.
     func prepareQuickBattle(with boss: Boss) {
-        guard isBetweenBattles, isUnlocked(boss) else { return }
+        guard isBetweenBattles else { return }
         selectBoss(boss)
         isCustomBattle = true
         selectedBoss = selectedBoss.withHP(minutes: Boss.quickBattleMinutes)
@@ -158,8 +161,7 @@ final class ArenaViewModel: ObservableObject {
     func endCustomBattle() {
         guard isCustomBattle, isBetweenBattles else { return }
         isCustomBattle = false
-        let stored = Boss.find(preferences.lastBossID).flatMap { preferences.isUnlocked($0) ? $0 : nil }
-        selectedBoss = stored ?? BossWorld.allCases[0].bosses[0]
+        selectedBoss = Boss.find(preferences.lastBossID) ?? BossWorld.allCases[0].bosses[0]
     }
 
     // MARK: - Karta "Working on"
@@ -238,11 +240,10 @@ final class ArenaViewModel: ObservableObject {
     }
 
     func clearedNodes(in world: BossWorld) -> Int { preferences.clearedNodes(in: world) }
-    func isUnlocked(_ boss: Boss) -> Bool { preferences.isUnlocked(boss) }
 
-    /// Vybere uzel na ceste. Zamcene uzly vybrat nejdou; delka bitvy je dana uzlem.
+    /// Vybere uzel na ceste (kterykoli, nic neni zamcene); delka bitvy je dana uzlem.
     func selectBoss(_ boss: Boss) {
-        guard isBetweenBattles, isUnlocked(boss) else { return }
+        guard isBetweenBattles else { return }
         isCustomBattle = false
         selectedBoss = Boss.find(boss.id) ?? boss
         changePreferences { $0.lastBossID = boss.id }
@@ -288,9 +289,8 @@ final class ArenaViewModel: ObservableObject {
         preferences = updated
         preferenceStore.save(updated)
         audio.apply(preferences: updated)
-        // Nastaveni umi predvolby smazat (smazani uctu); postup na ceste a predmet se pak vrati na zacatek.
+        // Nastaveni umi predvolby smazat (smazani uctu); predmet se pak musi vybrat znovu.
         guard isBetweenBattles else { return }
-        if !updated.isUnlocked(selectedBoss) { selectedBoss = selectedBoss.world.bosses[0] }
         if updated.lastSubject == nil { selectedSubject = nil }
     }
 
@@ -417,7 +417,9 @@ final class ArenaViewModel: ObservableObject {
             )
             tearDownBattle(keepNotification: true)
             selectedBoss.currentHP = result.boss.currentHP
-            // Porazeny uzel na rade odemkne dalsi uzel cesty.
+            // Obrazovka vitezstvi ukazuje bosse, ktery opravdu padl - ulozi se driv, nez se cesta posune.
+            if result.boss.isDefeated { lastBeaten = Boss.find(selectedBoss.id) ?? result.boss }
+            // Porazeny uzel na rade posune cestu sveta o krok.
             if result.boss.isDefeated, !isCustomBattle, let template = Boss.find(selectedBoss.id) { changePreferences { $0.markCleared(template) } }
             state = .victory(victory)
             activeSession = nil

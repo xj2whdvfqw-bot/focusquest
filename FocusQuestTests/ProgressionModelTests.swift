@@ -48,25 +48,19 @@ final class ProgressionModelTests: XCTestCase {
         XCTAssertNil(preferences.lastSubject)
         // Stare vlastni delky bitev se zahodi; cesta zacina od prvniho uzlu.
         XCTAssertTrue(preferences.clearedNodesByWorld.isEmpty)
-        XCTAssertTrue(preferences.isUnlocked(BossWorld.heroes.bosses[0]))
-        XCTAssertFalse(preferences.isUnlocked(BossWorld.heroes.bosses[1]))
+        XCTAssertEqual(preferences.clearedNodes(in: .heroes), 0)
     }
 
-    func testPathUnlocksOneNodeAtATimeInEachWorld() {
+    func testPathProgressCountsClearedNodesInOrderInEachWorld() {
         var preferences = AppPreferences()
         let heroes = BossWorld.heroes.bosses
         let villains = BossWorld.villains.bosses
-        XCTAssertTrue(preferences.isUnlocked(heroes[0]))
-        XCTAssertFalse(preferences.isUnlocked(heroes[1]))
-
         // Vyhra nad uzlem mimo poradi cestu neposune.
         preferences.markCleared(heroes[2])
         XCTAssertEqual(preferences.clearedNodes(in: .heroes), 0)
 
         preferences.markCleared(heroes[0])
         XCTAssertEqual(preferences.clearedNodes(in: .heroes), 1)
-        XCTAssertTrue(preferences.isUnlocked(heroes[1]))
-        XCTAssertFalse(preferences.isUnlocked(heroes[2]))
         XCTAssertEqual(BossWorld.heroes.frontierBoss(cleared: 1)?.id, heroes[1].id)
 
         // Opakovana vyhra nad starsim uzlem nic nemeni.
@@ -74,8 +68,7 @@ final class ProgressionModelTests: XCTestCase {
         XCTAssertEqual(preferences.clearedNodes(in: .heroes), 1)
 
         // Kazdy svet ma vlastni cestu.
-        XCTAssertTrue(preferences.isUnlocked(villains[0]))
-        XCTAssertFalse(preferences.isUnlocked(villains[1]))
+        XCTAssertEqual(preferences.clearedNodes(in: .villains), 0)
 
         // Dobyty svet uz nema dalsi uzel.
         for boss in villains { preferences.markCleared(boss) }
