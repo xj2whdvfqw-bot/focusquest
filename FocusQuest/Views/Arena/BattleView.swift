@@ -752,9 +752,10 @@ extension Boss {
 }
 
 /// Cislo, ktere se pri animaci "nacita" (XP a mince na obrazovce vitezstvi).
+/// `animatableData` je nonisolated, aby shoda s Animatable neprekracovala do MainActor (Swift 6).
 private struct CountUpNumber: View, Animatable {
     var value: Double
-    var animatableData: Double {
+    nonisolated var animatableData: Double {
         get { value }
         set { value = newValue }
     }

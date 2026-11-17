@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-17T17:53:00+01:00",
-  "current": "Sekce 6: běží build #29 (commit f84ce40).",
-  "nextStep": "Počkat na build #29; při chybě opravit, jinak sekci 6 na hotovo.",
+  "updated": "2026-11-17T17:59:00+01:00",
+  "current": "Sekce 6: build #29 spadl (Swift 6 concurrency v CountUpNumber), oprava pushnuta, běží build #30.",
+  "nextStep": "Počkat na build #30; při chybě opravit, jinak sekci 6 na hotovo.",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -226,8 +226,8 @@
         { "text": "„Just 5 minutes“: rychlá 5minutová bitva proti bossovi aktuálního světa, cestu neposouvá", "done": true }
       ],
       "commit": "f84ce40",
-      "build": { "number": 29, "runId": 44130982411, "result": "běží" },
-      "note": "Kód hotový, běží build #29."
+      "build": { "number": 29, "runId": 44130982411, "result": "spadl" },
+      "note": "Build #29 spadl: shoda CountUpNumber s Animatable přecházela do MainActor (Swift 6). Opraveno přes nonisolated animatableData. Na iPhonu otestovat: načítání XP a mincí na vítězství, odpočet přestávky 5:00 včetně zvuku v 0:00, tlačítka NEXT BOSS / Same again / Change boss."
     },
     {
       "id": 7,
