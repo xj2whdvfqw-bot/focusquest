@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-17T18:01:00+01:00",
-  "current": "Sekce 6: build #29 spadl (Swift 6 concurrency v CountUpNumber), oprava pushnuta, běží build #30.",
-  "nextStep": "Počkat na build #30; při chybě opravit, jinak sekci 6 na hotovo.",
+  "updated": "2026-11-17T18:27:00+01:00",
+  "current": "Sekce 6 hotová, build #30 prošel (commit ce8e6d0).",
+  "nextStep": "Začít sekci 7: Your subjects (správa předmětů).",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -210,7 +210,7 @@
     {
       "id": 6,
       "title": "Vítězství a přestávka",
-      "status": "build",
+      "status": "hotovo",
       "items": [
         { "text": "Výplata: XP = minuty × 12, mince = minuty × 3; level up při XP ≥ potřebné XP", "done": true },
         { "text": "Série +1 jednou za kalendářní den", "done": true },
@@ -226,7 +226,7 @@
         { "text": "„Just 5 minutes“: rychlá 5minutová bitva proti bossovi aktuálního světa, cestu neposouvá", "done": true }
       ],
       "commit": "ce8e6d0",
-      "build": { "number": 30, "runId": 44132234111, "result": "běží" },
+      "build": { "number": 30, "runId": 44132234111, "result": "prošel" },
       "note": "Build #29 spadl: shoda CountUpNumber s Animatable přecházela do MainActor (Swift 6). Opraveno přes nonisolated animatableData. Na iPhonu otestovat: načítání XP a mincí na vítězství, odpočet přestávky 5:00 včetně zvuku v 0:00, tlačítka NEXT BOSS / Same again / Change boss."
     },
     {
