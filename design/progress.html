@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-17T11:48:07+01:00",
-  "current": "Sekce 4 (Fight sheet): běží build #25.",
-  "nextStep": "Počkat na výsledek buildu #25, případně opravit chyby.",
+  "updated": "2026-11-17T12:18:20+01:00",
+  "current": "Sekce 4 (Fight sheet) hotová, build #25 prošel.",
+  "nextStep": "Sekce 5: Battle.",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -165,7 +165,7 @@
     {
       "id": 4,
       "title": "Fight sheet",
-      "status": "build",
+      "status": "hotovo",
       "items": [
         { "text": "Zavírací ✕ vpravo nahoře, zavření i tažením dolů; nadpis „Fight {jméno bosse}“", "done": true },
         { "text": "Studying: řada čipů předmětů + „+ Subject“ + odkaz „Edit“ vpravo u popisku", "done": true },
@@ -182,8 +182,8 @@
         { "text": "4a: režim Edit: čipy mají červené ✕, první ťuknutí zčervená „Delete Math?“, druhé smaže (měkké smazání)", "done": true }
       ],
       "commit": "0ba9dde",
-      "build": { "number": 25, "runId": 44068128166, "result": "běží" },
-      "note": ""
+      "build": { "number": 25, "runId": 44068128166, "result": "prošel" },
+      "note": "Build #25 prošel (IPA, unit testy i screenshot Fight sheetu). Předměty jsou teď seznam hráče uložený podle id, takže historie přežije přejmenování i smazání; starší uložení s lastSubject si předmět ponechá. Správa „Your subjects“ (přejmenovat, Hide/Show, smazat) je hotová v základu; Recently deleted, obnovení do 24 h, toast s Undo a oprava dat doplní sekce 7. Stará řada čipů na obrazovce bitvy zůstala jen pro rychlou 5min bitvu. Na iPhonu otestuj: Fight na Areně i dlaždice bosse na Path otevřou list; ✕ i tažení dolů ho zavřou; Start zavře list a pak začne bitva; vybraný čip nemění pořadí, 6+ předmětů ukáže More… a vybraný na 5. místě; + Subject s návrhy, „econ“ nebo „MATH“ vybere existující s toastem; Edit → dvě ťuknutí smažou; dlouhý stisk čipu a „Edit subjects“ ve Stats otevřou Your subjects; volba zvuku se projeví hned; po restartu je předvybraný naposledy použitý předmět."
     },
     {
       "id": 5,
