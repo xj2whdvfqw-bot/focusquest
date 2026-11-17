@@ -28,9 +28,8 @@ final class PreferencesStore: PreferencesStoreProtocol {
 }
 
 enum AntiCheatRules {
-    static func warningDuration(equippedLootIDs: [String], graceAlreadyUsed: Bool) -> Int {
-        5 + (equippedLootIDs.contains("chronos-shield") && !graceAlreadyUsed ? 1 : 0)
-    }
+    /// Kolik sekund ma hrac na polozeni zvednuteho telefonu.
+    static let warningSeconds = 10
 
     static func clockIsTampered(wallDelta: TimeInterval, monotonicDelta: TimeInterval, tolerance: TimeInterval = 2) -> Bool {
         !wallDelta.isFinite || !monotonicDelta.isFinite || abs(wallDelta - monotonicDelta) > tolerance

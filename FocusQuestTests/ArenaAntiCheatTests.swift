@@ -7,43 +7,92 @@ final class ArenaAntiCheatTests: XCTestCase {
         let rig = makeRig(hapticsEnabled: false)
         rig.model.startSession()
         await waitForSession(rig.model)
-        await rig.model.handlePosture(.flatFaceUp)
-        await rig.model.handlePosture(.liftedOrTilted)
+        await rig.model.handlePosture(.lyingStill)
+        await rig.model.handlePosture(.lifted)
         XCTAssertTrue(isWarning(rig.model.state))
-        await rig.model.handlePosture(.flatFaceUp)
+        await rig.model.handlePosture(.lyingStill)
         XCTAssertTrue(isFocusing(rig.model.state))
         XCTAssertEqual(rig.haptics.warningCount, 0)
         XCTAssertGreaterThan(rig.audio.warningCount, 0)
     }
 
-    func testWarningExpiryReportsPenaltyAndResetsCombo() async {
+    func testFirstExpiredSlipIsForgivenSecondLetsBossEscape() async {
         let rig = makeRig(hapticsEnabled: true)
+        rig.model.warningSeconds = 1
+        rig.model.slipForgivenSeconds = 0.3
         rig.model.startSession()
         await waitForSession(rig.model)
-        await rig.model.handlePosture(.flatFaceUp)
-        await rig.model.handlePosture(.liftedOrTilted)
-        for _ in 0..<65 {
-            if case .penalized = rig.model.state { break }
-            try? await Task.sleep(for: .milliseconds(100))
+        await rig.model.handlePosture(.lyingStill)
+        await rig.model.handlePosture(.lifted)
+        var sawForgiven = false
+        for _ in 0..<60 {
+            if case .warningCountdown(_, _, true) = rig.model.state { sawForgiven = true }
+            if case .defeated = rig.model.state { break }
+            try? await Task.sleep(for: .milliseconds(50))
         }
-        guard case .penalized = rig.model.state else { return XCTFail("Warning did not expire") }
+        XCTAssertTrue(sawForgiven)
+        XCTAssertTrue(rig.model.hasUsedSlipGrace)
+        guard case let .defeated(defeat) = rig.model.state else { return XCTFail("Boss did not escape") }
+        XCTAssertEqual(defeat.reason, .phoneStayedUp)
+        try? await Task.sleep(for: .milliseconds(50))
         let violationCount = await rig.validation.violationCount()
         XCTAssertEqual(violationCount, 1)
-        XCTAssertEqual(rig.model.activeSession?.comboMultiplier, 1)
     }
 
-    func testChronosShieldAddsOneGraceSecondOncePerSession() {
-        XCTAssertEqual(AntiCheatRules.warningDuration(equippedLootIDs: ["chronos-shield"], graceAlreadyUsed: false), 6)
-        XCTAssertEqual(AntiCheatRules.warningDuration(equippedLootIDs: ["chronos-shield"], graceAlreadyUsed: true), 5)
-        XCTAssertEqual(AntiCheatRules.warningDuration(equippedLootIDs: [], graceAlreadyUsed: false), 5)
+    func testPauseOnlyOncePerBattleAndRunsOut() async {
+        let rig = makeRig(hapticsEnabled: false)
+        rig.model.pauseLimitSeconds = 1
+        rig.model.startSession()
+        await waitForSession(rig.model)
+        await rig.model.handlePosture(.lyingStill)
+        rig.model.pauseBattle()
+        XCTAssertTrue(isPaused(rig.model.state))
+        rig.model.resumeBattle()
+        XCTAssertTrue(isFocusing(rig.model.state))
+        rig.model.pauseBattle()
+        XCTAssertTrue(isFocusing(rig.model.state), "Second pause must be refused")
+
+        let other = makeRig(hapticsEnabled: false)
+        other.model.pauseLimitSeconds = 1
+        other.model.startSession()
+        await waitForSession(other.model)
+        await other.model.handlePosture(.lyingStill)
+        other.model.pauseBattle()
+        for _ in 0..<40 {
+            if case .defeated = other.model.state { break }
+            try? await Task.sleep(for: .milliseconds(50))
+        }
+        guard case let .defeated(defeat) = other.model.state else { return XCTFail("Pause did not run out") }
+        XCTAssertEqual(defeat.reason, .pauseRanOut)
+        rig.model.stopSession()
+    }
+
+    func testRetreatLetsBossEscape() async {
+        let rig = makeRig(hapticsEnabled: false)
+        rig.model.startSession()
+        await waitForSession(rig.model)
+        await rig.model.handlePosture(.lyingStill)
+        rig.model.retreat()
+        guard case let .defeated(defeat) = rig.model.state else { return XCTFail("Retreat did not end the battle") }
+        XCTAssertEqual(defeat.reason, .retreated)
+    }
+
+    func testDetectorNeedsFaceDownAndStillness() {
+        var detector = PostureDetector()
+        XCTAssertEqual(detector.update(gravityZ: -1, acceleration: 0, rotation: 0), .lifted)
+        for _ in 0..<(PostureDetector.stillSamplesNeeded - 1) {
+            XCTAssertNil(detector.update(gravityZ: 1, acceleration: 0, rotation: 0))
+        }
+        XCTAssertEqual(detector.update(gravityZ: 1, acceleration: 0, rotation: 0), .lyingStill)
+        XCTAssertNil(detector.update(gravityZ: 1, acceleration: 0.5, rotation: 0))
     }
 
     func testMutedHapticsDoNotDisableVisualWarning() async {
         let rig = makeRig(hapticsEnabled: false)
         rig.model.startSession()
         await waitForSession(rig.model)
-        await rig.model.handlePosture(.flatFaceUp)
-        await rig.model.handlePosture(.liftedOrTilted)
+        await rig.model.handlePosture(.lyingStill)
+        await rig.model.handlePosture(.lifted)
         XCTAssertTrue(isWarning(rig.model.state))
         XCTAssertEqual(rig.haptics.warningCount, 0)
         XCTAssertEqual(rig.audio.warningCount, 1)
@@ -76,6 +125,7 @@ final class ArenaAntiCheatTests: XCTestCase {
 
     private func isWarning(_ state: ArenaState) -> Bool { if case .warningCountdown = state { true } else { false } }
     private func isFocusing(_ state: ArenaState) -> Bool { if case .focusing = state { true } else { false } }
+    private func isPaused(_ state: ArenaState) -> Bool { if case .paused = state { true } else { false } }
 
     private struct Rig {
         let model: ArenaViewModel

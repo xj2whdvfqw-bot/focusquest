@@ -4,29 +4,37 @@ import Foundation
 enum ArenaState: Equatable {
     case idle
     case awaitingFlatPlacement
-    case focusing(elapsedSeconds: Int, combo: Int)
-    /// Hrac bitvu pozastavil tlacitkem Pause; cas se nepocita.
-    case paused(elapsedSeconds: Int)
-    case warningCountdown(secondsRemaining: Double, frozenElapsedSeconds: Int)
+    case focusing(elapsedSeconds: Int)
+    /// Jedina pauza bitvy ("Pause once"): cas se nepocita, po vyprseni `secondsLeft` boss uteče.
+    case paused(elapsedSeconds: Int, secondsLeft: Int)
+    /// Zvednuty telefon. `forgiven` = prvni propadly odpocet v bitve byl prave odpusten ("Slip forgiven").
+    case warningCountdown(secondsRemaining: Double, frozenElapsedSeconds: Int, forgiven: Bool)
+    /// Technicka chyba (server, hodiny). Nic se nebere.
     case penalized(reason: String)
     case victory(BattleVictory)
-    /// Hrac ustoupil z bitvy ("Retreat Anyway"): obrazovka porazky.
+    /// Boss utekl: zadne XP ani mince. Serie a mince zustavaji.
     case defeated(BattleDefeat)
 }
 
-/// Ustup z bitvy: co ukaze obrazovka porazky.
-struct BattleDefeat: Equatable, Sendable {
-    let boss: Boss
-    let goalMinutes: Int
-    let focusedMinutes: Int
-    var missedMinutes: Int { max(0, goalMinutes - focusedMinutes) }
+/// Proc boss utekl.
+enum EscapeReason: Equatable, Sendable {
+    case retreated, phoneStayedUp, pauseRanOut
+
+    var text: String {
+        switch self {
+        case .retreated: "You retreated."
+        case .phoneStayedUp: "The phone stayed up."
+        case .pauseRanOut: "The pause ran out."
+        }
+    }
 }
 
-/// Ukol na karte "Working on" behem bitvy.
-struct BattleTask: Identifiable, Equatable, Sendable {
-    let id: UUID
-    var title: String
-    var isDone = false
+/// Boss utekl: co ukaze obrazovka porazky.
+struct BattleDefeat: Equatable, Sendable {
+    let boss: Boss
+    let reason: EscapeReason
+    let goalMinutes: Int
+    let focusedMinutes: Int
 }
 
 /// Vyhrana bitva: co ukaze obrazovka vitezstvi a co se pripise do profilu.
@@ -52,16 +60,16 @@ final class ArenaViewModel: ObservableObject {
     @Published private(set) var activeSession: StudySession?
     /// Vlastni bitva (Custom Battle): libovolna delka, nahodny boss, cestu sveta neposouva.
     @Published private(set) var isCustomBattle = false
-    /// Karta "Working on": ukoly, ktere si hrac behem bitvy odskrtava. Jen v pameti.
-    @Published private(set) var tasks: [BattleTask] = []
+    /// Jedina pauza bitvy uz byla pouzita.
+    @Published private(set) var hasUsedPause = false
+    /// Prvni propadly odpocet zvednuteho telefonu uz byl odpusten; dalsi znamena utek bosse.
+    @Published private(set) var hasUsedSlipGrace = false
     /// Boss, ktery v posledni bitve opravdu padl (pred posunem cesty). Ukazuje ho obrazovka vitezstvi.
     @Published private(set) var lastBeaten: Boss?
     /// Volano, kdyz se predvolby zmeni z Areny (prehravac, postup na ceste), aby je znalo i Nastaveni.
     var onPreferencesChanged: ((AppPreferences) -> Void)?
     /// Volano jednou za kazdou vyhranou bitvu - pripise XP, mince a loot do profilu.
     var onVictory: ((BattleVictory) -> Void)?
-    /// Volano, kdyz hrac z bitvy ustoupi (ztrata HP hrdiny a serie).
-    var onQuestFailed: (() -> Void)?
 
     private let validation: any FocusValidationServiceProtocol
     private let motion: any MotionMonitoringServiceProtocol
@@ -79,7 +87,6 @@ final class ArenaViewModel: ObservableObject {
     private var sessionStartUptime: TimeInterval = 0
     private var sessionStartWallClock = Date()
     private var nextHeartbeatAt: TimeInterval = 60
-    private var hasUsedGraceRelic = false
     private var warningStartedAt: TimeInterval?
     private var warningFrozenElapsed = 0
     private var pausedAt: TimeInterval?
@@ -119,6 +126,8 @@ final class ArenaViewModel: ObservableObject {
     func startSession() {
         guard selectedSubject != nil, isBetweenBattles, !security.integrityReport().isCompromised else { return }
         lastBeaten = nil
+        hasUsedPause = false
+        hasUsedSlipGrace = false
         resetBossHealth()
         state = .awaitingFlatPlacement
         activeSession = nil
@@ -164,41 +173,41 @@ final class ArenaViewModel: ObservableObject {
         selectedBoss = Boss.find(preferences.lastBossID) ?? BossWorld.allCases[0].bosses[0]
     }
 
-    // MARK: - Karta "Working on"
-
-    static let maxTasks = 12
-    static let maxTaskLength = 80
-
-    func addTask(_ title: String) {
-        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty, tasks.count < Self.maxTasks else { return }
-        tasks.append(BattleTask(id: UUID(), title: String(trimmed.prefix(Self.maxTaskLength))))
-    }
-
-    func toggleTask(_ id: UUID) {
-        guard let index = tasks.firstIndex(where: { $0.id == id }) else { return }
-        tasks[index].isDone.toggle()
-    }
-
-    func removeTask(_ id: UUID) { tasks.removeAll { $0.id == id } }
-
     // MARK: - Pauza a ustup
 
-    /// Pause: hodiny stoji, zvednuti telefonu se netresta a cas pauzy se do bitvy nepocita.
+    /// Jedina pauza za bitvu trva nejdele 2 minuty.
+    var pauseLimitSeconds = 120
+
+    /// "Pause once": hodiny stoji, zvednuti telefonu se netresta a cas pauzy se do bitvy nepocita.
+    /// Kdo se do 2:00 nevrati, tomu boss uteče.
     func pauseBattle() {
-        guard case let .focusing(elapsed, _) = state, !isFinishing else { return }
+        guard case let .focusing(elapsed) = state, !isFinishing, !hasUsedPause else { return }
+        hasUsedPause = true
         timerTask?.cancel()
-        timerTask = nil
         pausedAt = MonotonicClock.now
-        state = .paused(elapsedSeconds: elapsed)
+        state = .paused(elapsedSeconds: elapsed, secondsLeft: pauseLimitSeconds)
         audio.stop()
         let bossHP = selectedBoss.currentHP
         Task { await notifications?.cancelVictory() }
         Task { await activity?.update(bossHP: bossHP, elapsedSeconds: elapsed, warningSecondsRemaining: nil) }
+        timerTask = Task { [weak self] in await self?.runPauseTicker() }
+    }
+
+    private func runPauseTicker() async {
+        let clock = ContinuousClock()
+        let start = clock.now
+        while !Task.isCancelled {
+            do { try await clock.sleep(for: .milliseconds(250)) } catch { return }
+            guard case let .paused(elapsed, shown) = state else { return }
+            let left = max(0, pauseLimitSeconds - Int(start.duration(to: clock.now).secondsDouble))
+            if left <= 0 { bossEscapes(.pauseRanOut, elapsed: elapsed); return }
+            if left != shown { state = .paused(elapsedSeconds: elapsed, secondsLeft: left) }
+        }
     }
 
     func resumeBattle() {
-        guard case let .paused(elapsed) = state else { return }
+        guard case let .paused(elapsed, _) = state else { return }
+        timerTask?.cancel()
         if let pausedAt {
             let pausedDuration = MonotonicClock.now - pausedAt
             sessionStartUptime += pausedDuration
@@ -207,28 +216,39 @@ final class ArenaViewModel: ObservableObject {
         pausedAt = nil
         beginFocusing(elapsed: elapsed)
         // Kdo pri pauze telefon zvedl, musi ho zase polozit - plati stejne pravidlo jako behem bitvy.
-        if posture == .liftedOrTilted { beginWarning(elapsed: elapsed) }
+        if posture == .lifted { beginWarning(elapsed: elapsed) }
     }
 
-    /// "Retreat Anyway": bitva konci porazkou, hrdina ztrati HP a serie zacne znovu.
+    /// "Retreat Anyway": boss uteče, bitva nic neprinese. Serie a mince zustavaji.
     func retreat() {
         guard !isFinishing else { return }
         let elapsed: Int
         switch state {
-        case .focusing(let value, _), .paused(let value), .warningCountdown(_, let value): elapsed = value
+        case .focusing(let value), .paused(let value, _), .warningCountdown(_, let value, _): elapsed = value
         case .awaitingFlatPlacement:
             // Hodiny se jeste nerozbehly: odchod nic nestoji.
             stopSession()
             return
         default: return
         }
+        bossEscapes(.retreated, elapsed: elapsed)
+    }
+
+    /// Jediny trest bitvy: boss uteče bez XP a minci.
+    private func bossEscapes(_ reason: EscapeReason, elapsed: Int) {
+        guard isBattleRunning, !isFinishing else { return }
         let goal = targetSeconds / 60
-        let defeat = BattleDefeat(boss: selectedBoss, goalMinutes: goal, focusedMinutes: min(goal, elapsed / 60))
+        let defeat = BattleDefeat(boss: selectedBoss, reason: reason, goalMinutes: goal, focusedMinutes: min(goal, elapsed / 60))
+        let session = activeSession
         tearDownBattle()
         activeSession = nil
         state = .defeated(defeat)
         haptics.triggerPenaltyFailure(enabled: preferences.isHapticsEnabled)
-        onQuestFailed?()
+        // Server se dozvi, ze bitva skoncila bez vitezstvi; nic se tim nebere.
+        if let session {
+            let validation = validation
+            Task { try? await validation.reportViolation(sessionID: session.serverSessionID, reason: reason.text, monotonicElapsedSeconds: TimeInterval(elapsed)) }
+        }
     }
 
     /// Bitva prave bezi (hodiny tikaji, je pozastavena nebo bezi odpocet zvednuteho telefonu).
@@ -360,10 +380,9 @@ final class ArenaViewModel: ObservableObject {
             guard case .awaitingFlatPlacement = state else { return }
             activeSession = StudySession(serverSessionID: response.sessionID, bossID: selectedBoss.id, mode: .solo)
             await activity?.start(boss: selectedBoss)
-            hasUsedGraceRelic = false
             warningStartedAt = nil
             warningFrozenElapsed = 0
-            if posture == .flatFaceUp, case .awaitingFlatPlacement = state { startFocusClock() }
+            if posture == .lyingStill, case .awaitingFlatPlacement = state { startFocusClock() }
         } catch {
             state = .penalized(reason: "Unable to verify a secure session.")
             postureTask?.cancel()
@@ -372,10 +391,10 @@ final class ArenaViewModel: ObservableObject {
 
     func handlePosture(_ value: DevicePostureState) async {
         posture = value
-        if value == .flatFaceUp {
-            if case let .warningCountdown(_, frozenElapsed) = state { recoverFocus(elapsed: frozenElapsed) }
+        if value == .lyingStill {
+            if case let .warningCountdown(_, frozenElapsed, _) = state { recoverFocus(elapsed: frozenElapsed) }
             else if case .awaitingFlatPlacement = state, activeSession != nil { startFocusClock() }
-        } else if value == .liftedOrTilted, !isFinishing, case let .focusing(elapsed, _) = state {
+        } else if value == .lifted, !isFinishing, case let .focusing(elapsed) = state {
             beginWarning(elapsed: elapsed)
         }
     }
@@ -389,7 +408,7 @@ final class ArenaViewModel: ObservableObject {
     }
 
     private func beginFocusing(elapsed: Int) {
-        state = .focusing(elapsedSeconds: elapsed, combo: activeSession?.comboMultiplier ?? 1)
+        state = .focusing(elapsedSeconds: elapsed)
         audio.beginFocus(preferences: preferences)
         // Notifikace prijde v cas konce bitvy i se zamcenou obrazovkou.
         let bossName = selectedBoss.name
@@ -403,7 +422,7 @@ final class ArenaViewModel: ObservableObject {
         let clock = ContinuousClock()
         while !Task.isCancelled {
             do { try await clock.sleep(for: .seconds(1)) } catch { return }
-            guard case .focusing = state, let session = activeSession, !isFinishing else { continue }
+            guard case .focusing = state, activeSession != nil, !isFinishing else { continue }
             let now = MonotonicClock.now
             let elapsed = max(0, Int(now - sessionStartUptime))
             let wallElapsed = Date().timeIntervalSince(sessionStartWallClock)
@@ -412,7 +431,7 @@ final class ArenaViewModel: ObservableObject {
                 return
             }
             let shown = min(elapsed, targetSeconds)
-            state = .focusing(elapsedSeconds: shown, combo: session.comboMultiplier)
+            state = .focusing(elapsedSeconds: shown)
             await activity?.update(bossHP: selectedBoss.currentHP, elapsedSeconds: shown, warningSecondsRemaining: nil)
             // Konec bitvy hlida klient podle casu; nespoleha na to, ze heartbeat zrovna srazi HP na nulu.
             if elapsed >= targetSeconds {
@@ -482,36 +501,56 @@ final class ArenaViewModel: ObservableObject {
     private func beginWarning(elapsed: Int) {
         timerTask?.cancel()
         Task { await notifications?.cancelVictory() }
-        let duration = AntiCheatRules.warningDuration(equippedLootIDs: profileProvider().equippedLootIDs, graceAlreadyUsed: hasUsedGraceRelic)
-        hasUsedGraceRelic = hasUsedGraceRelic || duration > 5
+        let duration = warningSeconds
         warningStartedAt = MonotonicClock.now
         warningFrozenElapsed = elapsed
-        state = .warningCountdown(secondsRemaining: Double(duration), frozenElapsedSeconds: elapsed)
+        state = .warningCountdown(secondsRemaining: Double(duration), frozenElapsedSeconds: elapsed, forgiven: false)
         haptics.triggerPickupWarningInitial(enabled: preferences.isHapticsEnabled)
         audio.enterWarning(preferences: preferences, secondsRemaining: duration)
-        Task { await activity?.update(bossHP: selectedBoss.currentHP, elapsedSeconds: elapsed, warningSecondsRemaining: duration) }
-        timerTask = Task { [weak self] in await self?.runWarningTicker(duration: duration, frozenElapsed: elapsed) }
+        timerTask = Task { [weak self] in await self?.runWarningTicker(frozenElapsed: elapsed) }
     }
 
-    private func runWarningTicker(duration: Int, frozenElapsed: Int) async {
+    /// Odpocet zvednuteho telefonu. Prvni propadly odpocet v bitve se odpusti ("Slip forgiven")
+    /// a po chvilce bezi znovu; druhy znamena, ze boss uteče. Polozeni telefonu ticker zrusi.
+    private func runWarningTicker(frozenElapsed: Int) async {
         let clock = ContinuousClock()
-        let start = clock.now
-        var previousSecond = duration
+        let duration = warningSeconds
         while !Task.isCancelled {
-            do { try await clock.sleep(for: .milliseconds(100)) } catch { return }
-            let elapsed = start.duration(to: clock.now).secondsDouble
-            let remaining = max(0, Double(duration) - elapsed)
-            if remaining <= 0 { await penalize(reason: "Phone was lifted during a verified focus session."); return }
-            let wholeSecond = Int(ceil(remaining))
-            if wholeSecond < previousSecond {
-                haptics.triggerCountdownPulse(enabled: preferences.isHapticsEnabled)
-                audio.countdownTick(preferences: preferences, secondsRemaining: wholeSecond)
-                await activity?.update(bossHP: selectedBoss.currentHP, elapsedSeconds: frozenElapsed, warningSecondsRemaining: wholeSecond)
-                previousSecond = wholeSecond
+            let start = clock.now
+            var previousSecond = duration + 1
+            while true {
+                let remaining = max(0, Double(duration) - start.duration(to: clock.now).secondsDouble)
+                if remaining <= 0 { break }
+                let wholeSecond = Int(ceil(remaining))
+                if wholeSecond < previousSecond {
+                    if previousSecond <= duration {
+                        haptics.triggerCountdownPulse(enabled: preferences.isHapticsEnabled)
+                        audio.countdownTick(preferences: preferences, secondsRemaining: wholeSecond)
+                    }
+                    await activity?.update(bossHP: selectedBoss.currentHP, elapsedSeconds: frozenElapsed, warningSecondsRemaining: wholeSecond)
+                    previousSecond = wholeSecond
+                }
+                state = .warningCountdown(secondsRemaining: remaining, frozenElapsedSeconds: frozenElapsed, forgiven: false)
+                do { try await clock.sleep(for: .milliseconds(100)) } catch { return }
             }
-            state = .warningCountdown(secondsRemaining: remaining, frozenElapsedSeconds: frozenElapsed)
+            guard !Task.isCancelled else { return }
+            if hasUsedSlipGrace {
+                bossEscapes(.phoneStayedUp, elapsed: frozenElapsed)
+                return
+            }
+            hasUsedSlipGrace = true
+            state = .warningCountdown(secondsRemaining: 0, frozenElapsedSeconds: frozenElapsed, forgiven: true)
+            do { try await clock.sleep(for: .seconds(slipForgivenSeconds)) } catch { return }
+            // Telefon porad neni dole: alarm bezi dal, tentokrat uz naostro.
+            audio.enterWarning(preferences: preferences, secondsRemaining: duration)
         }
     }
+
+    /// Jak dlouho zustane na obrazovce "Slip forgiven", nez se odpocet rozbehne znovu.
+    var slipForgivenSeconds = 2.2
+    /// Odpocet zvednuteho telefonu (testy ho zkracuji).
+    var warningSeconds = AntiCheatRules.warningSeconds
+
 
     private func recoverFocus(elapsed: Int) {
         timerTask?.cancel()
@@ -534,7 +573,6 @@ final class ArenaViewModel: ObservableObject {
         haptics.triggerPenaltyFailure(enabled: preferences.isHapticsEnabled)
         if let session = activeSession {
             try? await validation.reportViolation(sessionID: session.serverSessionID, reason: reason, monotonicElapsedSeconds: elapsed)
-            activeSession?.comboMultiplier = 1
         }
     }
 

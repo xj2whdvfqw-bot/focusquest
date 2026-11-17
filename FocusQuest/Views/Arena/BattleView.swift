@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// Bitva pres celou obrazovku (bez spodni listy): jedna velka plovouci karta uprostred
-/// s bossem, obrim odpoctem, kulatymi tlacitky a seznamem "Working on".
+/// Bitva pres celou obrazovku (bez spodni listy): jedna plovouci karta uprostred
+/// s bossem, jmenem, obrim odpoctem a kulatymi tlacitky. Nic dalsiho behem bitvy nerusi.
 struct BattleView: View {
     @ObservedObject var model: ArenaViewModel
     @ObservedObject var profileModel: ProfileViewModel
@@ -9,9 +9,6 @@ struct BattleView: View {
     let onExit: () -> Void
     @State private var receipt: UIImage?
     @State private var showsRetreatConfirm = false
-    @State private var showsBattleSettings = false
-    @State private var newTask = ""
-    @FocusState private var taskFieldFocused: Bool
 
     /// Rozmery ladene v Battle Card Lab (webovy prototyp). Pill je tu vlastni, aby se nezmenily ostatni obrazovky.
     private enum Layout {
@@ -34,32 +31,27 @@ struct BattleView: View {
         static let timerSize: CGFloat = 114
         static let timerSizeLong: CGFloat = 89
         static let timerGap: CGFloat = 3
-        static let chipHeight: CGFloat = 43
         static let idleGap: CGFloat = 25
         static let actionSize: CGFloat = 69
         static let actionGap: CGFloat = 50
-        static let listGap: CGFloat = 3
-        static let rowHeight: CGFloat = 38
-        static let addFieldHeight: CGFloat = 58
     }
 
     private var pill: RoundedRectangle { RoundedRectangle(cornerRadius: Layout.pillRadius, style: .continuous) }
     private var cardShape: RoundedRectangle { RoundedRectangle(cornerRadius: Layout.cardRadius, style: .continuous) }
-    private var world: BossWorld { model.selectedBoss.world }
+    private var boss: Boss { model.selectedBoss }
+    private var world: BossWorld { boss.world }
     private var isWarning: Bool { if case .warningCountdown = model.state { true } else { false } }
     private var isPaused: Bool { if case .paused = model.state { true } else { false } }
-    private var isFocusing: Bool { if case .focusing = model.state { true } else { false } }
     private var isIdle: Bool { if case .idle = model.state { true } else { false } }
     private var isVictory: Bool { if case .victory = model.state { true } else { false } }
     private var elapsed: Int {
         switch model.state {
-        case .focusing(let value, _): value
-        case .paused(let value): value
-        case .warningCountdown(_, let value): value
+        case .focusing(let value): value
+        case .paused(let value, _): value
+        case .warningCountdown(_, let value, _): value
         default: 0
         }
     }
-    private var comboValue: Int { if case let .focusing(_, combo) = model.state { combo } else { model.activeSession?.comboMultiplier ?? 1 } }
     /// Odpocet do konce bitvy; pred bitvou ukazuje celou delku.
     private var remaining: Int { max(0, model.targetSeconds - elapsed) }
     /// "24:59", nad hodinu "1:29:59" - obri cislice se tak vejdou na sirku telefonu.
@@ -67,12 +59,12 @@ struct BattleView: View {
         let hours = remaining / 3600, minutes = (remaining / 60) % 60, seconds = remaining % 60
         return hours > 0 ? String(format: "%d:%02d:%02d", hours, minutes, seconds) : String(format: "%02d:%02d", minutes, seconds)
     }
-    private var durationText: String { ArenaView.durationText(minutes: model.selectedBoss.maxHP) }
-    private var battleTitle: String { model.isCustomBattle ? "Quick battle" : "Boss \(model.selectedBoss.nodeIndex + 1) of \(world.bosses.count) · \(world.title)" }
+    private var durationText: String { ArenaView.durationText(minutes: boss.maxHP) }
+    private var battleTitle: String { model.isCustomBattle ? "Quick battle" : "Boss \(boss.nodeIndex + 1) of \(world.bosses.count) · \(world.title)" }
 
     var body: some View {
         ZStack {
-            FocusQuestBackdrop(alert: isWarning, scene: world.scene)
+            FocusQuestBackdrop(alert: false, scene: world.scene)
             GeometryReader { proxy in
                 ScrollView {
                     VStack(spacing: Layout.stackGap) {
@@ -86,26 +78,25 @@ struct BattleView: View {
                     .padding(.horizontal, Layout.screenGutter)
                     .padding(.vertical, FQSpace.lg)
                     .frame(maxWidth: 520)
-                    // Karta stoji uprostred obrazovky; delsi seznam ukolu ji jen natahne a da se rolovat.
                     .frame(maxWidth: .infinity, minHeight: proxy.size.height)
                 }
                 .scrollIndicators(.hidden)
-                .scrollDismissesKeyboard(.interactively)
             }
             if showsRetreatConfirm { retreatDialog.transition(.opacity) }
-            if case let .warningCountdown(seconds, _) = model.state { warningOverlay(seconds: seconds) }
+            if case let .warningCountdown(seconds, _, forgiven) = model.state {
+                PhoneLiftedAlarm(seconds: seconds, forgiven: forgiven, graceUsed: model.hasUsedSlipGrace, bossName: boss.name)
+            }
             if case let .penalized(reason) = model.state {
-                resultOverlay(icon: "xmark.shield.fill", title: "Quest failed", detail: reason, color: FQColor.danger)
+                resultOverlay(icon: "exclamationmark.triangle.fill", title: "Battle stopped", detail: "\(reason) Nothing was taken from you.")
             }
             if case let .defeated(defeat) = model.state {
-                resultOverlay(icon: "flag.fill", title: "You retreated", detail: defeatDetail(defeat), color: FQColor.danger)
+                resultOverlay(icon: "flag.fill", title: "\(defeat.boss.name) escaped", detail: defeatDetail(defeat))
             }
             if case let .victory(victory) = model.state { victoryOverlay(victory) }
         }
         .preferredColorScheme(.dark)
         .animation(.easeOut(duration: 0.25), value: isVictory)
         .animation(.easeOut(duration: 0.2), value: showsRetreatConfirm)
-        .sheet(isPresented: $showsBattleSettings) { battleSettingsSheet }
         .onChange(of: model.state) { _, value in
             // Ustupovy dialog nema smysl, kdyz bitva mezitim skoncila.
             if !model.isBattleRunning { showsRetreatConfirm = false }
@@ -131,15 +122,24 @@ struct BattleView: View {
     private func defeatDetail(_ defeat: BattleDefeat) -> String {
         let focused = ArenaView.durationText(minutes: defeat.focusedMinutes)
         let goal = ArenaView.durationText(minutes: defeat.goalMinutes)
-        return "\(defeat.boss.name) escaped after \(focused) of \(goal). Your streak resets."
+        return "\(defeat.reason.text) \(defeat.boss.name) escaped after \(focused) of \(goal). No loot this time, your streak and coins are safe."
     }
 
     // MARK: - Horni lista
 
+    /// Jen krizek pred bitvou a nazev; behem bitvy zadna tlacitka nahore.
     private var topBar: some View {
         HStack(spacing: FQSpace.md) {
             if isIdle {
-                circleIcon("xmark", label: "Close", action: closeBeforeBattle)
+                Button(action: closeBeforeBattle) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                        .foregroundStyle(FQColor.textPrimary)
+                        .frame(width: Layout.topIcon, height: Layout.topIcon)
+                        .glassControl(in: Circle(), interactive: true)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Close")
             } else {
                 Color.clear.frame(width: Layout.topIcon, height: Layout.topIcon)
             }
@@ -150,22 +150,8 @@ struct BattleView: View {
                 .lineLimit(1)
                 .shadow(color: .black.opacity(0.5), radius: 4, y: 1)
             Spacer(minLength: 0)
-            circleIcon(model.preferences.isMusicEnabled ? "speaker.wave.2.fill" : "speaker.slash.fill", label: "Sound and battle rules") {
-                showsBattleSettings = true
-            }
+            Color.clear.frame(width: Layout.topIcon, height: Layout.topIcon)
         }
-    }
-
-    private func circleIcon(_ symbol: String, label: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Image(systemName: symbol)
-                .font(.system(size: 15, weight: .semibold, design: .rounded))
-                .foregroundStyle(FQColor.textPrimary)
-                .frame(width: Layout.topIcon, height: Layout.topIcon)
-                .glassControl(in: Circle(), interactive: true)
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(label)
     }
 
     // MARK: - Hlavni karta
@@ -178,15 +164,13 @@ struct BattleView: View {
                 statusLine
             }
             controls
-            HairlineDivider()
-            workingOnSection
         }
         .padding(.horizontal, Layout.cardPadX)
         .padding(.top, Layout.cardPadTop)
         .padding(.bottom, Layout.cardPadBottom)
         .frame(maxWidth: .infinity)
         .background(.ultraThinMaterial, in: cardShape)
-        .background((isWarning ? FQColor.danger : world.accent).opacity(0.06), in: cardShape)
+        .background(world.accent.opacity(0.06), in: cardShape)
         .overlay { cardShape.strokeBorder(Color.white.opacity(Layout.cardBorder), lineWidth: 1) }
         .shadow(color: .black.opacity(0.35), radius: 30, y: 12)
     }
@@ -195,22 +179,28 @@ struct BattleView: View {
         VStack(spacing: Layout.bossGap) {
             ZStack {
                 Circle()
-                    .fill(RadialGradient(colors: [(isWarning ? FQColor.danger : world.accent).opacity(Layout.glowOpacity), Color.clear], center: .center, startRadius: 0, endRadius: Layout.glowSize / 2))
+                    .fill(RadialGradient(colors: [world.accent.opacity(Layout.glowOpacity), Color.clear], center: .center, startRadius: 0, endRadius: Layout.glowSize / 2))
                     .frame(width: Layout.glowSize, height: Layout.glowSize)
-                PixelArtAvatarView(sprite: .boss(model.selectedBoss.pixelSpriteConfig), hitFlash: false, size: Layout.spriteSize)
+                PixelArtAvatarView(sprite: .boss(boss.pixelSpriteConfig), hitFlash: false, size: Layout.spriteSize)
+                    .bossBreathing()
             }
             .frame(height: Layout.headerHeight)
-            // Jmeno a tier bosse se v bitve neukazuji; misto nich je pruh zdravi.
-            BossHealthBarView(
-                currentHP: model.selectedBoss.currentHP,
-                maxHP: model.selectedBoss.maxHP,
-                fraction: bossHealthFraction,
-                tint: isWarning ? FQColor.danger : world.accent
-            )
-            .frame(maxWidth: Layout.healthBarWidth)
+            VStack(spacing: 2) {
+                Text(boss.name)
+                    .font(.fqHeadline)
+                    .foregroundStyle(FQColor.textPrimary)
+                    .lineLimit(1)
+                Text("\(boss.tierTitle) · \(durationText)")
+                    .font(.fqMeta)
+                    .foregroundStyle(FQColor.textSecondary)
+            }
+            // Tenky pruh zdravi bez cisla.
+            BossHealthBarView(fraction: bossHealthFraction, tint: world.accent)
+                .frame(maxWidth: Layout.healthBarWidth)
+                .padding(.top, FQSpace.xs)
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(model.selectedBoss.name), \(max(0, model.selectedBoss.currentHP)) of \(model.selectedBoss.maxHP) HP")
+        .accessibilityLabel("\(boss.name), \(boss.tierTitle), \(durationText)")
     }
 
     /// Behem bitvy ubyva pruh po sekundach podle odpoctu; jinak ukazuje skutecne HP bosse.
@@ -219,7 +209,7 @@ struct BattleView: View {
         case .focusing, .paused, .warningCountdown:
             model.targetSeconds > 0 ? Double(remaining) / Double(model.targetSeconds) : 0
         default:
-            model.selectedBoss.healthFraction
+            boss.healthFraction
         }
     }
 
@@ -239,28 +229,30 @@ struct BattleView: View {
     /// Jeden tichy radek pod odpoctem: co se prave deje.
     @ViewBuilder private var statusLine: some View {
         switch model.state {
-        case .paused:
-            Label("Paused · the clock is stopped", systemImage: "pause.fill")
+        case let .paused(_, secondsLeft):
+            Label("Paused · back in \(Self.minutesSeconds(secondsLeft)) or the boss escapes", systemImage: "pause.fill")
                 .font(.fqLabel)
+                .monospacedDigit()
                 .foregroundStyle(FQColor.caution)
+                .multilineTextAlignment(.center)
         case .focusing, .warningCountdown:
             HStack(spacing: FQSpace.sm) {
-                PixelArtAvatarView(sprite: .companion("lo-fi-cat"), startled: isWarning, size: 24)
-                Text("Combo \(comboValue)x").font(.fqLabel).foregroundStyle(FQColor.accent)
-                Text("·").foregroundStyle(FQColor.textTertiary)
-                Text("\(max(0, model.selectedBoss.currentHP)) HP left").font(.fqLabel).monospacedDigit().foregroundStyle(FQColor.textSecondary)
+                PixelArtAvatarView(sprite: .companion("lo-fi-cat"), size: 24)
+                Text("Phone down. The boss is losing.").font(.fqLabel).foregroundStyle(FQColor.textSecondary)
             }
         case .awaitingFlatPlacement:
-            Label("Place your iPhone face-up on the desk", systemImage: "iphone.gen3.radiowaves.left.and.right")
+            Label("Lay the phone face-down. The battle starts when it lies still.", systemImage: "iphone.gen3")
                 .font(.fqLabel)
                 .foregroundStyle(FQColor.textPrimary)
                 .multilineTextAlignment(.center)
         default:
-            Text(model.selectedSubject == nil ? "What are you studying?" : "Ready when you are")
-                .font(.fqLabel)
-                .foregroundStyle(model.selectedSubject == nil ? FQColor.caution : FQColor.textSecondary)
+            if model.selectedSubject == nil {
+                Text("What are you studying?").font(.fqLabel).foregroundStyle(FQColor.caution)
+            }
         }
     }
+
+    static func minutesSeconds(_ seconds: Int) -> String { String(format: "%d:%02d", seconds / 60, seconds % 60) }
 
     // MARK: - Ovladani
 
@@ -284,15 +276,15 @@ struct BattleView: View {
             }
         case .awaitingFlatPlacement:
             // Hodiny jeste nebezi, takze zruseni nic nestoji.
-            actionCircle("xmark", caption: "Cancel", tint: nil) { model.retreat() }
+            BattleActionButton(symbol: "xmark", caption: "Cancel", tone: .neutral) { model.retreat() }
         case .focusing, .paused, .warningCountdown:
             HStack(spacing: Layout.actionGap) {
                 if isPaused {
-                    actionCircle("play.fill", caption: "Resume", tint: FQColor.accent) { model.resumeBattle() }
-                } else {
-                    actionCircle("pause.fill", caption: "Pause", tint: nil) { model.pauseBattle() }
+                    BattleActionButton(symbol: "play.fill", caption: "Resume", tone: .accent) { model.resumeBattle() }
+                } else if !model.hasUsedPause {
+                    BattleActionButton(symbol: "pause.fill", caption: "Pause once", tone: .neutral) { model.pauseBattle() }
                 }
-                actionCircle("flag.fill", caption: "Retreat", tint: FQColor.danger) { showsRetreatConfirm = true }
+                BattleActionButton(symbol: "flag.fill", caption: "Retreat", tone: .danger) { showsRetreatConfirm = true }
             }
         }
     }
@@ -310,105 +302,11 @@ struct BattleView: View {
         .scrollClipDisabled()
     }
 
-    /// Velke kulate tlacitko s popiskem pod nim (Pause / Resume / Retreat / Cancel).
-    private func actionCircle(_ symbol: String, caption: String, tint: Color?, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            VStack(spacing: FQSpace.sm) {
-                Image(systemName: symbol)
-                    .font(.system(size: 26, weight: .semibold, design: .rounded))
-                    .foregroundStyle(tint ?? FQColor.textPrimary)
-                    .frame(width: Layout.actionSize, height: Layout.actionSize)
-                    .background((tint ?? Color.white).opacity(tint == nil ? 0.10 : 0.16), in: Circle())
-                    .overlay { Circle().strokeBorder((tint ?? Color.white).opacity(0.25), lineWidth: 1) }
-                Text(caption).font(.fqLabel).foregroundStyle(FQColor.textSecondary)
-            }
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(caption)
-        .accessibilityAddTraits(.isButton)
-    }
-
-    // MARK: - Working on
-
-    /// Co chce hrac v teto bitve stihnout. Je soucasti hlavni karty, bez vlastniho ramecku.
-    private var workingOnSection: some View {
-        let doneCount = model.tasks.filter(\.isDone).count
-        return VStack(alignment: .leading, spacing: Layout.listGap) {
-            HStack(alignment: .firstTextBaseline) {
-                Text("Working on").font(.fqHeadline).foregroundStyle(FQColor.textPrimary)
-                Spacer(minLength: FQSpace.sm)
-                if !model.tasks.isEmpty {
-                    Text("\(doneCount) of \(model.tasks.count) done").font(.fqMeta).monospacedDigit().foregroundStyle(FQColor.textSecondary)
-                }
-            }
-            ForEach(model.tasks) { task in
-                HStack(spacing: FQSpace.xs) {
-                    Button { model.toggleTask(task.id) } label: {
-                        HStack(spacing: FQSpace.md) {
-                            Image(systemName: task.isDone ? "checkmark.circle.fill" : "circle")
-                                .font(.title3)
-                                .foregroundStyle(task.isDone ? FQColor.accent : FQColor.textSecondary)
-                            Text(task.title)
-                                .font(.fqBody)
-                                .strikethrough(task.isDone)
-                                .foregroundStyle(task.isDone ? FQColor.textSecondary : FQColor.textPrimary)
-                                .multilineTextAlignment(.leading)
-                            Spacer(minLength: 0)
-                        }
-                        .frame(minHeight: Layout.rowHeight)
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityAddTraits(task.isDone ? .isSelected : [])
-                    Button { model.removeTask(task.id) } label: {
-                        Image(systemName: "xmark")
-                            .font(.fqMeta.weight(.semibold))
-                            .foregroundStyle(FQColor.textTertiary)
-                            .frame(width: 44, height: 44)
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Remove \(task.title)")
-                }
-            }
-            if model.tasks.count < ArenaViewModel.maxTasks {
-                HStack(spacing: FQSpace.md) {
-                    Image(systemName: "plus").font(.fqLabel).foregroundStyle(FQColor.textSecondary).accessibilityHidden(true)
-                    TextField("Add a task", text: $newTask)
-                        .font(.fqBody)
-                        .foregroundStyle(FQColor.textPrimary)
-                        .focused($taskFieldFocused)
-                        .submitLabel(.done)
-                        .onSubmit(addTask)
-                    if !newTask.trimmingCharacters(in: .whitespaces).isEmpty {
-                        Button("Add", action: addTask)
-                            .font(.fqLabel)
-                            .foregroundStyle(FQColor.accent)
-                    }
-                }
-                .padding(.horizontal, FQSpace.lg)
-                .frame(minHeight: Layout.addFieldHeight)
-                .background(FQColor.fill, in: pill)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private func addTask() {
-        model.addTask(newTask)
-        newTask = ""
-        // Klavesnice zustane otevrena, aby slo pridat vic ukolu za sebou.
-        taskFieldFocused = model.tasks.count < ArenaViewModel.maxTasks
-    }
-
     // MARK: - Ustup
 
     /// Varovani pred ustupem pres celou obrazovku: rozmazane pozadi, vyrazne "Stay and Fight"
     /// a nenapadne "Retreat Anyway" pod nim.
     private var retreatDialog: some View {
-        let streak = profileModel.stats.currentStreak()
         let focused = ArenaView.durationText(minutes: elapsed / 60)
         return ZStack {
             Rectangle().fill(.regularMaterial).ignoresSafeArea()
@@ -417,27 +315,27 @@ struct BattleView: View {
                     Circle()
                         .fill(RadialGradient(colors: [FQColor.danger.opacity(0.35), Color.clear], center: .center, startRadius: 0, endRadius: 90))
                         .frame(width: 180, height: 180)
-                    PixelArtAvatarView(sprite: .boss(model.selectedBoss.pixelSpriteConfig), hitFlash: false, size: 112)
+                    PixelArtAvatarView(sprite: .boss(boss.pixelSpriteConfig), hitFlash: false, size: 112)
+                        .bossBreathing()
                 }
                 .frame(height: 140)
                 .accessibilityHidden(true)
                 VStack(spacing: FQSpace.md) {
-                    Text("Don't let \(model.selectedBoss.name) win")
+                    Text("Don't let \(boss.name) win")
                         .font(.system(size: 30, weight: .bold, design: .rounded))
                         .multilineTextAlignment(.center)
                         .foregroundStyle(FQColor.textPrimary)
                     Text(elapsed >= 60
-                         ? "You've already focused for \(focused). Only \(clockText) to go. Your hero is counting on you."
-                         : "The battle has only just begun. Your hero is counting on you.")
+                         ? "You've already focused for \(focused). Only \(clockText) to go. Stay and the loot is yours."
+                         : "The battle has only just begun.")
                         .font(.fqBody)
                         .multilineTextAlignment(.center)
                         .foregroundStyle(FQColor.textSecondary)
                 }
-                VStack(spacing: FQSpace.sm) {
-                    Label(streak > 0 ? "Your \(streak)-day streak resets" : "This battle's time won't count", systemImage: streak > 0 ? "flame.fill" : "clock.badge.xmark")
-                }
-                .font(.fqLabel)
-                .foregroundStyle(FQColor.danger)
+                Label("The boss escapes: no XP and no coins for this battle", systemImage: "xmark")
+                    .font(.fqLabel)
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(FQColor.danger)
                 VStack(spacing: FQSpace.md) {
                     Button { showsRetreatConfirm = false } label: {
                         Text("Stay and Fight")
@@ -467,105 +365,11 @@ struct BattleView: View {
         .accessibilityAddTraits(.isModal)
     }
 
-    // MARK: - Zvuk a pravidla (list)
-
-    private var battleSettingsSheet: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: FQSpace.xl) {
-                Text("Sound & rules").font(.fqTitle).foregroundStyle(FQColor.textPrimary)
-                soundPlayer
-                rulesCard
-            }
-            .padding(FQSpace.gutter)
-        }
-        .presentationDetents([.medium, .large])
-        .presentationDragIndicator(.visible)
-        .presentationBackground(.ultraThinMaterial)
-        .preferredColorScheme(.dark)
-    }
-
-    /// Pravidla bitvy: pevna delka, telefon na stole, pauza kdykoli, ustup prerusi serii.
-    private var rulesCard: some View {
-        VStack(alignment: .leading, spacing: FQSpace.md) {
-            if model.isCustomBattle {
-                rule(symbol: "timer", title: "Quick \(durationText)", detail: "A short warm-up. It doesn't move you along the path.")
-            } else {
-                rule(symbol: "timer", title: "Fixed \(durationText)", detail: "Boss \(model.selectedBoss.nodeIndex + 1) of \(world.bosses.count) · \(world.title). Every boss adds 5 minutes.")
-            }
-            rule(symbol: "iphone.gen3", title: "Phone face-up on the desk", detail: "Lifting it starts a short countdown. Pause first if you need the phone.")
-            rule(symbol: "pause.circle", title: "Pause any time", detail: "The clock stops while you're paused.")
-            rule(symbol: "flag", title: "Retreating resets your streak", detail: "The boss escapes and this battle's time won't count.")
-        }
-        .padding(FQSpace.lg)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .glassCard()
-    }
-
-    private func rule(symbol: String, title: String, detail: String) -> some View {
-        HStack(alignment: .top, spacing: FQSpace.md) {
-            IconTile(symbol: symbol, color: world.accent)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(.fqLabel).foregroundStyle(FQColor.textPrimary)
-                Text(detail).font(.fqMeta).foregroundStyle(FQColor.textSecondary).fixedSize(horizontal: false, vertical: true)
-            }
-        }
-        .accessibilityElement(children: .combine)
-    }
-
-    private func roundButton(_ symbol: String, label: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Image(systemName: symbol)
-                .font(.system(size: 15, weight: .semibold, design: .rounded))
-                .foregroundStyle(FQColor.textPrimary)
-                .frame(width: 44, height: 44)
-                .glassControl(in: Circle(), interactive: true)
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(label)
-    }
-
-    private var soundPlayer: some View {
-        let preferences = model.preferences
-        let status = !preferences.isMusicEnabled ? "Sound is off" : (isFocusing ? "Now playing" : (isPaused ? "Paused" : "Plays when the battle starts"))
-        return VStack(spacing: FQSpace.md) {
-            HStack(spacing: FQSpace.md) {
-                IconTile(symbol: preferences.soundscape == .lofi ? "music.note" : "waveform")
-                VStack(alignment: .leading, spacing: FQSpace.xs) {
-                    Text(preferences.soundscape == .lofi ? preferences.selectedTrack.title : preferences.soundscape.title)
-                        .font(.fqBody.weight(.medium))
-                        .foregroundStyle(FQColor.textPrimary)
-                        .lineLimit(1)
-                    Text(status).font(.fqMeta).foregroundStyle(FQColor.textSecondary)
-                }
-                Spacer(minLength: FQSpace.sm)
-                if preferences.soundscape == .lofi {
-                    roundButton("forward.fill", label: "Next track") { model.skipTrack() }
-                }
-                roundButton(preferences.isMusicEnabled ? "speaker.wave.2.fill" : "speaker.slash.fill", label: preferences.isMusicEnabled ? "Turn sound off" : "Turn sound on") {
-                    model.setMusicEnabled(!preferences.isMusicEnabled)
-                }
-            }
-            Picker("Sound", selection: Binding(get: { preferences.soundscape }, set: { model.setSoundscape($0) })) {
-                ForEach(Soundscape.allCases) { Text($0.title).tag($0) }
-            }
-            .pickerStyle(.segmented)
-            HStack(spacing: FQSpace.md) {
-                Image(systemName: "speaker.fill").font(.fqMeta).foregroundStyle(FQColor.textSecondary).accessibilityHidden(true)
-                Slider(value: Binding(get: { preferences.ambientVolume }, set: { model.setVolume($0) }), in: 0...1)
-                    .tint(FQColor.accent)
-                    .accessibilityLabel("Sound volume")
-                Image(systemName: "speaker.wave.3.fill").font(.fqMeta).foregroundStyle(FQColor.textSecondary).accessibilityHidden(true)
-            }
-        }
-        .padding(FQSpace.lg)
-        .glassCard()
-    }
-
     #if targetEnvironment(simulator)
     private var simulatorControls: some View {
         HStack(spacing: FQSpace.sm) {
-            Button("Simulate Flat") { Task { await model.setSimulatedPosture(.flatFaceUp) } }
-            Button("Simulate Lift") { Task { await model.setSimulatedPosture(.liftedOrTilted) } }
+            Button("Simulate Down") { Task { await model.setSimulatedPosture(.lyingStill) } }
+            Button("Simulate Lift") { Task { await model.setSimulatedPosture(.lifted) } }
         }
         .font(.fqMeta)
         .buttonStyle(.bordered)
@@ -588,7 +392,7 @@ struct BattleView: View {
                         .fill(RadialGradient(colors: [world.accent.opacity(0.45), Color.clear], center: .center, startRadius: 0, endRadius: 80))
                         .frame(width: 160, height: 160)
                     PixelArtAvatarView(sprite: .boss(beaten.pixelSpriteConfig), size: 96)
-                        .opacity(0.55)
+                        .bossBreathing()
                     Image(systemName: "trophy.fill")
                         .font(.system(size: 44, weight: .semibold, design: .rounded))
                         .foregroundStyle(FQColor.accent)
@@ -657,52 +461,21 @@ struct BattleView: View {
         .accessibilityElement(children: .combine)
     }
 
-    private func warningOverlay(seconds: Double) -> some View {
-        ZStack {
-            LinearGradient(colors: [Color(red: 0.62, green: 0.04, blue: 0.14), Color(red: 0.34, green: 0.01, blue: 0.08)], startPoint: .top, endPoint: .bottom)
-                .opacity(0.94)
-                .ignoresSafeArea()
-            VStack(spacing: FQSpace.lg) {
-                PixelArtAvatarView(sprite: .companion("lo-fi-cat"), startled: true, size: 112)
-                Text("\(Int(ceil(seconds)))")
-                    .font(.system(size: 112, weight: .semibold, design: .rounded))
-                    .monospacedDigit()
-                    .foregroundStyle(FQColor.textPrimary)
-                    .contentTransition(.numericText())
-                VStack(spacing: FQSpace.sm) {
-                    Text("Return phone to desk")
-                        .font(.fqTitle)
-                        .multilineTextAlignment(.center)
-                        .foregroundStyle(FQColor.textPrimary)
-                    Text("Combo and verified rewards are at risk")
-                        .font(.fqSecondary)
-                        .multilineTextAlignment(.center)
-                        .foregroundStyle(FQColor.textSecondary)
-                }
-            }
-            .padding(FQSpace.xl)
-        }
-        .transition(.opacity)
-        .animation(.easeInOut(duration: 0.15), value: Int(ceil(seconds)))
-        .accessibilityAddTraits(.isModal)
-        // Varovna obrazovka je cervena v obou rezimech, text na ni musi zustat svetly.
-        .environment(\.colorScheme, .dark)
-    }
-
-    private func resultOverlay(icon: String, title: String, detail: String, color: Color) -> some View {
+    /// Konec bez vitezstvi (boss utekl nebo technicka chyba): nic se nebere, jen tlacitko "Back".
+    private func resultOverlay(icon: String, title: String, detail: String) -> some View {
         ZStack {
             Color.black.opacity(0.5).ignoresSafeArea()
             VStack(spacing: FQSpace.lg) {
                 Image(systemName: icon)
                     .font(.system(size: 40, weight: .semibold, design: .rounded))
-                    .foregroundStyle(color)
+                    .foregroundStyle(FQColor.danger)
                     .accessibilityHidden(true)
                 VStack(spacing: FQSpace.sm) {
-                    Text(title).font(.fqTitle).foregroundStyle(FQColor.textPrimary)
+                    Text(title).font(.fqTitle).multilineTextAlignment(.center).foregroundStyle(FQColor.textPrimary)
                     Text(detail).font(.fqSecondary).multilineTextAlignment(.center).foregroundStyle(FQColor.textSecondary)
                 }
                 Button(action: closeResult) {
-                    Text("Back to the Path")
+                    Text("Back")
                         .font(.fqHeadline)
                         .foregroundStyle(FQColor.onAccent)
                         .frame(maxWidth: .infinity)
@@ -719,5 +492,169 @@ struct BattleView: View {
             .padding(.horizontal, FQSpace.xl)
         }
         .accessibilityAddTraits(.isModal)
+    }
+}
+
+// MARK: - Kulate tlacitko bitvy
+
+/// Velke kulate tlacitko s popiskem pod nim. Tmava poloprusvitna vypln, aby bylo citelne
+/// i na svetlem pozadi sveta; popisek bily se silnym stinem.
+struct BattleActionButton: View {
+    enum Tone { case neutral, accent, danger }
+
+    let symbol: String
+    let caption: String
+    let tone: Tone
+    let action: () -> Void
+
+    private var fill: Color {
+        switch tone {
+        case .neutral: Color(red: 13 / 255, green: 11 / 255, blue: 28 / 255).opacity(0.55)
+        case .danger: Color(red: 60 / 255, green: 8 / 255, blue: 20 / 255).opacity(0.6)
+        case .accent: Color(red: 8 / 255, green: 40 / 255, blue: 34 / 255).opacity(0.6)
+        }
+    }
+
+    private var rim: Color {
+        switch tone {
+        case .neutral: Color.white.opacity(0.18)
+        case .danger: Color(red: 1, green: 84 / 255, blue: 102 / 255).opacity(0.45)
+        case .accent: Color(red: 107 / 255, green: 230 / 255, blue: 199 / 255).opacity(0.45)
+        }
+    }
+
+    private var iconColor: Color {
+        switch tone {
+        case .neutral: .white
+        case .danger: FQColor.danger
+        case .accent: FQColor.accent
+        }
+    }
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: FQSpace.sm) {
+                Image(systemName: symbol)
+                    .font(.system(size: 26, weight: .semibold, design: .rounded))
+                    .foregroundStyle(iconColor)
+                    .frame(width: 69, height: 69)
+                    .background(.ultraThinMaterial, in: Circle())
+                    .background(fill, in: Circle())
+                    .overlay { Circle().strokeBorder(rim, lineWidth: 1) }
+                    .shadow(color: .black.opacity(0.45), radius: 11, y: 8)
+                    .shadow(color: .black.opacity(0.35), radius: 3, y: 2)
+                Text(caption)
+                    .font(.fqLabel)
+                    .foregroundStyle(.white)
+                    .shadow(color: .black.opacity(0.9), radius: 1, y: 1)
+                    .shadow(color: .black.opacity(0.6), radius: 6)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(caption)
+        .accessibilityAddTraits(.isButton)
+    }
+}
+
+// MARK: - Zvednuty telefon
+
+/// Alarm zvednuteho telefonu: staticka tmave cervena bez blikani, pomalu pulzuje jen cislo.
+/// Tlacitko neni: alarm skonci sam, az senzor hlasi, ze telefon lezi v klidu.
+private struct PhoneLiftedAlarm: View {
+    let seconds: Double
+    let forgiven: Bool
+    let graceUsed: Bool
+    let bossName: String
+
+    private var title: String { forgiven ? "Slip forgiven" : "Put it back on the desk" }
+    private var detail: String {
+        if forgiven { return "Nothing lost this time. Next slip and the boss escapes." }
+        return graceUsed ? "Lay it face-down, or \(bossName) escapes with your loot." : "Lay it face-down. Your first slip in a battle is forgiven."
+    }
+
+    var body: some View {
+        ZStack {
+            Color(red: 0x4A / 255, green: 0x07 / 255, blue: 0x10 / 255).ignoresSafeArea()
+            VStack(spacing: 18) {
+                Label("Phone lifted", systemImage: "iphone.gen3")
+                    .font(.fqLabel.weight(.bold))
+                    .textCase(.uppercase)
+                    .tracking(1.2)
+                    .foregroundStyle(.white)
+                PulsingCount(text: forgiven ? "0" : "\(Int(ceil(seconds)))")
+                VStack(spacing: FQSpace.sm) {
+                    Text(title)
+                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                        .multilineTextAlignment(.center)
+                        .foregroundStyle(.white)
+                    Text(detail)
+                        .font(.fqSecondary)
+                        .multilineTextAlignment(.center)
+                        .foregroundStyle(.white.opacity(0.85))
+                }
+                Label("The alarm stops by itself when the phone lies still.", systemImage: "iphone.gen3")
+                    .font(.fqSecondary)
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(.white.opacity(0.7))
+            }
+            .padding(.horizontal, FQSpace.xl)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isModal)
+        .environment(\.colorScheme, .dark)
+    }
+}
+
+/// Cislo odpoctu: pomalu dycha (pruhlednost 1 -> 0,55, cely cyklus 2,4 s). S Reduce Motion stoji.
+private struct PulsingCount: View {
+    let text: String
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var dimmed = false
+
+    var body: some View {
+        Text(text)
+            .font(.system(size: 136, weight: .bold, design: .rounded))
+            .monospacedDigit()
+            .foregroundStyle(.white)
+            .opacity(dimmed ? 0.55 : 1)
+            .onAppear {
+                guard !reduceMotion else { return }
+                withAnimation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true)) { dimmed = true }
+            }
+    }
+}
+
+// MARK: - Dychani bosse
+
+private struct BossBreathing: ViewModifier {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var inhale = false
+
+    func body(content: Content) -> some View {
+        content
+            .scaleEffect(inhale ? 1.02 : 1, anchor: UnitPoint(x: 0.5, y: 0.92))
+            .onAppear {
+                guard !reduceMotion else { return }
+                withAnimation(.easeInOut(duration: 1.6).repeatForever(autoreverses: true)) { inhale = true }
+            }
+    }
+}
+
+extension View {
+    /// Boss jen jemne dycha (meritko 1,02). Nikdy nebledne: pruhlednost zustava 1.
+    func bossBreathing() -> some View { modifier(BossBreathing()) }
+}
+
+extension Boss {
+    /// Uroven bosse podle poradi na ceste sveta ("Novice", "Adept", "Elite", "Mythic").
+    var tierTitle: String {
+        switch nodeIndex {
+        case ..<2: "Novice"
+        case ..<4: "Adept"
+        case ..<6: "Elite"
+        default: "Mythic"
+        }
     }
 }

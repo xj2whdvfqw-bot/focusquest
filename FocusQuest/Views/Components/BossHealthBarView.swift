@@ -1,32 +1,24 @@
 import SwiftUI
 
-/// Zdravi bosse v bitve: tenky pruh v barve sveta a pod nim "18 / 25 HP".
+/// Tenky pruh zdravi bosse bez cisla.
 struct BossHealthBarView: View {
-    let currentHP: Int
-    let maxHP: Int
-    /// Podil zbyvajiciho zdravi 0...1. Bitva ho pocita po sekundach, aby pruh ubyval plynule,
-    /// i kdyz HP v textu klesa po celych minutach.
+    /// Podil zbyvajiciho zdravi 0...1. Bitva ho pocita po sekundach, aby pruh ubyval plynule.
     let fraction: Double
     var tint: Color = FQColor.accent
 
     private var clamped: Double { min(1, max(0, fraction)) }
 
     var body: some View {
-        VStack(spacing: FQSpace.xs) {
-            GeometryReader { proxy in
-                ZStack(alignment: .leading) {
-                    Capsule().fill(FQColor.track)
-                    Capsule().fill(tint).frame(width: proxy.size.width * clamped)
-                }
+        GeometryReader { proxy in
+            ZStack(alignment: .leading) {
+                Capsule().fill(FQColor.track)
+                Capsule().fill(tint).frame(width: proxy.size.width * clamped)
             }
-            .frame(height: 6)
-            .animation(.linear(duration: 1), value: clamped)
-            Text("\(max(0, currentHP)) / \(maxHP) HP")
-                .font(.fqMeta)
-                .monospacedDigit()
-                .foregroundStyle(FQColor.textSecondary)
         }
+        .frame(height: 6)
+        .animation(.linear(duration: 1), value: clamped)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Boss health \(max(0, currentHP)) of \(maxHP)")
+        .accessibilityLabel("Boss health")
+        .accessibilityValue("\(Int((clamped * 100).rounded())) percent")
     }
 }

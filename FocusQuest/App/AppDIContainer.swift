@@ -55,6 +55,5 @@ final class AppDIContainer {
 
         // Ustup z bitvy ("Retreat Anyway") stoji hrdinu HP a serii dni.
         // Odchod z appky uz se netresta: bitva bezi dal i na pozadi.
-        arenaViewModel.onQuestFailed = { [weak profileViewModel] in profileViewModel?.recordQuestFailure() }
     }
 }
