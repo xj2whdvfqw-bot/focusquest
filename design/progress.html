@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-17T10:11:00+01:00",
-  "current": "Sekce 2 (Arena): kód hotový, commituji a spouštím build",
-  "nextStep": "Počkej na výsledek buildu sekce 2; IPA z buildu #21 (sekce 0 a 1) můžeš kdykoli nahrát přes Sideloadly.",
+  "updated": "2026-11-17T10:14:00+01:00",
+  "current": "Sekce 2 (Arena): běží build #22",
+  "nextStep": "Počkej na výsledek buildu #22 (asi 25 minut); IPA z buildu #21 (sekce 0 a 1) můžeš mezitím nahrát přes Sideloadly.",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -121,7 +121,7 @@
     {
       "id": 2,
       "title": "Arena",
-      "status": "pracuje",
+      "status": "build",
       "items": [
         { "text": "Nadpis „Ready to focus?“ bez malého štítku nad ním", "done": true },
         { "text": "Vlevo nahoře pilulka série: plamínek + číslo + „days streak“", "done": true },
@@ -136,8 +136,8 @@
         { "text": "2b: jiskry z hořící části obrysu ven a nahoru (3×3 → 2×2 → 1×1, tmavnou), 1px žhavá linka po obrysu, oranžový okraj pilulky, vítězná znělka", "done": true },
         { "text": "2b: opětovné zapálení během hoření funguje a nikdy se nezasekne (úklid po ~4,5 s); kreslit přes Canvas + TimelineView", "done": true }
       ],
-      "commit": null,
-      "build": null,
+      "commit": "17cd4b8",
+      "build": { "number": 22, "runId": 44053359073, "result": "běží" },
       "note": "Hero HP je pryč z celé appky (útěk z bitvy už nebere HP, výhra ho nedoplňuje). Rychlá bitva má 5 minut a cestu neposouvá. Karta Custom Focus i její list jsou pryč. Na iPhonu otestuj: tlačítko Fight je dole u palce a obrazovka nejde rolovat; ťuknutí na bosse ukáže bublinu a boss poskočí, 4 rychlá ťuknutí = třes, červená záře a zvuk; 5 rychlých ťuknutí na sérii = pixelový oheň kolem pilulky a znělka, znovuzapálení během hoření nesmí nic zaseknout."
     },
     {
