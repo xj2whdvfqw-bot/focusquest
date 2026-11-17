@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-17T15:46:55+01:00",
-  "current": "Sekce 5, část 1: běží build #26.",
-  "nextStep": "Počkat na build části 1, pak část 2: odstranit Hero HP, lektvary, relikvie, combo, automat a vesnici.",
+  "updated": "2026-11-17T16:20:00+01:00",
+  "current": "Sekce 5, část 1: build #26 prošel. Další je část 2.",
+  "nextStep": "Sekce 5, část 2: odstranit Hero HP, lektvary, relikvie, combo, automat a vesnici.",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -188,24 +188,24 @@
     {
       "id": 5,
       "title": "Bitva",
-      "status": "build",
+      "status": "pracuje",
       "items": [
-        { "text": "Krok položení: „Lay the phone face-down. The battle starts when it lies still.“ Start podle pohybového senzoru, ne po 1,6 s", "done": false },
-        { "text": "Karta: sprite, jméno, „Novice · 10 min“, velký časovač, tenká lišta HP bosse bez čísla, řádek „Phone down. The boss is losing.“", "done": false },
-        { "text": "Z karty pryč: combo, „13 HP left“, seznam úkolů a tlačítka vpravo nahoře (pravidla, hudba)", "done": false },
-        { "text": "Jedna pauza za bitvu, max 2:00, živé odpočítávání „Paused · back in 1:43 or the boss escapes“; po vypršení boss uteče", "done": false },
-        { "text": "Ústup → potvrzení „Don't let {boss} win“ / „The boss escapes: no XP and no coins for this battle“ / „Stay and Fight“, „Retreat Anyway“", "done": false },
-        { "text": "Bossové dýchají (měřítko 1,02) a nikdy neblednou (průhlednost vždy 1)", "done": false },
-        { "text": "Kulatá tlačítka na světlém pozadí: výplň rgba(13,11,28,.55) (danger rgba(60,8,20,.6), accent rgba(8,40,34,.6)), stín, 1pt vnitřní okraj, bílé popisky se silným stínem", "done": false },
-        { "text": "5a: zvednutý telefon = statická tmavě červená #4A0710, žádné blikání; jen číslo pomalu pulzuje (1 → .55, 2,4 s), s Reduce Motion bez animace", "done": false },
-        { "text": "5a: text „Put it back on the desk“ / „Lay it face-down. Your first slip in a battle is forgiven.“; bez tlačítka „I put it back“, alarm skončí, až senzor hlásí klid", "done": false },
-        { "text": "5a: první zvednutí v bitvě odpuštěno („Slip forgiven“ / „Nothing lost this time. Next slip and the boss escapes.“), při druhém boss uteče", "done": false },
+        { "text": "Krok položení: „Lay the phone face-down. The battle starts when it lies still.“ Start podle pohybového senzoru, ne po 1,6 s", "done": true },
+        { "text": "Karta: sprite, jméno, „Novice · 10 min“, velký časovač, tenká lišta HP bosse bez čísla, řádek „Phone down. The boss is losing.“", "done": true },
+        { "text": "Z karty pryč: combo, „13 HP left“, seznam úkolů a tlačítka vpravo nahoře (pravidla, hudba)", "done": true },
+        { "text": "Jedna pauza za bitvu, max 2:00, živé odpočítávání „Paused · back in 1:43 or the boss escapes“; po vypršení boss uteče", "done": true },
+        { "text": "Ústup → potvrzení „Don't let {boss} win“ / „The boss escapes: no XP and no coins for this battle“ / „Stay and Fight“, „Retreat Anyway“", "done": true },
+        { "text": "Bossové dýchají (měřítko 1,02) a nikdy neblednou (průhlednost vždy 1)", "done": true },
+        { "text": "Kulatá tlačítka na světlém pozadí: výplň rgba(13,11,28,.55) (danger rgba(60,8,20,.6), accent rgba(8,40,34,.6)), stín, 1pt vnitřní okraj, bílé popisky se silným stínem", "done": true },
+        { "text": "5a: zvednutý telefon = statická tmavě červená #4A0710, žádné blikání; jen číslo pomalu pulzuje (1 → .55, 2,4 s), s Reduce Motion bez animace", "done": true },
+        { "text": "5a: text „Put it back on the desk“ / „Lay it face-down. Your first slip in a battle is forgiven.“; bez tlačítka „I put it back“, alarm skončí, až senzor hlásí klid", "done": true },
+        { "text": "5a: první zvednutí v bitvě odpuštěno („Slip forgiven“ / „Nothing lost this time. Next slip and the boss escapes.“), při druhém boss uteče", "done": true },
         { "text": "5b: odstranit Hero HP, lektvary (Health, Time-Freeze), relikvie, combo, automat a vesnici; jediný trest je „boss uteče“ (bez XP a mincí), série a mince se nikdy neberou", "done": false },
         { "text": "5b: obrazovka prohry: „{boss} escaped“, důvod („You retreated.“ / „The phone stayed up.“ / „The pause ran out.“), „No loot this time, your streak and coins are safe.“, tlačítko „Back“", "done": false }
       ],
       "commit": "6116216",
-      "build": { "number": 26, "runId": 44106830568, "result": "běží" },
-      "note": "Část 1 hotová v kódu, čeká na build. Část 2 (bod 5b o odstranění Hero HP, lektvarů, relikvií, automatu a vesnice) zbývá."
+      "build": { "number": 26, "runId": 44106830568, "result": "prošel" },
+      "note": "Část 1 prošla buildem #26 (bitevní karta, jedna pauza max 2:00, odpuštěné první zvednutí, ústup s potvrzením, dýchající boss). Zbývá část 2: odstranit Hero HP, lektvary, relikvie, combo, automat a vesnici a dodělat obrazovku prohry. Na iPhonu otestuj: bitva začne až po položení displejem dolů, pauza odpočítává 2:00, první zvednutí je odpuštěné a při druhém boss uteče, zvednutý telefon je tmavě červený bez blikání."
     },
     {
       "id": 6,
