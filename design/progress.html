@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-17T16:32:00+01:00",
-  "current": "Sekce 5, část 2: běží build #28 (commit 117c302).",
-  "nextStep": "Počkat na build #28.",
+  "updated": "2026-11-17T16:54:00+01:00",
+  "current": "Sekce 5 (Bitva) hotová, build #28 prošel.",
+  "nextStep": "Sekce 6: Vítězství a přestávka.",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -188,7 +188,7 @@
     {
       "id": 5,
       "title": "Bitva",
-      "status": "build",
+      "status": "hotovo",
       "items": [
         { "text": "Krok položení: „Lay the phone face-down. The battle starts when it lies still.“ Start podle pohybového senzoru, ne po 1,6 s", "done": true },
         { "text": "Karta: sprite, jméno, „Novice · 10 min“, velký časovač, tenká lišta HP bosse bez čísla, řádek „Phone down. The boss is losing.“", "done": true },
@@ -204,8 +204,8 @@
         { "text": "5b: obrazovka prohry: „{boss} escaped“, důvod („You retreated.“ / „The phone stayed up.“ / „The pause ran out.“), „No loot this time, your streak and coins are safe.“, tlačítko „Back“", "done": true }
       ],
       "commit": "117c302",
-      "build": { "number": 28, "runId": 44114854808, "result": "běží" },
-      "note": "Část 1 prošla buildem #26. Část 2: odstraněno Hero HP, lektvary, relikvie, combo, automat a vesnice; útěk bosse dá jen 0 XP a 0 mincí, série a mince zůstávají. Staré uložené hodnoty (heroHP, potions, relikvie, village, bestCombo, lastQuestFailedAt) se při načtení ignorují. Build #27 spadl: RewardRules (výpočet mincí) zmizel se smazaným Village.swift, přesunut do PlayerStats.swift. Čeká na build #28."
+      "build": { "number": 28, "runId": 44114854808, "result": "prošel" },
+      "note": "Hotovo, build #28 prošel (#27 spadl na chybějícím RewardRules ze smazaného Village.swift, opraveno). Z appky pryč Hero HP, smrt, lektvary, relikvie, combo, automat a vesnice; jediný trest je útěk bosse bez XP a mincí, série a mince se neberou. Staré uložené hodnoty se při načtení ignorují. Na iPhonu otestuj: po aktualizaci se starý profil načte (mince, level, série zůstanou); ústup, druhé zvednutí telefonu a vypršená pauza ukážou „{boss} escaped“ se správným důvodem a textem o bezpečné sérii; Back vrátí do Areny; Shop má jen Gear a v Hero chybí relikvie."
     },
     {
       "id": 6,
