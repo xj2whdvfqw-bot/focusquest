@@ -96,9 +96,12 @@ final class ProgressionModelTests: XCTestCase {
             SessionSummary(id: UUID(), bossName: "D", verifiedMinutes: 30, xpEarned: 300, completedAt: now, flawless: true)
         ]
         let progress = SubjectProgress.summarize(history)
-        XCTAssertEqual(progress.map(\.subject), [.math, .german])
+        // Bitva bez predmetu se pocita do "General".
+        XCTAssertEqual(progress.map(\.subject), [.math, .german, .general])
         XCTAssertEqual(progress.first?.minutes, 45)
         XCTAssertEqual(progress.first?.battles, 2)
+        XCTAssertEqual(progress.last?.subject.title, "General")
+        XCTAssertEqual(progress.last?.minutes, 30)
     }
 
     // MARK: - Hrdina a profil
@@ -252,9 +255,10 @@ final class ProgressionModelTests: XCTestCase {
     // MARK: - Odmeny
 
     func testCoinRewardCountsMinutesAndBossBonus() {
-        XCTAssertEqual(RewardRules.coins(verifiedMinutes: 25, bossDefeated: true), 35)
-        XCTAssertEqual(RewardRules.coins(verifiedMinutes: 25, bossDefeated: false), 25)
-        XCTAssertEqual(RewardRules.coins(verifiedMinutes: -5, bossDefeated: false), 0)
+        XCTAssertEqual(RewardRules.coins(verifiedMinutes: 25), 75)
+        XCTAssertEqual(RewardRules.xp(verifiedMinutes: 25), 300)
+        XCTAssertEqual(RewardRules.coins(verifiedMinutes: -5), 0)
+        XCTAssertEqual(RewardRules.xp(verifiedMinutes: -5), 0)
     }
 
     func testRecordedBattleUpdatesLevelHistoryAndStreak() {

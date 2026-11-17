@@ -10,6 +10,10 @@ final class BattlePresenter {
     var showsFightSheet = false
     /// Hrac zmackl Start: bitva zacne az po zavreni listu (dve prezentace naraz SwiftUI neumi).
     var startsAfterSheet = false
+    /// Co otevrit, az se obrazovka bitvy zavre (z prestavky: "Same again" a "Change boss").
+    var afterBattle: AfterBattle?
+
+    enum AfterBattle { case fightSheet, path }
 
     /// Otevre Fight sheet pro uz vybraneho bosse.
     func openFightSheet() {

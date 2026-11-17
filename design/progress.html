@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-17T16:54:00+01:00",
-  "current": "Sekce 5 (Bitva) hotová, build #28 prošel.",
-  "nextStep": "Sekce 6: Vítězství a přestávka.",
+  "updated": "2026-11-17T17:53:00+01:00",
+  "current": "Sekce 6: kód hotový (výplata ×12/×3, Next up, počítání odměn, Keep going, panel přestávky), commit a push.",
+  "nextStep": "Spustit build #29 a počkat na výsledek.",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -210,24 +210,24 @@
     {
       "id": 6,
       "title": "Vítězství a přestávka",
-      "status": "cekam",
+      "status": "build",
       "items": [
-        { "text": "Výplata: XP = minuty × 12, mince = minuty × 3; level up při XP ≥ potřebné XP", "done": false },
-        { "text": "Série +1 jednou za kalendářní den", "done": false },
-        { "text": "Zápis do battle logu (boss, datum, xp, minuty) a přičtení minut a bitev k předmětu (nebo „General“)", "done": false },
-        { "text": "Když to byl aktuální boss na cestě, posunout svět a ukázat „Next up: {další boss} · {min} min“", "done": false },
-        { "text": "Sprite poraženého bosse (bez trofeje); XP a mince se načítají 0,9 s se zpomalením", "done": false },
-        { "text": "Po 5minutové bitvě navíc „Keep going · 20 min battle“", "done": false },
-        { "text": "Přestávka (spodní panel po Collect Loot): štítek „Break“, velký tenký časovač 5:00, který opravdu odpočítává, text „Stand up, drink some water. The next boss waits.“", "done": false },
-        { "text": "V 0:00 „Break's over“, časovač žlutě, zvuk", "done": false },
-        { "text": "Hlavní žluté tlačítko ze 3 částí: ▶ kolečko · „NEXT BOSS“ malými kapitálkami + jméno bosse (zkrácené) · pilulka „25 min“", "done": false },
-        { "text": "Dvě dlaždice: „Same again“ (otevře fight sheet posledního bosse) a „Change boss“ („Pick on the Path“, otevře Path)", "done": false },
-        { "text": "Kompaktní obrysové tlačítko „Done for today“ (ne přes celou šířku)", "done": false },
-        { "text": "„Just 5 minutes“: rychlá 5minutová bitva proti bossovi aktuálního světa, cestu neposouvá", "done": false }
+        { "text": "Výplata: XP = minuty × 12, mince = minuty × 3; level up při XP ≥ potřebné XP", "done": true },
+        { "text": "Série +1 jednou za kalendářní den", "done": true },
+        { "text": "Zápis do battle logu (boss, datum, xp, minuty) a přičtení minut a bitev k předmětu (nebo „General“)", "done": true },
+        { "text": "Když to byl aktuální boss na cestě, posunout svět a ukázat „Next up: {další boss} · {min} min“", "done": true },
+        { "text": "Sprite poraženého bosse (bez trofeje); XP a mince se načítají 0,9 s se zpomalením", "done": true },
+        { "text": "Po 5minutové bitvě navíc „Keep going · 20 min battle“", "done": true },
+        { "text": "Přestávka (spodní panel po Collect Loot): štítek „Break“, velký tenký časovač 5:00, který opravdu odpočítává, text „Stand up, drink some water. The next boss waits.“", "done": true },
+        { "text": "V 0:00 „Break's over“, časovač žlutě, zvuk", "done": true },
+        { "text": "Hlavní žluté tlačítko ze 3 částí: ▶ kolečko · „NEXT BOSS“ malými kapitálkami + jméno bosse (zkrácené) · pilulka „25 min“", "done": true },
+        { "text": "Dvě dlaždice: „Same again“ (otevře fight sheet posledního bosse) a „Change boss“ („Pick on the Path“, otevře Path)", "done": true },
+        { "text": "Kompaktní obrysové tlačítko „Done for today“ (ne přes celou šířku)", "done": true },
+        { "text": "„Just 5 minutes“: rychlá 5minutová bitva proti bossovi aktuálního světa, cestu neposouvá", "done": true }
       ],
       "commit": null,
       "build": null,
-      "note": ""
+      "note": "Kód hotový, čeká na build."
     },
     {
       "id": 7,

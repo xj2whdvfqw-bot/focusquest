@@ -46,6 +46,10 @@ struct BattleVictory: Equatable, Sendable {
     let coinsEarned: Int
     /// Vlastni bitva z Areny: neposouva cestu sveta.
     var isCustom = false
+    /// Dalsi boss sveta, kdyz tahle vyhra posunula cestu (byl to boss na rade). Jinak nil.
+    var nextUp: Boss? = nil
+    /// Rychla 5minutova bitva ("Just 5 minutes"): vyhra nabidne "Keep going · 20 min battle".
+    var isQuickBattle: Bool { isCustom && verifiedMinutes == Boss.quickBattleMinutes }
 }
 
 @MainActor
@@ -158,11 +162,46 @@ final class ArenaViewModel: ObservableObject {
 
     /// "Not feeling it? Just 5 minutes": stejny boss jako na tlacitku Fight, jen na 5 minut.
     /// Je to vlastni bitva, takze cestu sveta neposouva. Spusti se z obrazovky bitvy jako Fight.
-    func prepareQuickBattle(with boss: Boss) {
+    func prepareQuickBattle(with boss: Boss, minutes: Int = Boss.quickBattleMinutes) {
         guard isBetweenBattles else { return }
         selectBoss(boss)
         isCustomBattle = true
-        selectedBoss = selectedBoss.withHP(minutes: Boss.quickBattleMinutes)
+        selectedBoss = selectedBoss.withHP(minutes: minutes)
+    }
+
+    /// Delka bitvy "Keep going" po rychle 5minutove bitve.
+    static let keepGoingMinutes = 20
+
+    /// "Keep going · 20 min battle": hned dalsi bitva se stejnym bossem, stale vlastni (cestu neposouva).
+    func keepGoing() {
+        guard case let .victory(victory) = state else { return }
+        let boss = Boss.find(victory.boss.id) ?? victory.boss
+        stopSession()
+        prepareQuickBattle(with: boss, minutes: Self.keepGoingMinutes)
+        startSession()
+    }
+
+    // MARK: - Prestavka
+
+    /// Boss na rade na ceste: nejdriv ve svete posledni bitvy, pak v dalsich svetech. Nil = vse dobyto.
+    var upcomingPathBoss: Boss? {
+        let current = (lastBeaten ?? selectedBoss).world
+        let worlds = [current] + BossWorld.allCases.filter { $0 != current }
+        return worlds.lazy.compactMap { $0.frontierBoss(cleared: self.clearedNodes(in: $0)) }.first
+    }
+
+    /// "NEXT BOSS" z prestavky: bitva zacne hned, predmet zustava stejny.
+    func startNextBoss(_ boss: Boss) {
+        guard isBetweenBattles else { return }
+        stopSession()
+        selectBoss(boss)
+        startSession()
+    }
+
+    /// Prestavka dobehla do 0:00: kratka melodie a jemna vibrace.
+    func announceBreakOver() {
+        audio.breakOver(preferences: preferences)
+        haptics.triggerRecovery(enabled: preferences.isHapticsEnabled)
     }
 
     /// Konec vlastni bitvy: vybrany je zase posledni uzel cesty.
@@ -469,25 +508,32 @@ final class ArenaViewModel: ObservableObject {
         guard let session = activeSession, !isFinishing else { return }
         isFinishing = true
         defer { isFinishing = false }
-        let subject = selectedSubject ?? .math
+        // Bitva bez predmetu se pocita do "General".
+        let subject = selectedSubject ?? .general
         do {
             if !selectedBoss.isDefeated { try await sendHeartbeat(elapsed: elapsed) }
             let result = try await validation.completeSession(sessionID: session.serverSessionID)
             let minutes = result.boss.isDefeated ? result.boss.maxHP : max(0, result.boss.maxHP - result.boss.currentHP)
-            let victory = BattleVictory(
+            // Vyplata: 12 XP a 3 mince za overenou minutu.
+            var victory = BattleVictory(
                 boss: result.boss,
                 subject: subject,
                 verifiedMinutes: minutes,
-                xpEarned: result.xpEarned,
-                coinsEarned: RewardRules.coins(verifiedMinutes: minutes, bossDefeated: result.boss.isDefeated),
+                xpEarned: RewardRules.xp(verifiedMinutes: minutes),
+                coinsEarned: RewardRules.coins(verifiedMinutes: minutes),
                 isCustom: isCustomBattle
             )
             tearDownBattle(keepNotification: true)
             selectedBoss.currentHP = result.boss.currentHP
             // Obrazovka vitezstvi ukazuje bosse, ktery opravdu padl - ulozi se driv, nez se cesta posune.
             if result.boss.isDefeated { lastBeaten = Boss.find(selectedBoss.id) ?? result.boss }
-            // Porazeny uzel na rade posune cestu sveta o krok.
-            if result.boss.isDefeated, !isCustomBattle, let template = Boss.find(selectedBoss.id) { changePreferences { $0.markCleared(template) } }
+            // Porazeny uzel na rade posune cestu sveta o krok a obrazovka ukaze "Next up".
+            if result.boss.isDefeated, !isCustomBattle, let template = Boss.find(selectedBoss.id) {
+                let world = template.world
+                let wasFrontier = template.nodeIndex == clearedNodes(in: world)
+                changePreferences { $0.markCleared(template) }
+                if wasFrontier { victory.nextUp = world.frontierBoss(cleared: clearedNodes(in: world)) }
+            }
             state = .victory(victory)
             activeSession = nil
             onVictory?(victory)

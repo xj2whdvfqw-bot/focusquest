@@ -155,15 +155,14 @@ extension PlayerStats {
     }
 }
 
-/// Mince za bitvu: minuta overeneho soustredeni = 1 mince, porazeny boss +10.
+/// Vyplata za vyhranou bitvu: minuta overeneho soustredeni = 12 XP a 3 mince.
 /// Utek bosse dava 0 (o to se stara volajici); mince se nikdy neberou.
 enum RewardRules {
-    static let coinsPerVerifiedMinute = 1
-    static let bossDefeatBonus = 10
+    static let xpPerVerifiedMinute = 12
+    static let coinsPerVerifiedMinute = 3
 
-    static func coins(verifiedMinutes: Int, bossDefeated: Bool) -> Int {
-        max(0, verifiedMinutes) * coinsPerVerifiedMinute + (bossDefeated ? bossDefeatBonus : 0)
-    }
+    static func xp(verifiedMinutes: Int) -> Int { max(0, verifiedMinutes) * xpPerVerifiedMinute }
+    static func coins(verifiedMinutes: Int) -> Int { max(0, verifiedMinutes) * coinsPerVerifiedMinute }
 }
 
 /// Jeden sloupec tydenniho grafu soustredeni.

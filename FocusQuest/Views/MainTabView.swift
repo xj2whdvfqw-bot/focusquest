@@ -79,8 +79,11 @@ struct MainTabView: View {
                         battlePresenter.showsFightSheet = false
                     }
                 }
-                .fullScreenCover(isPresented: Binding(get: { battlePresenter.isPresented }, set: { battlePresenter.isPresented = $0 })) {
-                    BattleView(model: container.arenaViewModel, profileModel: container.profileViewModel) { battlePresenter.isPresented = false }
+                .fullScreenCover(isPresented: Binding(get: { battlePresenter.isPresented }, set: { battlePresenter.isPresented = $0 }), onDismiss: { openAfterBattle() }) {
+                    BattleView(model: container.arenaViewModel, profileModel: container.profileViewModel, onExit: { battlePresenter.isPresented = false }, onExitTo: { destination in
+                        battlePresenter.afterBattle = destination
+                        battlePresenter.isPresented = false
+                    })
                 }
                 // Bezici bitva musi byt videt vzdy, at ji hrac spustil odkudkoli.
                 .onReceive(container.arenaViewModel.$state) { state in
@@ -144,6 +147,16 @@ struct MainTabView: View {
     }
 
     /// Start ve Fight sheetu: list se zavrel, ted zacne bitva (polozeni telefonu) pres celou obrazovku.
+    /// Prestavka zavrela bitvu s cilem: Fight sheet posledniho bosse, nebo zalozka Path.
+    private func openAfterBattle() {
+        guard let destination = battlePresenter.afterBattle else { return }
+        battlePresenter.afterBattle = nil
+        switch destination {
+        case .fightSheet: battlePresenter.openFightSheet()
+        case .path: selectedTab = .path
+        }
+    }
+
     private func startBattleAfterFightSheet() {
         guard battlePresenter.startsAfterSheet else { return }
         battlePresenter.startsAfterSheet = false

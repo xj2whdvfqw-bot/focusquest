@@ -59,8 +59,6 @@ actor SimulatedSecureBackendService: FocusValidationServiceProtocol {
     private let signer = CryptoSigner()
     private var sessions: [String: ActiveSession] = [:]
     private let bosses = Dictionary(uniqueKeysWithValues: Boss.roster.map { ($0.id, $0) })
-    /// Level stoji 1000 XP, takze 10 XP za minutu = novy level zhruba po 100 minutach soustredeni.
-    static let xpPerVerifiedMinute = 10
     private var stats = PlayerStats.initial
 
     init(signingKey: Data? = nil) { self.signingKey = signingKey ?? Data(CryptoSigner().makeNonce(byteCount: 48).utf8) }
@@ -114,7 +112,7 @@ actor SimulatedSecureBackendService: FocusValidationServiceProtocol {
         stats.battles += 1
         if boss.isDefeated { stats.wins += 1 }
         stats.totalHPDealt += session.verifiedSeconds / 60
-        let xpEarned = session.verifiedSeconds / 60 * Self.xpPerVerifiedMinute
+        let xpEarned = RewardRules.xp(verifiedMinutes: session.verifiedSeconds / 60)
         stats.totalXP += xpEarned
         stats.level = max(1, stats.totalXP / 1000 + 1)
         return CompleteSessionResponse(stats: stats, boss: boss, xpEarned: xpEarned)

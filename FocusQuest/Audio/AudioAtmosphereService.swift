@@ -11,6 +11,12 @@ protocol AudioAtmosphereServiceProtocol: AnyObject {
     func countdownTick(preferences: AppPreferences, secondsRemaining: Int)
     func recover(preferences: AppPreferences)
     func stop()
+    /// Konec prestavky ("Break's over"): kratka dvoutonova melodie.
+    func breakOver(preferences: AppPreferences)
+}
+
+extension AudioAtmosphereServiceProtocol {
+    func breakOver(preferences: AppPreferences) { }
 }
 
 /// Prehrava zvuk behem soustredeni (lo-fi playlist, bily nebo hnedy sum) a 8-bit tony varovneho odpoctu.
@@ -170,6 +176,16 @@ final class AudioAtmosphereService: NSObject, AudioAtmosphereServiceProtocol, AV
     }
 
     // MARK: - Tony odpoctu
+
+    func breakOver(preferences: AppPreferences) {
+        guard preferences.isSFXEnabled else { return }
+        try? AVAudioSession.sharedInstance().setActive(true)
+        playTone(frequency: 784, duration: 0.16, volume: 0.5)
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .milliseconds(200))
+            self?.playTone(frequency: 1_175, duration: 0.28, volume: 0.5)
+        }
+    }
 
     private func playTone(frequency: Double, duration: Double, volume: Float) {
         guard let data = Self.toneWave(frequency: frequency, duration: duration) else { return }

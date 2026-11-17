@@ -34,11 +34,13 @@ struct StudySubject: Hashable, Codable, Sendable, Identifiable {
     static let economics = StudySubject(id: "economics")
     static let history = StudySubject(id: "history")
     static let it = StudySubject(id: "it")
+    /// Bitva bez predmetu (stare zaznamy, nebo kdyz predmet chybi) se pocita sem.
+    static let general = StudySubject(id: "general")
 
     /// Nazvy predmetu ze starsich verzi (pevny vycet).
     private static let builtInTitles = [
         "math": "Math", "english": "English", "czech": "Czech", "german": "German",
-        "economics": "Economics", "history": "History", "it": "IT"
+        "economics": "Economics", "history": "History", "it": "IT", "general": "General"
     ]
 
     /// Predmety noveho hrace.
@@ -171,7 +173,7 @@ struct SubjectProgress: Identifiable, Equatable, Sendable {
         var minutes: [StudySubject: Int] = [:]
         var battles: [StudySubject: Int] = [:]
         for entry in history {
-            guard let subject = entry.subject else { continue }
+            let subject = entry.subject ?? .general
             minutes[subject, default: 0] += max(0, entry.verifiedMinutes)
             battles[subject, default: 0] += 1
         }

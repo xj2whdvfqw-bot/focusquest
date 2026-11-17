@@ -7,8 +7,15 @@ struct BattleView: View {
     @ObservedObject var profileModel: ProfileViewModel
     /// Zavola se po zavreni vysledku bitvy nebo krizkem pred bitvou (zavre celou obrazovku).
     let onExit: () -> Void
+    /// Zavre obrazovku a pak otevre Fight sheet nebo zalozku Path (z prestavky).
+    var onExitTo: (BattlePresenter.AfterBattle) -> Void = { _ in }
     @State private var receipt: UIImage?
     @State private var showsRetreatConfirm = false
+    /// Po "Collect Loot" se misto vitezstvi ukaze spodni panel prestavky.
+    @State private var showsBreak = false
+    /// 0 -> 1 behem 0,9 s: XP a mince na obrazovce vitezstvi se nacitaji.
+    @State private var rewardProgress = 0.0
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// Rozmery ladene v Battle Card Lab (webovy prototyp). Pill je tu vlastni, aby se nezmenily ostatni obrazovky.
     private enum Layout {
@@ -90,10 +97,13 @@ struct BattleView: View {
                 resultOverlay(icon: "exclamationmark.triangle.fill", title: "Battle stopped", detail: "\(reason) Nothing was taken from you.")
             }
             if case let .defeated(defeat) = model.state { defeatOverlay(defeat) }
-            if case let .victory(victory) = model.state { victoryOverlay(victory) }
+            if case let .victory(victory) = model.state {
+                if showsBreak { breakPanel(victory) } else { victoryOverlay(victory) }
+            }
         }
         .preferredColorScheme(.dark)
         .animation(.easeOut(duration: 0.25), value: isVictory)
+        .animation(.easeOut(duration: 0.25), value: showsBreak)
         .animation(.easeOut(duration: 0.2), value: showsRetreatConfirm)
         .onChange(of: model.state) { _, value in
             // Ustupovy dialog nema smysl, kdyz bitva mezitim skoncila.
@@ -101,8 +111,19 @@ struct BattleView: View {
             // Odmenu uz pripsal model; obrazovka si jen pripravi sdilitelnou uctenku.
             if case let .victory(victory) = value {
                 receipt = BattleReceiptRenderer.render(profile: profileModel.profile, boss: victory.boss, focusMinutes: victory.verifiedMinutes, flawless: true)
+                countUpRewards()
+            } else {
+                showsBreak = false
+                rewardProgress = 0
             }
         }
+    }
+
+    /// XP a mince se nacitaji od nuly 0,9 s se zpomalenim (s Reduce Motion hned cele).
+    private func countUpRewards() {
+        rewardProgress = 0
+        if reduceMotion { rewardProgress = 1; return }
+        withAnimation(.easeOut(duration: 0.9).delay(0.2)) { rewardProgress = 1 }
     }
 
     private func closeResult() {
@@ -385,11 +406,6 @@ struct BattleView: View {
                         .frame(width: 160, height: 160)
                     PixelArtAvatarView(sprite: .boss(beaten.pixelSpriteConfig), size: 96)
                         .bossBreathing()
-                    Image(systemName: "trophy.fill")
-                        .font(.system(size: 44, weight: .semibold, design: .rounded))
-                        .foregroundStyle(FQColor.accent)
-                        .offset(x: 44, y: 40)
-                        .accessibilityHidden(true)
                 }
                 .frame(height: 140)
                 VStack(spacing: FQSpace.xs) {
@@ -398,28 +414,44 @@ struct BattleView: View {
                         .font(.fqSecondary)
                         .multilineTextAlignment(.center)
                         .foregroundStyle(FQColor.textSecondary)
-                    if victory.boss.isDefeated, !victory.isCustom, let next = nextNode(after: beaten) {
-                        Label("Unlocked: \(next.name) · \(ArenaView.durationText(minutes: next.maxHP))", systemImage: "lock.open.fill")
+                    // Jen kdyz vyhra posunula cestu (porazeny boss byl na rade).
+                    if let next = victory.nextUp {
+                        Text("Next up: \(next.name) · \(ArenaView.durationText(minutes: next.maxHP))")
                             .font(.fqLabel)
-                            .foregroundStyle(world.accent)
+                            .multilineTextAlignment(.center)
+                            .foregroundStyle(beaten.world.accent)
                             .padding(.top, FQSpace.xs)
                     }
                 }
                 HStack(spacing: FQSpace.sm) {
-                    rewardTile(value: "+\(victory.xpEarned)", label: "XP", symbol: "sparkles")
-                    rewardTile(value: "+\(victory.coinsEarned)", label: "Coins", symbol: "dollarsign.circle.fill")
+                    rewardTile(amount: victory.xpEarned, label: "XP", symbol: "sparkles")
+                    rewardTile(amount: victory.coinsEarned, label: "Coins", symbol: "dollarsign.circle.fill")
                 }
-                Button(action: closeResult) {
-                    Text("Collect Loot")
-                        .font(.fqHeadline)
-                        .foregroundStyle(FQColor.onAccent)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, FQSpace.xs)
+                VStack(spacing: FQSpace.sm) {
+                    Button { showsBreak = true } label: {
+                        Text("Collect Loot")
+                            .font(.fqHeadline)
+                            .foregroundStyle(FQColor.onAccent)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, FQSpace.xs)
+                    }
+                    .prominentGlassButtonStyle()
+                    .buttonBorderShape(.roundedRectangle(radius: FQRadius.control))
+                    .controlSize(.large)
+                    .tint(FQColor.accent)
+                    if victory.isQuickBattle {
+                        Button { model.keepGoing() } label: {
+                            Label("Keep going · \(ArenaViewModel.keepGoingMinutes) min battle", systemImage: "play.fill")
+                                .font(.fqLabel)
+                                .foregroundStyle(FQColor.textPrimary)
+                                .frame(maxWidth: .infinity)
+                                .frame(minHeight: 44)
+                                .overlay(RoundedRectangle(cornerRadius: FQRadius.control, style: .continuous).strokeBorder(FQColor.textSecondary.opacity(0.5), lineWidth: 1))
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                    }
                 }
-                .prominentGlassButtonStyle()
-                .buttonBorderShape(.roundedRectangle(radius: FQRadius.control))
-                .controlSize(.large)
-                .tint(FQColor.accent)
             }
             .padding(FQSpace.xl)
             .frame(maxWidth: 360)
@@ -430,22 +462,49 @@ struct BattleView: View {
         .accessibilityAddTraits(.isModal)
     }
 
-    private func nextNode(after boss: Boss) -> Boss? {
-        let list = boss.world.bosses
-        let next = boss.nodeIndex + 1
-        return next < list.count ? list[next] : nil
-    }
-
-    private func rewardTile(value: String, label: String, symbol: String) -> some View {
+    private func rewardTile(amount: Int, label: String, symbol: String) -> some View {
         VStack(spacing: FQSpace.xs) {
             Image(systemName: symbol).font(.fqLabel).foregroundStyle(FQColor.accent).accessibilityHidden(true)
-            Text(value).font(.fqTitle).monospacedDigit().foregroundStyle(FQColor.textPrimary)
+            CountUpNumber(value: Double(amount) * rewardProgress)
+                .font(.fqTitle)
+                .monospacedDigit()
+                .foregroundStyle(FQColor.textPrimary)
             Text(label).font(.fqMeta).foregroundStyle(FQColor.textSecondary)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, FQSpace.md)
         .background(FQColor.fill, in: RoundedRectangle(cornerRadius: FQRadius.control, style: .continuous))
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("+\(amount) \(label)")
+    }
+
+    // MARK: - Prestavka
+
+    /// Spodni panel prestavky po "Collect Loot". Odmena uz je pripsana, tady se jen vybira, co dal.
+    private func breakPanel(_ victory: BattleVictory) -> some View {
+        let beaten = model.lastBeaten ?? Boss.find(victory.boss.id) ?? victory.boss
+        return BreakPanel(
+            nextBoss: model.upcomingPathBoss,
+            sameAgain: beaten,
+            onNextBoss: { boss in
+                receipt = nil
+                model.startNextBoss(boss)
+            },
+            onSameAgain: {
+                model.stopSession()
+                model.selectBoss(beaten)
+                receipt = nil
+                onExitTo(.fightSheet)
+            },
+            onChangeBoss: {
+                model.stopSession()
+                receipt = nil
+                onExitTo(.path)
+            },
+            onDone: closeResult,
+            onBreakOver: { model.announceBreakOver() }
+        )
+        .transition(.move(edge: .bottom).combined(with: .opacity))
     }
 
     /// Obrazovka prohry: boss utekl. Jediny trest je, ze bitva nic neprinese;
@@ -689,5 +748,163 @@ extension Boss {
         case ..<6: "Elite"
         default: "Mythic"
         }
+    }
+}
+
+/// Cislo, ktere se pri animaci "nacita" (XP a mince na obrazovce vitezstvi).
+private struct CountUpNumber: View, Animatable {
+    var value: Double
+    var animatableData: Double {
+        get { value }
+        set { value = newValue }
+    }
+
+    var body: some View { Text("+\(Int(value.rounded()))") }
+}
+
+/// Prestavka po vyhre: velky tenky odpocet 5:00, ktery opravdu bezi; v 0:00 "Break's over",
+/// zluty cas a zvuk. Dole zlute tlacitko na dalsiho bosse cesty, dve dlazdice a kompaktni "Done for today".
+private struct BreakPanel: View {
+    let nextBoss: Boss?
+    let sameAgain: Boss
+    let onNextBoss: (Boss) -> Void
+    let onSameAgain: () -> Void
+    let onChangeBoss: () -> Void
+    let onDone: () -> Void
+    let onBreakOver: () -> Void
+
+    static let breakSeconds = 5 * 60
+    /// Konec prestavky podle hodin, takze odpocet sedi i po navratu z pozadi.
+    @State private var endsAt = Date().addingTimeInterval(TimeInterval(BreakPanel.breakSeconds))
+
+    var body: some View {
+        ZStack(alignment: .bottom) {
+            Color.black.opacity(0.55).ignoresSafeArea()
+            VStack(spacing: FQSpace.lg) {
+                Capsule().fill(FQColor.textTertiary).frame(width: 36, height: 5).accessibilityHidden(true)
+                TimelineView(.periodic(from: .now, by: 1)) { context in
+                    countdown(secondsLeft: max(0, Int(ceil(endsAt.timeIntervalSince(context.date)))))
+                }
+                VStack(spacing: FQSpace.sm) {
+                    if let nextBoss { nextBossButton(nextBoss) }
+                    HStack(spacing: FQSpace.sm) {
+                        tile(symbol: "arrow.counterclockwise", title: "Same again", detail: sameAgain.name, action: onSameAgain)
+                        tile(symbol: "map.fill", title: "Change boss", detail: "Pick on the Path", action: onChangeBoss)
+                    }
+                }
+                Button(action: onDone) {
+                    Text("Done for today")
+                        .font(.fqLabel)
+                        .foregroundStyle(FQColor.textPrimary)
+                        .padding(.horizontal, FQSpace.xl)
+                        .frame(minHeight: 44)
+                        .overlay(Capsule().strokeBorder(FQColor.textSecondary.opacity(0.55), lineWidth: 1))
+                        .contentShape(Capsule())
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, FQSpace.lg)
+            .padding(.top, FQSpace.sm)
+            .padding(.bottom, FQSpace.xl)
+            .frame(maxWidth: 520)
+            .glassCard(prominent: true)
+            .padding(.horizontal, FQSpace.sm)
+            .padding(.bottom, FQSpace.sm)
+        }
+        .accessibilityAddTraits(.isModal)
+        .task {
+            // Zvuk prijde jednou, az odpocet opravdu dobehne.
+            let left = endsAt.timeIntervalSinceNow
+            if left > 0 { try? await Task.sleep(for: .seconds(left)) }
+            guard !Task.isCancelled else { return }
+            onBreakOver()
+        }
+    }
+
+    private func countdown(secondsLeft: Int) -> some View {
+        let over = secondsLeft == 0
+        return VStack(spacing: FQSpace.xs) {
+            Text(over ? "Break's over" : "Break")
+                .font(.fqLabel)
+                .textCase(.uppercase)
+                .tracking(1.2)
+                .foregroundStyle(over ? FQColor.cta : FQColor.textSecondary)
+            Text(BattleView.minutesSeconds(secondsLeft))
+                .font(.system(size: 76, weight: .thin, design: .rounded))
+                .monospacedDigit()
+                .foregroundStyle(over ? FQColor.cta : FQColor.textPrimary)
+                .contentTransition(.numericText(countsDown: true))
+            Text("Stand up, drink some water. The next boss waits.")
+                .font(.fqSecondary)
+                .multilineTextAlignment(.center)
+                .foregroundStyle(FQColor.textSecondary)
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    /// Zlute tlacitko ze tri casti: ▶ kolecko · "NEXT BOSS" + jmeno · pilulka s minutami.
+    private func nextBossButton(_ boss: Boss) -> some View {
+        Button { onNextBoss(boss) } label: {
+            HStack(spacing: FQSpace.md) {
+                ZStack {
+                    Circle().fill(FQColor.onCta)
+                    Image(systemName: "play.fill")
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundStyle(FQColor.cta)
+                        .offset(x: 1)
+                }
+                .frame(width: 38, height: 38)
+                .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("Next boss")
+                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                        .textCase(.uppercase)
+                        .tracking(1.1)
+                        .opacity(0.72)
+                    Text(boss.name)
+                        .font(.system(size: 18, weight: .heavy, design: .rounded))
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                }
+                Spacer(minLength: FQSpace.xs)
+                Text(ArenaView.durationText(minutes: boss.maxHP))
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .monospacedDigit()
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(FQColor.onCta.opacity(0.14), in: Capsule())
+            }
+            .foregroundStyle(FQColor.onCta)
+            .padding(.horizontal, FQSpace.sm)
+            .frame(height: 60)
+            .background(FQColor.cta, in: RoundedRectangle(cornerRadius: FQRadius.pill, style: .continuous))
+            .contentShape(RoundedRectangle(cornerRadius: FQRadius.pill, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Next boss: \(boss.name), \(ArenaView.durationText(minutes: boss.maxHP))")
+    }
+
+    private func tile(symbol: String, title: String, detail: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 4) {
+                Image(systemName: symbol)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(FQColor.accent)
+                    .accessibilityHidden(true)
+                Text(title)
+                    .font(.fqHeadline)
+                    .foregroundStyle(FQColor.textPrimary)
+                Text(detail)
+                    .font(.fqMeta)
+                    .foregroundStyle(FQColor.textSecondary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(FQSpace.md)
+            .background(FQColor.fill, in: RoundedRectangle(cornerRadius: FQRadius.control, style: .continuous))
+            .contentShape(RoundedRectangle(cornerRadius: FQRadius.control, style: .continuous))
+        }
+        .buttonStyle(.plain)
     }
 }
