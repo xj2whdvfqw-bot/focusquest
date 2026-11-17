@@ -74,9 +74,18 @@ struct AppPreferences: Codable, Equatable, Sendable {
     /// Naposledy zvoleny predmet, aby ho hrac nemusel vybirat pred kazdou bitvou znovu.
     var lastSubject: StudySubject?
     var lastBossID: String?
+    /// Predmety hrace v pevnem poradi (poradi cipu ve Fight sheetu), vcetne skrytych a smazanych.
+    var subjects: [SubjectEntry] = StudySubject.defaults.map { SubjectEntry(subject: $0) }
 
     enum CodingKeys: String, CodingKey {
-        case isHapticsEnabled, isMusicEnabled, isSFXEnabled, ambientVolume, selectedTrack, soundscape, clearedNodesByWorld, lastSubject, lastBossID
+        case isHapticsEnabled, isMusicEnabled, isSFXEnabled, ambientVolume, selectedTrack, soundscape, clearedNodesByWorld, lastSubject, lastBossID, subjects
+    }
+
+    /// Predmet, ktery se ma ve Fight sheetu predvybrat: naposledy pouzity, pokud je videt, jinak prvni viditelny.
+    var preselectedSubject: StudySubject? {
+        let visible = subjects.visibleSubjects
+        if let last = lastSubject, let match = visible.first(where: { $0 == last }) { return match }
+        return visible.first
     }
 
     /// Kolik uzlu sveta uz hrac porazil.
@@ -108,5 +117,13 @@ extension AppPreferences {
         clearedNodesByWorld = (try? container.decodeIfPresent([String: Int].self, forKey: .clearedNodesByWorld)) ?? [:]
         lastSubject = try? container.decodeIfPresent(StudySubject.self, forKey: .lastSubject)
         lastBossID = try? container.decodeIfPresent(String.self, forKey: .lastBossID)
+        if let stored = try? container.decodeIfPresent([SubjectEntry].self, forKey: .subjects) {
+            subjects = stored
+        } else if let last = lastSubject, !fallback.subjects.contains(where: { $0.id == last.id }) {
+            // Starsi verze nemely seznam predmetu; naposledy pouzity predmet v nem nesmi chybet.
+            subjects = fallback.subjects + [SubjectEntry(subject: last)]
+        } else {
+            subjects = fallback.subjects
+        }
     }
 }

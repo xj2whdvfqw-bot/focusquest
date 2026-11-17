@@ -42,20 +42,10 @@ struct HeroLookEditor: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: FQSpace.sm) {
                     ForEach(HairStyle.allCases) { style in
-                        let isSelected = style == appearance.hairStyle
-                        Button { change { $0.hairStyle = style } } label: {
-                            Text(style.displayName)
-                                .font(.fqLabel)
-                                .foregroundStyle(isSelected ? FQColor.onAccent : FQColor.textPrimary)
-                                .padding(.horizontal, FQSpace.lg)
-                                .frame(minHeight: 36)
-                                .background(isSelected ? FQColor.accent : FQColor.fill, in: RoundedRectangle(cornerRadius: FQRadius.tile, style: .continuous))
-                                .frame(minHeight: 44)
-                                .contentShape(Rectangle())
+                        FQChip(title: style.displayName, isSelected: style == appearance.hairStyle, compact: true) {
+                            change { $0.hairStyle = style }
                         }
-                        .buttonStyle(.plain)
                         .accessibilityLabel("Hair style \(style.displayName)")
-                        .accessibilityAddTraits(isSelected ? .isSelected : [])
                     }
                 }
             }

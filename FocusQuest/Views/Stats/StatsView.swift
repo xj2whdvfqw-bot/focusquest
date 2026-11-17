@@ -3,6 +3,9 @@ import SwiftUI
 struct StatsView: View {
     @ObservedObject var model: StatsViewModel
     @ObservedObject var profile: ProfileViewModel
+    /// Seznam predmetu hrace (nazvy po prejmenovani, skryte) a sprava "Your subjects".
+    @ObservedObject var arena: ArenaViewModel
+    @State private var showsSubjectManager = false
 
     private var focusHours: String {
         String(format: "%.1f", Double(model.stats.sessionHistory.reduce(0) { $0 + $1.verifiedMinutes }) / 60)
@@ -18,18 +21,32 @@ struct StatsView: View {
                 metric("Best combo", value: "\(model.stats.bestCombo)x")
                 metric("Focus hours", value: focusHours)
             }
-            ScreenSection(title: "Subjects") { subjectsCard }
+            VStack(alignment: .leading, spacing: FQSpace.sm) {
+                HStack(alignment: .firstTextBaseline) {
+                    SectionHeader(title: "Subjects")
+                    Button("Edit subjects") { showsSubjectManager = true }
+                        .font(.fqMeta.weight(.semibold))
+                        .foregroundStyle(FQColor.textSecondary)
+                        .frame(minHeight: 44)
+                        .padding(.trailing, FQSpace.xs)
+                }
+                subjectsCard
+            }
             ScreenSection(title: "Bestiary", detail: bestiaryDetail) { bestiaryCard }
             ScreenSection(title: "Verified battle log", detail: "\(model.stats.sessionHistory.count) battles") {
                 battleLog
             }
         }
         .task { await model.load() }
+        .sheet(isPresented: $showsSubjectManager) { SubjectManagerView(model: arena) }
     }
 
     /// Kolik minut hrac venoval kteremu predmetu.
     @ViewBuilder private var subjectsCard: some View {
+        // Skryte a smazane predmety ve Stats nejsou; data zustavaji v historii.
+        let list = arena.preferences.subjects
         let progress = SubjectProgress.summarize(model.stats.sessionHistory)
+            .filter { entry in list.first { $0.id == entry.subject.id }?.isVisible ?? true }
         let maxMinutes = max(1, progress.first?.minutes ?? 1)
         if progress.isEmpty {
             Label("Pick a subject before a battle to track your study time here.", systemImage: "books.vertical.fill")
@@ -43,7 +60,7 @@ struct StatsView: View {
                 ForEach(progress) { entry in
                     VStack(alignment: .leading, spacing: FQSpace.xs) {
                         HStack {
-                            Text(entry.subject.title).font(.fqLabel).foregroundStyle(FQColor.textPrimary)
+                            Text(list.title(of: entry.subject)).font(.fqLabel).foregroundStyle(FQColor.textPrimary)
                             Spacer(minLength: FQSpace.sm)
                             Text("\(ArenaView.durationText(minutes: entry.minutes)) · \(entry.battles) \(entry.battles == 1 ? "battle" : "battles")")
                                 .font(.fqMeta)

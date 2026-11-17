@@ -21,7 +21,7 @@ private enum FocusQuestTab: String, CaseIterable, Identifiable {
         switch launchArgument {
         case "settings": return .profile
         case "village": return .shop
-        case "battle": return .arena
+        case "battle", "fight": return .arena
         default: break
         }
         return launchArgument.flatMap(FocusQuestTab.init(rawValue:)) ?? .arena
@@ -72,6 +72,14 @@ struct MainTabView: View {
                     SettingsView(model: container.settingsViewModel) { settingsPresenter.isPresented = false }
                         .presentationDragIndicator(.visible)
                 }
+                .sheet(isPresented: Binding(get: { battlePresenter.showsFightSheet }, set: { battlePresenter.showsFightSheet = $0 }), onDismiss: { startBattleAfterFightSheet() }) {
+                    FightSheetView(model: container.arenaViewModel) {
+                        battlePresenter.startsAfterSheet = true
+                        battlePresenter.showsFightSheet = false
+                    } onClose: {
+                        battlePresenter.showsFightSheet = false
+                    }
+                }
                 .fullScreenCover(isPresented: Binding(get: { battlePresenter.isPresented }, set: { battlePresenter.isPresented = $0 })) {
                     BattleView(model: container.arenaViewModel, profileModel: container.profileViewModel) { battlePresenter.isPresented = false }
                 }
@@ -85,6 +93,7 @@ struct MainTabView: View {
                 .task {
                     if FocusQuestTab.launchArgument == "settings" { settingsPresenter.isPresented = true }
                     if FocusQuestTab.launchArgument == "battle" { battlePresenter.isPresented = true }
+                    if FocusQuestTab.launchArgument == "fight" { battlePresenter.openFightSheet() }
                     await presentHeroCreatorIfNeeded()
                 }
                 // Odchod z appky behem bitvy se netresta: hodiny bitvy bezi dal i na pozadi.
@@ -110,7 +119,7 @@ struct MainTabView: View {
             ShopView(model: container.profileViewModel)
                 .tabPage(reserve: reserve)
                 .tag(FocusQuestTab.shop)
-            StatsView(model: container.statsViewModel, profile: container.profileViewModel)
+            StatsView(model: container.statsViewModel, profile: container.profileViewModel, arena: container.arenaViewModel)
                 .tabPage(reserve: reserve)
                 .tag(FocusQuestTab.stats)
             ProfileView(model: container.profileViewModel)
@@ -133,6 +142,14 @@ struct MainTabView: View {
         }
         .frame(maxHeight: .infinity, alignment: .bottom)
         .ignoresSafeArea(edges: .bottom)
+    }
+
+    /// Start ve Fight sheetu: list se zavrel, ted zacne bitva (polozeni telefonu) pres celou obrazovku.
+    private func startBattleAfterFightSheet() {
+        guard battlePresenter.startsAfterSheet else { return }
+        battlePresenter.startsAfterSheet = false
+        container.arenaViewModel.startSession()
+        battlePresenter.isPresented = true
     }
 
     /// Pri prvnim spusteni si hrac vytvori hrdinu. Screenshoty zalozek v CI tuhle obrazovku preskakuji.

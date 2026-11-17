@@ -297,22 +297,13 @@ struct BattleView: View {
         }
     }
 
-    /// Predmet je povinny - bez nej bitva nezacne.
+    /// Predmet je povinny - bez nej bitva nezacne. Bezne se vybira ve Fight sheetu; tady zustava
+    /// pro rychlou 5minutovou bitvu, ktera se otevira primo (stejne cipy, pevne poradi seznamu).
     private var subjectPicker: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: FQSpace.sm) {
-                ForEach(StudySubject.allCases) { subject in
-                    let isSelected = subject == model.selectedSubject
-                    Button { model.selectSubject(subject) } label: {
-                        Text(subject.title)
-                            .font(.fqLabel)
-                            .foregroundStyle(isSelected ? FQColor.onAccent : FQColor.textPrimary)
-                            .padding(.horizontal, FQSpace.lg)
-                            .frame(height: Layout.chipHeight)
-                            .background(isSelected ? AnyShapeStyle(FQColor.accent) : AnyShapeStyle(FQColor.fill), in: pill)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityAddTraits(isSelected ? .isSelected : [])
+                ForEach(model.visibleSubjects) { subject in
+                    FQChip(title: subject.title, isSelected: subject == model.selectedSubject) { model.selectSubject(subject) }
                 }
             }
         }

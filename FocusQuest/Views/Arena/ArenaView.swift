@@ -6,6 +6,16 @@ import SwiftUI
 @MainActor
 final class BattlePresenter {
     var isPresented = false
+    /// Fight sheet (predmet, zvuk, Start) pred bitvou z Areny nebo z dlazdice bosse na Path.
+    var showsFightSheet = false
+    /// Hrac zmackl Start: bitva zacne az po zavreni listu (dve prezentace naraz SwiftUI neumi).
+    var startsAfterSheet = false
+
+    /// Otevre Fight sheet pro uz vybraneho bosse.
+    func openFightSheet() {
+        startsAfterSheet = false
+        showsFightSheet = true
+    }
 }
 
 /// Arena: domovska obrazovka. Nahore nadpis a pilulka serie, dole v dosahu palce
@@ -167,7 +177,7 @@ struct ArenaView: View {
     private func fightButton(_ node: Boss) -> some View {
         Button {
             model.selectBoss(node)
-            battle.isPresented = true
+            battle.openFightSheet()
         } label: {
             ctaLabel("Fight · \(ArenaView.durationText(minutes: node.maxHP))", symbol: "play.fill")
         }

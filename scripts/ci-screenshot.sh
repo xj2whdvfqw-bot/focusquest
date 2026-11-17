@@ -62,7 +62,7 @@ PREV_SHOT=""
 # Kazda polozka je "rezim:zalozka". Appka ma vynuceny tmavy rezim, svetle snimky by byly stejne.
 # "creator" neni zalozka, ale uvodni tvorba hrdiny pri prvnim spusteni.
 # Poradi = priorita: kdyz je simulator pomaly a krok narazi na limit, chybi az ty posledni.
-for ENTRY in dark:arena dark:battle dark:path dark:creator dark:profile dark:village dark:shop dark:stats dark:settings; do
+for ENTRY in dark:arena dark:fight dark:battle dark:path dark:creator dark:profile dark:village dark:shop dark:stats dark:settings; do
   MODE="${ENTRY%%:*}"
   TAB="${ENTRY##*:}"
   xcrun simctl ui "$UDID" appearance "$MODE" || true

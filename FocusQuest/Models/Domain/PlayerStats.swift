@@ -20,7 +20,7 @@ struct BestiaryEntry: Identifiable, Codable, Equatable, Sendable {
     let subject: StudySubject?
     var defeats: Int
 
-    var id: String { "\(subject?.rawValue ?? "none")|\(bossID)" }
+    var id: String { "\(subject?.id ?? "none")|\(bossID)" }
 }
 
 /// Porazeni bossove jednoho predmetu, serazeni od nejcastejsiho.
@@ -28,14 +28,14 @@ struct BestiaryGroup: Identifiable, Equatable, Sendable {
     let subject: StudySubject?
     let entries: [BestiaryEntry]
 
-    var id: String { subject?.rawValue ?? "none" }
+    var id: String { subject?.id ?? "none" }
     var totalDefeats: Int { entries.reduce(0) { $0 + $1.defeats } }
 
     /// Skupiny podle predmetu: nejvic porazenych nahore, bitvy bez predmetu na konci.
     static func groups(from entries: [BestiaryEntry]) -> [BestiaryGroup] {
         var bySubject: [String: [BestiaryEntry]] = [:]
         for entry in entries where entry.defeats > 0 {
-            bySubject[entry.subject?.rawValue ?? "none", default: []].append(entry)
+            bySubject[entry.subject?.id ?? "none", default: []].append(entry)
         }
         let groups: [BestiaryGroup] = bySubject.values.map { list in
             let sorted = list.sorted { left, right in

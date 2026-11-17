@@ -44,7 +44,7 @@ struct PathTabView: View {
 
     private func pick(_ boss: Boss) {
         model.selectBoss(boss)
-        battle.isPresented = true
+        battle.openFightSheet()
     }
 
     /// V debug buildu `-initialTab path` rozbali prvni svet (CI screenshoty).

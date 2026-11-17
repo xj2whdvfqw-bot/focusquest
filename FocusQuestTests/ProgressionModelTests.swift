@@ -442,4 +442,57 @@ final class ProgressionModelTests: XCTestCase {
         let peak = brown.map { abs(Int($0)) }.max() ?? 0
         XCTAssertGreaterThan(peak, 10_000)
     }
+
+    // MARK: - Predmety (Fight sheet)
+
+    func testAddingSubjectCreatesItOnceAndPicksExistingOnDuplicate() {
+        var subjects = StudySubject.defaults.map { SubjectEntry(subject: $0) }
+        XCTAssertEqual(subjects.add(named: "  statistics "), .created(StudySubject(id: "Statistics", title: "Statistics")))
+        XCTAssertEqual(subjects.count, StudySubject.defaults.count + 1)
+        // Bez ohledu na velikost pismen a diakritiku.
+        XCTAssertEqual(subjects.add(named: "MATH")?.subject, .math)
+        XCTAssertEqual(subjects.add(named: "Čzech")?.subject, .czech)
+        // Zacatek nazvu od 4 pismen najde existujici predmet.
+        if case let .existing(found)? = subjects.add(named: "econ") { XCTAssertEqual(found, .economics) } else { XCTFail("econ ma najit Economics") }
+        // Kratsi zacatek uz je novy predmet.
+        if case .created? = subjects.add(named: "Ma") {} else { XCTFail("Ma ma byt novy predmet") }
+        XCTAssertNil(subjects.add(named: "   "))
+    }
+
+    func testDeletedSubjectDisappearsAndComesBackWhenAddedAgain() {
+        var subjects = StudySubject.defaults.map { SubjectEntry(subject: $0) }
+        subjects.softDelete(.english)
+        XCTAssertFalse(subjects.visibleSubjects.contains(.english))
+        XCTAssertEqual(subjects.count, StudySubject.defaults.count)
+        XCTAssertEqual(subjects.add(named: "english"), .existing(.english))
+        XCTAssertTrue(subjects.visibleSubjects.contains(.english))
+        // Poradi seznamu se nemeni.
+        XCTAssertEqual(subjects.visibleSubjects, StudySubject.defaults)
+    }
+
+    func testPreselectedSubjectIsLastUsedOrFirstVisible() {
+        var preferences = AppPreferences()
+        XCTAssertEqual(preferences.preselectedSubject, .math)
+        preferences.lastSubject = .german
+        XCTAssertEqual(preferences.preselectedSubject, .german)
+        preferences.subjects.softDelete(.german)
+        XCTAssertEqual(preferences.preselectedSubject, .math)
+    }
+
+    func testRenamedSubjectSurvivesRoundTrip() throws {
+        var preferences = AppPreferences()
+        preferences.subjects[0].subject.title = "Maths"
+        let decoded = try JSONDecoder().decode(AppPreferences.self, from: try JSONEncoder().encode(preferences))
+        XCTAssertEqual(decoded.subjects[0].subject.title, "Maths")
+        XCTAssertEqual(decoded.subjects[0].subject, .math)
+        XCTAssertEqual(decoded, preferences)
+    }
+
+    func testOlderSaveWithLastSubjectKeepsItInTheList() throws {
+        let legacy = Data(#"{"isHapticsEnabled":true,"isMusicEnabled":true,"isSFXEnabled":true,"ambientVolume":0.5,"selectedTrack":"tokyoSunset","lastSubject":"history"}"#.utf8)
+        let preferences = try JSONDecoder().decode(AppPreferences.self, from: legacy)
+        XCTAssertEqual(preferences.lastSubject, .history)
+        XCTAssertTrue(preferences.subjects.visibleSubjects.contains(.history))
+        XCTAssertEqual(preferences.preselectedSubject?.title, "History")
+    }
 }

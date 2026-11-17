@@ -101,7 +101,7 @@ final class ArenaViewModel: ObservableObject {
         let remembered = Boss.find(stored.lastBossID)
         self.preferences = stored
         self.selectedBoss = remembered ?? BossWorld.allCases[0].bosses[0]
-        self.selectedSubject = stored.lastSubject
+        self.selectedSubject = stored.preselectedSubject
         audio.onTrackAdvanced = { [weak self] track in self?.trackDidAdvance(track) }
         haptics.prepare()
     }
@@ -255,6 +255,51 @@ final class ArenaViewModel: ObservableObject {
         changePreferences { $0.lastSubject = subject }
     }
 
+    /// Predmety pro Fight sheet v pevnem poradi seznamu (bez skrytych a smazanych).
+    var visibleSubjects: [StudySubject] { preferences.subjects.visibleSubjects }
+
+    /// Prida predmet z Fight sheetu a rovnou ho vybere. Duplicitu nevytvori, jen vybere existujici.
+    @discardableResult
+    func addSubject(named name: String) -> SubjectAddResult? {
+        guard isBetweenBattles else { return nil }
+        var subjects = preferences.subjects
+        guard let result = subjects.add(named: name) else { return nil }
+        selectedSubject = result.subject
+        changePreferences {
+            $0.subjects = subjects
+            $0.lastSubject = result.subject
+        }
+        return result
+    }
+
+    /// Mekke smazani predmetu z rezimu Edit ve Fight sheetu; vyber preskoci na jiny viditelny predmet.
+    func deleteSubject(_ subject: StudySubject) {
+        guard isBetweenBattles else { return }
+        changePreferences { $0.subjects.softDelete(subject) }
+    }
+
+    /// Predmety pro spravu "Your subjects": vsechny krome smazanych (i skryte).
+    var managedSubjects: [SubjectEntry] { preferences.subjects.filter { $0.deletedAt == nil } }
+
+    /// Prejmenovani v "Your subjects". Id zustava, takze historie bitev patri dal k predmetu.
+    func renameSubject(_ subject: StudySubject, to name: String) {
+        let title = name.split(whereSeparator: \.isWhitespace).joined(separator: " ")
+        guard !title.isEmpty else { return }
+        changePreferences { preferences in
+            guard let index = preferences.subjects.firstIndex(where: { $0.id == subject.id }) else { return }
+            preferences.subjects[index].subject.title = title
+            if preferences.lastSubject == subject { preferences.lastSubject = preferences.subjects[index].subject }
+        }
+    }
+
+    /// Skryti v "Your subjects": predmet zmizi z bitev, data zustanou.
+    func setSubjectHidden(_ subject: StudySubject, hidden: Bool) {
+        changePreferences { preferences in
+            guard let index = preferences.subjects.firstIndex(where: { $0.id == subject.id }) else { return }
+            preferences.subjects[index].isHidden = hidden
+        }
+    }
+
     private func resetBossHealth() {
         // Vlastni bitva si drzi zvolenou delku; uzel cesty se vrati na svou pevnou delku.
         if isCustomBattle { selectedBoss = selectedBoss.withHP(minutes: selectedBoss.maxHP); return }
@@ -289,9 +334,14 @@ final class ArenaViewModel: ObservableObject {
         preferences = updated
         preferenceStore.save(updated)
         audio.apply(preferences: updated)
-        // Nastaveni umi predvolby smazat (smazani uctu); predmet se pak musi vybrat znovu.
+        // Vybrany predmet mohl zmizet (smazani, skryti, smazani uctu) nebo se prejmenovat.
         guard isBetweenBattles else { return }
-        if updated.lastSubject == nil { selectedSubject = nil }
+        let visible = updated.subjects.visibleSubjects
+        if let current = selectedSubject, let fresh = visible.first(where: { $0 == current }) {
+            selectedSubject = fresh
+        } else {
+            selectedSubject = updated.preselectedSubject
+        }
     }
 
     func setSimulatedPosture(_ value: DevicePostureState) async {
