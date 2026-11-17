@@ -155,6 +155,17 @@ extension PlayerStats {
     }
 }
 
+/// Mince za bitvu: minuta overeneho soustredeni = 1 mince, porazeny boss +10.
+/// Utek bosse dava 0 (o to se stara volajici); mince se nikdy neberou.
+enum RewardRules {
+    static let coinsPerVerifiedMinute = 1
+    static let bossDefeatBonus = 10
+
+    static func coins(verifiedMinutes: Int, bossDefeated: Bool) -> Int {
+        max(0, verifiedMinutes) * coinsPerVerifiedMinute + (bossDefeated ? bossDefeatBonus : 0)
+    }
+}
+
 /// Jeden sloupec tydenniho grafu soustredeni.
 struct DailyFocus: Identifiable, Equatable, Sendable {
     let day: Date
