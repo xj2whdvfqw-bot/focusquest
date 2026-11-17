@@ -138,9 +138,9 @@ final class ArenaAntiCheatTests: XCTestCase {
 private actor ValidationSpy: FocusValidationServiceProtocol {
     private var violations = 0
     func startSession(bossID: String, mode: SessionMode, targetMinutes: Int) async throws -> StartSessionResponse { StartSessionResponse(sessionID: "test-session", sessionNonce: "test-nonce", serverTimestamp: Date()) }
-    func sendHeartbeat(sessionID: String, monotonicElapsedSeconds: TimeInterval, motionIntegrityToken: String, attestationAssertion: Data?, clientNonce: String, requestSignature: String?) async throws -> HeartbeatResponse { HeartbeatResponse(authorizedDamage: 0, authoritativeBossHP: 45, comboMultiplier: 1, serverTimestamp: Date()) }
+    func sendHeartbeat(sessionID: String, monotonicElapsedSeconds: TimeInterval, motionIntegrityToken: String, attestationAssertion: Data?, clientNonce: String, requestSignature: String?) async throws -> HeartbeatResponse { HeartbeatResponse(authorizedDamage: 0, authoritativeBossHP: 45, serverTimestamp: Date()) }
     func reportViolation(sessionID: String, reason: String, monotonicElapsedSeconds: TimeInterval) async throws { violations += 1 }
-    func completeSession(sessionID: String) async throws -> CompleteSessionResponse { CompleteSessionResponse(stats: .initial, boss: Boss.roster[0], loot: nil, xpEarned: 0) }
+    func completeSession(sessionID: String) async throws -> CompleteSessionResponse { CompleteSessionResponse(stats: .initial, boss: Boss.roster[0], xpEarned: 0) }
     func violationCount() -> Int { violations }
 }
 

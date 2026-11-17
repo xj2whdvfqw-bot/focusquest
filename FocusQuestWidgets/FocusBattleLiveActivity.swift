@@ -117,8 +117,8 @@ private enum BattleCopy {
     }
 
     static func subtitle(state: FocusBattleAttributes.ContentState) -> String {
-        if state.isWarning { return "Combo and rewards are at risk" }
-        if state.focusStartedAt == nil { return "Place iPhone face-up to start" }
+        if state.isWarning { return "Put it back or the boss escapes" }
+        if state.focusStartedAt == nil { return "Lay iPhone face-down to start" }
         return "Boss health \(max(0, state.bossHP)) / \(state.bossMaxHP)"
     }
 }

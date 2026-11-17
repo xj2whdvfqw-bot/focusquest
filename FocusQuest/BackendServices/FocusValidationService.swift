@@ -33,6 +33,8 @@ struct RemoteFocusValidationService: FocusValidationServiceProtocol {
         return try await api.post("v1/sessions/heartbeat", body: signed, as: HeartbeatResponse.self)
     }
 
+    /// Boss utekl (ustup, zvednuty telefon, dosla pauza): bitva uz nic neprinese.
+    /// Jinak se nic nebere: XP, serie ani mince z drivejsich bitev zustavaji.
     func reportViolation(sessionID: String, reason: String, monotonicElapsedSeconds: TimeInterval) async throws {
         let request = ViolationRequest(sessionID: sessionID, reason: reason, monotonicElapsedSeconds: monotonicElapsedSeconds)
         let _: EmptyAcknowledgement = try await api.post("v1/sessions/violation", body: request, as: EmptyAcknowledgement.self)
@@ -49,7 +51,6 @@ actor SimulatedSecureBackendService: FocusValidationServiceProtocol {
         var boss: Boss
         let startedAt: TimeInterval
         var lastAuthorizedAt: TimeInterval
-        var combo = 1
         var verifiedSeconds = 0
         var violated = false
     }
@@ -93,31 +94,30 @@ actor SimulatedSecureBackendService: FocusValidationServiceProtocol {
         sessions[sessionID] = session
         _ = motionIntegrityToken
         _ = attestationAssertion
-        return HeartbeatResponse(authorizedDamage: damage, authoritativeBossHP: session.boss.currentHP, comboMultiplier: session.combo, serverTimestamp: Date())
+        return HeartbeatResponse(authorizedDamage: damage, authoritativeBossHP: session.boss.currentHP, serverTimestamp: Date())
     }
 
+    /// Boss utekl (ustup, zvednuty telefon, dosla pauza): bitva uz nic neprinese.
+    /// Jinak se nic nebere: XP, serie ani mince z drivejsich bitev zustavaji.
     func reportViolation(sessionID: String, reason: String, monotonicElapsedSeconds: TimeInterval) async throws {
         guard var session = sessions[sessionID] else { throw SimulationError.invalidSession }
         session.violated = true
-        session.combo = 1
-        stats.totalXP = max(0, stats.totalXP - 25)
-        session.boss.currentHP = min(session.boss.maxHP, session.boss.currentHP + 5)
         sessions[sessionID] = session
         _ = reason
         _ = monotonicElapsedSeconds
     }
 
     func completeSession(sessionID: String) async throws -> CompleteSessionResponse {
-        guard let session = sessions.removeValue(forKey: sessionID) else { throw SimulationError.invalidSession }
+        // Bitva, ze ktere boss utekl, se uz nepripise (zadne XP ani mince).
+        guard let session = sessions.removeValue(forKey: sessionID), !session.violated else { throw SimulationError.invalidSession }
         let boss = session.boss
         stats.battles += 1
-        let loot = boss.isDefeated ? LootItem.catalog.first(where: { boss.lootTable.contains($0.id) }) : nil
         if boss.isDefeated { stats.wins += 1 }
         stats.totalHPDealt += session.verifiedSeconds / 60
         let xpEarned = session.verifiedSeconds / 60 * Self.xpPerVerifiedMinute
         stats.totalXP += xpEarned
         stats.level = max(1, stats.totalXP / 1000 + 1)
-        return CompleteSessionResponse(stats: stats, boss: boss, loot: loot, xpEarned: xpEarned)
+        return CompleteSessionResponse(stats: stats, boss: boss, xpEarned: xpEarned)
     }
 
     enum SimulationError: Error { case unknownBoss, invalidSession, invalidClock, invalidSignature }

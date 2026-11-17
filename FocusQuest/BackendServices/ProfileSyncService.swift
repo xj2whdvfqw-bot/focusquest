@@ -8,8 +8,6 @@ protocol ProfileSyncServiceProtocol: Sendable {
     func recordBattle(_ summary: SessionSummary, bossDefeated: Bool) async throws -> PlayerStats
     /// Vyvojarske testovaci XP mimo bitvu. Vraci novy stav statistik.
     func addBonusXP(_ amount: Int) async throws -> PlayerStats
-    /// Quest propadl utekem z appky: hrdina ztrati HP a serii. Vraci novy stav statistik.
-    func recordQuestFailure() async throws -> PlayerStats
     func exchangeAppleToken(_ token: String) async throws
     func signOut() async throws
     func deleteAccount() async throws
@@ -42,11 +40,6 @@ struct ProfileSyncService: ProfileSyncServiceProtocol {
         return try await loadStats()
     }
 
-    func recordQuestFailure() async throws -> PlayerStats {
-        // Server se o poruseni dozvi z reportViolation pri ukonceni bitvy; tady se jen nactou statistiky.
-        try await loadStats()
-    }
-
     func exchangeAppleToken(_ token: String) async throws {
         let response = try await api.post("v1/auth/apple", body: AppleTokenRequest(identityToken: token), as: AppleTokenExchangeResponse.self)
         try await keychain.save(Data(response.accessToken.utf8), for: "auth-token")
@@ -67,7 +60,7 @@ private struct AppleTokenRequest: Codable, Sendable { let identityToken: String 
 private struct AppleTokenExchangeResponse: Codable, Sendable { let accessToken: String }
 
 /// Profil a statistiky ulozene jen v telefonu (rezim bez serveru).
-/// Uklada se do UserDefaults, takze hrdina, mince i vesnice preziji restart appky.
+/// Uklada se do UserDefaults, takze hrdina, mince i statistiky preziji restart appky.
 actor LocalProfileSyncService: ProfileSyncServiceProtocol {
     private static let profileKey = "focusquest.local-profile"
     private static let statsKey = "focusquest.local-stats"
@@ -101,12 +94,6 @@ actor LocalProfileSyncService: ProfileSyncServiceProtocol {
 
     func addBonusXP(_ amount: Int) async throws -> PlayerStats {
         stats.grantBonusXP(amount)
-        persist(stats, key: Self.statsKey)
-        return stats
-    }
-
-    func recordQuestFailure() async throws -> PlayerStats {
-        stats.recordQuestFailure()
         persist(stats, key: Self.statsKey)
         return stats
     }

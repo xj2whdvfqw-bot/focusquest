@@ -103,30 +103,39 @@ final class ProgressionModelTests: XCTestCase {
 
     // MARK: - Hrdina a profil
 
-    func testProfileFromOlderVersionGetsDefaultHeroAndVillage() throws {
-        let legacy = Data(#"{"userID":"u1","username":"Adam","title":"Novice Focuser","heroClass":"cyberRonin","avatarMatrix":[],"dailyFocusGoalMinutes":60,"equippedLootIDs":[],"unlockedLootIDs":["scholars-tome"]}"#.utf8)
+    func testProfileFromOlderVersionGetsDefaultHero() throws {
+        let legacy = Data(#"{"userID":"u1","username":"Adam","title":"Novice Focuser","heroClass":"cyberRonin","avatarMatrix":[],"dailyFocusGoalMinutes":60}"#.utf8)
         let profile = try JSONDecoder().decode(UserProfile.self, from: legacy)
         XCTAssertEqual(profile.username, "Adam")
-        XCTAssertEqual(profile.unlockedLootIDs, ["scholars-tome"])
         XCTAssertEqual(profile.avatar, AvatarAppearance())
-        XCTAssertEqual(profile.village.stage, .woodenHut)
         XCTAssertEqual(profile.coins, 0)
         XCTAssertFalse(profile.hasCreatedHero)
     }
 
-    func testProfileRoundTripKeepsHeroLookAndVillage() throws {
+    func testProfileWithRemovedRelicsAndVillageStillLoads() throws {
+        // Starsi verze ukladaly relikvie a vesnici; profil se musi nacist a mince zustat.
+        let legacy = Data(#"{"userID":"u1","username":"Adam","title":"Novice Focuser","heroClass":"cyberRonin","avatarMatrix":[],"dailyFocusGoalMinutes":60,"equippedLootIDs":["chronos-shield"],"unlockedLootIDs":["scholars-tome","chronos-shield"],"village":{"stage":"castle","builtAt":{}},"coins":420,"bossesDefeated":7,"hasCreatedHero":true,"heroHP":12,"potions":{"health":2,"timeFreeze":1}}"#.utf8)
+        let profile = try JSONDecoder().decode(UserProfile.self, from: legacy)
+        XCTAssertEqual(profile.username, "Adam")
+        XCTAssertEqual(profile.coins, 420)
+        XCTAssertEqual(profile.bossesDefeated, 7)
+        XCTAssertTrue(profile.hasCreatedHero)
+        // Po ulozeni uz stare klice nezustanou.
+        let saved = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(profile)) as? [String: Any])
+        for key in ["equippedLootIDs", "unlockedLootIDs", "village", "heroHP", "potions"] { XCTAssertNil(saved[key], key) }
+    }
+
+    func testProfileRoundTripKeepsHeroLook() throws {
         var profile = UserProfile.fresh(deviceID: "test")
         profile.avatar.skin = .umber
         profile.avatar.hairStyle = .mohawk
         profile.avatar.equip("excalibur", in: .weapon)
-        profile.village.stage = .castle
         profile.coins = 321
         profile.hasCreatedHero = true
         let data = try JSONEncoder().encode(profile)
         let decoded = try JSONDecoder().decode(UserProfile.self, from: data)
         XCTAssertEqual(decoded.avatar, profile.avatar)
         XCTAssertEqual(decoded.avatar.equippedItemID(in: .weapon), "excalibur")
-        XCTAssertEqual(decoded.village, profile.village)
         XCTAssertEqual(decoded.coins, 321)
         XCTAssertTrue(decoded.hasCreatedHero)
     }
@@ -240,29 +249,7 @@ final class ProgressionModelTests: XCTestCase {
         XCTAssertNil(Boss.find("no-such-boss"))
     }
 
-    // MARK: - Vesnice a odmeny
-
-    func testVillageUpgradeNeedsLevelBossesAndCoins() {
-        var village = VillageState()
-        XCTAssertFalse(village.canUpgrade(level: 1, bossesDefeated: 0, coins: 500))
-        XCTAssertFalse(village.canUpgrade(level: 1, bossesDefeated: 1, coins: 49))
-        XCTAssertNil(village.upgrade(level: 1, bossesDefeated: 1, coins: 49))
-        XCTAssertEqual(village.stage, .woodenHut)
-
-        XCTAssertEqual(village.upgrade(level: 1, bossesDefeated: 1, coins: 50), 50)
-        XCTAssertEqual(village.stage, .brickCottage)
-        XCTAssertNotNil(village.builtAt[DwellingStage.brickCottage.rawValue])
-        // Na kamenny dum uz level 1 nestaci.
-        XCTAssertFalse(village.canUpgrade(level: 1, bossesDefeated: 10, coins: 10_000))
-    }
-
-    func testVillageStopsAtTheLastStage() {
-        var village = VillageState()
-        village.stage = .city
-        XCTAssertNil(village.nextStage)
-        XCTAssertNil(village.upgrade(level: 99, bossesDefeated: 999, coins: 99_999))
-        XCTAssertEqual(village.stage, .city)
-    }
+    // MARK: - Odmeny
 
     func testCoinRewardCountsMinutesAndBossBonus() {
         XCTAssertEqual(RewardRules.coins(verifiedMinutes: 25, bossDefeated: true), 35)
@@ -294,7 +281,7 @@ final class ProgressionModelTests: XCTestCase {
         XCTAssertEqual(stats.battles, 3)
     }
 
-    // MARK: - HP hrdiny a serie
+    // MARK: - Serie
 
     func testStreakExpiresAfterAMissedDay() {
         let calendar = Calendar(identifier: .gregorian)
@@ -311,33 +298,24 @@ final class ProgressionModelTests: XCTestCase {
         XCTAssertEqual(stats.currentStreak(now: dayTwo.addingTimeInterval(86_400 * 2), calendar: calendar), 0)
     }
 
-    func testFailedQuestResetsStreak() {
+    func testStatsFromOlderVersionWithHPComboAndFailureStillLoad() throws {
         let calendar = Calendar(identifier: .gregorian)
         let dayOne = Date(timeIntervalSince1970: 1_700_000_000)
         var stats = PlayerStats.initial
-
         stats.record(SessionSummary(id: UUID(), bossName: "A", verifiedMinutes: 10, xpEarned: 100, completedAt: dayOne, flawless: true), bossDefeated: true, calendar: calendar)
-        XCTAssertEqual(stats.currentStreak(now: dayOne, calendar: calendar), 1)
 
-        stats.recordQuestFailure(at: dayOne.addingTimeInterval(60))
-        XCTAssertEqual(stats.currentStreak(now: dayOne.addingTimeInterval(120), calendar: calendar), 0)
-
-        // Dalsi vyhra serii zacne znovu od jedne.
-        stats.record(SessionSummary(id: UUID(), bossName: "B", verifiedMinutes: 10, xpEarned: 100, completedAt: dayOne.addingTimeInterval(3_600), flawless: true), bossDefeated: true, calendar: calendar)
-        XCTAssertEqual(stats.streakDays, 1)
-    }
-
-    func testQuestFailureSurvivesEncodingAndOldHeroHPIsIgnored() throws {
-        var stats = PlayerStats.initial
-        stats.recordQuestFailure(at: Date(timeIntervalSince1970: 1_700_000_000))
-        let decoded = try JSONDecoder().decode(PlayerStats.self, from: JSONEncoder().encode(stats))
-        XCTAssertEqual(decoded.lastQuestFailedAt, stats.lastQuestFailedAt)
-
-        // Statistiky ze starsi verze s Hero HP se musi nacist dal.
+        // Starsi verze ukladaly Hero HP, nejlepsi combo a cas neuspechu, ktery mazal serii.
         var json = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(stats)) as? [String: Any])
         json["heroHP"] = 40
+        json["bestCombo"] = 4
+        json["lastQuestFailedAt"] = 700_000_000.0
         let legacy = try JSONDecoder().decode(PlayerStats.self, from: JSONSerialization.data(withJSONObject: json))
-        XCTAssertEqual(legacy.wins, stats.wins)
+        XCTAssertEqual(legacy.wins, 1)
+        // Utek bosse serii nebere.
+        XCTAssertEqual(legacy.currentStreak(now: dayOne.addingTimeInterval(120), calendar: calendar), 1)
+
+        let saved = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(legacy)) as? [String: Any])
+        for key in ["heroHP", "bestCombo", "lastQuestFailedAt"] { XCTAssertNil(saved[key], key) }
     }
 
     func testLocalProfileSurvivesRelaunch() async throws {

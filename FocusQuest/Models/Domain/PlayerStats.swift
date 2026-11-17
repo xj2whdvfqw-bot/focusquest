@@ -57,22 +57,19 @@ struct PlayerStats: Codable, Sendable {
     var wins: Int
     var battles: Int
     var streakDays: Int
-    var bestCombo: Int
     var totalHPDealt: Int
     var sessionHistory: [SessionSummary]
     /// Porazeni bossove podle predmetu. Uklada se spolu se statistikami (UserDefaults).
     var bestiary: [BestiaryEntry] = []
-    /// Kdy naposledy quest propadl utekem z appky (serie se tim prerusi).
-    var lastQuestFailedAt: Date?
 
     var winRate: Double { battles > 0 ? Double(wins) / Double(battles) : 0 }
     var xpIntoLevel: Int { totalXP % 1000 }
     var xpForNextLevel: Int { 1000 }
 
-    static let initial = PlayerStats(level: 1, totalXP: 0, wins: 0, battles: 0, streakDays: 0, bestCombo: 1, totalHPDealt: 0, sessionHistory: [])
+    static let initial = PlayerStats(level: 1, totalXP: 0, wins: 0, battles: 0, streakDays: 0, totalHPDealt: 0, sessionHistory: [])
 
     enum CodingKeys: String, CodingKey {
-        case level, totalXP, wins, battles, streakDays, bestCombo, totalHPDealt, sessionHistory, bestiary, lastQuestFailedAt
+        case level, totalXP, wins, battles, streakDays, totalHPDealt, sessionHistory, bestiary
     }
 }
 
@@ -85,12 +82,11 @@ extension PlayerStats {
         wins = try container.decode(Int.self, forKey: .wins)
         battles = try container.decode(Int.self, forKey: .battles)
         streakDays = try container.decode(Int.self, forKey: .streakDays)
-        bestCombo = try container.decode(Int.self, forKey: .bestCombo)
         totalHPDealt = try container.decode(Int.self, forKey: .totalHPDealt)
         sessionHistory = try container.decode([SessionSummary].self, forKey: .sessionHistory)
         bestiary = (try? container.decodeIfPresent([BestiaryEntry].self, forKey: .bestiary)) ?? []
-        // Starsi verze ukladaly i heroHP; Hero HP uz v appce neni, klic se pri cteni ignoruje.
-        lastQuestFailedAt = try? container.decodeIfPresent(Date.self, forKey: .lastQuestFailedAt)
+        // Starsi verze ukladaly i heroHP, bestCombo a lastQuestFailedAt (ustup mazal serii).
+        // Nic z toho uz v appce neni, klice se pri cteni ignoruji a serie z nich nikdy nespadne.
     }
 }
 
@@ -110,10 +106,7 @@ extension PlayerStats {
         totalHPDealt += max(0, summary.verifiedMinutes)
         sessionHistory.insert(summary, at: 0)
 
-        // Po propadlem questu se serie pocita znovu od jedne, i kdyz byla posledni bitva vcera.
-        if let failed = lastQuestFailedAt, let previousDay, failed > previousDay {
-            streakDays = 1
-        } else if let previousDay {
+        if let previousDay {
             if calendar.isDate(previousDay, inSameDayAs: summary.completedAt) {
                 streakDays = max(1, streakDays)
             } else if let dayAfter = calendar.date(byAdding: .day, value: 1, to: previousDay), calendar.isDate(dayAfter, inSameDayAs: summary.completedAt) {
@@ -128,16 +121,9 @@ extension PlayerStats {
 
     // MARK: - Serie
 
-    /// Hrac z bitvy ustoupil: serie dni se prerusi.
-    mutating func recordQuestFailure(at date: Date = Date()) {
-        streakDays = 0
-        lastQuestFailedAt = date
-    }
-
     /// Serie, ktera plati dnes: kdyz hrac vcera ani dnes nebojoval, uz neplati.
     func currentStreak(now: Date = Date(), calendar: Calendar = .current) -> Int {
         guard let last = sessionHistory.first?.completedAt, streakDays > 0 else { return 0 }
-        if let failed = lastQuestFailedAt, failed > last { return 0 }
         let gap = calendar.dateComponents([.day], from: calendar.startOfDay(for: last), to: calendar.startOfDay(for: now)).day ?? 0
         return gap <= 1 ? streakDays : 0
     }

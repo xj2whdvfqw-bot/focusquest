@@ -11,18 +11,16 @@ struct StudySession: Identifiable, Codable, Sendable {
     let mode: SessionMode
     let monotonicStartUptime: TimeInterval
     let wallClockStart: Date
-    var comboMultiplier: Int
     var status: StudySessionStatus
     var verifiedSeconds: Int
 
-    init(id: UUID = UUID(), serverSessionID: String, bossID: String, mode: SessionMode, monotonicStartUptime: TimeInterval = ProcessInfo.processInfo.systemUptime, wallClockStart: Date = Date(), comboMultiplier: Int = 1, status: StudySessionStatus = .awaitingPlacement, verifiedSeconds: Int = 0) {
+    init(id: UUID = UUID(), serverSessionID: String, bossID: String, mode: SessionMode, monotonicStartUptime: TimeInterval = ProcessInfo.processInfo.systemUptime, wallClockStart: Date = Date(), status: StudySessionStatus = .awaitingPlacement, verifiedSeconds: Int = 0) {
         self.id = id
         self.serverSessionID = serverSessionID
         self.bossID = bossID
         self.mode = mode
         self.monotonicStartUptime = monotonicStartUptime
         self.wallClockStart = wallClockStart
-        self.comboMultiplier = comboMultiplier
         self.status = status
         self.verifiedSeconds = verifiedSeconds
     }

@@ -32,7 +32,6 @@ struct HeartbeatRequest: Codable, Sendable {
 struct HeartbeatResponse: Codable, Sendable {
     let authorizedDamage: Int
     let authoritativeBossHP: Int
-    let comboMultiplier: Int
     let serverTimestamp: Date
 }
 
@@ -45,6 +44,5 @@ struct ViolationRequest: Codable, Sendable {
 struct CompleteSessionResponse: Codable, Sendable {
     let stats: PlayerStats
     let boss: Boss
-    let loot: LootItem?
     let xpEarned: Int
 }

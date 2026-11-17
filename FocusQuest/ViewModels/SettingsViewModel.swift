@@ -14,7 +14,7 @@ enum LegalDocument: String, Identifiable, CaseIterable {
         case .terms:
             "Play fairly: do not modify the app, falsify session activity, or disrupt another player's raid. Verified rewards are determined by the service and may be withheld when integrity checks fail. Game names, artwork, and software are FocusQuest intellectual property. Online features require a network connection."
         case .antiCheat:
-            "During a battle, CoreMotion pitch, roll, and gravity values are evaluated on-device at approximately 10 samples per second. A face-up, level posture is required for verified focus. Raw sensor values are processed transiently and are not transmitted. Lifting the device starts a five-second visual warning; returning it to the desk resumes the session, while expiration reports a violation and resets the combo."
+            "During a battle, CoreMotion pitch, roll, and gravity values are evaluated on-device at approximately 10 samples per second. The phone must lie face-down and still for verified focus. Raw sensor values are processed transiently and are not transmitted. Lifting the device starts a ten-second warning; laying it back down resumes the battle. The first expired warning in a battle is forgiven; after the second, the boss escapes and the battle earns no XP or coins. Your streak and coins are never taken away."
         }
     }
 }

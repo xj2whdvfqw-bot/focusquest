@@ -7,7 +7,7 @@ private enum FocusQuestTab: String, CaseIterable, Identifiable {
 
     /// V debug buildu jde appku spustit s argumentem `-initialTab stats` (vychozi zalozka)
     /// nebo `-initialTab creator` (uvodni tvorba hrdiny) ci `-initialTab settings`
-    /// (Profil s otevrenym Nastavenim). `village` otevre Obchod na vesnici, `battle` obrazovku
+    /// (Profil s otevrenym Nastavenim). `battle` obrazovku
     /// bitvy pres Arenu. Pouziva to CI pro screenshoty.
     static var launchArgument: String? {
         #if DEBUG
@@ -20,7 +20,6 @@ private enum FocusQuestTab: String, CaseIterable, Identifiable {
     static var initial: FocusQuestTab {
         switch launchArgument {
         case "settings": return .profile
-        case "village": return .shop
         case "battle", "fight": return .arena
         default: break
         }

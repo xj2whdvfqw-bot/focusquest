@@ -44,7 +44,6 @@ struct BattleVictory: Equatable, Sendable {
     let verifiedMinutes: Int
     let xpEarned: Int
     let coinsEarned: Int
-    let droppedLoot: LootItem?
     /// Vlastni bitva z Areny: neposouva cestu sveta.
     var isCustom = false
 }
@@ -481,7 +480,6 @@ final class ArenaViewModel: ObservableObject {
                 verifiedMinutes: minutes,
                 xpEarned: result.xpEarned,
                 coinsEarned: RewardRules.coins(verifiedMinutes: minutes, bossDefeated: result.boss.isDefeated),
-                droppedLoot: result.loot,
                 isCustom: isCustomBattle
             )
             tearDownBattle(keepNotification: true)

@@ -37,42 +37,23 @@ final class ProfileViewModel: ObservableObject {
         save()
     }
 
-    // MARK: - Odmeny a vesnice
+    // MARK: - Odmeny a hodnost
 
     var level: Int { stats.level }
     /// Hodnost se odvozuje z levelu, hrac si ji nevybira.
     var rank: HeroRank { HeroRank.current(forLevel: stats.level) }
     var nextRank: HeroRank? { HeroRank.next(afterLevel: stats.level) }
 
-    var canUpgradeVillage: Bool {
-        profile.village.canUpgrade(level: stats.level, bossesDefeated: profile.bossesDefeated, coins: profile.coins)
-    }
-
-    func upgradeVillage() {
-        guard let cost = profile.village.upgrade(level: stats.level, bossesDefeated: profile.bossesDefeated, coins: profile.coins) else { return }
-        profile.coins = max(0, profile.coins - cost)
-        save()
-    }
-
-    /// Porazeny boss: mince, pocitadlo bossu, pripadny relikt a zapis do statistik.
+    /// Porazeny boss: mince, pocitadlo bossu a zapis do statistik.
     func recordVictory(_ victory: BattleVictory) {
         let defeated = victory.boss.isDefeated
         profile.coins += victory.coinsEarned
         if defeated { profile.bossesDefeated += 1 }
-        if let loot = victory.droppedLoot, !profile.unlockedLootIDs.contains(loot.id) { profile.unlockedLootIDs.append(loot.id) }
         save()
         let summary = SessionSummary(id: UUID(), bossName: victory.boss.name, verifiedMinutes: victory.verifiedMinutes, xpEarned: victory.xpEarned, completedAt: Date(), flawless: true, subject: victory.subject, bossID: victory.boss.id)
         Task {
             do { apply(stats: try await sync.recordBattle(summary, bossDefeated: defeated)) }
             catch { errorMessage = "Battle could not be added to your stats." }
-        }
-    }
-
-    /// Hrac behem bitvy odesel z appky a nevratil se vcas: hrdina ztrati HP a serii dni.
-    func recordQuestFailure() {
-        Task {
-            do { apply(stats: try await sync.recordQuestFailure()) }
-            catch { errorMessage = "The failed quest could not be saved." }
         }
     }
 
@@ -82,7 +63,7 @@ final class ProfileViewModel: ObservableObject {
         save()
     }
 
-    /// DOCASNE pro testovani: +10 000 minci a +5 000 XP, aby slo hned zkouset vesnici a obchod.
+    /// DOCASNE pro testovani: +10 000 minci a +5 000 XP, aby slo hned zkouset obchod.
     func addDevFunds() {
         profile.coins += Self.devFundsCoins
         save()
@@ -123,18 +104,6 @@ final class ProfileViewModel: ObservableObject {
     func toggleEquip(_ item: EquipmentItem) {
         guard owns(item) else { return }
         profile.avatar.equip(isEquipped(item) ? nil : item.id, in: item.slot)
-        save()
-    }
-
-    func unlockLoot(_ item: LootItem?) {
-        guard let item, !profile.unlockedLootIDs.contains(item.id) else { return }
-        profile.unlockedLootIDs.append(item.id)
-        save()
-    }
-
-    func toggleLoot(_ id: String) {
-        if profile.equippedLootIDs.contains(id) { profile.equippedLootIDs.removeAll { $0 == id } }
-        else if profile.equippedLootIDs.count < 2 && profile.unlockedLootIDs.contains(id) { profile.equippedLootIDs.append(id) }
         save()
     }
 

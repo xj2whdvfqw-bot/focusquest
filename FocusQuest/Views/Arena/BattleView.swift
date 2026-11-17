@@ -89,9 +89,7 @@ struct BattleView: View {
             if case let .penalized(reason) = model.state {
                 resultOverlay(icon: "exclamationmark.triangle.fill", title: "Battle stopped", detail: "\(reason) Nothing was taken from you.")
             }
-            if case let .defeated(defeat) = model.state {
-                resultOverlay(icon: "flag.fill", title: "\(defeat.boss.name) escaped", detail: defeatDetail(defeat))
-            }
+            if case let .defeated(defeat) = model.state { defeatOverlay(defeat) }
             if case let .victory(victory) = model.state { victoryOverlay(victory) }
         }
         .preferredColorScheme(.dark)
@@ -117,12 +115,6 @@ struct BattleView: View {
     private func closeBeforeBattle() {
         model.endCustomBattle()
         onExit()
-    }
-
-    private func defeatDetail(_ defeat: BattleDefeat) -> String {
-        let focused = ArenaView.durationText(minutes: defeat.focusedMinutes)
-        let goal = ArenaView.durationText(minutes: defeat.goalMinutes)
-        return "\(defeat.reason.text) \(defeat.boss.name) escaped after \(focused) of \(goal). No loot this time, your streak and coins are safe."
     }
 
     // MARK: - Horni lista
@@ -380,7 +372,7 @@ struct BattleView: View {
 
     // MARK: - Prekryvy
 
-    /// Obrazovka vitezstvi: porazeny boss, ziskane XP, mince a pripadny loot.
+    /// Obrazovka vitezstvi: porazeny boss, ziskane XP a mince.
     private func victoryOverlay(_ victory: BattleVictory) -> some View {
         // Boss ulozeny pred posunem cesty; obrazovka nikdy neukaze az toho dalsiho.
         let beaten = model.lastBeaten ?? victory.boss
@@ -416,11 +408,6 @@ struct BattleView: View {
                 HStack(spacing: FQSpace.sm) {
                     rewardTile(value: "+\(victory.xpEarned)", label: "XP", symbol: "sparkles")
                     rewardTile(value: "+\(victory.coinsEarned)", label: "Coins", symbol: "dollarsign.circle.fill")
-                }
-                if let loot = victory.droppedLoot {
-                    Label("\(loot.name) found", systemImage: "gift.fill")
-                        .font(.fqLabel)
-                        .foregroundStyle(FQColor.textPrimary)
                 }
                 Button(action: closeResult) {
                     Text("Collect Loot")
@@ -461,7 +448,53 @@ struct BattleView: View {
         .accessibilityElement(children: .combine)
     }
 
-    /// Konec bez vitezstvi (boss utekl nebo technicka chyba): nic se nebere, jen tlacitko "Back".
+    /// Obrazovka prohry: boss utekl. Jediny trest je, ze bitva nic neprinese;
+    /// serie a mince zustavaji. Boss je videt naplno (nikdy nebledne) a dycha.
+    private func defeatOverlay(_ defeat: BattleDefeat) -> some View {
+        ZStack {
+            Color.black.opacity(0.55).ignoresSafeArea()
+            VStack(spacing: FQSpace.lg) {
+                PixelArtAvatarView(sprite: .boss(defeat.boss.pixelSpriteConfig), size: 96)
+                    .bossBreathing()
+                    .frame(height: 112)
+                    .accessibilityHidden(true)
+                VStack(spacing: FQSpace.sm) {
+                    Text("\(defeat.boss.name) escaped")
+                        .font(.fqTitle)
+                        .multilineTextAlignment(.center)
+                        .foregroundStyle(FQColor.textPrimary)
+                    Text(defeat.reason.text)
+                        .font(.fqHeadline)
+                        .multilineTextAlignment(.center)
+                        .foregroundStyle(FQColor.danger)
+                    Text("No loot this time, your streak and coins are safe.")
+                        .font(.fqSecondary)
+                        .multilineTextAlignment(.center)
+                        .foregroundStyle(FQColor.textSecondary)
+                }
+                .accessibilityElement(children: .combine)
+                Button(action: closeResult) {
+                    Text("Back")
+                        .font(.fqHeadline)
+                        .foregroundStyle(FQColor.onAccent)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, FQSpace.xs)
+                }
+                .prominentGlassButtonStyle()
+                .buttonBorderShape(.roundedRectangle(radius: FQRadius.control))
+                .controlSize(.large)
+                .tint(FQColor.accent)
+            }
+            .padding(FQSpace.xl)
+            .frame(maxWidth: 360)
+            .glassCard(prominent: true)
+            .padding(.horizontal, FQSpace.xl)
+            .transition(.scale(scale: 0.92).combined(with: .opacity))
+        }
+        .accessibilityAddTraits(.isModal)
+    }
+
+    /// Technicka chyba (server, hodiny): nic se nebere, jen tlacitko "Back".
     private func resultOverlay(icon: String, title: String, detail: String) -> some View {
         ZStack {
             Color.black.opacity(0.5).ignoresSafeArea()

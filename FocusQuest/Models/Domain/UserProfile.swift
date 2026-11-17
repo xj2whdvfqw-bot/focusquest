@@ -7,10 +7,7 @@ struct UserProfile: Codable, Sendable {
     var heroClass: HeroClass
     var avatarMatrix: [Int]
     var dailyFocusGoalMinutes: Int
-    var equippedLootIDs: [String]
-    var unlockedLootIDs: [String]
     var avatar = AvatarAppearance()
-    var village = VillageState()
     /// Herni mena za overene minuty a porazene bosse.
     var coins = 0
     var bossesDefeated = 0
@@ -22,17 +19,19 @@ struct UserProfile: Codable, Sendable {
     var focusGoals: [FocusGoal] = []
 
     enum CodingKeys: String, CodingKey {
-        case userID, username, title, heroClass, avatarMatrix, dailyFocusGoalMinutes, equippedLootIDs, unlockedLootIDs
-        case avatar, village, coins, bossesDefeated, hasCreatedHero, ownedEquipmentIDs, focusGoals
+        case userID, username, title, heroClass, avatarMatrix, dailyFocusGoalMinutes
+        case avatar, coins, bossesDefeated, hasCreatedHero, ownedEquipmentIDs, focusGoals
     }
 
     static func fresh(deviceID: String) -> UserProfile {
-        UserProfile(userID: deviceID, username: "NewFocuser", title: "Novice Focuser", heroClass: .warrior, avatarMatrix: [], dailyFocusGoalMinutes: 60, equippedLootIDs: [], unlockedLootIDs: [])
+        UserProfile(userID: deviceID, username: "NewFocuser", title: "Novice Focuser", heroClass: .warrior, avatarMatrix: [], dailyFocusGoalMinutes: 60)
     }
 }
 
 extension UserProfile {
     // Profil ze serveru nebo ze starsi verze appky nova pole mit nemusi; doplni se vychozimi hodnotami.
+    // Starsi verze ukladaly i relikvie (equippedLootIDs, unlockedLootIDs) a vesnici (village);
+    // ty uz v appce nejsou a jejich klice se pri cteni ignoruji.
     init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         userID = try container.decode(String.self, forKey: .userID)
@@ -41,10 +40,7 @@ extension UserProfile {
         heroClass = try container.decode(HeroClass.self, forKey: .heroClass)
         avatarMatrix = try container.decodeIfPresent([Int].self, forKey: .avatarMatrix) ?? []
         dailyFocusGoalMinutes = try container.decode(Int.self, forKey: .dailyFocusGoalMinutes)
-        equippedLootIDs = try container.decodeIfPresent([String].self, forKey: .equippedLootIDs) ?? []
-        unlockedLootIDs = try container.decodeIfPresent([String].self, forKey: .unlockedLootIDs) ?? []
         avatar = (try? container.decodeIfPresent(AvatarAppearance.self, forKey: .avatar)) ?? AvatarAppearance()
-        village = (try? container.decodeIfPresent(VillageState.self, forKey: .village)) ?? VillageState()
         let storedCoins = try container.decodeIfPresent(Int.self, forKey: .coins) ?? 0
         let storedBosses = try container.decodeIfPresent(Int.self, forKey: .bossesDefeated) ?? 0
         coins = max(0, storedCoins)

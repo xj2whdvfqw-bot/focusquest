@@ -21,7 +21,6 @@ struct Boss: Identifiable, Codable, Hashable, Sendable {
     var maxHP: Int
     var currentHP: Int
     let pixelSpriteConfig: String
-    let lootTable: [String]
 
     var isDefeated: Bool { currentHP <= 0 }
     var healthFraction: Double { maxHP > 0 ? Double(max(0, currentHP)) / Double(maxHP) : 0 }
@@ -121,8 +120,6 @@ enum BossWorld: String, CaseIterable, Identifiable, Sendable {
 
     // MARK: - Soupiska
 
-    private static let loot = ["chronos-shield", "scholars-tome", "ember-charm"]
-
     /// (id, jmeno) v poradi uzlu na ceste.
     private static let lineup: [BossWorld: [(String, String)]] = [
         .heroes: [
@@ -205,7 +202,7 @@ enum BossWorld: String, CaseIterable, Identifiable, Sendable {
     private static let builtBosses: [BossWorld: [Boss]] = Dictionary(uniqueKeysWithValues: allCases.map { world in
         let bosses = (lineup[world] ?? []).enumerated().map { index, entry in
             let minutes = Boss.fixedMinutes(forNode: index)
-            return Boss(id: entry.0, name: entry.1, tier: .forNode(index), maxHP: minutes, currentHP: minutes, pixelSpriteConfig: entry.0, lootTable: [loot[index % loot.count]])
+            return Boss(id: entry.0, name: entry.1, tier: .forNode(index), maxHP: minutes, currentHP: minutes, pixelSpriteConfig: entry.0)
         }
         return (world, bosses)
     })

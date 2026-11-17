@@ -18,7 +18,7 @@ struct StatsView: View {
             LazyVGrid(columns: [GridItem(.flexible(), spacing: FQSpace.md), GridItem(.flexible())], spacing: FQSpace.md) {
                 metric("Win rate", value: "\(Int(model.stats.winRate * 100))%")
                 metric("HP dealt", value: "\(model.stats.totalHPDealt)")
-                metric("Best combo", value: "\(model.stats.bestCombo)x")
+                metric("Day streak", value: "\(model.stats.currentStreak())")
                 metric("Focus hours", value: focusHours)
             }
             VStack(alignment: .leading, spacing: FQSpace.sm) {

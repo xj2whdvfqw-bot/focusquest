@@ -16,7 +16,6 @@ struct ProfileView: View {
             ScreenSection(title: "Rank & Level") { rankCard }
             ScreenSection(title: "Identity") { identityCard }
             ScreenSection(title: "Daily focus target") { dailyTargetCard }
-            ScreenSection(title: "Relics", detail: "Equip up to 2") { relicsCard }
             if let error = model.errorMessage {
                 Label(error, systemImage: "exclamationmark.circle.fill")
                     .font(.fqSecondary)
@@ -185,35 +184,6 @@ struct ProfileView: View {
             .accessibilityValue("\(model.profile.dailyFocusGoalMinutes) minutes")
         }
         .padding(FQSpace.lg)
-        .glassCard()
-    }
-
-    private var relicsCard: some View {
-        VStack(spacing: 0) {
-            ForEach(Array(LootItem.catalog.enumerated()), id: \.element.id) { index, item in
-                let isEquipped = model.profile.equippedLootIDs.contains(item.id)
-                let isUnlocked = model.profile.unlockedLootIDs.contains(item.id)
-                if index > 0 { HairlineDivider() }
-                Button { model.toggleLoot(item.id) } label: {
-                    HStack(spacing: FQSpace.md) {
-                        IconTile(symbol: isEquipped ? "checkmark.seal.fill" : (isUnlocked ? "seal" : "lock.fill"), color: isEquipped ? FQColor.accent : FQColor.textSecondary)
-                        VStack(alignment: .leading, spacing: FQSpace.xs) {
-                            Text(item.name).font(.fqBody).foregroundStyle(FQColor.textPrimary)
-                            Text(item.description).font(.fqSecondary).foregroundStyle(FQColor.textSecondary)
-                        }
-                        Spacer(minLength: FQSpace.sm)
-                        Text(item.rarity.rawValue.capitalized).font(.fqMeta.weight(.medium)).foregroundStyle(FQColor.textSecondary)
-                    }
-                    .padding(.vertical, FQSpace.md)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .disabled(!isUnlocked && !isEquipped)
-                .opacity(isUnlocked || isEquipped ? 1 : 0.55)
-            }
-        }
-        .padding(.horizontal, FQSpace.lg)
-        .padding(.vertical, FQSpace.xs)
         .glassCard()
     }
 }

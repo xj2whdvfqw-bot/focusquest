@@ -148,7 +148,7 @@ struct SettingsView: View {
         }
     }
 
-    /// DOCASNE: +10 000 minci a +5 000 XP pro testovani vesnice a obchodu.
+    /// DOCASNE: +10 000 minci a +5 000 XP pro testovani obchodu.
     private var developerCard: some View {
         card {
             Button { model.addDevFunds() } label: {

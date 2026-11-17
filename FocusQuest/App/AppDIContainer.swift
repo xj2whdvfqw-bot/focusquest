@@ -53,7 +53,7 @@ final class AppDIContainer {
         // Statistiky zmenene vitezstvim nebo bonusem se hned ukazi i na zalozce Stats.
         profileViewModel.onStatsChanged = { [weak stats = self.statsViewModel] updated in stats?.replace(with: updated) }
 
-        // Ustup z bitvy ("Retreat Anyway") stoji hrdinu HP a serii dni.
+        // Ustup z bitvy ("Retreat Anyway") jen necha bosse utect: bitva nic neprinese, serie a mince zustavaji.
         // Odchod z appky uz se netresta: bitva bezi dal i na pozadi.
     }
 }
