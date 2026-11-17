@@ -19,7 +19,6 @@ struct BattleDefeat: Equatable, Sendable {
     let boss: Boss
     let goalMinutes: Int
     let focusedMinutes: Int
-    let heroHPLost: Int
     var missedMinutes: Int { max(0, goalMinutes - focusedMinutes) }
 }
 
@@ -146,15 +145,13 @@ final class ArenaViewModel: ObservableObject {
 
     // MARK: - Vlastni bitva
 
-    /// Custom Battle z Areny: zvolena delka a nahodny odemceny boss. Bitva se hned pripravi.
-    func startCustomBattle(minutes: Int, subject: StudySubject) {
-        guard isBetweenBattles else { return }
-        let pool = Boss.roster.filter { preferences.isUnlocked($0) }
-        guard let boss = pool.randomElement() else { return }
-        selectSubject(subject)
+    /// "Not feeling it? Just 5 minutes": stejny boss jako na tlacitku Fight, jen na 5 minut.
+    /// Je to vlastni bitva, takze cestu sveta neposouva. Spusti se z obrazovky bitvy jako Fight.
+    func prepareQuickBattle(with boss: Boss) {
+        guard isBetweenBattles, isUnlocked(boss) else { return }
+        selectBoss(boss)
         isCustomBattle = true
-        selectedBoss = boss.withHP(minutes: minutes)
-        startSession()
+        selectedBoss = selectedBoss.withHP(minutes: Boss.quickBattleMinutes)
     }
 
     /// Konec vlastni bitvy: vybrany je zase posledni uzel cesty.
@@ -224,7 +221,7 @@ final class ArenaViewModel: ObservableObject {
         default: return
         }
         let goal = targetSeconds / 60
-        let defeat = BattleDefeat(boss: selectedBoss, goalMinutes: goal, focusedMinutes: min(goal, elapsed / 60), heroHPLost: PlayerStats.heroHPLossPerFailedQuest)
+        let defeat = BattleDefeat(boss: selectedBoss, goalMinutes: goal, focusedMinutes: min(goal, elapsed / 60))
         tearDownBattle()
         activeSession = nil
         state = .defeated(defeat)

@@ -68,7 +68,7 @@ struct BattleView: View {
         return hours > 0 ? String(format: "%d:%02d:%02d", hours, minutes, seconds) : String(format: "%02d:%02d", minutes, seconds)
     }
     private var durationText: String { ArenaView.durationText(minutes: model.selectedBoss.maxHP) }
-    private var battleTitle: String { model.isCustomBattle ? "Custom Focus" : "Node \(model.selectedBoss.nodeIndex + 1) · \(world.title)" }
+    private var battleTitle: String { model.isCustomBattle ? "Quick battle" : "Boss \(model.selectedBoss.nodeIndex + 1) of \(world.bosses.count) · \(world.title)" }
 
     var body: some View {
         ZStack {
@@ -131,7 +131,7 @@ struct BattleView: View {
     private func defeatDetail(_ defeat: BattleDefeat) -> String {
         let focused = ArenaView.durationText(minutes: defeat.focusedMinutes)
         let goal = ArenaView.durationText(minutes: defeat.goalMinutes)
-        return "\(defeat.boss.name) escaped after \(focused) of \(goal). You lost \(defeat.heroHPLost) hero HP and your streak resets."
+        return "\(defeat.boss.name) escaped after \(focused) of \(goal). Your streak resets."
     }
 
     // MARK: - Horni lista
@@ -443,7 +443,6 @@ struct BattleView: View {
                         .foregroundStyle(FQColor.textSecondary)
                 }
                 VStack(spacing: FQSpace.sm) {
-                    Label("You lose \(PlayerStats.heroHPLossPerFailedQuest) hero HP", systemImage: "heart.slash.fill")
                     Label(streak > 0 ? "Your \(streak)-day streak resets" : "This battle's time won't count", systemImage: streak > 0 ? "flame.fill" : "clock.badge.xmark")
                 }
                 .font(.fqLabel)
@@ -494,17 +493,17 @@ struct BattleView: View {
         .preferredColorScheme(.dark)
     }
 
-    /// Pravidla bitvy: pevna delka, telefon na stole, pauza kdykoli, ustup stoji HP.
+    /// Pravidla bitvy: pevna delka, telefon na stole, pauza kdykoli, ustup prerusi serii.
     private var rulesCard: some View {
         VStack(alignment: .leading, spacing: FQSpace.md) {
             if model.isCustomBattle {
-                rule(symbol: "timer", title: "Custom \(durationText)", detail: "A random boss you've unlocked. Custom battles don't move you along the path.")
+                rule(symbol: "timer", title: "Quick \(durationText)", detail: "A short warm-up. It doesn't move you along the path.")
             } else {
-                rule(symbol: "timer", title: "Fixed \(durationText)", detail: "Node \(model.selectedBoss.nodeIndex + 1) of the path. Every node adds 5 minutes.")
+                rule(symbol: "timer", title: "Fixed \(durationText)", detail: "Boss \(model.selectedBoss.nodeIndex + 1) of \(world.bosses.count) · \(world.title). Every boss adds 5 minutes.")
             }
             rule(symbol: "iphone.gen3", title: "Phone face-up on the desk", detail: "Lifting it starts a short countdown. Pause first if you need the phone.")
             rule(symbol: "pause.circle", title: "Pause any time", detail: "The clock stops while you're paused.")
-            rule(symbol: "flag", title: "Retreating costs \(PlayerStats.heroHPLossPerFailedQuest) hero HP", detail: "Your streak resets too.")
+            rule(symbol: "flag", title: "Retreating resets your streak", detail: "The boss escapes and this battle's time won't count.")
         }
         .padding(FQSpace.lg)
         .frame(maxWidth: .infinity, alignment: .leading)

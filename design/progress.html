@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-17T00:53:00+01:00",
-  "current": "Nic. Sekce 0 a 1 jsou hotové, další na řadě je sekce 2 (Arena).",
-  "nextStep": "Stáhni IPA z buildu #21 a nahraj ji přes Sideloadly, pak na iPhonu projdi poznámky u sekcí 0 a 1.",
+  "updated": "2026-11-17T10:11:00+01:00",
+  "current": "Sekce 2 (Arena): kód hotový, commituji a spouštím build",
+  "nextStep": "Počkej na výsledek buildu sekce 2; IPA z buildu #21 (sekce 0 a 1) můžeš kdykoli nahrát přes Sideloadly.",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -121,24 +121,24 @@
     {
       "id": 2,
       "title": "Arena",
-      "status": "cekam",
+      "status": "pracuje",
       "items": [
-        { "text": "Nadpis „Ready to focus?“ bez malého štítku nad ním", "done": false },
-        { "text": "Vlevo nahoře pilulka série: plamínek + číslo + „days streak“", "done": false },
-        { "text": "Úplně odstranit Hero HP (lišta i z celé aplikace)", "done": false },
-        { "text": "Uprostřed „Continue your path“, velký sprite bosse 128 pt bez karty a kruhu, jméno bosse a pod ním „Boss 3 of 4 · Villain Vault“ (nikdy „Node 3“)", "done": false },
-        { "text": "Dole v dosahu palce žluté tlačítko „▶ Fight · 20 min“ (zaoblené písmo, velké jen první písmeno) a pod ním odkaz „Not feeling it? Just 5 minutes“", "done": false },
-        { "text": "Odstranit kartu Custom Focus a „See all worlds“", "done": false },
-        { "text": "2a: ťuknutí na bosse ukáže na ~2,2 s bublinu s náhodnou hláškou (8 hlášek, nikdy dvakrát stejná po sobě, {m} = minuty bosse) a boss poskočí", "done": false },
-        { "text": "2a: 4+ ťuknutí s rozestupem do 1,5 s = naštvaný boss: třese se, měkká červená záře za ním, zvuk zásahu, červená bublina s jednou ze 4 naštvaných hlášek", "done": false },
-        { "text": "2b: každé ťuknutí na pilulku série ji zvětší na 1,06", "done": false },
-        { "text": "2b: 5 ťuknutí s rozestupem do 600 ms zapálí pilulku pixelovým ohněm (mřížka 3 pt, 5 barev), zapálení od středu nahoře po směru hodin za 0,9 s, hoří 1,5 s, mizí 0,8 s", "done": false },
-        { "text": "2b: jiskry z hořící části obrysu ven a nahoru (3×3 → 2×2 → 1×1, tmavnou), 1px žhavá linka po obrysu, oranžový okraj pilulky, vítězná znělka", "done": false },
-        { "text": "2b: opětovné zapálení během hoření funguje a nikdy se nezasekne (úklid po ~4,5 s); kreslit přes Canvas + TimelineView", "done": false }
+        { "text": "Nadpis „Ready to focus?“ bez malého štítku nad ním", "done": true },
+        { "text": "Vlevo nahoře pilulka série: plamínek + číslo + „days streak“", "done": true },
+        { "text": "Úplně odstranit Hero HP (lišta i z celé aplikace)", "done": true },
+        { "text": "Uprostřed „Continue your path“, velký sprite bosse 128 pt bez karty a kruhu, jméno bosse a pod ním „Boss 3 of 4 · Villain Vault“ (nikdy „Node 3“)", "done": true },
+        { "text": "Dole v dosahu palce žluté tlačítko „▶ Fight · 20 min“ (zaoblené písmo, velké jen první písmeno) a pod ním odkaz „Not feeling it? Just 5 minutes“", "done": true },
+        { "text": "Odstranit kartu Custom Focus a „See all worlds“", "done": true },
+        { "text": "2a: ťuknutí na bosse ukáže na ~2,2 s bublinu s náhodnou hláškou (8 hlášek, nikdy dvakrát stejná po sobě, {m} = minuty bosse) a boss poskočí", "done": true },
+        { "text": "2a: 4+ ťuknutí s rozestupem do 1,5 s = naštvaný boss: třese se, měkká červená záře za ním, zvuk zásahu, červená bublina s jednou ze 4 naštvaných hlášek", "done": true },
+        { "text": "2b: každé ťuknutí na pilulku série ji zvětší na 1,06", "done": true },
+        { "text": "2b: 5 ťuknutí s rozestupem do 600 ms zapálí pilulku pixelovým ohněm (mřížka 3 pt, 5 barev), zapálení od středu nahoře po směru hodin za 0,9 s, hoří 1,5 s, mizí 0,8 s", "done": true },
+        { "text": "2b: jiskry z hořící části obrysu ven a nahoru (3×3 → 2×2 → 1×1, tmavnou), 1px žhavá linka po obrysu, oranžový okraj pilulky, vítězná znělka", "done": true },
+        { "text": "2b: opětovné zapálení během hoření funguje a nikdy se nezasekne (úklid po ~4,5 s); kreslit přes Canvas + TimelineView", "done": true }
       ],
       "commit": null,
       "build": null,
-      "note": ""
+      "note": "Hero HP je pryč z celé appky (útěk z bitvy už nebere HP, výhra ho nedoplňuje). Rychlá bitva má 5 minut a cestu neposouvá. Karta Custom Focus i její list jsou pryč. Na iPhonu otestuj: tlačítko Fight je dole u palce a obrazovka nejde rolovat; ťuknutí na bosse ukáže bublinu a boss poskočí, 4 rychlá ťuknutí = třes, červená záře a zvuk; 5 rychlých ťuknutí na sérii = pixelový oheň kolem pilulky a znělka, znovuzapálení během hoření nesmí nic zaseknout."
     },
     {
       "id": 3,

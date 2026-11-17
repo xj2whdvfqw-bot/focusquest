@@ -31,17 +31,20 @@ struct Boss: Identifiable, Codable, Hashable, Sendable {
     }
 
     // 1 HP = 1 minuta overeneho soustredeni. Delku bitvy hrac nevoli:
-    // uzel N na ceste trva 10 + 5*(N-1) minut. Rozsah nize hlida jen server.
-    static let minutesRange = 10...240
+    // uzel N na ceste trva 10 + 5*(N-1) minut. Rozsah nize hlida jen server;
+    // spodnich 5 minut je rychla bitva "Not feeling it? Just 5 minutes".
+    static let minutesRange = 5...240
     static let minutesStep = 5
     static let firstNodeMinutes = 10
+    /// Rychla bitva z Areny ("Not feeling it? Just 5 minutes").
+    static let quickBattleMinutes = 5
 
     /// Pevna delka uzlu na ceste (index od nuly): 10, 15, 20, 25 ... minut.
     static func fixedMinutes(forNode index: Int) -> Int {
         clampedMinutes(firstNodeMinutes + minutesStep * max(0, index))
     }
 
-    /// Zaokrouhli na nejblizsich 5 minut a drzi hodnotu v rozsahu 10-240.
+    /// Zaokrouhli na nejblizsich 5 minut a drzi hodnotu v rozsahu 5-240.
     static func clampedMinutes(_ value: Int) -> Int {
         let snapped = Int((Double(value) / Double(minutesStep)).rounded()) * minutesStep
         return min(minutesRange.upperBound, max(minutesRange.lowerBound, snapped))

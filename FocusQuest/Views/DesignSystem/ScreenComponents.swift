@@ -5,23 +5,29 @@ struct ScreenScaffold<Content: View>: View {
     var alert = false
     /// Ktera pixelova krajina je za obrazovkou.
     var scene: BackdropScene = .enchantedForest
+    /// Obsah je aspon tak vysoky jako obrazovka, takze Spacer v nem odsune
+    /// hlavni akci dolu k palci (Arena). Kdyz se obsah nevejde, normalne roluje.
+    var fillsHeight = false
     @ViewBuilder let content: () -> Content
 
     var body: some View {
         ZStack {
             FocusQuestBackdrop(alert: alert, scene: scene)
-            ScrollView {
-                VStack(alignment: .leading, spacing: FQSpace.xl) {
-                    content()
+            GeometryReader { proxy in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: FQSpace.xl) {
+                        content()
+                    }
+                    .padding(.horizontal, FQSpace.lg)
+                    .padding(.top, FQSpace.sm)
+                    .padding(.bottom, fillsHeight ? FQSpace.lg : FQSpace.xxl)
+                    // Na iPadu drzi obsah v citelne sirce misto roztazeni pres cely displej.
+                    .frame(maxWidth: 640)
+                    .frame(maxWidth: .infinity)
+                    .frame(minHeight: fillsHeight ? proxy.size.height : nil, alignment: .top)
                 }
-                .padding(.horizontal, FQSpace.lg)
-                .padding(.top, FQSpace.sm)
-                .padding(.bottom, FQSpace.xxl)
-                // Na iPadu drzi obsah v citelne sirce misto roztazeni pres cely displej.
-                .frame(maxWidth: 640)
-                .frame(maxWidth: .infinity)
+                .scrollIndicators(.hidden)
             }
-            .scrollIndicators(.hidden)
             // Obsah roluje pod stavovy radek a Dynamic Island; tmavy prechod ho tam ztlumi.
             StatusBarFade()
         }

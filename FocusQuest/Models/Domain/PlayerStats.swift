@@ -62,8 +62,6 @@ struct PlayerStats: Codable, Sendable {
     var sessionHistory: [SessionSummary]
     /// Porazeni bossove podle predmetu. Uklada se spolu se statistikami (UserDefaults).
     var bestiary: [BestiaryEntry] = []
-    /// Zdravi hrdiny. Utek z bitvy ho srazi, kazda vyhra kousek doplni.
-    var heroHP = PlayerStats.maxHeroHP
     /// Kdy naposledy quest propadl utekem z appky (serie se tim prerusi).
     var lastQuestFailedAt: Date?
 
@@ -74,7 +72,7 @@ struct PlayerStats: Codable, Sendable {
     static let initial = PlayerStats(level: 1, totalXP: 0, wins: 0, battles: 0, streakDays: 0, bestCombo: 1, totalHPDealt: 0, sessionHistory: [])
 
     enum CodingKeys: String, CodingKey {
-        case level, totalXP, wins, battles, streakDays, bestCombo, totalHPDealt, sessionHistory, bestiary, heroHP, lastQuestFailedAt
+        case level, totalXP, wins, battles, streakDays, bestCombo, totalHPDealt, sessionHistory, bestiary, lastQuestFailedAt
     }
 }
 
@@ -91,8 +89,7 @@ extension PlayerStats {
         totalHPDealt = try container.decode(Int.self, forKey: .totalHPDealt)
         sessionHistory = try container.decode([SessionSummary].self, forKey: .sessionHistory)
         bestiary = (try? container.decodeIfPresent([BestiaryEntry].self, forKey: .bestiary)) ?? []
-        let storedHP = (try? container.decodeIfPresent(Int.self, forKey: .heroHP)) ?? Self.maxHeroHP
-        heroHP = min(Self.maxHeroHP, max(0, storedHP))
+        // Starsi verze ukladaly i heroHP; Hero HP uz v appce neni, klic se pri cteni ignoruje.
         lastQuestFailedAt = try? container.decodeIfPresent(Date.self, forKey: .lastQuestFailedAt)
     }
 }
@@ -112,7 +109,6 @@ extension PlayerStats {
         level = max(1, totalXP / Self.xpPerLevel + 1)
         totalHPDealt += max(0, summary.verifiedMinutes)
         sessionHistory.insert(summary, at: 0)
-        if bossDefeated { heroHP = min(Self.maxHeroHP, heroHP + Self.heroHPHealPerWin) }
 
         // Po propadlem questu se serie pocita znovu od jedne, i kdyz byla posledni bitva vcera.
         if let failed = lastQuestFailedAt, let previousDay, failed > previousDay {
@@ -130,16 +126,10 @@ extension PlayerStats {
         }
     }
 
-    // MARK: - Hrdina a serie
+    // MARK: - Serie
 
-    static let maxHeroHP = 100
-    /// Kolik HP hrdina ztrati, kdyz behem bitvy odejde z appky a nevrati se vcas.
-    static let heroHPLossPerFailedQuest = 25
-    static let heroHPHealPerWin = 10
-
-    /// Hrac odesel z appky behem bitvy a nevratil se vcas: ztrati HP hrdiny a serii dni.
+    /// Hrac z bitvy ustoupil: serie dni se prerusi.
     mutating func recordQuestFailure(at date: Date = Date()) {
-        heroHP = max(0, heroHP - Self.heroHPLossPerFailedQuest)
         streakDays = 0
         lastQuestFailedAt = date
     }

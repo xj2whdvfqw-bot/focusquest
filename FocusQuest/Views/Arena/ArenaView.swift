@@ -8,101 +8,148 @@ final class BattlePresenter {
     var isPresented = false
 }
 
-/// Arena: domovska obrazovka. Nahore kulate tlacitko Custom Focus, pod nim stav hrdiny
-/// a dalsi uzel cesty. Samotne svety s cestami jsou na zalozce Path.
+/// Arena: domovska obrazovka. Nahore nadpis a pilulka serie, dole v dosahu palce
+/// dalsi boss cesty s tlacitkem Fight. Samotne svety s cestami jsou na zalozce Path.
+/// Dva easter eggy: klepani na bosse (bublina s hlaskou) a 5 rychlych klepnuti na serii (ohen).
 struct ArenaView: View {
     @ObservedObject var model: ArenaViewModel
     @ObservedObject var profileModel: ProfileViewModel
     /// Prepne na zalozku Path se vsemi svety.
     let openPath: () -> Void
     @Environment(BattlePresenter.self) private var battle
-    @State private var showsCustomFocus = false
-    /// Zvolena delka a predmet. Bitva zacne az po zavreni listu: bezici bitva se hned
-    /// prezentuje pres celou obrazovku a dve prezentace naraz SwiftUI neumi.
-    @State private var pendingCustom: (minutes: Int, subject: StudySubject)?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    /// Svet, ve kterem hrac naposledy bojoval, a jeho dalsi neporazeny uzel.
+    // 2a: klepani na bosse.
+    @State private var poke: Poke?
+    @State private var pokeSerial = 0
+    @State private var pokeCount = 0
+    @State private var lastPoke = Date.distantPast
+    @State private var bobs = 0
+    @State private var shakes = 0
+
+    // 2b: serie v plamenech.
+    @State private var streakTaps = 0
+    @State private var lastStreakTap = Date.distantPast
+    @State private var bumps = 0
+    @State private var fireStart: Date?
+
+    private struct Poke: Equatable {
+        let id: Int
+        let text: String
+        let angry: Bool
+    }
+
+    /// Svet, ve kterem hrac naposledy bojoval, a jeho dalsi neporazeny boss.
     private var world: BossWorld { model.selectedBoss.world }
     private var cleared: Int { model.clearedNodes(in: world) }
     private var nextNode: Boss? { cleared < world.bosses.count ? world.bosses[cleared] : nil }
 
     var body: some View {
-        ScreenScaffold(scene: .lanternGrove) {
-            ScreenHeader(eyebrow: "Arena", title: "Ready to focus?")
-            customFocusButton
-            heroStatus
-            continueCard
+        ScreenScaffold(scene: .lanternGrove, fillsHeight: true) {
+            ScreenHeader(title: "Ready to focus?")
+            streakPill
+            Spacer(minLength: FQSpace.lg)
+            continueSection
         }
-        .sheet(isPresented: $showsCustomFocus, onDismiss: {
-            guard let pending = pendingCustom else { return }
-            pendingCustom = nil
-            model.startCustomBattle(minutes: pending.minutes, subject: pending.subject)
-            battle.isPresented = true
-        }) {
-            CustomFocusSheet(model: model) { minutes, subject in
-                pendingCustom = (minutes, subject)
-                showsCustomFocus = false
-            }
+        .task(id: poke?.id) {
+            guard let current = poke else { return }
+            try? await Task.sleep(for: .seconds(current.angry ? 2.6 : 2.2))
+            guard !Task.isCancelled, poke?.id == current.id else { return }
+            withAnimation(.easeOut(duration: 0.2)) { poke = nil }
+        }
+        .task(id: fireStart) {
+            // Ohen se po ~4,5 s vzdy uklidi, i kdyz se mezitim znovu zapalil a zase dohorel.
+            guard let started = fireStart else { return }
+            try? await Task.sleep(for: .seconds(4.5))
+            guard !Task.isCancelled, fireStart == started else { return }
+            fireStart = nil
         }
     }
 
-    /// Hlavni akce domovske obrazovky: vlastni delka a nahodny boss. Jen kolecko s ikonou,
-    /// bez karty a textu; nazev zustava pro VoiceOver.
-    private var customFocusButton: some View {
-        Button { showsCustomFocus = true } label: {
-            Image(systemName: "timer")
-                .font(.system(size: 26, weight: .semibold, design: .rounded))
-                .foregroundStyle(FQColor.onAccent)
-                .frame(width: 60, height: 60)
-                .background(FQColor.accent, in: Circle())
-                .contentShape(Circle())
+    // MARK: - Serie
+
+    private var streakPill: some View {
+        let days = profileModel.stats.currentStreak()
+        let burning = fireStart != nil
+        return Button(action: tapStreak) {
+            StreakBadge(days: days, burning: burning)
+                .padding(.vertical, 10)
+                .padding(.horizontal, 14)
+                .glassCard(radius: 100)
+                .overlay {
+                    Capsule()
+                        .strokeBorder(Self.ember.opacity(0.55), lineWidth: 3)
+                        .padding(-3)
+                        .opacity(burning ? 1 : 0)
+                        .animation(.easeOut(duration: 0.4), value: burning)
+                }
+                .overlay {
+                    if let fireStart {
+                        StreakFire(start: fireStart).padding(-StreakFire.pad)
+                    }
+                }
+                .keyframeAnimator(initialValue: 1.0, trigger: bumps) { content, scale in
+                    content.scaleEffect(scale)
+                } keyframes: { _ in
+                    KeyframeTrack {
+                        MoveKeyframe(1.0)
+                        CubicKeyframe(1.06, duration: 0.09)
+                        CubicKeyframe(1.0, duration: 0.09)
+                    }
+                }
         }
         .buttonStyle(.plain)
-        .disabled(!model.isBetweenBattles)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .accessibilityLabel("Custom Focus")
-        .accessibilityHint("Choose a length and start a battle")
+        .accessibilityLabel(days == 1 ? "1 day streak" : "\(days) days streak")
     }
 
-    /// Kratky prehled hrdiny: serie dni a zdravi.
-    private var heroStatus: some View {
-        let stats = profileModel.stats
-        return HStack(spacing: FQSpace.lg) {
-            StreakBadge(days: stats.currentStreak())
-            HeroHealthBar(hp: stats.heroHP, maxHP: PlayerStats.maxHeroHP)
-        }
-        .padding(FQSpace.xl)
-        .glassCard()
+    /// Kazde klepnuti pilulku nafoukne; 5 klepnuti s rozestupem do 600 ms ji zapali.
+    private func tapStreak() {
+        let now = Date()
+        streakTaps = now.timeIntervalSince(lastStreakTap) < 0.6 ? streakTaps + 1 : 1
+        lastStreakTap = now
+        if !reduceMotion { bumps += 1 }
+        guard streakTaps >= 5 else { return }
+        streakTaps = 0
+        fireStart = now
+        EffectSounds.shared.play(.jingle, enabled: model.preferences.isSFXEnabled)
     }
 
-    /// Dalsi uzel cesty jednim klepnutim; vsechny svety jsou na zalozce Path.
-    private var continueCard: some View {
-        VStack(alignment: .leading, spacing: FQSpace.lg) {
-            Text("Continue your path").font(.fqLabel).foregroundStyle(FQColor.textSecondary)
+    /// #EB5016, oranzovy okraj horici pilulky.
+    private static let ember = Color(red: 235 / 255, green: 80 / 255, blue: 22 / 255)
+
+    // MARK: - Dalsi boss
+
+    private var continueSection: some View {
+        VStack(spacing: FQSpace.lg) {
+            Text("Continue your path")
+                .font(.fqLabel)
+                .foregroundStyle(FQColor.textSecondary)
+                .shadow(color: .black.opacity(0.7), radius: 4, y: 2)
             if let node = nextNode {
-                HStack(spacing: FQSpace.lg) {
-                    PixelArtAvatarView(sprite: .boss(node.pixelSpriteConfig), size: 56)
-                        .frame(width: 72, height: 72)
-                        .background(world.accent.opacity(0.16), in: Circle())
-                    VStack(alignment: .leading, spacing: FQSpace.xs) {
-                        Text(node.name).font(.fqHeadline).foregroundStyle(FQColor.textPrimary)
-                        Text("Node \(node.nodeIndex + 1) · \(world.title) · \(ArenaView.durationText(minutes: node.maxHP))")
-                            .font(.fqMeta)
-                            .foregroundStyle(FQColor.textSecondary)
-                    }
-                    Spacer(minLength: 0)
+                VStack(spacing: FQSpace.sm) {
+                    bossButton(node)
+                    Text(node.name)
+                        .font(.system(size: 24, weight: .bold, design: .rounded))
+                        .foregroundStyle(FQColor.textPrimary)
+                        .multilineTextAlignment(.center)
+                        .shadow(color: .black.opacity(0.7), radius: 4, y: 2)
+                    Text("Boss \(node.nodeIndex + 1) of \(world.bosses.count) · \(world.title)")
+                        .font(.fqSecondary)
+                        .foregroundStyle(FQColor.textSecondary)
+                        .shadow(color: .black.opacity(0.7), radius: 4, y: 2)
                 }
-                .accessibilityElement(children: .combine)
+                fightButton(node)
                 Button {
-                    model.selectBoss(node)
+                    model.prepareQuickBattle(with: node)
                     battle.isPresented = true
                 } label: {
-                    Label("Fight", systemImage: "play.fill")
-                        .font(.fqHeadline)
-                        .foregroundStyle(FQColor.onCta)
+                    Text("Not feeling it? Just 5 minutes")
+                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                        .underline()
+                        .foregroundStyle(FQColor.textSecondary)
                         .frame(maxWidth: .infinity)
-                        .frame(height: 52)
-                        .background(FQColor.cta, in: RoundedRectangle(cornerRadius: FQRadius.pill, style: .continuous))
+                        .frame(minHeight: 44)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .disabled(!model.isBetweenBattles)
@@ -110,19 +157,135 @@ struct ArenaView: View {
                 Label("\(world.title) conquered", systemImage: "checkmark.seal.fill")
                     .font(.fqHeadline)
                     .foregroundStyle(world.accent)
+                Button(action: openPath) { ctaLabel("Pick a world", symbol: "map.fill") }
+                    .buttonStyle(.plain)
             }
-            Button(action: openPath) {
-                Text("See all worlds")
-                    .font(.fqLabel)
-                    .foregroundStyle(FQColor.textSecondary)
-                    .frame(maxWidth: .infinity)
-                    .frame(minHeight: 44)
-            }
-            .buttonStyle(.plain)
         }
-        .padding(FQSpace.xl)
-        .glassCard()
+        .frame(maxWidth: .infinity)
     }
+
+    private func fightButton(_ node: Boss) -> some View {
+        Button {
+            model.selectBoss(node)
+            battle.isPresented = true
+        } label: {
+            ctaLabel("Fight · \(ArenaView.durationText(minutes: node.maxHP))", symbol: "play.fill")
+        }
+        .buttonStyle(.plain)
+        .disabled(!model.isBetweenBattles)
+    }
+
+    /// Zlute hlavni tlacitko: zaoblene pismo, velke jen prvni pismeno.
+    private func ctaLabel(_ title: String, symbol: String) -> some View {
+        Label(title, systemImage: symbol)
+            .font(.system(size: 20, weight: .heavy, design: .rounded))
+            .foregroundStyle(FQColor.onCta)
+            .frame(maxWidth: .infinity)
+            .frame(height: 52)
+            .background(FQColor.cta, in: RoundedRectangle(cornerRadius: FQRadius.pill, style: .continuous))
+    }
+
+    // MARK: - 2a: klepani na bosse
+
+    /// Sprite 128 pt bez karty a kruhu. Klepnuti = bublina a poskoceni,
+    /// 4+ rychla klepnuti = nastvany boss (tres, cervena zare, zvuk zasahu).
+    private func bossButton(_ node: Boss) -> some View {
+        let angry = poke?.angry == true
+        return Button { pokeBoss(node) } label: {
+            PixelArtAvatarView(sprite: .boss(node.pixelSpriteConfig), size: 128)
+                .saturation(angry ? 1.4 : 1)
+                .shadow(color: FQColor.danger.opacity(angry ? 0.8 : 0), radius: 10)
+                .keyframeAnimator(initialValue: 0.0, trigger: bobs) { content, phase in
+                    // Dve poskoceni: nahoru o 8 bodu s naklonem -3°, kazde 0,5 s.
+                    let lift = sin(.pi * phase) * sin(.pi * phase)
+                    content.offset(y: -8 * lift).rotationEffect(.degrees(-3 * lift))
+                } keyframes: { _ in
+                    KeyframeTrack {
+                        MoveKeyframe(0.0)
+                        LinearKeyframe(2.0, duration: 1.0)
+                    }
+                }
+                .keyframeAnimator(initialValue: 0.0, trigger: shakes) { content, phase in
+                    // 8 kmitu po 0,09 s: ±5 bodu a ±4°.
+                    let swing = sin(2 * .pi * phase)
+                    content.offset(x: -5 * swing).rotationEffect(.degrees(-4 * swing))
+                } keyframes: { _ in
+                    KeyframeTrack {
+                        MoveKeyframe(0.0)
+                        LinearKeyframe(8.0, duration: 0.72)
+                    }
+                }
+                .frame(width: 168, height: 168)
+                .background {
+                    // Mekka cervena zare bez ostre hrany.
+                    RadialGradient(
+                        stops: [
+                            .init(color: FQColor.danger.opacity(0.5), location: 0),
+                            .init(color: FQColor.danger.opacity(0.22), location: 0.5),
+                            .init(color: FQColor.danger.opacity(0.06), location: 0.8),
+                            .init(color: FQColor.danger.opacity(0), location: 1),
+                        ],
+                        center: .center, startRadius: 0, endRadius: 84
+                    )
+                    .opacity(angry ? 1 : 0)
+                    .animation(.easeOut(duration: 0.3), value: angry)
+                }
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(PokeButtonStyle())
+        .overlay(alignment: .top) {
+            if let poke {
+                PixelSpeechBubble(text: poke.text, angry: poke.angry)
+                    // Spodek bubliny (spicka ocasku) 14 bodu pod hornim okrajem spritu.
+                    .alignmentGuide(.top) { $0[.bottom] - 14 }
+                    .id(poke.id)
+                    .transition(reduceMotion ? .opacity : .scale(scale: 0.6, anchor: .bottom).combined(with: .opacity))
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+            }
+        }
+        .zIndex(1)
+        .accessibilityLabel("Poke \(node.name)")
+    }
+
+    private func pokeBoss(_ node: Boss) {
+        let now = Date()
+        pokeCount = now.timeIntervalSince(lastPoke) < 1.5 ? pokeCount + 1 : 1
+        lastPoke = now
+        let angry = pokeCount >= 4
+        let pool = (angry ? Self.angryLines : Self.talkLines)
+            .map { $0.replacingOccurrences(of: "{m}", with: "\(node.maxHP)") }
+        // Nikdy dvakrat stejna hlaska po sobe.
+        var text = pool.randomElement() ?? ""
+        while pool.count > 1, text == poke?.text { text = pool.randomElement() ?? "" }
+        pokeSerial += 1
+        withAnimation(reduceMotion ? nil : .spring(response: 0.22, dampingFraction: 0.55)) {
+            poke = Poke(id: pokeSerial, text: text, angry: angry)
+        }
+        if !reduceMotion {
+            if angry { shakes += 1 } else { bobs += 1 }
+        }
+        EffectSounds.shared.play(angry ? .hit : .click, enabled: model.preferences.isSFXEnabled)
+        AccessibilityNotification.Announcement(text).post()
+    }
+
+    private static let talkLines = [
+        "Oh, you again? Your notes miss you.",
+        "I've napped through {m} minutes before. Try me.",
+        "Bet you'll check your phone in 3 minutes.",
+        "Studying later? That's my favourite word.",
+        "I feed on open tabs. Keep them coming.",
+        "Psst. Just one more video. Trust me.",
+        "You won't last {m} minutes. Nobody does.",
+        "Phone down? Ha. Prove it.",
+    ]
+
+    private static let angryLines = [
+        "STOP. POKING. ME.",
+        "Poke me once more and I'm adding 5 minutes.",
+        "You poke like you study. Badly.",
+        "Enough! Fight me if you dare.",
+    ]
 
     /// "25 min" nebo "1 h 30 min".
     static func durationText(minutes: Int) -> String {
@@ -132,89 +295,12 @@ struct ArenaView: View {
     }
 }
 
-/// List Custom Focus: delka 15 / 30 / 45 / 60 minut a predmet, pak bitva s nahodnym odemcenym bossem.
-struct CustomFocusSheet: View {
-    @ObservedObject var model: ArenaViewModel
-    /// Hrac zvolil delku a predmet; volajici zavre list a spusti bitvu.
-    let onStart: (Int, StudySubject) -> Void
-    @State private var minutes = CustomFocusSheet.options[0]
-    @State private var subject: StudySubject?
-
-    static let options = [15, 30, 45, 60]
-
-    var body: some View {
-        VStack(spacing: FQSpace.xxl) {
-            VStack(spacing: FQSpace.sm) {
-                Text("Custom Focus").font(.system(size: 28, weight: .bold, design: .rounded)).foregroundStyle(FQColor.textPrimary)
-                Text("A random boss you've unlocked. Custom battles don't move you along the path.")
-                    .font(.fqSecondary)
-                    .multilineTextAlignment(.center)
-                    .foregroundStyle(FQColor.textSecondary)
-            }
-            HStack(spacing: FQSpace.md) {
-                ForEach(Self.options, id: \.self) { option in
-                    let isSelected = option == minutes
-                    Button { minutes = option } label: {
-                        VStack(spacing: 2) {
-                            Text(option == 60 ? "1" : "\(option)")
-                                .font(.system(size: 34, weight: .semibold, design: .rounded))
-                                .monospacedDigit()
-                            Text(option == 60 ? "hour" : "min").font(.fqMeta)
-                        }
-                        .foregroundStyle(isSelected ? FQColor.onAccent : FQColor.textPrimary)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 96)
-                        .background(isSelected ? AnyShapeStyle(FQColor.accent) : AnyShapeStyle(FQColor.fill), in: RoundedRectangle(cornerRadius: FQRadius.control, style: .continuous))
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(ArenaView.durationText(minutes: option))
-                    .accessibilityAddTraits(isSelected ? .isSelected : [])
-                }
-            }
-            VStack(spacing: FQSpace.md) {
-                Text("What are you studying?").font(.fqLabel).foregroundStyle(FQColor.textSecondary)
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: FQSpace.sm) {
-                        ForEach(StudySubject.allCases) { item in
-                            let isSelected = item == subject
-                            Button { subject = item } label: {
-                                Text(item.title)
-                                    .font(.fqLabel)
-                                    .foregroundStyle(isSelected ? FQColor.onAccent : FQColor.textPrimary)
-                                    .padding(.horizontal, FQSpace.lg)
-                                    .frame(height: 40)
-                                    .background(isSelected ? AnyShapeStyle(FQColor.accent) : AnyShapeStyle(FQColor.fill), in: RoundedRectangle(cornerRadius: FQRadius.pill, style: .continuous))
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityAddTraits(isSelected ? .isSelected : [])
-                        }
-                    }
-                }
-                .scrollClipDisabled()
-            }
-            Button {
-                guard let subject else { return }
-                onStart(minutes, subject)
-            } label: {
-                Label("Start \(ArenaView.durationText(minutes: minutes)) Focus", systemImage: "play.fill")
-                    .font(.fqHeadline)
-                    .foregroundStyle(FQColor.onCta)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 56)
-                    .background(FQColor.cta, in: RoundedRectangle(cornerRadius: FQRadius.pill, style: .continuous))
-            }
-            .buttonStyle(.plain)
-            .disabled(subject == nil)
-            .opacity(subject == nil ? 0.35 : 1)
-        }
-        .padding(.horizontal, FQSpace.xl)
-        .padding(.top, FQSpace.xxl)
-        .padding(.bottom, FQSpace.lg)
-        .presentationDetents([.medium, .large])
-        .presentationDragIndicator(.visible)
-        .presentationBackground(.ultraThinMaterial)
-        .preferredColorScheme(.dark)
-        .onAppear { subject = model.selectedSubject }
+/// Sprite se pri stisku malinko zmackne (0,94), jako v prototypu.
+private struct PokeButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.94 : 1)
+            .animation(.easeOut(duration: 0.15), value: configuration.isPressed)
     }
 }
 
@@ -327,17 +413,21 @@ private struct WorldCard: View {
     }
 }
 
-// MARK: - Sdilene stavebni bloky (Arena, Stats)
+// MARK: - Sdilene stavebni bloky
 
 /// Serie dni s ohnem; sedy plamen = dnes jeste zadna bitva.
 struct StreakBadge: View {
     let days: Int
+    /// Easter egg v Arene: plamen zari oranzove, dokud pilulka hori.
+    var burning = false
 
     var body: some View {
         HStack(spacing: FQSpace.sm) {
             Image(systemName: "flame.fill")
                 .font(.system(size: 22, weight: .semibold, design: .rounded))
                 .foregroundStyle(days > 0 ? AnyShapeStyle(LinearGradient(colors: [Color.yellow, Color.orange, Color.red], startPoint: .top, endPoint: .bottom)) : AnyShapeStyle(FQColor.textSecondary))
+                .shadow(color: Color(red: 1, green: 138 / 255, blue: 31 / 255).opacity(burning ? 1 : 0), radius: 6)
+                .animation(.easeOut(duration: 0.4), value: burning)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 0) {
                 Text("\(days)").font(.fqTitle).monospacedDigit().foregroundStyle(FQColor.textPrimary)
@@ -345,37 +435,5 @@ struct StreakBadge: View {
             }
         }
         .accessibilityElement(children: .combine)
-    }
-}
-
-/// Zdravi hrdiny; utek z bitvy ho snizuje, vyhry ho doplnuji.
-struct HeroHealthBar: View {
-    let hp: Int
-    let maxHP: Int
-
-    private var fraction: Double { maxHP > 0 ? Double(hp) / Double(maxHP) : 0 }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: FQSpace.xs) {
-            HStack {
-                Label("Hero HP", systemImage: "heart.fill")
-                    .font(.fqMeta)
-                    .foregroundStyle(FQColor.textSecondary)
-                Spacer()
-                Text("\(hp) / \(maxHP)").font(.fqMeta).monospacedDigit().foregroundStyle(FQColor.textPrimary)
-            }
-            GeometryReader { proxy in
-                ZStack(alignment: .leading) {
-                    RoundedRectangle(cornerRadius: 3, style: .continuous).fill(FQColor.track)
-                    RoundedRectangle(cornerRadius: 3, style: .continuous)
-                        .fill(fraction > 0.3 ? FQColor.accent : FQColor.danger)
-                        .frame(width: proxy.size.width * fraction)
-                }
-            }
-            .frame(height: 8)
-        }
-        .frame(maxWidth: .infinity)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Hero HP \(hp) of \(maxHP)")
     }
 }

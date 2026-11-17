@@ -10,8 +10,9 @@ final class ProgressionModelTests: XCTestCase {
         XCTAssertEqual(boss.currentHP, 35)
         XCTAssertEqual(Boss.clampedMinutes(37), 35)
         XCTAssertEqual(Boss.clampedMinutes(38), 40)
-        XCTAssertEqual(Boss.clampedMinutes(1), 10)
-        XCTAssertEqual(Boss.roster[0].withHP(minutes: 0).maxHP, 10)
+        XCTAssertEqual(Boss.clampedMinutes(1), 5)
+        XCTAssertEqual(Boss.roster[0].withHP(minutes: 0).maxHP, 5)
+        XCTAssertEqual(Boss.roster[0].withHP(minutes: Boss.quickBattleMinutes).maxHP, 5)
         XCTAssertEqual(Boss.roster[0].withHP(minutes: 9_999).maxHP, Boss.minutesRange.upperBound)
     }
 
@@ -307,35 +308,33 @@ final class ProgressionModelTests: XCTestCase {
         XCTAssertEqual(stats.currentStreak(now: dayTwo.addingTimeInterval(86_400 * 2), calendar: calendar), 0)
     }
 
-    func testFailedQuestCostsHeroHPAndStreakAndWinsHealHP() {
+    func testFailedQuestResetsStreak() {
         let calendar = Calendar(identifier: .gregorian)
         let dayOne = Date(timeIntervalSince1970: 1_700_000_000)
         var stats = PlayerStats.initial
-        XCTAssertEqual(stats.heroHP, PlayerStats.maxHeroHP)
 
         stats.record(SessionSummary(id: UUID(), bossName: "A", verifiedMinutes: 10, xpEarned: 100, completedAt: dayOne, flawless: true), bossDefeated: true, calendar: calendar)
-        XCTAssertEqual(stats.heroHP, PlayerStats.maxHeroHP, "healing never goes above max HP")
         XCTAssertEqual(stats.currentStreak(now: dayOne, calendar: calendar), 1)
 
         stats.recordQuestFailure(at: dayOne.addingTimeInterval(60))
-        XCTAssertEqual(stats.heroHP, PlayerStats.maxHeroHP - PlayerStats.heroHPLossPerFailedQuest)
         XCTAssertEqual(stats.currentStreak(now: dayOne.addingTimeInterval(120), calendar: calendar), 0)
 
-        // Dalsi vyhra serii zacne znovu od jedne a kousek HP doplni.
+        // Dalsi vyhra serii zacne znovu od jedne.
         stats.record(SessionSummary(id: UUID(), bossName: "B", verifiedMinutes: 10, xpEarned: 100, completedAt: dayOne.addingTimeInterval(3_600), flawless: true), bossDefeated: true, calendar: calendar)
         XCTAssertEqual(stats.streakDays, 1)
-        XCTAssertEqual(stats.heroHP, PlayerStats.maxHeroHP - PlayerStats.heroHPLossPerFailedQuest + PlayerStats.heroHPHealPerWin)
-
-        for _ in 0..<10 { stats.recordQuestFailure(at: dayOne.addingTimeInterval(7_200)) }
-        XCTAssertEqual(stats.heroHP, 0, "HP never goes below zero")
     }
 
-    func testHeroHPAndQuestFailureSurviveEncoding() throws {
+    func testQuestFailureSurvivesEncodingAndOldHeroHPIsIgnored() throws {
         var stats = PlayerStats.initial
         stats.recordQuestFailure(at: Date(timeIntervalSince1970: 1_700_000_000))
         let decoded = try JSONDecoder().decode(PlayerStats.self, from: JSONEncoder().encode(stats))
-        XCTAssertEqual(decoded.heroHP, stats.heroHP)
         XCTAssertEqual(decoded.lastQuestFailedAt, stats.lastQuestFailedAt)
+
+        // Statistiky ze starsi verze s Hero HP se musi nacist dal.
+        var json = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(stats)) as? [String: Any])
+        json["heroHP"] = 40
+        let legacy = try JSONDecoder().decode(PlayerStats.self, from: JSONSerialization.data(withJSONObject: json))
+        XCTAssertEqual(legacy.wins, stats.wins)
     }
 
     func testLocalProfileSurvivesRelaunch() async throws {
