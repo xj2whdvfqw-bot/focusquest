@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-19T15:52:00+01:00",
-  "current": "Opravy po testu #30 (T30): všech 7 bodů napsáno; čekám na build #31 (body 6–7), pak build #32 se všemi body.",
-  "nextStep": "Po doběhnutí buildu #31 spustit build #32 (body 1–5), opravit případné chyby, doplnit poznámku pro test na iPhonu.",
+  "updated": "2026-11-19T16:08:00+01:00",
+  "current": "Opravy po testu #30 (T30): build #31 (body 6–7) prošel, běží build #32 se všemi body (commit 7a239cd).",
+  "nextStep": "Počkat na build #32; při chybě opravit, jinak kartu T30 na hotovo s poznámkou pro test na iPhonu.",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -242,9 +242,9 @@
         { "text": "Senzor pohybu: CMMotionManager deviceMotion ~10 Hz (záloha accelerometer), ležící = |gravity.z| > 0,9 po 1 s, zvednutý = |gravity.z| < 0,7 po 0,5 s; po 8 s „Start without sensor“; unit test prahů", "done": true },
         { "text": "Shop bez zámku: žádný 🔒 ani 0/3 v tab baru, žádný toast; řádek Background v Nastavení vždy vidět; upravit CHANGES.md (sekce 1, 13) a progress", "done": true }
       ],
-      "commit": "8a35360",
-      "build": { "number": 31, "runId": 44547335335, "result": "běží" },
-      "note": "Nalezeno při testu buildu #30 na iPhonu (iOS 27)."
+      "commit": "7a239cd",
+      "build": { "number": 32, "runId": 44551390016, "result": "běží" },
+      "note": "Nalezeno při testu buildu #30 na iPhonu (iOS 27). Build #31 (body 6–7, commit 8a35360) prošel včetně unit testů."
     },
     {
       "id": 7,
