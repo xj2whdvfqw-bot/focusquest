@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-19T15:46:00+01:00",
-  "current": "Opravy po testu #30 (T30): body 6 a 7 hotové, běží build #31; pokračuji bodem 4 (bitvy jen přes Fight sheet).",
-  "nextStep": "Body 4, 5, 1, 2, 3 z karty T30; pak build a poznámka, co otestovat na iPhonu.",
+  "updated": "2026-11-19T15:52:00+01:00",
+  "current": "Opravy po testu #30 (T30): všech 7 bodů napsáno; čekám na build #31 (body 6–7), pak build #32 se všemi body.",
+  "nextStep": "Po doběhnutí buildu #31 spustit build #32 (body 1–5), opravit případné chyby, doplnit poznámku pro test na iPhonu.",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -234,11 +234,11 @@
       "title": "Opravy po testu #30",
       "status": "pracuje",
       "items": [
-        { "text": "Arena: blok s bossem svisle uprostřed mezi pilulkou série a tlačítkem Fight; Fight a „Just 5 minutes“ zůstávají dole", "done": false },
-        { "text": "Arena: bublina po klepnutí je nad bossem s ocáskem dolů, nikdy nepřekryje sprite (ani naštvaná); při málo místa se zmenší nebo zalomí", "done": false },
-        { "text": "Path: otevření světa = karta se plynule zvětší a mřížka se rozbalí na místě (fade + výška, ~0,25 s), žádné přilétání shora; Reduce Motion", "done": false },
-        { "text": "Každá bitva jde přes Fight sheet (dlaždice na Path, „Just 5 minutes“ s pevnými 5 min, Same again…); stará řada čipů předmětů na obrazovce bitvy pryč", "done": false },
-        { "text": "„+ Subject“: místo řady čipů s návrhy inline doplňování šedým textem v poli (→ / Tab / klepnutí doplní, Enter nebo Add přidá); bez už existujících předmětů", "done": false },
+        { "text": "Arena: blok s bossem svisle uprostřed mezi pilulkou série a tlačítkem Fight; Fight a „Just 5 minutes“ zůstávají dole", "done": true },
+        { "text": "Arena: bublina po klepnutí je nad bossem s ocáskem dolů, nikdy nepřekryje sprite (ani naštvaná); při málo místa se zmenší nebo zalomí", "done": true },
+        { "text": "Path: otevření světa = karta se plynule zvětší a mřížka se rozbalí na místě (fade + výška, ~0,25 s), žádné přilétání shora; Reduce Motion", "done": true },
+        { "text": "Každá bitva jde přes Fight sheet (dlaždice na Path, „Just 5 minutes“ s pevnými 5 min, Same again…); stará řada čipů předmětů na obrazovce bitvy pryč", "done": true },
+        { "text": "„+ Subject“: místo řady čipů s návrhy inline doplňování šedým textem v poli (→ / Tab / klepnutí doplní, Enter nebo Add přidá); bez už existujících předmětů", "done": true },
         { "text": "Senzor pohybu: CMMotionManager deviceMotion ~10 Hz (záloha accelerometer), ležící = |gravity.z| > 0,9 po 1 s, zvednutý = |gravity.z| < 0,7 po 0,5 s; po 8 s „Start without sensor“; unit test prahů", "done": true },
         { "text": "Shop bez zámku: žádný 🔒 ani 0/3 v tab baru, žádný toast; řádek Background v Nastavení vždy vidět; upravit CHANGES.md (sekce 1, 13) a progress", "done": true }
       ],

@@ -477,4 +477,19 @@ final class ProgressionModelTests: XCTestCase {
         XCTAssertTrue(preferences.subjects.visibleSubjects.contains(.history))
         XCTAssertEqual(preferences.preselectedSubject?.title, "History")
     }
-}
+
+    func testInlineCompletionSkipsSubjectsThePlayerAlreadyHas() {
+        // Math uz hrac ma (vychozi predmety), takze "m" nabidne az Microeconomics.
+        XCTAssertEqual(StudySubject.completion(for: "m", taken: StudySubject.defaults), "Microeconomics")
+        XCTAssertEqual(StudySubject.completion(for: "M", taken: []), "Math")
+        XCTAssertEqual(StudySubject.completion(for: "PSY", taken: []), "Psychology")
+        XCTAssertEqual(StudySubject.completion(for: "Mac", taken: []), "Macroeconomics")
+    }
+
+    func testInlineCompletionStopsWhenNothingIsLeftToAdd() {
+        XCTAssertNil(StudySubject.completion(for: "", taken: []))
+        XCTAssertNil(StudySubject.completion(for: " m", taken: []))
+        XCTAssertNil(StudySubject.completion(for: "Math", taken: []), "A full match has no grey rest")
+        XCTAssertNil(StudySubject.completion(for: "Quantum", taken: []))
+        XCTAssertNil(StudySubject.completion(for: "e", taken: [StudySubject(id: "English"), StudySubject(id: "Economics")]))
+    }

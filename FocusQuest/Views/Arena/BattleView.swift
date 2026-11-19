@@ -38,7 +38,6 @@ struct BattleView: View {
         static let timerSize: CGFloat = 114
         static let timerSizeLong: CGFloat = 89
         static let timerGap: CGFloat = 3
-        static let idleGap: CGFloat = 25
         static let actionSize: CGFloat = 69
         static let actionGap: CGFloat = 50
     }
@@ -256,9 +255,7 @@ struct BattleView: View {
         case .awaitingFlatPlacement:
             PlacementHint { model.startWithoutSensor() }
         default:
-            if model.selectedSubject == nil {
-                Text("What are you studying?").font(.fqLabel).foregroundStyle(FQColor.caution)
-            }
+            EmptyView()
         }
     }
 
@@ -269,24 +266,23 @@ struct BattleView: View {
     @ViewBuilder private var controls: some View {
         switch model.state {
         case .idle, .penalized, .victory, .defeated:
-            VStack(spacing: Layout.idleGap) {
-                subjectPicker
-                Button { model.startSession() } label: {
-                    Label("Begin Battle", systemImage: "play.fill")
-                        .font(.fqHeadline)
-                        .foregroundStyle(FQColor.onCta)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 56)
-                        .background(FQColor.cta, in: pill)
-                }
-                .buttonStyle(.plain)
-                .disabled(model.selectedSubject == nil)
-                .opacity(model.selectedSubject == nil ? 0.35 : 1)
-                .accessibilityHint(model.selectedSubject == nil ? "Choose a subject first" : "")
+            // Kazda bitva se spousti pres Fight sheet (predmet, zvuk, Start). Sem se bezne nedostane;
+            // kdyby ano, tlacitko obrazovku zavre a otevre Fight sheet.
+            Button { onExitTo(.fightSheet) } label: {
+                Label("Begin Battle", systemImage: "play.fill")
+                    .font(.fqHeadline)
+                    .foregroundStyle(FQColor.onCta)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 56)
+                    .background(FQColor.cta, in: pill)
             }
+            .buttonStyle(.plain)
         case .awaitingFlatPlacement:
-            // Hodiny jeste nebezi, takze zruseni nic nestoji.
-            BattleActionButton(symbol: "xmark", caption: "Cancel", tone: .neutral) { model.retreat() }
+            // Hodiny jeste nebezi, takze zruseni nic nestoji: bitva se zrusi a obrazovka zavre.
+            BattleActionButton(symbol: "xmark", caption: "Cancel", tone: .neutral) {
+                model.retreat()
+                onExit()
+            }
         case .focusing, .paused, .warningCountdown:
             HStack(spacing: Layout.actionGap) {
                 if isPaused {
@@ -297,19 +293,6 @@ struct BattleView: View {
                 BattleActionButton(symbol: "flag.fill", caption: "Retreat", tone: .danger) { showsRetreatConfirm = true }
             }
         }
-    }
-
-    /// Predmet je povinny - bez nej bitva nezacne. Bezne se vybira ve Fight sheetu; tady zustava
-    /// pro rychlou 5minutovou bitvu, ktera se otevira primo (stejne cipy, pevne poradi seznamu).
-    private var subjectPicker: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: FQSpace.sm) {
-                ForEach(model.visibleSubjects) { subject in
-                    FQChip(title: subject.title, isSelected: subject == model.selectedSubject) { model.selectSubject(subject) }
-                }
-            }
-        }
-        .scrollClipDisabled()
     }
 
     // MARK: - Ustup

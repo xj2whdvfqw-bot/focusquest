@@ -58,12 +58,31 @@ struct ArenaView: View {
     private var cleared: Int { model.clearedNodes(in: world) }
     private var nextNode: Boss? { cleared < world.bosses.count ? world.bosses[cleared] : nil }
 
+    /// Spodni hrana pilulky serie a horni hrana ramecku bosse (globalne): kolik mista ma bublina nad bossem.
+    @State private var pillBottom: CGFloat = 0
+    @State private var bossFrameTop: CGFloat = 0
+
+    /// Ramecek bosse je 168 bodu, sprite 128, takze sprite zacina 20 bodu pod hornim okrajem.
+    /// Spodek bubliny je 2 body nad hlavou, spicka ocasku tak miri tesne nad bosse.
+    private static let bossFrame: CGFloat = 168
+    private static let bubbleAnchor: CGFloat = (bossFrame - 128) / 2 - 2
+
+    /// Vyska, kterou bublina smi zabrat: od hlavy bosse po pilulku serie.
+    private var bubbleRoom: CGFloat? {
+        guard pillBottom > 0, bossFrameTop > 0 else { return nil }
+        return max(56, bossFrameTop + Self.bubbleAnchor - pillBottom - FQSpace.sm)
+    }
+
     var body: some View {
         ScreenScaffold(scene: .lanternGrove, fillsHeight: true) {
             ScreenHeader(title: "Ready to focus?")
             streakPill
-            Spacer(minLength: FQSpace.lg)
-            continueSection
+                .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).maxY } action: { pillBottom = $0 }
+            // Dva stejne Spacery: blok s bossem je svisle uprostred mezi pilulkou a tlacitkem Fight.
+            Spacer(minLength: 0)
+            bossSection
+            Spacer(minLength: 0)
+            actionSection
         }
         .task(id: poke?.id) {
             guard let current = poke else { return }
@@ -133,7 +152,8 @@ struct ArenaView: View {
 
     // MARK: - Dalsi boss
 
-    private var continueSection: some View {
+    /// Stred obrazovky: "Continue your path", sprite, jmeno a "Boss 1 of 7".
+    private var bossSection: some View {
         VStack(spacing: FQSpace.lg) {
             Text("Continue your path")
                 .font(.fqLabel)
@@ -152,10 +172,26 @@ struct ArenaView: View {
                         .foregroundStyle(FQColor.textSecondary)
                         .shadow(color: .black.opacity(0.7), radius: 4, y: 2)
                 }
+            } else {
+                Label("\(world.title) conquered", systemImage: "checkmark.seal.fill")
+                    .font(.fqHeadline)
+                    .foregroundStyle(world.accent)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        // Bublina nad bossem lezi nad ostatnim obsahem (i nad nadpisem), nikdy pod nim.
+        .zIndex(1)
+    }
+
+    /// Dole u palce: Fight a "Just 5 minutes" (nebo "Pick a world", kdyz je svet dobyty).
+    private var actionSection: some View {
+        VStack(spacing: FQSpace.lg) {
+            if let node = nextNode {
                 fightButton(node)
                 Button {
+                    // Stejny Fight sheet jako Fight, jen s pevnou delkou 5 minut.
                     model.prepareQuickBattle(with: node)
-                    battle.isPresented = true
+                    battle.openFightSheet()
                 } label: {
                     Text("Not feeling it? Just 5 minutes")
                         .font(.system(size: 15, weight: .semibold, design: .rounded))
@@ -168,9 +204,6 @@ struct ArenaView: View {
                 .buttonStyle(.plain)
                 .disabled(!model.isBetweenBattles)
             } else {
-                Label("\(world.title) conquered", systemImage: "checkmark.seal.fill")
-                    .font(.fqHeadline)
-                    .foregroundStyle(world.accent)
                 Button(action: openPath) { ctaLabel("Pick a world", symbol: "map.fill") }
                     .buttonStyle(.plain)
             }
@@ -229,7 +262,7 @@ struct ArenaView: View {
                         LinearKeyframe(8.0, duration: 0.72)
                     }
                 }
-                .frame(width: 168, height: 168)
+                .frame(width: Self.bossFrame, height: Self.bossFrame)
                 .background {
                     // Mekka cervena zare bez ostre hrany.
                     RadialGradient(
@@ -247,18 +280,22 @@ struct ArenaView: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(PokeButtonStyle())
+        .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).minY } action: { bossFrameTop = $0 }
         .overlay(alignment: .top) {
-            if let poke {
-                PixelSpeechBubble(text: poke.text, angry: poke.angry)
-                    // Spodek bubliny (spicka ocasku) 14 bodu pod hornim okrajem spritu.
-                    .alignmentGuide(.top) { $0[.bottom] - 14 }
-                    .id(poke.id)
-                    .transition(reduceMotion ? .opacity : .scale(scale: 0.6, anchor: .bottom).combined(with: .opacity))
-                    .allowsHitTesting(false)
-                    .accessibilityHidden(true)
-            }
+            // Neviditelna kotva tesne nad hlavou bosse; bublina na ni sedi spodni hranou,
+            // takze roste nahoru a sprite nikdy neprekryje (ani nastvana, ani dlouha hlaska).
+            Color.clear
+                .frame(width: Self.bossFrame, height: Self.bubbleAnchor)
+                .overlay(alignment: .bottom) {
+                    if let poke {
+                        PixelSpeechBubble(text: poke.text, angry: poke.angry, maxHeight: bubbleRoom)
+                            .id(poke.id)
+                            .transition(reduceMotion ? .opacity : .scale(scale: 0.6, anchor: .bottom).combined(with: .opacity))
+                    }
+                }
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
         }
-        .zIndex(1)
         .accessibilityLabel("Poke \(node.name)")
     }
 

@@ -27,7 +27,8 @@ struct FightSheetView: View {
         static let startFont: CGFloat = 22
         static let closeSize: CGFloat = 44
         static let visibleChips = 5
-        static let suggestionLimit = 8
+        static let addFieldWidth: CGFloat = 160
+        static let addFieldFont = Font.system(size: 15, weight: .medium, design: .rounded)
     }
 
     private var boss: Boss { model.selectedBoss }
@@ -41,15 +42,10 @@ struct FightSheetView: View {
         return Array(first.prefix(Layout.visibleChips - 1)) + [selected]
     }
 
-    private var suggestions: [String] {
-        let typed = StudySubject.matchKey(newSubject)
-        let taken = Set(subjects.map { StudySubject.matchKey($0.title) })
-        return StudySubject.suggestions
-            .filter { !taken.contains(StudySubject.matchKey($0)) }
-            .filter { typed.isEmpty || StudySubject.matchKey($0).hasPrefix(typed) }
-            .prefix(Layout.suggestionLimit)
-            .map { $0 }
-    }
+    /// Navrh doplneny primo v poli ("m" -> "Microeconomics"); predmety, ktere hrac uz ma, se nenabizi.
+    private var completion: String? { StudySubject.completion(for: newSubject, taken: subjects) }
+    /// Sedy zbytek navrhu za kurzorem.
+    private var completionRest: String? { completion.map { String($0.dropFirst(newSubject.count)) } }
 
     var body: some View {
         ScrollView {
@@ -129,7 +125,6 @@ struct FightSheetView: View {
                 }
                 if !isEditing { addChip }
             }
-            if isAdding, !suggestions.isEmpty { suggestionRow }
             if subjects.isEmpty, !isAdding {
                 Text("Add what you're studying so it shows up in Stats.")
                     .font(.fqMeta)
@@ -185,20 +180,28 @@ struct FightSheetView: View {
     }
 
     /// "+ Subject" se po klepnuti zmeni primo v radku na textove pole (zadny modal).
+    /// Navrh se doplnuje sedym textem za kurzorem: → / Tab / klepnuti na sedy text ho doplni,
+    /// Enter nebo Add prida predmet tak, jak je v poli videt (vcetne sedeho navrhu).
     @ViewBuilder private var addChip: some View {
         if isAdding {
             HStack(spacing: 6) {
                 TextField("Subject name", text: $newSubject)
-                    .font(.system(size: 15, weight: .medium, design: .rounded))
+                    .font(Layout.addFieldFont)
                     .foregroundStyle(FQColor.textPrimary)
                     .textInputAutocapitalization(.words)
                     .autocorrectionDisabled()
                     .submitLabel(.done)
                     .focused($addFieldFocused)
-                    .frame(width: 130)
-                    .onSubmit { addSubject(newSubject) }
+                    .overlay(alignment: .leading) { completionGhost }
+                    .frame(width: Layout.addFieldWidth)
+                    .clipped()
+                    .onSubmit { addSubject(completion ?? newSubject) }
+                    .onKeyPress(.tab) { acceptCompletion() ? .handled : .ignored }
+                    .onKeyPress(.rightArrow) { acceptCompletion() ? .handled : .ignored }
                     .accessibilityLabel("New subject")
-                Button("Add") { addSubject(newSubject) }
+                    .accessibilityHint(completion.map { "Suggestion: \($0)" } ?? "")
+                    .accessibilityAction(named: "Use suggestion") { _ = acceptCompletion() }
+                Button("Add") { addSubject(completion ?? newSubject) }
                     .font(.system(size: 13, weight: .bold, design: .rounded))
                     .foregroundStyle(FQColor.onCta)
                     .padding(.horizontal, 12)
@@ -229,16 +232,29 @@ struct FightSheetView: View {
         }
     }
 
-    private var suggestionRow: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: Layout.chipGap) {
-                ForEach(suggestions, id: \.self) { name in
-                    FQChip(title: name, isSelected: false, compact: true) { addSubject(name) }
-                }
+    /// Sedy zbytek navrhu hned za napsanym textem. Napsana cast je jen neviditelna podlozka pro zarovnani,
+    /// klepnuti na ni jde do pole; klepnuti na sedy zbytek navrh doplni.
+    @ViewBuilder private var completionGhost: some View {
+        if let rest = completionRest {
+            HStack(spacing: 0) {
+                Text(newSubject).hidden().allowsHitTesting(false)
+                Text(rest)
+                    .foregroundStyle(FQColor.textTertiary)
+                    .contentShape(Rectangle())
+                    .onTapGesture { _ = acceptCompletion() }
             }
+            .font(Layout.addFieldFont)
+            .lineLimit(1)
+            .fixedSize()
+            .accessibilityHidden(true)
         }
-        .scrollClipDisabled()
-        .accessibilityLabel("Suggestions")
+    }
+
+    /// Doplni navrh do pole. Vrati false, kdyz zadny navrh neni.
+    private func acceptCompletion() -> Bool {
+        guard let completion else { return false }
+        newSubject = completion
+        return true
     }
 
     private func addSubject(_ name: String) {

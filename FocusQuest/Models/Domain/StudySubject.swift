@@ -53,6 +53,24 @@ struct StudySubject: Hashable, Codable, Sendable, Identifiable {
         "History", "Geography", "German", "Czech", "Spanish", "French", "Philosophy", "Psychology", "Design"
     ]
 
+    /// Inline doplneni pri psani noveho predmetu: prvni navrh, ktery zacina napsanym textem
+    /// (bez ohledu na velikost pismen a diakritiku) a hrac ho jeste nema. Nil = nic se nenabidne.
+    /// Vraci cely nazev navrhu; sedy zbytek v poli je `completion.dropFirst(typed.count)`.
+    static func completion(for typed: String, taken: [StudySubject]) -> String? {
+        guard !typed.isEmpty, typed.first?.isWhitespace == false else { return nil }
+        let typedKey = prefixKey(typed)
+        let takenKeys = Set(taken.map { matchKey($0.title) })
+        return suggestions.first { suggestion in
+            let key = prefixKey(suggestion)
+            return key.count > typedKey.count && key.hasPrefix(typedKey) && !takenKeys.contains(matchKey(suggestion))
+        }
+    }
+
+    /// Mala pismena bez diakritiky, ale se zachovanou delkou (mezery zustavaji), aby sel spocitat sedy zbytek.
+    private static func prefixKey(_ text: String) -> String {
+        text.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "en_US")).lowercased()
+    }
+
     /// Klic pro porovnani nazvu: mala pismena bez diakritiky, jen pismena a cislice ("Čeština" -> "cestina").
     static func matchKey(_ text: String) -> String {
         text.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "en_US"))

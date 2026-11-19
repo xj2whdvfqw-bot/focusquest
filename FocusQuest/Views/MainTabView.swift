@@ -150,7 +150,11 @@ struct MainTabView: View {
     }
 
     private func startBattleAfterFightSheet() {
-        guard battlePresenter.startsAfterSheet else { return }
+        guard battlePresenter.startsAfterSheet else {
+            // Zavreny list bez startu: rychla 5minutova bitva se zrusi, Fight pak bude zase normalni.
+            container.arenaViewModel.endCustomBattle()
+            return
+        }
         battlePresenter.startsAfterSheet = false
         container.arenaViewModel.startSession()
         battlePresenter.isPresented = true

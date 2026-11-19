@@ -80,11 +80,30 @@ struct PixelSpeechBubbleShape: Shape {
 struct PixelSpeechBubble: View {
     let text: String
     var angry = false
+    /// Kolik mista nad bossem bublina ma. Kdyz se nevejde, rozsiri se (mene radku) a pak zmensi pismo;
+    /// vzdy roste od spodni hrany nahoru, takze bosse pod sebou neprekryje.
+    var maxHeight: CGFloat? = nil
+
+    static let widest: CGFloat = 300
 
     var body: some View {
-        CappedWidth(maxWidth: 240) {
+        if let maxHeight {
+            ViewThatFits(in: .vertical) {
+                bubble(width: 240, size: 15)
+                bubble(width: Self.widest, size: 15)
+                bubble(width: Self.widest, size: 13)
+                bubble(width: Self.widest, size: 11)
+            }
+            .frame(width: Self.widest, height: maxHeight, alignment: .bottom)
+        } else {
+            bubble(width: 240, size: 15)
+        }
+    }
+
+    private func bubble(width: CGFloat, size: CGFloat) -> some View {
+        CappedWidth(maxWidth: width) {
             Text(text)
-                .font(.system(size: 15, weight: .heavy, design: .rounded))
+                .font(.system(size: size, weight: .heavy, design: .rounded))
                 .foregroundStyle(angry ? Color.white : PixelToast.ink)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)

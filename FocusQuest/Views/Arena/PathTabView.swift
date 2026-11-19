@@ -36,8 +36,10 @@ struct PathTabView: View {
         }
     }
 
+    /// Karta se plynule zvetsi a mrizka se na miste odkryje (fade + vyska, 0,25 s).
+    /// S Reduce Motion se svet otevre hned, bez animace.
     private func toggle(_ world: BossWorld) {
-        withAnimation(reduceMotion ? nil : .easeOut(duration: 0.2)) {
+        withAnimation(reduceMotion ? nil : .easeOut(duration: 0.25)) {
             openWorld = openWorld == world ? nil : world
         }
     }
@@ -69,7 +71,7 @@ private struct WorldCard: View {
 
     private var bosses: [Boss] { world.bosses }
     private var isComplete: Bool { cleared >= bosses.count }
-    private static let columns = Array(repeating: GridItem(.flexible(), spacing: FQSpace.sm, alignment: .top), count: 3)
+    private static let columnCount = 3
 
     var body: some View {
         VStack(spacing: 0) {
@@ -78,24 +80,43 @@ private struct WorldCard: View {
                 .accessibilityAddTraits(isOpen ? .isSelected : [])
                 .accessibilityHint(isOpen ? "Hides the bosses" : "Shows the bosses")
             if isOpen {
-                LazyVGrid(columns: Self.columns, spacing: FQSpace.sm) {
-                    ForEach(Array(bosses.enumerated()), id: \.element.id) { index, boss in
+                bossGrid
+                    .padding(.top, FQSpace.lg)
+                    // Jen fade na miste; vysku odkryva rostouci karta (orez nize). Zadny pohyb odjinud.
+                    .transition(.opacity)
+            }
+        }
+        // Behem rozbalovani je mrizka videt jen v rostouci karte, takze se "rozbali" smerem dolu.
+        .clipped()
+        .padding(FQSpace.lg)
+        .glassCard(tint: world.accent.opacity(0.077))
+    }
+
+    /// Mrizka 3 sloupcu z obycejnych radku. LazyVGrid tu nebyl: jeho dlazdice se pri animovanem
+    /// otevreni vytvarely postupne a priletaly shora pres obrazovku.
+    private var bossGrid: some View {
+        let indices = Array(bosses.indices)
+        let rows = stride(from: 0, to: indices.count, by: Self.columnCount).map { Array(indices[$0..<min($0 + Self.columnCount, indices.count)]) }
+        return VStack(spacing: FQSpace.sm) {
+            ForEach(rows, id: \.first) { row in
+                HStack(alignment: .top, spacing: FQSpace.sm) {
+                    ForEach(row, id: \.self) { index in
                         BossTile(
-                            boss: boss,
+                            boss: bosses[index],
                             number: index + 1,
                             accent: world.accent,
-                            wins: max(index < cleared ? 1 : 0, wins[boss.id] ?? 0),
-                            action: { onPick(boss) }
+                            wins: max(index < cleared ? 1 : 0, wins[bosses[index].id] ?? 0),
+                            action: { onPick(bosses[index]) }
                         )
                         .disabled(!canFight)
                     }
+                    // Neuplny posledni radek drzi sirku sloupcu.
+                    ForEach(0..<(Self.columnCount - row.count), id: \.self) { _ in
+                        Color.clear.frame(maxWidth: .infinity, maxHeight: 0)
+                    }
                 }
-                .padding(.top, FQSpace.lg)
-                .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
-        .padding(FQSpace.lg)
-        .glassCard(tint: world.accent.opacity(0.077))
     }
 
     private var header: some View {
