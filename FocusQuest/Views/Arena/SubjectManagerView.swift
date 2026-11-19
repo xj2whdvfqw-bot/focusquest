@@ -50,6 +50,8 @@ struct SubjectManagerView: View {
                     Text("No subjects yet. Add one with + Subject in the fight sheet.")
                         .font(.fqMeta)
                         .foregroundStyle(FQColor.textSecondary)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: .infinity)
                 }
             }
             .padding(.horizontal, FQSpace.gutter)

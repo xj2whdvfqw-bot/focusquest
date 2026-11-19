@@ -50,7 +50,7 @@ final class ProfileViewModel: ObservableObject {
         profile.coins += victory.coinsEarned
         if defeated { profile.bossesDefeated += 1 }
         save()
-        let summary = SessionSummary(id: UUID(), bossName: victory.boss.name, verifiedMinutes: victory.verifiedMinutes, xpEarned: victory.xpEarned, completedAt: Date(), flawless: true, subject: victory.subject, bossID: victory.boss.id)
+        let summary = SessionSummary(id: UUID(), bossName: victory.boss.name, verifiedMinutes: victory.verifiedMinutes, xpEarned: victory.xpEarned, completedAt: Date(), flawless: true, subject: victory.subject, bossID: victory.boss.id, isQuick: victory.boss.isWarmUp)
         Task {
             do { apply(stats: try await sync.recordBattle(summary, bossDefeated: defeated)) }
             catch { errorMessage = "Battle could not be added to your stats." }

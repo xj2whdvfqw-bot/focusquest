@@ -11,10 +11,8 @@ struct PathTabView: View {
     /// Rozbaleny svet (vzdy nejvys jeden), nil = vse sbalene.
     @State private var openWorld: BossWorld? = PathTabView.initialOpenWorld
 
-    /// Vyhry nad kazdym bossem (id -> pocet) z Bestiare, tj. z battle logu.
-    private var winsByBoss: [String: Int] {
-        profileModel.stats.bestiary.reduce(into: [:]) { $0[$1.bossID, default: 0] += $1.defeats }
-    }
+    /// Vyhry nad kazdym bossem cest (id -> pocet) z Bestiare; rychle bitvy (rozcvicka) se nepocitaji.
+    private var winsByBoss: [String: Int] { profileModel.stats.pathWins }
 
     var body: some View {
         let wins = winsByBoss

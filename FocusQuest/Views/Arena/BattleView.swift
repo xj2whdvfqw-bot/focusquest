@@ -9,7 +9,6 @@ struct BattleView: View {
     let onExit: () -> Void
     /// Zavre obrazovku a pak otevre Fight sheet nebo zalozku Path (z prestavky).
     var onExitTo: (BattlePresenter.AfterBattle) -> Void = { _ in }
-    @State private var receipt: UIImage?
     @State private var showsRetreatConfirm = false
     /// Po "Collect Loot" se misto vitezstvi ukaze spodni panel prestavky.
     @State private var showsBreak = false
@@ -70,13 +69,12 @@ struct BattleView: View {
 
     var body: some View {
         ZStack {
-            FocusQuestBackdrop(alert: false, scene: world.scene)
+            FocusQuestBackdrop(alert: false, scene: boss.scene)
             GeometryReader { proxy in
                 ScrollView {
                     VStack(spacing: Layout.stackGap) {
                         topBar
                         battleCard
-                        if let receipt { BattleReceiptShareView(image: receipt) }
                         #if targetEnvironment(simulator)
                         simulatorControls
                         #endif
@@ -87,7 +85,11 @@ struct BattleView: View {
                     .frame(maxWidth: .infinity, minHeight: proxy.size.height)
                 }
                 .scrollIndicators(.hidden)
+                // Vitezstvi lezi primo na scene (jako v makete), karta bitvy pod nim neni videt.
+                .opacity(isVictory ? 0 : 1)
             }
+            // Bitva roluje pod stavovy radek stejne jako zalozky.
+            StatusBarFade()
             if showsRetreatConfirm { retreatDialog.transition(.opacity) }
             if case let .warningCountdown(seconds, _, forgiven) = model.state {
                 PhoneLiftedAlarm(seconds: seconds, forgiven: forgiven, graceUsed: model.hasUsedSlipGrace, bossName: boss.name)
@@ -107,9 +109,8 @@ struct BattleView: View {
         .onChange(of: model.state) { _, value in
             // Ustupovy dialog nema smysl, kdyz bitva mezitim skoncila.
             if !model.isBattleRunning { showsRetreatConfirm = false }
-            // Odmenu uz pripsal model; obrazovka si jen pripravi sdilitelnou uctenku.
+            // Odmenu uz pripsal model; obrazovka jen napocita XP a mince.
             if case let .victory(victory) = value {
-                receipt = BattleReceiptRenderer.render(profile: profileModel.profile, boss: victory.boss, focusMinutes: victory.verifiedMinutes, flawless: true)
                 countUpRewards()
             } else {
                 showsBreak = false
@@ -127,7 +128,6 @@ struct BattleView: View {
 
     private func closeResult() {
         model.stopSession()
-        receipt = nil
         onExit()
     }
 
@@ -182,7 +182,7 @@ struct BattleView: View {
         .padding(.bottom, Layout.cardPadBottom)
         .frame(maxWidth: .infinity)
         .background(.ultraThinMaterial, in: cardShape)
-        .background(world.accent.opacity(0.06), in: cardShape)
+        .background(boss.accent.opacity(0.06), in: cardShape)
         .overlay { cardShape.strokeBorder(Color.white.opacity(Layout.cardBorder), lineWidth: 1) }
         .shadow(color: .black.opacity(0.35), radius: 30, y: 12)
     }
@@ -191,7 +191,7 @@ struct BattleView: View {
         VStack(spacing: Layout.bossGap) {
             ZStack {
                 Circle()
-                    .fill(RadialGradient(colors: [world.accent.opacity(Layout.glowOpacity), Color.clear], center: .center, startRadius: 0, endRadius: Layout.glowSize / 2))
+                    .fill(RadialGradient(colors: [boss.accent.opacity(Layout.glowOpacity), Color.clear], center: .center, startRadius: 0, endRadius: Layout.glowSize / 2))
                     .frame(width: Layout.glowSize, height: Layout.glowSize)
                 PixelArtAvatarView(sprite: .boss(boss.pixelSpriteConfig), hitFlash: false, size: Layout.spriteSize)
                     .bossBreathing()
@@ -207,7 +207,7 @@ struct BattleView: View {
                     .foregroundStyle(FQColor.textSecondary)
             }
             // Tenky pruh zdravi bez cisla.
-            BossHealthBarView(fraction: bossHealthFraction, tint: world.accent)
+            BossHealthBarView(fraction: bossHealthFraction, tint: boss.accent)
                 .frame(maxWidth: Layout.healthBarWidth)
                 .padding(.top, FQSpace.xs)
         }
@@ -242,7 +242,7 @@ struct BattleView: View {
     @ViewBuilder private var statusLine: some View {
         switch model.state {
         case let .paused(_, secondsLeft):
-            Label("Paused · back in \(Self.minutesSeconds(secondsLeft)) or the boss escapes", systemImage: "pause.fill")
+            CenteredIconText("Paused · back in \(Self.minutesSeconds(secondsLeft)) or the boss escapes", systemImage: "pause.fill")
                 .font(.fqLabel)
                 .monospacedDigit()
                 .foregroundStyle(FQColor.caution)
@@ -325,7 +325,7 @@ struct BattleView: View {
                         .multilineTextAlignment(.center)
                         .foregroundStyle(FQColor.textSecondary)
                 }
-                Label("The boss escapes: no XP and no coins for this battle", systemImage: "xmark")
+                CenteredIconText("The boss escapes: no XP and no coins for this battle", systemImage: "xmark")
                     .font(.fqLabel)
                     .multilineTextAlignment(.center)
                     .foregroundStyle(FQColor.danger)
@@ -373,36 +373,58 @@ struct BattleView: View {
 
     // MARK: - Prekryvy
 
-    /// Obrazovka vitezstvi: porazeny boss, ziskane XP a mince.
+    /// Tmava barva sceny (#06060E) pro zatemneni a stiny textu na vitezstvi.
+    private static let sceneInk = Color(red: 6 / 255, green: 6 / 255, blue: 14 / 255)
+
+    /// Obrazovka vitezstvi podle makety: zadna karta, obsah lezi primo na scene s jemnym radialnim
+    /// zatemnenim a stiny textu. Sprite se zari v barve sveta, "Victory!", skleneny dlazdice +XP/+Coins,
+    /// zlute "Collect Loot". Po rozcvicce navic "Keep going" na nejkratsiho neporazeneho bosse.
     private func victoryOverlay(_ victory: BattleVictory) -> some View {
         // Boss ulozeny pred posunem cesty; obrazovka nikdy neukaze az toho dalsiho.
         let beaten = model.lastBeaten ?? victory.boss
+        let keepGoing = victory.isQuickBattle ? model.keepGoingBoss(pathWins: profileModel.stats.pathWins) : nil
         return ZStack {
-            Color.black.opacity(0.55).ignoresSafeArea()
+            // radial-gradient(ellipse 80% 60% at 50% 45%, rgba(6,6,14,.55), rgba(6,6,14,.15))
+            GeometryReader { proxy in
+                EllipticalGradient(
+                    colors: [Self.sceneInk.opacity(0.55), Self.sceneInk.opacity(0.15)],
+                    center: UnitPoint(x: 0.5, y: 0.45),
+                    startRadiusFraction: 0,
+                    endRadiusFraction: 0.5
+                )
+                .frame(width: proxy.size.width * 1.6, height: proxy.size.height * 1.2)
+                .position(x: proxy.size.width / 2, y: proxy.size.height * 0.45)
+            }
+            .background(Self.sceneInk.opacity(0.15))
+            .ignoresSafeArea()
+            .accessibilityHidden(true)
             VStack(spacing: FQSpace.lg) {
                 ZStack {
                     Circle()
-                        .fill(RadialGradient(colors: [world.accent.opacity(0.45), Color.clear], center: .center, startRadius: 0, endRadius: 80))
-                        .frame(width: 160, height: 160)
-                    PixelArtAvatarView(sprite: .boss(beaten.pixelSpriteConfig), size: 96)
+                        .fill(RadialGradient(colors: [beaten.accent.opacity(0.45), Color.clear], center: .center, startRadius: 0, endRadius: 90))
+                        .frame(width: 180, height: 150)
+                    PixelArtAvatarView(sprite: .boss(beaten.pixelSpriteConfig), size: 112)
                         .bossBreathing()
                 }
-                .frame(height: 140)
+                .frame(width: 180, height: 150)
+                .accessibilityHidden(true)
                 VStack(spacing: FQSpace.xs) {
-                    Text("Victory!").font(.system(size: 34, weight: .bold, design: .rounded)).foregroundStyle(FQColor.textPrimary)
+                    Text("Victory!")
+                        .font(.system(size: 34, weight: .bold, design: .rounded))
+                        .foregroundStyle(FQColor.textPrimary)
                     Text("\(beaten.name) defeated · \(victory.subject.title), \(ArenaView.durationText(minutes: victory.verifiedMinutes))")
                         .font(.fqSecondary)
-                        .multilineTextAlignment(.center)
                         .foregroundStyle(FQColor.textSecondary)
                     // Jen kdyz vyhra posunula cestu (porazeny boss byl na rade).
                     if let next = victory.nextUp {
                         Text("Next up: \(next.name) · \(ArenaView.durationText(minutes: next.maxHP))")
                             .font(.fqLabel)
-                            .multilineTextAlignment(.center)
-                            .foregroundStyle(beaten.world.accent)
+                            .foregroundStyle(beaten.accent)
                             .padding(.top, FQSpace.xs)
                     }
                 }
+                .multilineTextAlignment(.center)
+                .shadow(color: Self.sceneInk.opacity(0.8), radius: 10, y: 2)
                 HStack(spacing: FQSpace.sm) {
                     rewardTile(amount: victory.xpEarned, label: "XP", symbol: "sparkles")
                     rewardTile(amount: victory.coinsEarned, label: "Coins", symbol: "dollarsign.circle.fill")
@@ -411,39 +433,51 @@ struct BattleView: View {
                     Button { showsBreak = true } label: {
                         Text("Collect Loot")
                             .font(.fqHeadline)
-                            .foregroundStyle(FQColor.onAccent)
+                            .foregroundStyle(FQColor.onCta)
                             .frame(maxWidth: .infinity)
-                            .padding(.vertical, FQSpace.xs)
+                            .frame(height: 56)
+                            .background(FQColor.cta, in: RoundedRectangle(cornerRadius: FQRadius.pill, style: .continuous))
+                            .contentShape(RoundedRectangle(cornerRadius: FQRadius.pill, style: .continuous))
                     }
-                    .prominentGlassButtonStyle()
-                    .buttonBorderShape(.roundedRectangle(radius: FQRadius.control))
-                    .controlSize(.large)
-                    .tint(FQColor.accent)
-                    if victory.isQuickBattle {
-                        Button { model.keepGoing() } label: {
-                            Label("Keep going · \(ArenaViewModel.keepGoingMinutes) min battle", systemImage: "play.fill")
+                    .buttonStyle(.plain)
+                    if let keepGoing {
+                        Button { openKeepGoing(keepGoing) } label: {
+                            Label("Keep going · \(keepGoing.name) · \(ArenaView.durationText(minutes: keepGoing.maxHP))", systemImage: "play.fill")
                                 .font(.fqLabel)
                                 .foregroundStyle(FQColor.textPrimary)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.8)
+                                .padding(.horizontal, FQSpace.md)
                                 .frame(maxWidth: .infinity)
                                 .frame(minHeight: 44)
-                                .overlay(RoundedRectangle(cornerRadius: FQRadius.control, style: .continuous).strokeBorder(FQColor.textSecondary.opacity(0.5), lineWidth: 1))
+                                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: FQRadius.control, style: .continuous))
+                                .overlay(RoundedRectangle(cornerRadius: FQRadius.control, style: .continuous).strokeBorder(Color.white.opacity(0.18), lineWidth: 1))
                                 .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
+                        .accessibilityLabel("Keep going: fight \(keepGoing.name), \(keepGoing.maxHP) minutes")
                     }
                 }
             }
             .padding(FQSpace.xl)
             .frame(maxWidth: 360)
-            .glassCard(prominent: true)
             .padding(.horizontal, FQSpace.xl)
             .transition(.scale(scale: 0.92).combined(with: .opacity))
         }
         .accessibilityAddTraits(.isModal)
     }
 
+    /// "Keep going" po rozcvicce: zavre vysledek a otevre Fight sheet nejkratsiho neporazeneho bosse.
+    private func openKeepGoing(_ next: Boss) {
+        model.stopSession()
+        model.selectBoss(next)
+        onExitTo(.fightSheet)
+    }
+
+    /// Sklenena dlazdice odmeny: pruhledne sklo (bila 8 % + rozmazani) s jemnym okrajem, cislo se napocita.
     private func rewardTile(amount: Int, label: String, symbol: String) -> some View {
-        VStack(spacing: FQSpace.xs) {
+        let shape = RoundedRectangle(cornerRadius: FQRadius.control, style: .continuous)
+        return VStack(spacing: FQSpace.xs) {
             Image(systemName: symbol).font(.fqLabel).foregroundStyle(FQColor.accent).accessibilityHidden(true)
             CountUpNumber(value: Double(amount) * rewardProgress)
                 .font(.fqTitle)
@@ -453,7 +487,9 @@ struct BattleView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, FQSpace.md)
-        .background(FQColor.fill, in: RoundedRectangle(cornerRadius: FQRadius.control, style: .continuous))
+        .background(.ultraThinMaterial, in: shape)
+        .background(Color.white.opacity(0.08), in: shape)
+        .overlay(shape.strokeBorder(Color.white.opacity(0.12), lineWidth: 1))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("+\(amount) \(label)")
     }
@@ -467,18 +503,15 @@ struct BattleView: View {
             nextBoss: model.upcomingPathBoss,
             sameAgain: beaten,
             onNextBoss: { boss in
-                receipt = nil
                 model.startNextBoss(boss)
             },
             onSameAgain: {
                 model.stopSession()
                 model.selectBoss(beaten)
-                receipt = nil
                 onExitTo(.fightSheet)
             },
             onChangeBoss: {
                 model.stopSession()
-                receipt = nil
                 onExitTo(.path)
             },
             onDone: closeResult,
@@ -650,7 +683,7 @@ private struct PhoneLiftedAlarm: View {
         ZStack {
             Color(red: 0x4A / 255, green: 0x07 / 255, blue: 0x10 / 255).ignoresSafeArea()
             VStack(spacing: 18) {
-                Label("Phone lifted", systemImage: "iphone.gen3")
+                CenteredIconText("Phone lifted", systemImage: "iphone.gen3")
                     .font(.fqLabel.weight(.bold))
                     .textCase(.uppercase)
                     .tracking(1.2)
@@ -666,7 +699,7 @@ private struct PhoneLiftedAlarm: View {
                         .multilineTextAlignment(.center)
                         .foregroundStyle(.white.opacity(0.85))
                 }
-                Label("The alarm stops by itself when the phone lies still.", systemImage: "iphone.gen3")
+                CenteredIconText("The alarm stops by itself when the phone lies still.", systemImage: "iphone.gen3")
                     .font(.fqSecondary)
                     .multilineTextAlignment(.center)
                     .foregroundStyle(.white.opacity(0.7))
@@ -679,22 +712,37 @@ private struct PhoneLiftedAlarm: View {
     }
 }
 
-/// Cislo odpoctu: pomalu dycha (pruhlednost 1 -> 0,55, cely cyklus 2,4 s). S Reduce Motion stoji.
+/// Cislo odpoctu: pomalu dycha (pruhlednost 1 -> 0,55 -> 1, cely cyklus 2,4 s, ease-in-out), velikost stoji.
+/// Pruhlednost se pocita z hodin (TimelineView), ne z repeatForever animace: obrazovka se prekresluje
+/// kazdych 0,1 s s odpoctem a ta by animaci zrusila (proto driv cislo nepulzovalo). S Reduce Motion stoji.
 private struct PulsingCount: View {
     let text: String
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var dimmed = false
+
+    static let period: TimeInterval = 2.4
+    static let dimmest = 0.55
+
+    /// Kosinus je ease-in-out: v 0 s je 1, v pulce cyklu 0,55, na konci zase 1.
+    static func opacity(at time: TimeInterval) -> Double {
+        let phase = time.truncatingRemainder(dividingBy: period) / period
+        return dimmest + (1 - dimmest) * (1 + cos(2 * .pi * phase)) / 2
+    }
 
     var body: some View {
+        if reduceMotion {
+            number.opacity(1)
+        } else {
+            TimelineView(.animation) { context in
+                number.opacity(Self.opacity(at: context.date.timeIntervalSinceReferenceDate))
+            }
+        }
+    }
+
+    private var number: some View {
         Text(text)
             .font(.system(size: 136, weight: .bold, design: .rounded))
             .monospacedDigit()
             .foregroundStyle(.white)
-            .opacity(dimmed ? 0.55 : 1)
-            .onAppear {
-                guard !reduceMotion else { return }
-                withAnimation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true)) { dimmed = true }
-            }
     }
 }
 
@@ -721,8 +769,10 @@ extension View {
 
 extension Boss {
     /// Uroven bosse podle poradi na ceste sveta ("Novice", "Adept", "Elite", "Mythic").
+    /// Rozcvicka ma misto urovne "Warm-up" (hlavicka bitvy pak ukaze "Warm-up · 5 min").
     var tierTitle: String {
-        switch nodeIndex {
+        if isWarmUp { return "Warm-up" }
+        return switch nodeIndex {
         case ..<2: "Novice"
         case ..<4: "Adept"
         case ..<6: "Elite"
@@ -739,7 +789,7 @@ private struct PlacementHint: View {
 
     var body: some View {
         VStack(spacing: FQSpace.sm) {
-            Label("Lay the phone face-down. The battle starts when it lies still.", systemImage: "iphone.gen3")
+            CenteredIconText("Lay the phone face-down. The battle starts when it lies still.", systemImage: "iphone.gen3")
                 .font(.fqLabel)
                 .foregroundStyle(FQColor.textPrimary)
                 .multilineTextAlignment(.center)
@@ -898,7 +948,7 @@ private struct BreakPanel: View {
 
     private func tile(symbol: String, title: String, detail: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .center, spacing: 4) {
                 Image(systemName: symbol)
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(FQColor.accent)
@@ -912,7 +962,7 @@ private struct BreakPanel: View {
                     .lineLimit(1)
                     .truncationMode(.tail)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(maxWidth: .infinity, alignment: .center)
             .padding(FQSpace.md)
             .background(FQColor.fill, in: RoundedRectangle(cornerRadius: FQRadius.control, style: .continuous))
             .contentShape(RoundedRectangle(cornerRadius: FQRadius.control, style: .continuous))

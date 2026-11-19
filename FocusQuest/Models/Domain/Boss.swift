@@ -64,11 +64,30 @@ struct Boss: Identifiable, Codable, Hashable, Sendable {
     /// Vsichni bossove vsech svetu v poradi cest.
     static let roster: [Boss] = BossWorld.allCases.flatMap(\.bosses)
 
+    // MARK: - Rozcvicka ("Not feeling it? Just 5 minutes")
+
+    /// Vlastni boss rychle 5minutove bitvy. Nepatri do zadneho sveta: neposouva Path
+    /// a jeho vyhry nedavaji odznak "N×" zadnemu bossovi na Path.
+    static let warmUpWispID = "warmup-wisp"
+    static let warmUpWisp = Boss(id: warmUpWispID, name: "Warm-up Wisp", tier: .novice, maxHP: quickBattleMinutes, currentHP: quickBattleMinutes, pixelSpriteConfig: warmUpWispID)
+
+    var isWarmUp: Bool { id == Self.warmUpWispID }
+
+    /// Bossove cest a rozcvicka: vse, s cim jde bojovat (simulovany server, hledani podle id).
+    static let allBosses: [Boss] = roster + [warmUpWisp]
+
     /// Najde bosse podle id; id ze starsich verzi Dojo a Farm prevede na nove bosse.
     static func find(_ id: String?) -> Boss? {
         guard let id else { return nil }
         let current = currentID(id)
-        return roster.first { $0.id == current }
+        return allBosses.first { $0.id == current }
+    }
+
+    /// "Keep going" po rozcvicce: boss s nejkratsi bitvou, ktereho hrac jeste neporazil, napric
+    /// vsemi svety. Pri shode vyhrava prvni v poradi svetu a cest. Nil = vsichni porazeni.
+    static func shortestUnbeaten(isBeaten: (Boss) -> Bool) -> Boss? {
+        // min(by:) vraci prvni z rovnych minim, takze poradi soupisky rozhoduje shodu.
+        roster.filter { !isBeaten($0) }.min { $0.maxHP < $1.maxHP }
     }
 
     /// Aktualni id bosse (stare id z Dojo a Farm se prevede, ostatni zustanou).

@@ -73,7 +73,7 @@ enum SpritePalette {
     static func rows(for sprite: PixelSprite, startled: Bool) -> [String] {
         switch sprite {
         case .boss(let id):
-            return bossRows[id] ?? worldBossRows[id] ?? slimeRows
+            return bossRows[id] ?? worldBossRows[id] ?? specialBossRows[id] ?? slimeRows
         case .companion(let id):
             if id == "ember-dragonling" { return ["................", ".....OO..OO.....", "....OOOOOOOO....", "...OOOOWWOOOO...", "...OOOOOOOOOO...", "....OOOOOOOO....", ".....OOOOOO.....", "....OOO..OOO....", "...OO......OO...", "..OO........OO..", "................", "................", "................", "................", "................", "................"] }
             // Lo-fi kocka: svetle seda se zlutyma ocima, aby byla videt na tmavem pozadi.
@@ -97,4 +97,19 @@ enum SpritePalette {
 extension SpritePalette {
     /// Zaloha pro neznameho bosse (napr. ze starsi verze appky).
     static let slimeRows = ["................", "......GGGG......", "....GGGGGGGG....", "...GGGGGGGGGG...", "..GGGGGGGGGGGG..", "..GGWWGGGGWWGG..", ".GGGGGGGGGGGGGG.", ".GGGGGGGGGGGGGG.", ".GGGGGGGGGGGGGG.", "..GGGGGGGGGGGG..", "...GGGGGGGGGG...", "....GGGGGGGG....", ".....GGGGGG.....", "......GGGG......", "................", "................"]
+}
+
+// MARK: - Rozcvicka (16x16)
+
+extension SpritePalette {
+    /// Bossove mimo svety. "warmup-wisp" = Warm-up Wisp z rychle 5minutove bitvy:
+    /// maly svitici plaminek/duch se zarici modrou obrubou, tyrkysovym telem a vlnitym spodkem.
+    static let specialBossRows: [String: [String]] = [
+        "warmup-wisp": [
+            "................", ".......LL.......", "......LWWL......", ".....LLCCLL.....",
+            "....LLCCCCLL....", "....LCCCCCCL....", "...LCCCCCCCCL...", "...LCKWCCKWCL...",
+            "...LCKKCCKKCL...", "...LCCCCCCCCL...", "...LCCCKKCCCL...", "....LCCCCCCL....",
+            "....LCCCCCCL....", "...LCL.LL.LCL...", "...L...LL...L...", "................"
+        ]
+    ]
 }

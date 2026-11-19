@@ -11,6 +11,8 @@ struct SessionSummary: Identifiable, Codable, Sendable {
     var subject: StudySubject? = nil
     /// ID bosse pro Bestiar; starsi zaznamy ho nemaji.
     var bossID: String? = nil
+    /// Rychla 5minutova bitva ("Just 5 minutes"). Nil = zaznam ze starsi verze, jeste neoznaceny.
+    var isQuick: Bool? = nil
 }
 
 /// Jeden radek Bestiare: kolikrat hrac porazil daneho bosse pri danem predmetu.
@@ -85,6 +87,7 @@ extension PlayerStats {
         totalHPDealt = try container.decode(Int.self, forKey: .totalHPDealt)
         sessionHistory = try container.decode([SessionSummary].self, forKey: .sessionHistory)
         bestiary = (try? container.decodeIfPresent([BestiaryEntry].self, forKey: .bestiary)) ?? []
+        excludeLegacyQuickWins()
         // Starsi verze ukladaly i heroHP, bestCombo a lastQuestFailedAt (ustup mazal serii).
         // Nic z toho uz v appce neni, klice se pri cteni ignoruji a serie z nich nikdy nespadne.
     }
@@ -143,6 +146,34 @@ extension PlayerStats {
     mutating func grantBonusXP(_ amount: Int) {
         totalXP += max(0, amount)
         level = max(1, totalXP / Self.xpPerLevel + 1)
+    }
+
+    // MARK: - Odznaky na Path
+
+    /// Vyhry nad bossy cest (id -> pocet) pro odznak "✓ N×". Rozcvicka (Warm-up Wisp) se nepocita.
+    var pathWins: [String: Int] {
+        bestiary.reduce(into: [:]) { result, entry in
+            guard let boss = Boss.find(entry.bossID), !boss.isWarmUp else { return }
+            result[boss.id, default: 0] += entry.defeats
+        }
+    }
+
+    /// Starsi verze pocitaly rychlou 5minutovou bitvu proti bossovi z Path a pripsaly mu odznak.
+    /// Takove zaznamy se oznaci jako rychle a jejich vyhra se z Bestiare (a tedy z odznaku) odecte.
+    /// Bossove cest trvaji aspon 10 minut, takze 5minutova vyhra nad nimi byla vzdy rychla bitva.
+    /// Bezi jen pro neoznacene zaznamy, takze opakovane nacteni nic neodecte dvakrat.
+    mutating func excludeLegacyQuickWins() {
+        for index in sessionHistory.indices where sessionHistory[index].isQuick == nil {
+            let session = sessionHistory[index]
+            let pathBoss = Boss.find(session.bossID).flatMap { $0.isWarmUp ? nil : $0 }
+            let wasQuick = pathBoss != nil && session.verifiedMinutes == Boss.quickBattleMinutes
+            sessionHistory[index].isQuick = wasQuick
+            guard wasQuick, let rawID = session.bossID else { continue }
+            let matches = bestiary.indices.filter { bestiary[$0].bossID == rawID && bestiary[$0].defeats > 0 }
+            guard let entry = matches.first(where: { bestiary[$0].subject == session.subject }) ?? matches.first else { continue }
+            bestiary[entry].defeats -= 1
+        }
+        bestiary.removeAll { $0.defeats <= 0 }
     }
 
     private mutating func recordDefeat(bossID: String, bossName: String, subject: StudySubject?) {

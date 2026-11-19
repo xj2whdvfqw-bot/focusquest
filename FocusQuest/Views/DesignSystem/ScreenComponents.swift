@@ -36,26 +36,25 @@ struct ScreenScaffold<Content: View>: View {
     }
 }
 
-/// Prechod za stavovym radkem: rgba(6,5,16,.55) -> .25 v 55 % -> pruhledna, 84 pt od horni hrany displeje.
-/// V listu (sheet) zadny stavovy radek neni (horni bezpecna zona je 0), tam se nekresli.
+/// Prechod za stavovym radkem a Dynamic Islandem: rgba(6,5,16,.75) nahore -> pruhledna, 90 pt od horni
+/// hrany displeje. Obsah pod nim jezdit muze, cas zustane citelny. Stejny na vsech zalozkach i v bitve.
+/// GeometryReader saha az pod stavovy radek: uvnitr bezpecne zony by mel horni odsazeni 0
+/// a prechod by se nikdy nekreslil (proto driv obsah prejizdel pres hodiny).
+/// V listu (sheet) stavovy radek neni (horni odsazeni 0), tam se nekresli.
 struct StatusBarFade: View {
+    static let height: CGFloat = 90
+    static let topOpacity = 0.75
+
     var body: some View {
         GeometryReader { proxy in
             if proxy.safeAreaInsets.top > 0 {
                 let ink = Color(red: 6 / 255, green: 5 / 255, blue: 16 / 255)
-                LinearGradient(
-                    stops: [
-                        .init(color: ink.opacity(0.55), location: 0),
-                        .init(color: ink.opacity(0.25), location: 0.55),
-                        .init(color: ink.opacity(0), location: 1),
-                    ],
-                    startPoint: .top, endPoint: .bottom
-                )
-                .frame(height: 84)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                .ignoresSafeArea(edges: .top)
+                LinearGradient(colors: [ink.opacity(Self.topOpacity), ink.opacity(0)], startPoint: .top, endPoint: .bottom)
+                    .frame(height: Self.height)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             }
         }
+        .ignoresSafeArea()
         .allowsHitTesting(false)
         .accessibilityHidden(true)
     }
@@ -253,5 +252,24 @@ struct ProgressRing<Center: View>: View {
                 .animation(.easeOut(duration: 0.4), value: progress)
             label()
         }
+    }
+}
+
+/// Ikona a text jako jeden vycentrovany blok: ikona je na zacatku prvniho radku (soucast textu),
+/// dalsi radky jsou taky na stred. Pro samostatna sdeleni uprostred obrazovky a na prekryvech.
+struct CenteredIconText: View {
+    let text: String
+    let systemImage: String
+
+    init(_ text: String, systemImage: String) {
+        self.text = text
+        self.systemImage = systemImage
+    }
+
+    var body: some View {
+        Text("\(Image(systemName: systemImage)) \(text)")
+            .multilineTextAlignment(.center)
+            .fixedSize(horizontal: false, vertical: true)
+            .accessibilityLabel(text)
     }
 }

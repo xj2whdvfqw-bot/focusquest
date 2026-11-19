@@ -493,4 +493,60 @@ final class ProgressionModelTests: XCTestCase {
         XCTAssertNil(StudySubject.completion(for: "Quantum", taken: []))
         XCTAssertNil(StudySubject.completion(for: "e", taken: [StudySubject(id: "English"), StudySubject(id: "Economics")]))
     }
+
+    // MARK: - Rozcvicka (Warm-up Wisp)
+
+    func testKeepGoingPicksShortestUnbeatenBossAcrossWorlds() {
+        // Nikdo neporazeny: nejkratsi (10 min) je prvni boss prvniho sveta.
+        XCTAssertEqual(Boss.shortestUnbeaten { _ in false }?.id, BossWorld.heroes.bosses[0].id)
+        // Prvni boss Hero Heights porazeny: shoda 10 min vyhraje prvni v poradi svetu (Villain Vault).
+        let first = BossWorld.heroes.bosses[0]
+        XCTAssertEqual(Boss.shortestUnbeaten { $0.id == first.id }?.id, BossWorld.villains.bosses[0].id)
+        // Vsechny 10minutove porazene: nejkratsi zbyvajici je 15 min, prvni v poradi.
+        let next = Boss.shortestUnbeaten { $0.maxHP <= 10 }
+        XCTAssertEqual(next?.maxHP, 15)
+        XCTAssertEqual(next?.id, BossWorld.heroes.bosses[1].id)
+        XCTAssertNil(Boss.shortestUnbeaten { _ in true })
+        XCTAssertFalse(Boss.roster.contains { $0.isWarmUp }, "The warm-up boss is never on a Path")
+    }
+
+    func testWarmUpWinGivesRewardsButNoPathBadge() {
+        var stats = PlayerStats.initial
+        let wisp = Boss.warmUpWisp
+        XCTAssertEqual(wisp.maxHP, 5)
+        XCTAssertEqual(RewardRules.xp(verifiedMinutes: wisp.maxHP), 60)
+        XCTAssertEqual(RewardRules.coins(verifiedMinutes: wisp.maxHP), 15)
+        let summary = SessionSummary(id: UUID(), bossName: wisp.name, verifiedMinutes: 5, xpEarned: 60, completedAt: Date(), flawless: true, subject: .math, bossID: wisp.id, isQuick: true)
+        stats.record(summary, bossDefeated: true)
+        XCTAssertEqual(stats.wins, 1)
+        XCTAssertEqual(stats.totalXP, 60)
+        XCTAssertEqual(stats.streakDays, 1)
+        XCTAssertTrue(stats.pathWins.isEmpty, "A warm-up win must not give any Path boss a badge")
+    }
+
+    func testWarmUpNeverMovesThePath() {
+        var preferences = AppPreferences()
+        preferences.markCleared(Boss.warmUpWisp)
+        XCTAssertTrue(BossWorld.allCases.allSatisfy { preferences.clearedNodes(in: $0) == 0 })
+        XCTAssertEqual(Boss.find(Boss.warmUpWispID)?.name, "Warm-up Wisp")
+        XCTAssertEqual(SpritePalette.rows(for: .boss(Boss.warmUpWispID), startled: false).count, 16)
+        XCTAssertNotEqual(SpritePalette.rows(for: .boss(Boss.warmUpWispID), startled: false), SpritePalette.slimeRows)
+    }
+
+    func testOlderQuickWinsOnPathBossesAreDroppedFromBadgesOnce() throws {
+        let boss = BossWorld.heroes.bosses[0]
+        var stats = PlayerStats.initial
+        // Starsi verze: rychla 5min bitva proti bossovi z Path a normalni bitva, obe bez znacky isQuick.
+        stats.record(SessionSummary(id: UUID(), bossName: boss.name, verifiedMinutes: 5, xpEarned: 60, completedAt: Date(), flawless: true, subject: .math, bossID: boss.id), bossDefeated: true)
+        stats.record(SessionSummary(id: UUID(), bossName: boss.name, verifiedMinutes: boss.maxHP, xpEarned: 120, completedAt: Date(), flawless: true, subject: .math, bossID: boss.id), bossDefeated: true)
+        XCTAssertEqual(stats.pathWins[boss.id], 2)
+
+        let loaded = try JSONDecoder().decode(PlayerStats.self, from: JSONEncoder().encode(stats))
+        XCTAssertEqual(loaded.pathWins[boss.id], 1, "Only the full-length win keeps its badge")
+        XCTAssertEqual(loaded.sessionHistory.map(\.isQuick), [false, true])
+        XCTAssertEqual(loaded.wins, 2, "Quick wins still count in the stats")
+
+        let reloaded = try JSONDecoder().decode(PlayerStats.self, from: JSONEncoder().encode(loaded))
+        XCTAssertEqual(reloaded.pathWins[boss.id], 1, "Loading again must not subtract twice")
+    }
 }

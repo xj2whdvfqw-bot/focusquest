@@ -54,7 +54,7 @@ struct ArenaView: View {
     }
 
     /// Svet, ve kterem hrac naposledy bojoval, a jeho dalsi neporazeny boss.
-    private var world: BossWorld { model.selectedBoss.world }
+    private var world: BossWorld { model.arenaPathBoss.world }
     private var cleared: Int { model.clearedNodes(in: world) }
     private var nextNode: Boss? { cleared < world.bosses.count ? world.bosses[cleared] : nil }
 
@@ -189,8 +189,8 @@ struct ArenaView: View {
             if let node = nextNode {
                 fightButton(node)
                 Button {
-                    // Stejny Fight sheet jako Fight, jen s pevnou delkou 5 minut.
-                    model.prepareQuickBattle(with: node)
+                    // Fight sheet s rozcvickou (Warm-up Wisp) na pevnych 5 minut.
+                    model.prepareQuickBattle()
                     battle.openFightSheet()
                 } label: {
                     Text("Not feeling it? Just 5 minutes")
@@ -356,6 +356,13 @@ private struct PokeButtonStyle: ButtonStyle {
 }
 
 // MARK: - Vzhled svetu
+
+extension Boss {
+    /// Barva bosse na obrazovce bitvy: barva jeho sveta, rozcvicka ma vlastni svitici modrou.
+    var accent: Color { isWarmUp ? Color(red: 0.55, green: 0.86, blue: 1.0) : world.accent }
+    /// Krajina za bitvou: krajina sveta, rozcvicka pod hvezdami.
+    var scene: BackdropScene { isWarmUp ? .starlitPeaks : world.scene }
+}
 
 extension BossWorld {
     var accent: Color {

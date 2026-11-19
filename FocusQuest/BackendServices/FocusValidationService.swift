@@ -58,7 +58,7 @@ actor SimulatedSecureBackendService: FocusValidationServiceProtocol {
     private let signingKey: Data
     private let signer = CryptoSigner()
     private var sessions: [String: ActiveSession] = [:]
-    private let bosses = Dictionary(uniqueKeysWithValues: Boss.roster.map { ($0.id, $0) })
+    private let bosses = Dictionary(uniqueKeysWithValues: Boss.allBosses.map { ($0.id, $0) })
     private var stats = PlayerStats.initial
 
     init(signingKey: Data? = nil) { self.signingKey = signingKey ?? Data(CryptoSigner().makeNonce(byteCount: 48).utf8) }

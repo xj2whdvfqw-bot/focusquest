@@ -49,10 +49,10 @@ struct StatsView: View {
             .filter { entry in list.first { $0.id == entry.subject.id }?.isVisible ?? true }
         let maxMinutes = max(1, progress.first?.minutes ?? 1)
         if progress.isEmpty {
-            Label("Pick a subject before a battle to track your study time here.", systemImage: "books.vertical.fill")
+            CenteredIconText("Pick a subject before a battle to track your study time here.", systemImage: "books.vertical.fill")
                 .font(.fqSecondary)
                 .foregroundStyle(FQColor.textSecondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(maxWidth: .infinity, alignment: .center)
                 .padding(FQSpace.lg)
                 .glassCard()
         } else {
@@ -90,10 +90,10 @@ struct StatsView: View {
     @ViewBuilder private var bestiaryCard: some View {
         let groups = bestiaryGroups
         if groups.isEmpty {
-            Label("Win a battle in the Arena and the boss you beat is recorded here, sorted by subject.", systemImage: "book.closed.fill")
+            CenteredIconText("Win a battle in the Arena and the boss you beat is recorded here, sorted by subject.", systemImage: "book.closed.fill")
                 .font(.fqSecondary)
                 .foregroundStyle(FQColor.textSecondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(maxWidth: .infinity, alignment: .center)
                 .padding(FQSpace.lg)
                 .glassCard()
         } else {

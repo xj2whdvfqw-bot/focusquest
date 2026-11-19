@@ -48,8 +48,8 @@ struct BattleVictory: Equatable, Sendable {
     var isCustom = false
     /// Dalsi boss sveta, kdyz tahle vyhra posunula cestu (byl to boss na rade). Jinak nil.
     var nextUp: Boss? = nil
-    /// Rychla 5minutova bitva ("Just 5 minutes"): vyhra nabidne "Keep going · 20 min battle".
-    var isQuickBattle: Bool { isCustom && verifiedMinutes == Boss.quickBattleMinutes }
+    /// Rychla 5minutova bitva ("Just 5 minutes") proti rozcvicce: vyhra nabidne "Keep going" na nejkratsiho neporazeneho bosse.
+    var isQuickBattle: Bool { boss.isWarmUp }
 }
 
 @MainActor
@@ -165,32 +165,41 @@ final class ArenaViewModel: ObservableObject {
 
     // MARK: - Vlastni bitva
 
-    /// "Not feeling it? Just 5 minutes": stejny boss jako na tlacitku Fight, jen na 5 minut.
-    /// Je to vlastni bitva, takze cestu sveta neposouva. Spusti se z obrazovky bitvy jako Fight.
-    func prepareQuickBattle(with boss: Boss, minutes: Int = Boss.quickBattleMinutes) {
+    /// "Not feeling it? Just 5 minutes": 5minutova bitva proti vlastnimu bossovi (Warm-up Wisp).
+    /// Je to vlastni bitva: cestu neposouva, posledni boss cesty (lastBossID) zustava. Spousti se pres Fight sheet.
+    func prepareQuickBattle() {
         guard isBetweenBattles else { return }
-        selectBoss(boss)
         isCustomBattle = true
-        selectedBoss = selectedBoss.withHP(minutes: minutes)
+        selectedBoss = Boss.warmUpWisp
     }
 
-    /// Delka bitvy "Keep going" po rychle 5minutove bitve.
-    static let keepGoingMinutes = 20
-
-    /// "Keep going · 20 min battle": hned dalsi bitva se stejnym bossem, stale vlastni (cestu neposouva).
-    func keepGoing() {
-        guard case let .victory(victory) = state else { return }
-        let boss = Boss.find(victory.boss.id) ?? victory.boss
-        stopSession()
-        prepareQuickBattle(with: boss, minutes: Self.keepGoingMinutes)
-        startSession()
+    /// "Keep going" po rozcvicce: neporazeny boss s nejkratsi bitvou napric svety. Porazeny je boss,
+    /// ktery ma na Path odznak vyhry, nebo lezi v uz dobyte casti cesty sveta.
+    func keepGoingBoss(pathWins: [String: Int]) -> Boss? {
+        Boss.shortestUnbeaten { boss in
+            (pathWins[boss.id] ?? 0) > 0 || boss.nodeIndex < clearedNodes(in: boss.world)
+        }
     }
 
     // MARK: - Prestavka
 
+    /// Svet, na jehoz ceste hrac je: posledni porazeny boss cesty, jinak posledni vybrany boss cesty.
+    /// Rozcvicka do zadneho sveta nepatri, takze se preskoci.
+    private var pathAnchor: Boss {
+        if let lastBeaten, !lastBeaten.isWarmUp { return lastBeaten }
+        if !selectedBoss.isWarmUp { return selectedBoss }
+        return Boss.find(preferences.lastBossID).flatMap { $0.isWarmUp ? nil : $0 } ?? BossWorld.allCases[0].bosses[0]
+    }
+
+    /// Boss cesty pro Arenu: vybrany boss, a kdyz je vybrana rozcvicka, posledni boss cesty.
+    var arenaPathBoss: Boss {
+        guard selectedBoss.isWarmUp else { return selectedBoss }
+        return Boss.find(preferences.lastBossID).flatMap { $0.isWarmUp ? nil : $0 } ?? BossWorld.allCases[0].bosses[0]
+    }
+
     /// Boss na rade na ceste: nejdriv ve svete posledni bitvy, pak v dalsich svetech. Nil = vse dobyto.
     var upcomingPathBoss: Boss? {
-        let current = (lastBeaten ?? selectedBoss).world
+        let current = pathAnchor.world
         let worlds = [current] + BossWorld.allCases.filter { $0 != current }
         return worlds.lazy.compactMap { $0.frontierBoss(cleared: self.clearedNodes(in: $0)) }.first
     }
@@ -307,6 +316,8 @@ final class ArenaViewModel: ObservableObject {
     /// Vybere uzel na ceste (kterykoli, nic neni zamcene); delka bitvy je dana uzlem.
     func selectBoss(_ boss: Boss) {
         guard isBetweenBattles else { return }
+        // Rozcvicka ("Same again" po rychle bitve) je vzdy rychla bitva a neprepise boss cesty.
+        if boss.isWarmUp { prepareQuickBattle(); return }
         isCustomBattle = false
         selectedBoss = Boss.find(boss.id) ?? boss
         changePreferences { $0.lastBossID = boss.id }
@@ -538,7 +549,7 @@ final class ArenaViewModel: ObservableObject {
                 verifiedMinutes: minutes,
                 xpEarned: RewardRules.xp(verifiedMinutes: minutes),
                 coinsEarned: RewardRules.coins(verifiedMinutes: minutes),
-                isCustom: isCustomBattle
+                isCustom: isCustomBattle || selectedBoss.isWarmUp
             )
             tearDownBattle(keepNotification: true)
             selectedBoss.currentHP = result.boss.currentHP

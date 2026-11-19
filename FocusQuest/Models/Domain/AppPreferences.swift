@@ -96,6 +96,8 @@ struct AppPreferences: Codable, Equatable, Sendable {
     /// Porazeni uzlu na rade posune cestu o krok dal; vyhra nad jinym uzlem postup nemeni
     /// (na Path si hrac muze vybrat kohokoli, "2 / 4 cleared" pocita jen souvislou radu od zacatku).
     mutating func markCleared(_ boss: Boss) {
+        // Rozcvicka nepatri do zadneho sveta a cestu nikdy neposouva.
+        guard !boss.isWarmUp else { return }
         let world = boss.world
         guard boss.nodeIndex == clearedNodes(in: world) else { return }
         clearedNodesByWorld[world.rawValue] = boss.nodeIndex + 1

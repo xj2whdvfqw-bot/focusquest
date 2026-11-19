@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-19T16:34:00+01:00",
-  "current": "Opravy po testu #30 (T30) hotové, build #33 prošel (commit 0270df8).",
-  "nextStep": "Otestovat build #33 na iPhonu podle poznámky v kartě T30; pak sekce 7: Your subjects.",
+  "updated": "2026-11-19T18:01:00+01:00",
+  "current": "Opravy po testu #33 (T33): všech 5 bodů napsáno, commit a build #34.",
+  "nextStep": "Projít 5 bodů z karty T33, commit, push, build přes gh.",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -245,6 +245,21 @@
       "commit": "0270df8",
       "build": { "number": 33, "runId": 44552494326, "result": "prošel" },
       "note": "Hotovo, build #33 prošel (#32 spadl jen na chybějící závorce v testech). Na iPhonu otestuj: (1) Arena: boss je uprostřed mezi sérií a Fight; (2) klepání na bosse i 4× rychle (naštvaný): bublina je nad hlavou, nepřekryje sprite; (3) Path: otevření světa jen plynule rozbalí kartu, nic nepřilétá; s Reduce Motion se otevře hned; (4) „Just 5 minutes“ otevře Fight sheet se „Start 5 min Battle“; zavření sheetu a pak Fight má zase plnou délku; Cancel na „Lay the phone…“ zavře obrazovku; na obrazovce bitvy už nejsou čipy předmětů; (5) „+ Subject“: napiš „m“ → šedě „icroeconomics“, klepnutí na šedý text doplní, Enter/Add přidá i se šedým návrhem; (6) senzor: polož telefon displejem dolů i nahoru, bitva začne asi po 1 s; zvednutí na půl sekundy spustí alarm; druhá bitva po sobě taky musí začít; po 8 s bez reakce se ukáže „Start without sensor“; (7) Shop jde otevřít hned, bez zámku a toastu. Řádek Background v Nastavení zatím neexistuje (sekce 13), ve specifikaci je už vždy vidět."
+    },
+    {
+      "id": "T33",
+      "title": "Opravy po testu #33",
+      "status": "pracuje",
+      "items": [
+        { "text": "Zarovnání: všechen text na overlayích a výsledcích (Phone lifted, Retreat, Victory, Defeat, Break, Placing) na střed, i řádky s ikonou; nadpisy obrazovek a seznamy vlevo, samostatná sdělení na střed", "done": true },
+        { "text": "Phone lifted: číslo odpočtu pomalu pulzuje (opacity 1 → 0,55 → 1, 2,4 s, ease-in-out, bez změny velikosti); s Reduce Motion bez animace; pozadí statické", "done": true },
+        { "text": "Victory podle makety: bez karty, radiální scrim a stíny textu, sprite se září v barvě světa, „Victory!“ + „{boss} defeated · {předmět}, {min} min“, skleněné dlaždice +XP/+Coins, žluté Collect Loot, bez Share Victory", "done": true },
+        { "text": "Horní lišta: za status barem a Dynamic Islandem tmavý přechod rgba(6,5,16,.75) → průhledná, ~90 pt, stejný na všech záložkách a v listech", "done": true },
+        { "text": "Just 5 minutes: vlastní boss „Warm-up Wisp“ (16×16 sprite), normální XP a mince, bez odznaku N× na Path, staré rychlé výhry z odznaků vynechat; Keep going = nejkratší neporažený boss napříč světy; unit testy", "done": true }
+      ],
+      "commit": null,
+      "build": null,
+      "note": "Nalezeno při testu buildu #33 na iPhonu; senzor a bitva fungují."
     },
     {
       "id": 7,
