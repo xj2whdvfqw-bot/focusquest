@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-19T18:01:00+01:00",
-  "current": "Opravy po testu #33 (T33): běží build #34 (commit e1f194d).",
-  "nextStep": "Počkat na build #34; při chybě opravit, jinak kartu T33 na hotovo s poznámkou pro test na iPhonu.",
+  "updated": "2026-11-19T18:23:00+01:00",
+  "current": "Opravy po testu #33 (T33) hotové, build #34 prošel (commit e1f194d).",
+  "nextStep": "Otestovat build #34 na iPhonu podle poznámky v kartě T33; pak sekce 7: Your subjects.",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -249,7 +249,7 @@
     {
       "id": "T33",
       "title": "Opravy po testu #33",
-      "status": "pracuje",
+      "status": "hotovo",
       "items": [
         { "text": "Zarovnání: všechen text na overlayích a výsledcích (Phone lifted, Retreat, Victory, Defeat, Break, Placing) na střed, i řádky s ikonou; nadpisy obrazovek a seznamy vlevo, samostatná sdělení na střed", "done": true },
         { "text": "Phone lifted: číslo odpočtu pomalu pulzuje (opacity 1 → 0,55 → 1, 2,4 s, ease-in-out, bez změny velikosti); s Reduce Motion bez animace; pozadí statické", "done": true },
@@ -258,8 +258,8 @@
         { "text": "Just 5 minutes: vlastní boss „Warm-up Wisp“ (16×16 sprite), normální XP a mince, bez odznaku N× na Path, staré rychlé výhry z odznaků vynechat; Keep going = nejkratší neporažený boss napříč světy; unit testy", "done": true }
       ],
       "commit": "e1f194d",
-      "build": { "number": 34, "runId": 44572496760, "result": "běží" },
-      "note": "Nalezeno při testu buildu #33 na iPhonu; senzor a bitva fungují."
+      "build": { "number": 34, "runId": 44572496760, "result": "prošel" },
+      "note": "Hotovo, build #34 prošel včetně unit testů. Na iPhonu otestuj: (1) Phone lifted, Retreat, Victory, Defeat, Break a Lay the phone mají všechen text na středu, řádky s ikonou jsou jeden vycentrovaný blok; prázdné stavy ve Stats a ve správě předmětů jsou na středu; (2) číslo na Phone lifted pomalu pulzuje (2,4 s), s Reduce Motion stojí; (3) Victory leží přímo na scéně bez karty, žluté Collect Loot, skleněné dlaždice s načítáním, bez Share Victory; (4) na všech záložkách i v bitvě je čas nahoře čitelný i při scrollování; (5) Just 5 minutes: Fight sheet „Fight Warm-up Wisp“ a „Start 5 min Battle“, v bitvě modrý duch a „Warm-up · 5 min“; po výhře +60 XP a +15 mincí, Keep going ukáže nejkratšího neporaženého bosse a otevře jeho Fight sheet; na Path nepřibude odznak a staré rychlé výhry z odznaků zmizí; Same again po rozcvičce zase otevře rozcvičku."
     },
     {
       "id": 7,
