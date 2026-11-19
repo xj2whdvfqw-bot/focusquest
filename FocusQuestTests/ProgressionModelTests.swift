@@ -493,3 +493,4 @@ final class ProgressionModelTests: XCTestCase {
         XCTAssertNil(StudySubject.completion(for: "Quantum", taken: []))
         XCTAssertNil(StudySubject.completion(for: "e", taken: [StudySubject(id: "English"), StudySubject(id: "Economics")]))
     }
+}
