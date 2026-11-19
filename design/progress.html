@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-17T18:27:00+01:00",
-  "current": "Sekce 6 hotová, build #30 prošel (commit ce8e6d0).",
-  "nextStep": "Začít sekci 7: Your subjects (správa předmětů).",
+  "updated": "2026-11-19T15:46:00+01:00",
+  "current": "Opravy po testu #30 (T30): body 6 a 7 hotové, běží build #31; pokračuji bodem 4 (bitvy jen přes Fight sheet).",
+  "nextStep": "Body 4, 5, 1, 2, 3 z karty T30; pak build a poznámka, co otestovat na iPhonu.",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -111,12 +111,12 @@
         { "text": "Jen ikony velikosti 26, bez popisků (popisky zůstávají pro VoiceOver)", "done": true },
         { "text": "Arena: obrysový domek s klenutými dveřmi; Hero: obrysová postava v kruhu; Path, Shop a Stats mají dál plné ikony", "done": true },
         { "text": "Během bitvy je tab bar úplně schovaný", "done": true },
-        { "text": "Shop zamčený do 3 výher: průhlednost 45 %, odznak „🔒 1/3“, ťuknutí ukáže toast „The Shop opens after 3 wins (1/3)“", "done": true },
+        { "text": "Shop nikdy zamčený: dostupný od začátku, bez odznaku 🔒, počtu výher i toastu (zámek do 3 výher zrušen po testu #30)", "done": true },
         { "text": "Přechod pod tab barem: průhledná → rgba(6,5,16,.92) na 45 % → #060510 na 70 %, výška = tab bar + spodní okraj + 36", "done": true }
       ],
       "commit": "0061600",
       "build": { "number": 21, "runId": 43979908168, "result": "prošel" },
-      "note": "Systémový TabView zůstal (každá záložka si drží stav), jen je skrytý a nad ním je vlastní plovoucí lišta. Toast je nová komponenta PixelToast, sekce 11 ji převezme. Na iPhonu otestuj: 5 ikon bez popisků, Shop s 🔒 x/3 a toastem po ťuknutí, tab bar zmizí v bitvě a vrátí se po ní, Path si po přepnutí záložek pamatuje, kam jsi odroloval."
+      "note": "Systémový TabView zůstal (každá záložka si drží stav), jen je skrytý a nad ním je vlastní plovoucí lišta. Toast je nová komponenta PixelToast, sekce 11 ji převezme. Na iPhonu otestuj: 5 ikon bez popisků, Shop dostupný hned (zámek zrušen po testu #30), tab bar zmizí v bitvě a vrátí se po ní, Path si po přepnutí záložek pamatuje, kam jsi odroloval."
     },
     {
       "id": 2,
@@ -230,6 +230,23 @@
       "note": "Build #29 spadl: shoda CountUpNumber s Animatable přecházela do MainActor (Swift 6). Opraveno přes nonisolated animatableData. Na iPhonu otestovat: načítání XP a mincí na vítězství, odpočet přestávky 5:00 včetně zvuku v 0:00, tlačítka NEXT BOSS / Same again / Change boss."
     },
     {
+      "id": "T30",
+      "title": "Opravy po testu #30",
+      "status": "pracuje",
+      "items": [
+        { "text": "Arena: blok s bossem svisle uprostřed mezi pilulkou série a tlačítkem Fight; Fight a „Just 5 minutes“ zůstávají dole", "done": false },
+        { "text": "Arena: bublina po klepnutí je nad bossem s ocáskem dolů, nikdy nepřekryje sprite (ani naštvaná); při málo místa se zmenší nebo zalomí", "done": false },
+        { "text": "Path: otevření světa = karta se plynule zvětší a mřížka se rozbalí na místě (fade + výška, ~0,25 s), žádné přilétání shora; Reduce Motion", "done": false },
+        { "text": "Každá bitva jde přes Fight sheet (dlaždice na Path, „Just 5 minutes“ s pevnými 5 min, Same again…); stará řada čipů předmětů na obrazovce bitvy pryč", "done": false },
+        { "text": "„+ Subject“: místo řady čipů s návrhy inline doplňování šedým textem v poli (→ / Tab / klepnutí doplní, Enter nebo Add přidá); bez už existujících předmětů", "done": false },
+        { "text": "Senzor pohybu: CMMotionManager deviceMotion ~10 Hz (záloha accelerometer), ležící = |gravity.z| > 0,9 po 1 s, zvednutý = |gravity.z| < 0,7 po 0,5 s; po 8 s „Start without sensor“; unit test prahů", "done": true },
+        { "text": "Shop bez zámku: žádný 🔒 ani 0/3 v tab baru, žádný toast; řádek Background v Nastavení vždy vidět; upravit CHANGES.md (sekce 1, 13) a progress", "done": true }
+      ],
+      "commit": null,
+      "build": null,
+      "note": "Nalezeno při testu buildu #30 na iPhonu (iOS 27)."
+    },
+    {
       "id": 7,
       "title": "Your subjects (správa předmětů)",
       "status": "cekam",
@@ -314,7 +331,7 @@
       ],
       "commit": null,
       "build": null,
-      "note": "Základ už existuje: PixelToast.swift ze sekce 1 (toast zamčeného Shopu). Tady se dotáhne podle přesné specifikace a přidají se bubliny bossů."
+      "note": "Základ už existuje: PixelToast.swift ze sekce 1 (původně pro toast zamčeného Shopu, ten je zrušen). Tady se dotáhne podle přesné specifikace a přidají se bubliny bossů."
     },
     {
       "id": 12,
@@ -340,7 +357,7 @@
         { "text": "Battle sound: Off / Lo-fi / Brown noise / White noise", "done": false },
         { "text": "Sound effects: Tap and battle sounds · Achievement sounds · Alarm sound · Vibrate on the alarm", "done": false },
         { "text": "Notifications: Daily reminder (17:00) · Battle finished · Break is over", "done": false },
-        { "text": "Background: aktuální název, otevře Shop › Backgrounds; skryté, dokud je Shop zamčený", "done": false },
+        { "text": "Background: aktuální název, otevře Shop › Backgrounds; vidět vždy (Shop se nezamyká)", "done": false },
         { "text": "Feedback: Contact the developer (ikona obálky), Rate this app (ikona hvězdy)", "done": false },
         { "text": "Patička „FocusQuest version 1.0.0“ a „Privacy Policy · Terms of Use“; kompaktní „✓ Done“", "done": false },
         { "text": "Ikony obrysové, 24 pt, bez podkladového čtverce", "done": false },

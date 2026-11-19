@@ -77,14 +77,66 @@ final class ArenaAntiCheatTests: XCTestCase {
         XCTAssertEqual(defeat.reason, .retreated)
     }
 
-    func testDetectorNeedsFaceDownAndStillness() {
-        var detector = PostureDetector()
-        XCTAssertEqual(detector.update(gravityZ: -1, acceleration: 0, rotation: 0), .lifted)
-        for _ in 0..<(PostureDetector.stillSamplesNeeded - 1) {
-            XCTAssertNil(detector.update(gravityZ: 1, acceleration: 0, rotation: 0))
+    /// Vzorky po 0,1 s (10 Hz) od casu `start` do `start + seconds`; vrati ohlasene zmeny stavu.
+    private func feed(_ detector: inout PostureDetector, z: Double, from start: Double, seconds: Double) -> [DevicePostureState] {
+        var reported: [DevicePostureState] = []
+        for step in 0...Int((seconds * 10).rounded()) {
+            if let state = detector.update(gravityZ: z, at: start + Double(step) * 0.1) { reported.append(state) }
         }
-        XCTAssertEqual(detector.update(gravityZ: 1, acceleration: 0, rotation: 0), .lyingStill)
-        XCTAssertNil(detector.update(gravityZ: 1, acceleration: 0.5, rotation: 0))
+        return reported
+    }
+
+    func testFlatFaceDownNeedsOneSecond() {
+        var detector = PostureDetector()
+        XCTAssertEqual(feed(&detector, z: 0.98, from: 0, seconds: 0.9), [])
+        XCTAssertEqual(detector.update(gravityZ: 0.98, at: 1.0), .lyingStill)
+        XCTAssertNil(detector.update(gravityZ: 0.98, at: 1.1), "Same state is reported only once")
+    }
+
+    func testFlatFaceUpCountsToo() {
+        var detector = PostureDetector()
+        XCTAssertEqual(feed(&detector, z: -0.99, from: 0, seconds: 1.0), [.lyingStill])
+    }
+
+    func testTiltBelowFlatThresholdResetsTheSecond() {
+        var detector = PostureDetector()
+        XCTAssertEqual(feed(&detector, z: 0.95, from: 0, seconds: 0.8), [])
+        // 0,85 je mezi prahy: nic se neohlasi a odpocet 1 s zacne znovu.
+        XCTAssertNil(detector.update(gravityZ: 0.85, at: 0.9))
+        XCTAssertEqual(feed(&detector, z: 0.95, from: 1.0, seconds: 0.9), [])
+        XCTAssertEqual(detector.update(gravityZ: 0.95, at: 2.0), .lyingStill)
+    }
+
+    func testLiftNeedsHalfASecondBelowThreshold() {
+        var detector = PostureDetector()
+        XCTAssertEqual(feed(&detector, z: 1, from: 0, seconds: 1.0), [.lyingStill])
+        XCTAssertEqual(feed(&detector, z: 0.5, from: 1.1, seconds: 0.4), [], "A short wobble is not a lift")
+        XCTAssertEqual(detector.update(gravityZ: 0.5, at: 1.6), .lifted)
+    }
+
+    func testBriefDipDoesNotCountAsLift() {
+        var detector = PostureDetector()
+        XCTAssertEqual(feed(&detector, z: 1, from: 0, seconds: 1.0), [.lyingStill])
+        XCTAssertEqual(feed(&detector, z: 0.6, from: 1.1, seconds: 0.3), [])
+        XCTAssertEqual(feed(&detector, z: 0.8, from: 1.5, seconds: 2.0), [], "Between thresholds nothing changes")
+        XCTAssertEqual(feed(&detector, z: 0.6, from: 3.6, seconds: 0.4), [])
+    }
+
+    func testLowPassSmoothsAccelerometerShake() {
+        var filter = GravityLowPass()
+        XCTAssertEqual(filter.filter(1), 1)
+        // Jeden otres na 0 posune vyhlazenou hodnotu jen o 20 %.
+        XCTAssertEqual(filter.filter(0), 0.8, accuracy: 1e-9)
+    }
+
+    func testStartWithoutSensorStartsBattleAndIgnoresLifts() async {
+        let rig = makeRig(hapticsEnabled: false)
+        rig.model.startSession()
+        await waitForSession(rig.model)
+        rig.model.startWithoutSensor()
+        guard case .focusing = rig.model.state else { return XCTFail("Battle did not start without the sensor") }
+        await rig.model.handlePosture(.lifted)
+        guard case .focusing = rig.model.state else { return XCTFail("A lift must be ignored without the sensor") }
     }
 
     func testMutedHapticsDoNotDisableVisualWarning() async {

@@ -33,7 +33,7 @@ Colours are given as hex or as `rgba(r,g,b,a)` with 0–255 channels. Sizes are 
 - Icons only, no labels (keep labels as accessibility labels). Icon size 26.
 - Arena icon: outlined house with an arched door. Hero icon: outlined person inside a circle. Path, Shop and Stats keep their current filled icons.
 - Hide the tab bar completely during a battle.
-- Shop tab is locked until the player has **3 wins**: show it at 45 % opacity with a small `🔒 1/3` badge. Tapping it shows a toast "The Shop opens after 3 wins (1/3)".
+- The Shop tab is **never locked**: it is available from the first launch, with no lock badge, no win counter and no toast.
 - Gradient under the tab bar so content fades out: transparent → `rgba(6,5,16,.92)` at 45 % → `#060510` at 70 %, height = tab bar height + bottom inset + 36.
 
 ---
@@ -292,7 +292,7 @@ Bright backgrounds are Daybreak, Sunset, Pyramids, Farm and Wind Farm (`isBright
    - **Battle sound:** Off / Lo-fi / Brown noise / White noise.
    - **Sound effects:** Tap and battle sounds · Achievement sounds · Alarm sound · Vibrate on the alarm.
    - **Notifications:** Daily reminder (17:00) · Battle finished · Break is over.
-2. **Background:** current name, opens Shop › Backgrounds. Hidden while the Shop is locked (it was a dead end).
+2. **Background:** current name, opens Shop › Backgrounds. Always visible (the Shop is never locked).
 3. **Feedback:** Contact the developer (mail icon), Rate this app (star icon).
 4. Footer: "FocusQuest version 1.0.0", then "Privacy Policy · Terms of Use".
 5. Compact "✓ Done" button.

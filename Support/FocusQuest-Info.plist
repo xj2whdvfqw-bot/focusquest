@@ -27,7 +27,7 @@
 	</array>
 
 	<key>NSMotionUsageDescription</key>
-	<string>FocusQuest checks whether your iPhone is resting face-up during a focus battle.</string>
+	<string>FocusQuest checks whether your iPhone is lying flat on the desk during a focus battle.</string>
 	<key>NSSupportsLiveActivities</key>
 	<true/>
 	<key>UIBackgroundModes</key>

@@ -254,10 +254,7 @@ struct BattleView: View {
                 Text("Phone down. The boss is losing.").font(.fqLabel).foregroundStyle(FQColor.textSecondary)
             }
         case .awaitingFlatPlacement:
-            Label("Lay the phone face-down. The battle starts when it lies still.", systemImage: "iphone.gen3")
-                .font(.fqLabel)
-                .foregroundStyle(FQColor.textPrimary)
-                .multilineTextAlignment(.center)
+            PlacementHint { model.startWithoutSensor() }
         default:
             if model.selectedSubject == nil {
                 Text("What are you studying?").font(.fqLabel).foregroundStyle(FQColor.caution)
@@ -747,6 +744,37 @@ extension Boss {
         case ..<4: "Adept"
         case ..<6: "Elite"
         default: "Mythic"
+        }
+    }
+}
+
+/// "Lay the phone…" a po 8 s bez reakce senzoru nenapadne tlacitko "Start without sensor".
+private struct PlacementHint: View {
+    static let fallbackDelay: Duration = .seconds(8)
+    let onStartWithoutSensor: () -> Void
+    @State private var showsFallback = false
+
+    var body: some View {
+        VStack(spacing: FQSpace.sm) {
+            Label("Lay the phone face-down. The battle starts when it lies still.", systemImage: "iphone.gen3")
+                .font(.fqLabel)
+                .foregroundStyle(FQColor.textPrimary)
+                .multilineTextAlignment(.center)
+            if showsFallback {
+                Button("Start without sensor", action: onStartWithoutSensor)
+                    .font(.fqMeta)
+                    .foregroundStyle(FQColor.textSecondary)
+                    .underline()
+                    .frame(minHeight: 44)
+                    .buttonStyle(.plain)
+                    .accessibilityHint("Starts the battle now. Lifting the phone is not checked.")
+                    .transition(.opacity)
+            }
+        }
+        .task {
+            try? await Task.sleep(for: Self.fallbackDelay)
+            guard !Task.isCancelled else { return }
+            withAnimation(.easeOut(duration: 0.25)) { showsFallback = true }
         }
     }
 }

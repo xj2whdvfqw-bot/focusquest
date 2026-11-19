@@ -59,6 +59,8 @@ final class ArenaViewModel: ObservableObject {
     /// Predmet bitvy. Bez nej bitva nezacne.
     @Published private(set) var selectedSubject: StudySubject?
     @Published private(set) var posture: DevicePostureState = .unavailable
+    /// Bitva bezi bez senzoru ("Start without sensor"): zvednuti telefonu se nehlida.
+    @Published private(set) var isSensorBypassed = false
     @Published private(set) var preferences: AppPreferences
     @Published private(set) var activeSession: StudySession?
     /// Vlastni bitva (Custom Battle): libovolna delka, nahodny boss, cestu sveta neposouva.
@@ -132,6 +134,9 @@ final class ArenaViewModel: ObservableObject {
         hasUsedPause = false
         hasUsedSlipGrace = false
         resetBossHealth()
+        // Poloha z minule bitvy neplati: bitva zacne az po novem polozeni telefonu.
+        posture = .unavailable
+        isSensorBypassed = false
         state = .awaitingFlatPlacement
         activeSession = nil
         isFinishing = false
@@ -427,7 +432,19 @@ final class ArenaViewModel: ObservableObject {
         }
     }
 
+    /// Pojistka, kdyz senzor polozeni nezaznamena: bitva zacne hned a zvednuti se uz nehlida.
+    func startWithoutSensor() {
+        guard case .awaitingFlatPlacement = state else { return }
+        isSensorBypassed = true
+        postureTask?.cancel()
+        postureTask = nil
+        posture = .lyingStill
+        // Bez serverove relace zacne bitva, jakmile relace dorazi (createServerSession).
+        if activeSession != nil { startFocusClock() }
+    }
+
     func handlePosture(_ value: DevicePostureState) async {
+        guard !isSensorBypassed else { return }
         posture = value
         if value == .lyingStill {
             if case let .warningCountdown(_, frozenElapsed, _) = state { recoverFocus(elapsed: frozenElapsed) }

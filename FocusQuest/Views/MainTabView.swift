@@ -37,15 +37,12 @@ enum FQTabBarMetrics {
     /// Mezera mezi koncem obsahu a horni hranou listy je v prototypu 24 pt. ScreenScaffold uz dole
     /// odsazuje o FQSpace.xxl (32), takze rezerva konci o 8 pt niz nez horni hrana listy.
     static let contentGap: CGFloat = 24 - FQSpace.xxl
-    /// Obchod se odemkne po tolika vyhranych bitvach.
-    static let shopWins = 3
 }
 
 struct MainTabView: View {
     let container: AppDIContainer
     @State private var selectedTab = FocusQuestTab.initial
     @State private var showsHeroCreator = false
-    @State private var toast: String?
     /// Ozubene kolo na kazde zalozce otevira tentyz list Nastaveni.
     @State private var settingsPresenter = SettingsPresenter()
     /// Bitva bezi pres celou obrazovku nad zalozkami, takze spodni lista neni videt.
@@ -64,7 +61,6 @@ struct MainTabView: View {
                         tabChrome
                     }
                 }
-                .pixelToast($toast)
                 .environment(settingsPresenter)
                 .environment(battlePresenter)
                 .sheet(isPresented: Binding(get: { settingsPresenter.isPresented }, set: { settingsPresenter.isPresented = $0 })) {
@@ -134,11 +130,7 @@ struct MainTabView: View {
     private var tabChrome: some View {
         ZStack(alignment: .bottom) {
             TabBarFade()
-            FocusQuestTabBar(selection: $selectedTab, profile: container.profileViewModel) { wins in
-                withAnimation(.easeOut(duration: 0.2)) {
-                    toast = "The Shop opens after \(FQTabBarMetrics.shopWins) wins (\(wins)/\(FQTabBarMetrics.shopWins))"
-                }
-            }
+            FocusQuestTabBar(selection: $selectedTab)
             .padding(.horizontal, FQTabBarMetrics.sideInset)
             .padding(.bottom, FQTabBarMetrics.bottom)
         }
@@ -183,14 +175,9 @@ private extension View {
 }
 
 /// Plovouci sklenena lista: jen ikony (popisky zustavaji pro VoiceOver).
+/// Vsechny zalozky vcetne Obchodu jsou dostupne od zacatku.
 private struct FocusQuestTabBar: View {
     @Binding var selection: FocusQuestTab
-    @ObservedObject var profile: ProfileViewModel
-    /// Klepnuti na zamceny Obchod; parametr je pocet vyher (max 3).
-    let onLockedTap: (Int) -> Void
-
-    private var wins: Int { min(FQTabBarMetrics.shopWins, profile.stats.wins) }
-    private var isShopLocked: Bool { profile.stats.wins < FQTabBarMetrics.shopWins }
 
     var body: some View {
         HStack(spacing: 0) {
@@ -211,30 +198,18 @@ private struct FocusQuestTabBar: View {
 
     private func tabButton(_ tab: FocusQuestTab) -> some View {
         let isOn = selection == tab
-        let isLocked = tab == .shop && isShopLocked
         return Button {
-            if isLocked { onLockedTap(wins) } else { selection = tab }
+            selection = tab
         } label: {
             TabIcon(tab: tab)
                 .frame(width: FQTabBarMetrics.iconSize, height: FQTabBarMetrics.iconSize)
                 .foregroundStyle(isOn ? FQColor.cta : FQColor.textPrimary)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background { if isOn { Capsule().fill(Color.white.opacity(0.14)) } }
-                .overlay(alignment: .topTrailing) {
-                    if isLocked {
-                        Text("🔒 \(wins)/\(FQTabBarMetrics.shopWins)")
-                            .font(.system(size: 9, weight: .semibold, design: .rounded))
-                            .monospacedDigit()
-                            .foregroundStyle(FQColor.textPrimary)
-                            .padding(.top, 4)
-                            .padding(.trailing, 6)
-                    }
-                }
-                .opacity(isLocked ? 0.45 : 1)
                 .contentShape(Capsule())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(isLocked ? "\(tab.title), locked, \(wins) of \(FQTabBarMetrics.shopWins) wins" : tab.title)
+        .accessibilityLabel(tab.title)
         .accessibilityAddTraits(isOn ? .isSelected : [])
     }
 }
