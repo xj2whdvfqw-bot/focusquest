@@ -396,6 +396,28 @@ final class ProgressionModelTests: XCTestCase {
         XCTAssertTrue(LevelTier(level: 10).hasWings)
     }
 
+    func testShopBackgroundCatalogMatchesDesign() {
+        XCTAssertEqual(ShopBackground.free.map(\.price), [0, 0])
+        XCTAssertEqual(ShopBackground.forCoins.map(\.price), [800, 800, 1000, 1000, 1200, 1500, 1500])
+        XCTAssertEqual(Set(ShopBackground.free + ShopBackground.forCoins), Set(ShopBackground.allCases))
+        XCTAssertEqual(ShopBackground.wind.name, "Wind Farm")
+        XCTAssertTrue(ShopBackground.dawn.isBright)
+        XCTAssertFalse(ShopBackground.city.isBright)
+    }
+
+    func testOlderProfileDecodesWithoutBackgrounds() throws {
+        let json = Data(#"{"userID":"a","username":"Hero1","title":"x","heroClass":"cyberRonin","avatarMatrix":[],"dailyFocusGoalMinutes":60}"#.utf8)
+        let profile = try JSONDecoder().decode(UserProfile.self, from: json)
+        XCTAssertTrue(profile.ownedBackgroundIDs.isEmpty)
+        XCTAssertNil(profile.backgroundID)
+    }
+
+    func testShopSceneLayoutUsesThreePointGrid() {
+        let layout = ShopSceneLayout(size: CGSize(width: 402, height: 874), background: .wind)
+        XCTAssertEqual(layout.px, 3)
+        XCTAssertEqual(layout.cols, 135)
+    }
+
     func testBossesBeatenSkipsWarmUp() {
         var stats = PlayerStats.initial
         stats.bestiary = [

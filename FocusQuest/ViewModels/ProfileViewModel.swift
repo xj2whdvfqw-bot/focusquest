@@ -111,6 +111,37 @@ final class ProfileViewModel: ObservableObject {
         save()
     }
 
+    // MARK: - Pozadi
+
+    /// Pozadi, ktere si hrac prave zkousi (Preview). Neuklada se a po odchodu z obchodu zmizi.
+    @Published var previewBackground: ShopBackground?
+
+    /// Zvolene pozadi; nil = World scenes.
+    var selectedBackground: ShopBackground? { profile.backgroundID.flatMap(ShopBackground.init(rawValue:)) }
+    /// Co je prave videt za obrazovkami: nahled ma prednost pred zvolenym pozadim.
+    var activeBackground: ShopBackground? { previewBackground ?? selectedBackground }
+
+    func owns(_ background: ShopBackground) -> Bool { background.isFree || profile.ownedBackgroundIDs.contains(background.rawValue) }
+    func canAfford(_ background: ShopBackground) -> Bool { profile.coins >= background.price }
+
+    /// Pouzije vlastnene pozadi (nil = World scenes).
+    func useBackground(_ background: ShopBackground?) {
+        if let background, !owns(background) { return }
+        previewBackground = nil
+        profile.backgroundID = background?.rawValue
+        save()
+    }
+
+    /// Koupi pozadi za mince a rovnou ho pouzije.
+    func buy(_ background: ShopBackground) {
+        guard !owns(background), canAfford(background) else { return }
+        profile.coins -= background.price
+        profile.ownedBackgroundIDs.append(background.rawValue)
+        previewBackground = nil
+        profile.backgroundID = background.rawValue
+        save()
+    }
+
     func refresh() async {
         do { profile = try await sync.loadProfile() } catch { errorMessage = "Profile sync is unavailable." }
     }

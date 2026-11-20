@@ -108,6 +108,8 @@ struct MainTabView: View {
         // Pixelova krajina je nocni, proto je appka vzdy v tmavem rezimu (text na skle vynikne).
         .preferredColorScheme(.dark)
         .tint(FQColor.accent)
+        // Pozadi z obchodu (nebo prave zkousene) je za vsemi obrazovkami vcetne bitvy a listu.
+        .modifier(ActiveShopBackground(model: container.profileViewModel))
     }
 
     /// Systemovy TabView drzi stav kazde zalozky; jeho vlastni lista je skryta, kreslime FocusQuestTabBar.

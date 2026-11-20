@@ -17,10 +17,15 @@ struct UserProfile: Codable, Sendable {
     var hasCreatedHero = false
     /// Co chce hrac s FocusQuestem zmenit; vybira v uvodu.
     var focusGoals: [FocusGoal] = []
+    /// Pozadi koupena v obchode (ShopBackground.rawValue); pozadi zdarma se neukladaji.
+    var ownedBackgroundIDs: [String] = []
+    /// Zvolene pozadi; nil = World scenes (kazdy svet ma svou scenu).
+    var backgroundID: String? = nil
 
     enum CodingKeys: String, CodingKey {
         case userID, username, title, heroClass, avatarMatrix, dailyFocusGoalMinutes
         case avatar, coins, bossesDefeated, hasCreatedHero, ownedEquipmentIDs, focusGoals
+        case ownedBackgroundIDs, backgroundID
     }
 
     static func fresh(deviceID: String) -> UserProfile {
@@ -50,6 +55,8 @@ extension UserProfile {
         // Neznamy cil z novejsi verze se zahodi, ostatni zustanou.
         let storedGoals = (try? container.decodeIfPresent([String].self, forKey: .focusGoals)) ?? []
         focusGoals = storedGoals.compactMap(FocusGoal.init(rawValue:))
+        ownedBackgroundIDs = (try? container.decodeIfPresent([String].self, forKey: .ownedBackgroundIDs)) ?? []
+        backgroundID = try? container.decodeIfPresent(String.self, forKey: .backgroundID)
     }
 }
 

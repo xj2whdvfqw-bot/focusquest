@@ -22,15 +22,38 @@ struct FocusQuestBackdrop: View {
     var alert = false
     var scene: BackdropScene = .enchantedForest
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
+    /// Pozadi z obchodu nahradi krajinu sveta na vsech obrazovkach.
+    @Environment(\.shopBackground) private var shopBackground
+
+    /// Animace stoji pri Omezit pohyb a kdyz appka neni v popredi.
+    private var paused: Bool { reduceMotion || scenePhase != .active }
 
     var body: some View {
+        ZStack {
+            if let shopBackground {
+                ShopSceneBackdrop(background: shopBackground, paused: paused, frozen: reduceMotion)
+            } else {
+                worldScene
+            }
+            scrims
+            // Varovani pri zvednuti telefonu: cela plocha zcervena.
+            LinearGradient(colors: [FQColor.alarm.opacity(0.55), FQColor.danger.opacity(0.35)], startPoint: .top, endPoint: .bottom)
+                .opacity(alert ? 1 : 0)
+        }
+        .ignoresSafeArea()
+        .animation(.easeInOut(duration: 0.4), value: alert)
+        .accessibilityHidden(true)
+    }
+
+    private var worldScene: some View {
         GeometryReader { proxy in
             let layout = PixelLayout(size: proxy.size, scene: scene)
             ZStack {
                 Canvas(opaque: true, rendersAsynchronously: true) { context, _ in
                     PixelPainter(context: context, px: layout.px).drawSky(layout)
                 }
-                TimelineView(.animation(minimumInterval: 1.0 / 12.0, paused: reduceMotion)) { timeline in
+                TimelineView(.animation(minimumInterval: 1.0 / 12.0, paused: paused)) { timeline in
                     let time = reduceMotion ? 0 : timeline.date.timeIntervalSinceReferenceDate
                     Canvas(opaque: false, rendersAsynchronously: true) { context, _ in
                         PixelPainter(context: context, px: layout.px).drawStars(layout, time: time)
@@ -39,21 +62,14 @@ struct FocusQuestBackdrop: View {
                 Canvas(opaque: false, rendersAsynchronously: true) { context, _ in
                     PixelPainter(context: context, px: layout.px).drawLandscape(layout)
                 }
-                TimelineView(.animation(minimumInterval: 1.0 / 12.0, paused: reduceMotion)) { timeline in
+                TimelineView(.animation(minimumInterval: 1.0 / 12.0, paused: paused)) { timeline in
                     let time = reduceMotion ? 0 : timeline.date.timeIntervalSinceReferenceDate
                     Canvas(opaque: false, rendersAsynchronously: true) { context, _ in
                         PixelPainter(context: context, px: layout.px).drawEffects(layout, time: time)
                     }
                 }
-                scrims
-                // Varovani pri zvednuti telefonu: cela plocha zcervena.
-                LinearGradient(colors: [FQColor.alarm.opacity(0.55), FQColor.danger.opacity(0.35)], startPoint: .top, endPoint: .bottom)
-                    .opacity(alert ? 1 : 0)
             }
         }
-        .ignoresSafeArea()
-        .animation(.easeInOut(duration: 0.4), value: alert)
-        .accessibilityHidden(true)
     }
 
     /// Ztmaveni nahore (nadpisy) a dole (lista zalozek), aby text vzdy vynikl.
@@ -782,5 +798,17 @@ private struct PixelPainter {
             glow(x: x + 0.5, y: y + 0.5, radius: 2.5, color: PixelPalette.firefly, opacity: 0.45 * pulse)
             rect(Int(x), Int(y), 1, 1, PixelPalette.firefly.opacity(pulse))
         }
+    }
+}
+
+/// Staticky nahled sceny sveta (karta World scenes v obchode).
+enum WorldSceneThumbnail {
+    static func draw(_ context: GraphicsContext, size: CGSize, scene: BackdropScene) {
+        let layout = PixelLayout(size: size, scene: scene)
+        let painter = PixelPainter(context: context, px: layout.px)
+        painter.drawSky(layout)
+        painter.drawStars(layout, time: 0)
+        painter.drawLandscape(layout)
+        painter.drawEffects(layout, time: 3)
     }
 }

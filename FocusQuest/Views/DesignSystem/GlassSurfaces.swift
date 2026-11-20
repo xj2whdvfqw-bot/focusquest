@@ -55,7 +55,7 @@ extension View {
             .padding(.top, FQSpace.sm)
             .padding(.bottom, FQSpace.md)
             .frame(maxWidth: .infinity)
-            .background { ScrollFadeBackground(edge: .top) }
+            .background { SoftHeaderBackground() }
         if #available(iOS 26.0, *) {
             safeAreaBar(edge: .top, spacing: 0) { bar }
                 .scrollEdgeEffectStyle(.soft, for: .top)
@@ -95,6 +95,34 @@ struct GlassCardModifier: ViewModifier {
 }
 
 /// Rozmazany prechod pod pripnutou listou: u obsahu pruhledny, u okraje obrazovky plny material.
+/// Pozadi pripnute hlavicky bez ostre hrany: tmave rozmazane sklo sahá az pod stavovy radek
+/// a 60 pt pod hlavickou plynule mizi do pruhledna.
+private struct SoftHeaderBackground: View {
+    static let fade: CGFloat = 60
+
+    var body: some View {
+        GeometryReader { proxy in
+            let total = proxy.size.height + Self.fade
+            let solid = max(0, (total - Self.fade) / max(1, total))
+            ZStack {
+                Rectangle().fill(.ultraThinMaterial)
+                Color(red: 9 / 255, green: 8 / 255, blue: 24 / 255).opacity(0.62)
+            }
+            .frame(height: total)
+            .mask {
+                LinearGradient(
+                    stops: [.init(color: .black, location: 0), .init(color: .black, location: solid), .init(color: .clear, location: 1)],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            }
+            .frame(maxHeight: .infinity, alignment: .top)
+        }
+        .ignoresSafeArea(edges: .top)
+        .allowsHitTesting(false)
+    }
+}
+
 private struct ScrollFadeBackground: View {
     var edge: VerticalEdge = .bottom
 
