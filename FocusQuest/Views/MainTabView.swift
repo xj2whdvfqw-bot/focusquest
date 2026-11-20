@@ -122,7 +122,10 @@ struct MainTabView: View {
             ShopView(model: container.profileViewModel)
                 .tabPage(reserve: reserve)
                 .tag(FocusQuestTab.shop)
-            StatsView(model: container.statsViewModel, profile: container.profileViewModel, arena: container.arenaViewModel)
+            StatsView(model: container.statsViewModel, arena: container.arenaViewModel) {
+                selectedTab = .arena
+                battlePresenter.openFightSheet()
+            }
                 .tabPage(reserve: reserve)
                 .tag(FocusQuestTab.stats)
             ProfileView(model: container.profileViewModel)

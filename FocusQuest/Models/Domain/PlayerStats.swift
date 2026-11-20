@@ -204,6 +204,82 @@ enum RewardRules {
     static func coins(verifiedMinutes: Int) -> Int { max(0, verifiedMinutes) * coinsPerVerifiedMinute }
 }
 
+extension PlayerStats {
+    /// Nejdelsi rada po sobe jdoucich dni s aspon jednou bitvou ("Longest streak").
+    func longestStreak(calendar: Calendar = .current) -> Int {
+        let days = Set(sessionHistory.map { calendar.startOfDay(for: $0.completedAt) }).sorted()
+        var best = 0
+        var run = 0
+        var previous: Date?
+        for day in days {
+            if let previous, let next = calendar.date(byAdding: .day, value: 1, to: previous), calendar.isDate(next, inSameDayAs: day) {
+                run += 1
+            } else {
+                run = 1
+            }
+            best = max(best, run)
+            previous = day
+        }
+        return best
+    }
+}
+
+/// Ctverecek Habits mrizky: jeden den a jeho overene minuty.
+struct HabitDay: Identifiable, Equatable, Sendable {
+    let date: Date
+    let minutes: Int
+    let isToday: Bool
+    let isFuture: Bool
+
+    var id: Date { date }
+
+    /// Sytost barvy 0–4 podle minut (0, pod 25, pod 50, pod 90, 90+), stejne jako v prototypu.
+    var level: Int { HabitGrid.level(forMinutes: minutes) }
+}
+
+/// Habits mrizka ve Stats: `weeks` sloupcu (tydny, nejstarsi vlevo), v kazdem 7 dni pondeli az nedele.
+/// Dny po dnesku v poslednim sloupci jsou prazdne (`isFuture`).
+struct HabitGrid: Equatable, Sendable {
+    let weeks: [[HabitDay]]
+
+    /// Kolik dni ma aspon minutu soustredeni.
+    var focusDays: Int { weeks.joined().filter { $0.minutes > 0 }.count }
+
+    static func level(forMinutes minutes: Int) -> Int {
+        switch minutes {
+        case ...0: 0
+        case ..<25: 1
+        case ..<50: 2
+        case ..<90: 3
+        default: 4
+        }
+    }
+
+    static func make(history: [SessionSummary], weeks count: Int = 15, now: Date = Date(), calendar base: Calendar = .current) -> HabitGrid {
+        var calendar = base
+        calendar.firstWeekday = 2 // pondeli
+        let today = calendar.startOfDay(for: now)
+        let weekday = calendar.component(.weekday, from: today)
+        let daysFromMonday = (weekday - calendar.firstWeekday + 7) % 7
+        guard let thisMonday = calendar.date(byAdding: .day, value: -daysFromMonday, to: today),
+              let firstMonday = calendar.date(byAdding: .day, value: -7 * (max(1, count) - 1), to: thisMonday) else {
+            return HabitGrid(weeks: [])
+        }
+        var minutesByDay: [Date: Int] = [:]
+        for session in history {
+            minutesByDay[calendar.startOfDay(for: session.completedAt), default: 0] += max(0, session.verifiedMinutes)
+        }
+        let weeks = (0..<max(1, count)).map { week in
+            (0..<7).compactMap { offset -> HabitDay? in
+                guard let date = calendar.date(byAdding: .day, value: week * 7 + offset, to: firstMonday) else { return nil }
+                let day = calendar.startOfDay(for: date)
+                return HabitDay(date: day, minutes: minutesByDay[day] ?? 0, isToday: day == today, isFuture: day > today)
+            }
+        }
+        return HabitGrid(weeks: weeks)
+    }
+}
+
 /// Jeden sloupec tydenniho grafu soustredeni.
 struct DailyFocus: Identifiable, Equatable, Sendable {
     let day: Date

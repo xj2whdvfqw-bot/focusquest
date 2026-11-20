@@ -594,4 +594,53 @@ final class ProgressionModelTests: XCTestCase {
         XCTAssertEqual(subjects.map(\.id), ["math", "Biology"])
         XCTAssertFalse(subjects.addMissing(from: history), "Nothing is added twice")
     }
+
+    // MARK: - Stats (sekce 8)
+
+    private var utcCalendar: Calendar {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "UTC")!
+        return calendar
+    }
+
+    private func day(_ year: Int, _ month: Int, _ day: Int, hour: Int = 12) -> Date {
+        utcCalendar.date(from: DateComponents(year: year, month: month, day: day, hour: hour))!
+    }
+
+    private func session(on date: Date, minutes: Int) -> SessionSummary {
+        SessionSummary(id: UUID(), bossName: "A", verifiedMinutes: minutes, xpEarned: 0, completedAt: date, flawless: true, subject: .math)
+    }
+
+    func testHabitGridHasMondayToSundayWeeksEndingThisWeek() {
+        // Patek 20. 11. 2026: posledni sloupec je tyden od pondeli 16. 11., sobota a nedele jsou budoucnost.
+        let now = day(2026, 11, 20)
+        let history = [session(on: day(2026, 11, 20, hour: 9), minutes: 20), session(on: day(2026, 11, 20, hour: 15), minutes: 10), session(on: day(2026, 11, 16), minutes: 95), session(on: day(2026, 1, 1), minutes: 30)]
+        let grid = HabitGrid.make(history: history, weeks: 15, now: now, calendar: utcCalendar)
+        XCTAssertEqual(grid.weeks.count, 15)
+        XCTAssertTrue(grid.weeks.allSatisfy { $0.count == 7 })
+        XCTAssertEqual(grid.weeks[0][0].date, day(2026, 8, 10, hour: 0), "First column starts on a Monday 14 weeks back")
+        let thisWeek = grid.weeks[14]
+        XCTAssertEqual(thisWeek[0].date, day(2026, 11, 16, hour: 0))
+        XCTAssertEqual(thisWeek[0].minutes, 95)
+        XCTAssertEqual(thisWeek[0].level, 4)
+        XCTAssertEqual(thisWeek[4].minutes, 30)
+        XCTAssertEqual(thisWeek[4].level, 2)
+        XCTAssertTrue(thisWeek[4].isToday)
+        XCTAssertEqual(thisWeek.map(\.isFuture), [false, false, false, false, false, true, true])
+        XCTAssertEqual(grid.focusDays, 2, "Sessions outside the grid do not count")
+    }
+
+    func testHabitLevelsFollowFocusMinutes() {
+        XCTAssertEqual([0, 1, 24, 25, 49, 50, 89, 90, 300].map(HabitGrid.level(forMinutes:)), [0, 1, 1, 2, 2, 3, 3, 4, 4])
+    }
+
+    func testLongestStreakCountsConsecutiveDays() {
+        var stats = PlayerStats.initial
+        XCTAssertEqual(stats.longestStreak(calendar: utcCalendar), 0)
+        stats.sessionHistory = [
+            session(on: day(2026, 11, 1), minutes: 20), session(on: day(2026, 11, 2), minutes: 20), session(on: day(2026, 11, 2, hour: 18), minutes: 20),
+            session(on: day(2026, 11, 3), minutes: 20), session(on: day(2026, 11, 10), minutes: 20), session(on: day(2026, 11, 11), minutes: 20)
+        ]
+        XCTAssertEqual(stats.longestStreak(calendar: utcCalendar), 3)
+    }
 }

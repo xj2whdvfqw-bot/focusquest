@@ -29,14 +29,14 @@ struct ToastMessage: Identifiable, Equatable {
     let id = UUID()
     let text: String
     var actionTitle: String? = nil
-    var action: (() -> Void)? = nil
+    var action: (@MainActor () -> Void)? = nil
 
     var duration: Duration { action == nil ? .seconds(2.6) : .seconds(5) }
 
     static func == (lhs: ToastMessage, rhs: ToastMessage) -> Bool { lhs.id == rhs.id }
 
     /// Toast po smazani s Undo na 5 s.
-    static func undo(_ text: String, action: @escaping () -> Void) -> ToastMessage {
+    static func undo(_ text: String, action: @escaping @MainActor () -> Void) -> ToastMessage {
         ToastMessage(text: text, actionTitle: "Undo", action: action)
     }
 }
@@ -45,7 +45,7 @@ struct ToastMessage: Identifiable, Equatable {
 struct PixelToast: View {
     let message: String
     var actionTitle: String? = nil
-    var action: (() -> Void)? = nil
+    var action: (@MainActor () -> Void)? = nil
 
     static let ink = Color(red: 27 / 255, green: 22 / 255, blue: 48 / 255)
     static let paper = Color(red: 1, green: 250 / 255, blue: 240 / 255)
@@ -177,18 +177,20 @@ extension View {
     func pixelToast(_ toast: Binding<ToastMessage?>) -> some View {
         overlay(alignment: .top) {
             if let current = toast.wrappedValue {
-                PixelToast(message: current.text, actionTitle: current.actionTitle, action: current.action.map { action in
-                    {
+                let tapped: (@MainActor () -> Void)? = current.action.map { action in
+                    return {
                         withAnimation(.easeOut(duration: 0.2)) { toast.wrappedValue = nil }
                         action()
                     }
-                })
+                }
+                PixelToast(message: current.text, actionTitle: current.actionTitle, action: tapped)
                 .padding(.top, FQSpace.sm)
                 .transition(.move(edge: .top).combined(with: .opacity))
                 .id(current.id)
-                .task(id: current.id) {
-                    try? await Task.sleep(for: current.duration)
-                    guard !Task.isCancelled, toast.wrappedValue?.id == current.id else { return }
+                // Do Sendable ulohy jdou jen id a delka (ToastMessage s akci Sendable neni).
+                .task(id: current.id) { [id = current.id, duration = current.duration] in
+                    try? await Task.sleep(for: duration)
+                    guard !Task.isCancelled, toast.wrappedValue?.id == id else { return }
                     withAnimation(.easeOut(duration: 0.2)) { toast.wrappedValue = nil }
                 }
                 .onAppear { UIAccessibility.post(notification: .announcement, argument: current.text) }
