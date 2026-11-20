@@ -53,7 +53,7 @@ struct StatsView: View {
     private var metricsCard: some View {
         LazyVGrid(columns: [GridItem(.flexible(), spacing: 0), GridItem(.flexible(), spacing: 0)], spacing: 0) {
             metric("Win rate", value: "\(Int((model.stats.winRate * 100).rounded()))%")
-            metric("HP dealt", value: "\(model.stats.totalHPDealt)")
+            metric("Bosses beaten", value: "\(model.stats.bossesBeaten)")
             metric("Longest streak", value: longestStreak)
             metric("Focus hours", value: focusHours)
         }

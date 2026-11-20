@@ -166,6 +166,9 @@ extension PlayerStats {
         }
     }
 
+    /// Porazeni bossove cest celkem (metrika Bosses beaten ve Stats); rozcvicka se nepocita.
+    var bossesBeaten: Int { pathWins.values.reduce(0, +) }
+
     /// Starsi verze pocitaly rychlou 5minutovou bitvu proti bossovi z Path a pripsaly mu odznak.
     /// Takove zaznamy se oznaci jako rychle a jejich vyhra se z Bestiare (a tedy z odznaku) odecte.
     /// Bossove cest trvaji aspon 10 minut, takze 5minutova vyhra nad nimi byla vzdy rychla bitva.

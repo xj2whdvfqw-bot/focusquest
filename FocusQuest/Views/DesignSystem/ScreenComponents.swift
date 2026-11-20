@@ -240,6 +240,7 @@ struct HairlineDivider: View {
 struct ProgressRing<Center: View>: View {
     let progress: Double
     var lineWidth: CGFloat = 8
+    var animationDuration: Double = 0.4
     @ViewBuilder let label: () -> Center
 
     var body: some View {
@@ -249,7 +250,7 @@ struct ProgressRing<Center: View>: View {
                 .trim(from: 0, to: min(1, max(0, progress)))
                 .stroke(FQColor.accent, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
                 .rotationEffect(.degrees(-90))
-                .animation(.easeOut(duration: 0.4), value: progress)
+                .animation(.easeOut(duration: animationDuration), value: progress)
             label()
         }
     }

@@ -385,13 +385,24 @@ final class ProgressionModelTests: XCTestCase {
         XCTAssertTrue(older.bestiary.isEmpty)
     }
 
-    func testRankFollowsLevel() {
-        XCTAssertEqual(HeroRank.current(forLevel: 1).title, "Novice Focuser")
-        XCTAssertEqual(HeroRank.current(forLevel: 4).title, "Apprentice Scholar")
-        XCTAssertEqual(HeroRank.current(forLevel: 5).title, "Deep Work Mage")
-        XCTAssertEqual(HeroRank.next(afterLevel: 5)?.minimumLevel, 8)
-        XCTAssertEqual(HeroRank.current(forLevel: 99).title, "Grandmaster of Stillness")
-        XCTAssertNil(HeroRank.next(afterLevel: 99))
+    func testLevelTierFollowsLevel() {
+        XCTAssertEqual(LevelTier(level: 1), .bronze)
+        XCTAssertEqual(LevelTier(level: 4), .bronze)
+        XCTAssertEqual(LevelTier(level: 5), .silver)
+        XCTAssertEqual(LevelTier(level: 10), .gold)
+        XCTAssertEqual(LevelTier(level: 19), .sapphire)
+        XCTAssertEqual(LevelTier(level: 20), .rainbow)
+        XCTAssertFalse(LevelTier(level: 9).hasWings)
+        XCTAssertTrue(LevelTier(level: 10).hasWings)
+    }
+
+    func testBossesBeatenSkipsWarmUp() {
+        var stats = PlayerStats.initial
+        stats.bestiary = [
+            BestiaryEntry(bossID: Boss.roster[0].id, bossName: Boss.roster[0].name, subject: nil, defeats: 2),
+            BestiaryEntry(bossID: Boss.warmUpWispID, bossName: Boss.warmUpWisp.name, subject: nil, defeats: 3)
+        ]
+        XCTAssertEqual(stats.bossesBeaten, 2)
     }
 
     func testDevBonusXPRaisesLevelWithoutCountingABattle() async throws {

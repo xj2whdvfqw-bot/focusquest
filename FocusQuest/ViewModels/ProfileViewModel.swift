@@ -37,12 +37,9 @@ final class ProfileViewModel: ObservableObject {
         save()
     }
 
-    // MARK: - Odmeny a hodnost
+    // MARK: - Odmeny a level
 
     var level: Int { stats.level }
-    /// Hodnost se odvozuje z levelu, hrac si ji nevybira.
-    var rank: HeroRank { HeroRank.current(forLevel: stats.level) }
-    var nextRank: HeroRank? { HeroRank.next(afterLevel: stats.level) }
 
     /// Porazeny boss: mince, pocitadlo bossu a zapis do statistik.
     func recordVictory(_ victory: BattleVictory) {
@@ -125,8 +122,6 @@ final class ProfileViewModel: ObservableObject {
     }
 
     private func save() {
-        // Ulozeny titul drzi krok s hodnosti (vidi ho server i sdileny vysledek bitvy).
-        if stats.totalXP > 0 { profile.title = rank.title }
         let current = profile
         Task {
             isSaving = true

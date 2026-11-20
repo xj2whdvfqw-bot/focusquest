@@ -45,7 +45,7 @@ struct BattleReceiptCard: View {
                         StaticPixelSprite(sprite: .hero(profile.heroClass), size: 64)
                         VStack(alignment: .leading, spacing: FQSpace.xs) {
                             Text(profile.username).font(.system(size: 17, weight: .semibold, design: .rounded)).foregroundStyle(FQColor.textPrimary)
-                            Text(profile.title).font(.system(size: 13)).foregroundStyle(FQColor.textSecondary)
+                            Text(profile.heroClass.displayName).font(.system(size: 13)).foregroundStyle(FQColor.textSecondary)
                         }
                         Spacer(minLength: 0)
                     }
