@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-20T22:27:37+01:00",
-  "current": "Sekce 8: Stats – build #36 běží (commit 7cd9cc3).",
-  "nextStep": "Počkat na výsledek buildu #36; při chybě opravit a spustit znovu.",
+  "updated": "2026-11-20T22:31:23+01:00",
+  "current": "Sekce 8: build #36 spadl (kompilátor nezvládl closure v toastu, PixelToast.swift:178); opraveno, spouštím nový build.",
+  "nextStep": "Počkat na výsledek opraveného buildu sekce 8.",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -283,7 +283,7 @@
     {
       "id": 8,
       "title": "Záložka Stats",
-      "status": "build",
+      "status": "spadl",
       "items": [
         { "text": "Nadpis „Your progress“; sekce Habits, dlaždice metrik, Subjects; pryč Bestiary a battle log", "done": true },
         { "text": "Habits: čísla týdnů 1, 3, 5 … nad mřížkou, každé vycentrované nad svým sloupcem (HStack, šířka buňky = šířka sloupce)", "done": true },
@@ -293,8 +293,8 @@
         { "text": "Prázdné stavy mají tlačítko „▶ Start a battle“", "done": true }
       ],
       "commit": "7cd9cc3",
-      "build": { "number": 36, "runId": 44820457932, "result": "běží" },
-      "note": ""
+      "build": { "number": 36, "runId": 44820457932, "result": "spadl" },
+      "note": "Build #36 spadl: Swift kompilátor nezvládl closure s @MainActor uvnitř ViewBuilderu toastu (PixelToast.swift:178, „failed to produce diagnostic“). Opraveno přesunem toastu do samostatného view ToastHost."
     },
     {
       "id": 9,

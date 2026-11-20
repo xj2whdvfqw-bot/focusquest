@@ -172,28 +172,43 @@ struct CappedWidth: Layout {
     }
 }
 
+/// Jeden zobrazeny toast: akce (Undo) toast zavre a provede se; po `duration` zmizi sam.
+private struct ToastHost: View {
+    @Binding var toast: ToastMessage?
+    let current: ToastMessage
+
+    var body: some View {
+        PixelToast(message: current.text, actionTitle: current.actionTitle, action: tapAction)
+            // Do Sendable ulohy jdou jen id a delka (ToastMessage s akci Sendable neni).
+            .task(id: current.id) { [id = current.id, duration = current.duration, binding = $toast] in
+                try? await Task.sleep(for: duration)
+                guard !Task.isCancelled, binding.wrappedValue?.id == id else { return }
+                withAnimation(.easeOut(duration: 0.2)) { binding.wrappedValue = nil }
+            }
+            .onAppear { UIAccessibility.post(notification: .announcement, argument: current.text) }
+    }
+
+    private var tapAction: (@MainActor () -> Void)? {
+        guard current.action != nil else { return nil }
+        return { runAction() }
+    }
+
+    private func runAction() {
+        let action = current.action
+        withAnimation(.easeOut(duration: 0.2)) { toast = nil }
+        action?()
+    }
+}
+
 extension View {
     /// Zobrazi toast s volitelnou akci (Undo) nahore uprostred; sam zmizi po `duration`.
     func pixelToast(_ toast: Binding<ToastMessage?>) -> some View {
         overlay(alignment: .top) {
             if let current = toast.wrappedValue {
-                let tapped: (@MainActor () -> Void)? = current.action.map { action in
-                    return {
-                        withAnimation(.easeOut(duration: 0.2)) { toast.wrappedValue = nil }
-                        action()
-                    }
-                }
-                PixelToast(message: current.text, actionTitle: current.actionTitle, action: tapped)
-                .padding(.top, FQSpace.sm)
-                .transition(.move(edge: .top).combined(with: .opacity))
-                .id(current.id)
-                // Do Sendable ulohy jdou jen id a delka (ToastMessage s akci Sendable neni).
-                .task(id: current.id) { [id = current.id, duration = current.duration] in
-                    try? await Task.sleep(for: duration)
-                    guard !Task.isCancelled, toast.wrappedValue?.id == id else { return }
-                    withAnimation(.easeOut(duration: 0.2)) { toast.wrappedValue = nil }
-                }
-                .onAppear { UIAccessibility.post(notification: .announcement, argument: current.text) }
+                ToastHost(toast: toast, current: current)
+                    .padding(.top, FQSpace.sm)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .id(current.id)
             }
         }
     }
