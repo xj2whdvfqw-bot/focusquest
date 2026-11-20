@@ -11,11 +11,8 @@ struct FightSheetView: View {
     @State private var showsAllSubjects = false
     @State private var isEditing = false
     @State private var pendingDelete: StudySubject?
-    @State private var isAdding = false
-    @State private var newSubject = ""
-    @FocusState private var addFieldFocused: Bool
     @State private var showsManager = false
-    @State private var toast: String?
+    @State private var toast: ToastMessage?
     @State private var contentHeight: CGFloat = 480
 
     private enum Layout {
@@ -27,8 +24,6 @@ struct FightSheetView: View {
         static let startFont: CGFloat = 22
         static let closeSize: CGFloat = 44
         static let visibleChips = 5
-        static let addFieldWidth: CGFloat = 160
-        static let addFieldFont = Font.system(size: 15, weight: .medium, design: .rounded)
     }
 
     private var boss: Boss { model.selectedBoss }
@@ -41,11 +36,6 @@ struct FightSheetView: View {
         guard let selected = model.selectedSubject, subjects.contains(selected), !first.contains(selected) else { return first }
         return Array(first.prefix(Layout.visibleChips - 1)) + [selected]
     }
-
-    /// Navrh doplneny primo v poli ("m" -> "Microeconomics"); predmety, ktere hrac uz ma, se nenabizi.
-    private var completion: String? { StudySubject.completion(for: newSubject, taken: subjects) }
-    /// Sedy zbytek navrhu za kurzorem.
-    private var completionRest: String? { completion.map { String($0.dropFirst(newSubject.count)) } }
 
     var body: some View {
         ScrollView {
@@ -70,7 +60,6 @@ struct FightSheetView: View {
         .preferredColorScheme(.dark)
         .sheet(isPresented: $showsManager) { SubjectManagerView(model: model) }
         .animation(.easeOut(duration: 0.18), value: isEditing)
-        .animation(.easeOut(duration: 0.18), value: isAdding)
         .animation(.easeOut(duration: 0.18), value: showsAllSubjects)
     }
 
@@ -106,7 +95,6 @@ struct FightSheetView: View {
                 if !subjects.isEmpty {
                     Button(isEditing ? "Done" : "Edit") {
                         pendingDelete = nil
-                        isAdding = false
                         isEditing.toggle()
                     }
                     .font(.system(size: 13, weight: .semibold, design: .rounded))
@@ -123,9 +111,15 @@ struct FightSheetView: View {
                         .buttonStyle(.plain)
                         .modifier(GhostChip())
                 }
-                if !isEditing { addChip }
+                if !isEditing {
+                    AddSubjectChip(model: model, taken: subjects) { result in
+                        if case let .existing(subject) = result {
+                            toast = ToastMessage(text: "You already have \(subject.title). Picked it.")
+                        }
+                    }
+                }
             }
-            if subjects.isEmpty, !isAdding {
+            if subjects.isEmpty {
                 Text("Add what you're studying so it shows up in Stats.")
                     .font(.fqMeta)
                     .foregroundStyle(FQColor.textSecondary)
@@ -154,6 +148,7 @@ struct FightSheetView: View {
                 pendingDelete = nil
                 model.deleteSubject(subject)
                 if model.visibleSubjects.isEmpty { isEditing = false }
+                toast = .undo("Deleted \(subject.title). You can restore it for 24 hours.") { model.restoreSubject(subject) }
             } else {
                 pendingDelete = subject
             }
@@ -177,95 +172,6 @@ struct FightSheetView: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(isConfirming ? "Tap again to delete \(subject.title)" : "Delete \(subject.title)")
-    }
-
-    /// "+ Subject" se po klepnuti zmeni primo v radku na textove pole (zadny modal).
-    /// Navrh se doplnuje sedym textem za kurzorem: → / Tab / klepnuti na sedy text ho doplni,
-    /// Enter nebo Add prida predmet tak, jak je v poli videt (vcetne sedeho navrhu).
-    @ViewBuilder private var addChip: some View {
-        if isAdding {
-            HStack(spacing: 6) {
-                TextField("Subject name", text: $newSubject)
-                    .font(Layout.addFieldFont)
-                    .foregroundStyle(FQColor.textPrimary)
-                    .textInputAutocapitalization(.words)
-                    .autocorrectionDisabled()
-                    .submitLabel(.done)
-                    .focused($addFieldFocused)
-                    .overlay(alignment: .leading) { completionGhost }
-                    .frame(width: Layout.addFieldWidth)
-                    .clipped()
-                    .onSubmit { addSubject(completion ?? newSubject) }
-                    .onKeyPress(.tab) { acceptCompletion() ? .handled : .ignored }
-                    .onKeyPress(.rightArrow) { acceptCompletion() ? .handled : .ignored }
-                    .accessibilityLabel("New subject")
-                    .accessibilityHint(completion.map { "Suggestion: \($0)" } ?? "")
-                    .accessibilityAction(named: "Use suggestion") { _ = acceptCompletion() }
-                Button("Add") { addSubject(completion ?? newSubject) }
-                    .font(.system(size: 13, weight: .bold, design: .rounded))
-                    .foregroundStyle(FQColor.onCta)
-                    .padding(.horizontal, 12)
-                    .frame(height: 28)
-                    .background(FQColor.cta, in: Capsule())
-                    .buttonStyle(.plain)
-            }
-            .padding(.leading, 14)
-            .padding(.trailing, 6)
-            .frame(height: FQChipMetrics.height)
-            .background(Color.white.opacity(0.12), in: Capsule())
-            .onAppear { addFieldFocused = true }
-            .onChange(of: addFieldFocused) { _, focused in
-                // Prazdne pole po odchodu z klavesnice se vrati zpet na "+ Subject".
-                if !focused, newSubject.trimmingCharacters(in: .whitespaces).isEmpty { isAdding = false }
-            }
-        } else {
-            Button {
-                newSubject = ""
-                isAdding = true
-            } label: {
-                Label("Subject", systemImage: "plus")
-                    .labelStyle(ChipLabelStyle())
-            }
-            .buttonStyle(.plain)
-            .modifier(GhostChip())
-            .accessibilityLabel("Add subject")
-        }
-    }
-
-    /// Sedy zbytek navrhu hned za napsanym textem. Napsana cast je jen neviditelna podlozka pro zarovnani,
-    /// klepnuti na ni jde do pole; klepnuti na sedy zbytek navrh doplni.
-    @ViewBuilder private var completionGhost: some View {
-        if let rest = completionRest {
-            HStack(spacing: 0) {
-                Text(newSubject).hidden().allowsHitTesting(false)
-                Text(rest)
-                    .foregroundStyle(FQColor.textTertiary)
-                    .contentShape(Rectangle())
-                    .onTapGesture { _ = acceptCompletion() }
-            }
-            .font(Layout.addFieldFont)
-            .lineLimit(1)
-            .fixedSize()
-            .accessibilityHidden(true)
-        }
-    }
-
-    /// Doplni navrh do pole. Vrati false, kdyz zadny navrh neni.
-    private func acceptCompletion() -> Bool {
-        guard let completion else { return false }
-        newSubject = completion
-        return true
-    }
-
-    private func addSubject(_ name: String) {
-        guard let result = model.addSubject(named: name) else { return }
-        newSubject = ""
-        isAdding = false
-        addFieldFocused = false
-        if case let .existing(subject) = result {
-            toast = "You already have \(subject.title). Picked it."
-        }
-        // Vybrany predmet nize v seznamu se ukaze na 5. miste, takze neni treba nic rozbalovat.
     }
 
     // MARK: - Zvuk
@@ -346,28 +252,5 @@ struct FightSheetView: View {
             .font(.system(size: 13, weight: .semibold, design: .rounded))
             .foregroundStyle(FQColor.textSecondary)
             .accessibilityAddTraits(.isHeader)
-    }
-}
-
-/// Pruhledny cip s jemnym okrajem ("More…", "+ Subject").
-private struct GhostChip: ViewModifier {
-    func body(content: Content) -> some View {
-        content
-            .font(.system(size: 15, weight: .medium, design: .rounded))
-            .foregroundStyle(FQColor.textSecondary)
-            .padding(.horizontal, FQChipMetrics.padding)
-            .frame(height: FQChipMetrics.height)
-            .overlay { Capsule().strokeBorder(Color.white.opacity(0.22), lineWidth: 1) }
-            .contentShape(Capsule())
-    }
-}
-
-/// Ikona a text tesne vedle sebe (ikona "+" u "Subject").
-private struct ChipLabelStyle: LabelStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        HStack(spacing: 6) {
-            configuration.icon.font(.system(size: 13, weight: .bold))
-            configuration.title
-        }
     }
 }

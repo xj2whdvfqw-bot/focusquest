@@ -24,19 +24,52 @@ struct PixelBubbleShape: Shape {
     }
 }
 
+/// Toast s volitelnou akci (Undo). Toast s akci zustane 5 s, bez ni 2,6 s.
+struct ToastMessage: Identifiable, Equatable {
+    let id = UUID()
+    let text: String
+    var actionTitle: String? = nil
+    var action: (() -> Void)? = nil
+
+    var duration: Duration { action == nil ? .seconds(2.6) : .seconds(5) }
+
+    static func == (lhs: ToastMessage, rhs: ToastMessage) -> Bool { lhs.id == rhs.id }
+
+    /// Toast po smazani s Undo na 5 s.
+    static func undo(_ text: String, action: @escaping () -> Void) -> ToastMessage {
+        ToastMessage(text: text, actionTitle: "Undo", action: action)
+    }
+}
+
 /// Kratke oznameni nahore uprostred: kremova pixelova bublina s tmavym obrysem 3 pt a tvrdym stinem.
 struct PixelToast: View {
     let message: String
+    var actionTitle: String? = nil
+    var action: (() -> Void)? = nil
 
     static let ink = Color(red: 27 / 255, green: 22 / 255, blue: 48 / 255)
     static let paper = Color(red: 1, green: 250 / 255, blue: 240 / 255)
+    /// Barva akce v toastu (Undo).
+    static let actionColor = Color(red: 180 / 255, green: 83 / 255, blue: 10 / 255)
 
     var body: some View {
-        Text(message)
+        HStack(spacing: 14) {
+            Text(message)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+            if let actionTitle, let action {
+                Button(actionTitle, action: action)
+                    .foregroundStyle(Self.actionColor)
+                    // Dotykova plocha 44 pt, ale bublina kvuli ni nevyroste.
+                    .frame(minWidth: 44, minHeight: 44)
+                    .contentShape(Rectangle())
+                    .padding(.vertical, -12)
+                    .buttonStyle(.plain)
+            }
+        }
             .font(.system(size: 15, weight: .heavy, design: .rounded))
             .monospacedDigit()
             .foregroundStyle(Self.ink)
-            .multilineTextAlignment(.center)
             .padding(.horizontal, 20)
             .padding(.top, 14)
             .padding(.bottom, 15)
@@ -49,7 +82,7 @@ struct PixelToast: View {
                 .shadow(color: Color(red: 10 / 255, green: 8 / 255, blue: 24 / 255).opacity(0.45), radius: 0, y: 4)
             }
             .padding(.horizontal, 20)
-            .accessibilityAddTraits(.isStaticText)
+            .accessibilityElement(children: .contain)
     }
 }
 
@@ -140,6 +173,29 @@ struct CappedWidth: Layout {
 }
 
 extension View {
+    /// Zobrazi toast s volitelnou akci (Undo) nahore uprostred; sam zmizi po `duration`.
+    func pixelToast(_ toast: Binding<ToastMessage?>) -> some View {
+        overlay(alignment: .top) {
+            if let current = toast.wrappedValue {
+                PixelToast(message: current.text, actionTitle: current.actionTitle, action: current.action.map { action in
+                    {
+                        withAnimation(.easeOut(duration: 0.2)) { toast.wrappedValue = nil }
+                        action()
+                    }
+                })
+                .padding(.top, FQSpace.sm)
+                .transition(.move(edge: .top).combined(with: .opacity))
+                .id(current.id)
+                .task(id: current.id) {
+                    try? await Task.sleep(for: current.duration)
+                    guard !Task.isCancelled, toast.wrappedValue?.id == current.id else { return }
+                    withAnimation(.easeOut(duration: 0.2)) { toast.wrappedValue = nil }
+                }
+                .onAppear { UIAccessibility.post(notification: .announcement, argument: current.text) }
+            }
+        }
+    }
+
     /// Zobrazi `message` jako PixelToast nahore uprostred; po 2,6 s ho sam schova.
     func pixelToast(_ message: Binding<String?>) -> some View {
         overlay(alignment: .top) {

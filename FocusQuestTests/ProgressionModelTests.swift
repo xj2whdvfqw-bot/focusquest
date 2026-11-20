@@ -549,4 +549,49 @@ final class ProgressionModelTests: XCTestCase {
         let reloaded = try JSONDecoder().decode(PlayerStats.self, from: JSONEncoder().encode(loaded))
         XCTAssertEqual(reloaded.pathWins[boss.id], 1, "Loading again must not subtract twice")
     }
+
+    // MARK: - Your subjects (sekce 7)
+
+    func testDeletedSubjectCanBeRestoredWithinADay() {
+        var subjects = StudySubject.defaults.map { SubjectEntry(subject: $0) }
+        let deletedAt = Date(timeIntervalSince1970: 1_000_000)
+        subjects.softDelete(.english, at: deletedAt)
+        XCTAssertEqual(subjects.recentlyDeleted.map(\.subject), [.english])
+        XCTAssertEqual(subjects.first { $0.subject == .english }?.hoursUntilPurge(now: deletedAt.addingTimeInterval(30 * 60)), 24)
+        XCTAssertEqual(subjects.first { $0.subject == .english }?.hoursUntilPurge(now: deletedAt.addingTimeInterval(3_600 + 1)), 23)
+        XCTAssertEqual(subjects.purgeExpired(now: deletedAt.addingTimeInterval(23 * 3_600)), [])
+        subjects.restore(.english)
+        XCTAssertTrue(subjects.visibleSubjects.contains(.english))
+        XCTAssertTrue(subjects.recentlyDeleted.isEmpty)
+    }
+
+    func testSubjectIsPurgedWithItsStatsAfterADay() {
+        var subjects = StudySubject.defaults.map { SubjectEntry(subject: $0) }
+        let deletedAt = Date(timeIntervalSince1970: 1_000_000)
+        subjects.softDelete(.german, at: deletedAt)
+        XCTAssertEqual(subjects.purgeExpired(now: deletedAt.addingTimeInterval(24 * 3_600)), ["german"])
+        XCTAssertFalse(subjects.contains { $0.subject == .german })
+
+        var stats = PlayerStats.initial
+        stats.record(SessionSummary(id: UUID(), bossName: "A", verifiedMinutes: 20, xpEarned: 240, completedAt: Date(), flawless: true, subject: .german, bossID: "a"), bossDefeated: true)
+        stats.record(SessionSummary(id: UUID(), bossName: "B", verifiedMinutes: 10, xpEarned: 120, completedAt: Date(), flawless: true, subject: .math, bossID: "b"), bossDefeated: true)
+        stats.removeSubjects(["german"])
+        XCTAssertEqual(stats.sessionHistory.map(\.subject), [.math])
+        XCTAssertEqual(stats.bestiary.map(\.bossID), ["b"])
+        XCTAssertEqual(stats.totalXP, 360, "Earned XP stays")
+    }
+
+    func testSubjectsWithStatsMissingFromTheListAreAddedBack() {
+        var subjects = [SubjectEntry(subject: .math)]
+        let history = [
+            SessionSummary(id: UUID(), bossName: "A", verifiedMinutes: 20, xpEarned: 0, completedAt: Date(), flawless: true, subject: StudySubject(id: "Biology")),
+            SessionSummary(id: UUID(), bossName: "A", verifiedMinutes: 20, xpEarned: 0, completedAt: Date(), flawless: true, subject: .math),
+            SessionSummary(id: UUID(), bossName: "A", verifiedMinutes: 20, xpEarned: 0, completedAt: Date(), flawless: true, subject: .general),
+            SessionSummary(id: UUID(), bossName: "A", verifiedMinutes: 20, xpEarned: 0, completedAt: Date(), flawless: true, subject: StudySubject(id: "Biology")),
+            SessionSummary(id: UUID(), bossName: "A", verifiedMinutes: 20, xpEarned: 0, completedAt: Date(), flawless: true)
+        ]
+        XCTAssertTrue(subjects.addMissing(from: history))
+        XCTAssertEqual(subjects.map(\.id), ["math", "Biology"])
+        XCTAssertFalse(subjects.addMissing(from: history), "Nothing is added twice")
+    }
 }

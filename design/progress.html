@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-19T18:23:00+01:00",
-  "current": "Opravy po testu #33 (T33) hotové, build #34 prošel (commit e1f194d).",
-  "nextStep": "Otestovat build #34 na iPhonu podle poznámky v kartě T33; pak sekce 7: Your subjects.",
+  "updated": "2026-11-20T22:06:59+01:00",
+  "current": "Sekce 7: Your subjects – kód hotový, commit a build přes GitHub Actions.",
+  "nextStep": "Počkat na výsledek buildu sekce 7; pak sekce 8: Stats.",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -264,17 +264,17 @@
     {
       "id": 7,
       "title": "Your subjects (správa předmětů)",
-      "status": "cekam",
+      "status": "build",
       "items": [
-        { "text": "Řádky: upravitelné jméno · Hide/Show · ikona koše", "done": false },
-        { "text": "Hide: předmět zmizí z fight sheetu i ze Stats, data zůstanou; řádek šedý přeškrtnutý, tlačítko „Show“", "done": false },
-        { "text": "Delete: řádek zčervená „Delete Math? You can restore it for 24 hours.“ s Cancel a Delete", "done": false },
-        { "text": "Po smazání: předmět zmizí z bitev a Stats a přesune se do „Recently deleted“ („Gone for good in 23 h, with its stats“, Restore)", "done": false },
-        { "text": "Po 24 h se předmět i jeho statistiky trvale smažou", "done": false },
-        { "text": "Toast s Undo na 5 s", "done": false },
-        { "text": "Text v hlavičce: „Hidden subjects disappear from fights and Stats. Nothing is lost, tap Show to bring them back.“", "done": false },
-        { "text": "Dole „+ Subject“ a kompaktní „✓ Done“", "done": false },
-        { "text": "Oprava dat při spuštění: předmět, který má statistiky, ale chybí v seznamu, se vrátí do seznamu", "done": false }
+        { "text": "Řádky: upravitelné jméno · Hide/Show · ikona koše", "done": true },
+        { "text": "Hide: předmět zmizí z fight sheetu i ze Stats, data zůstanou; řádek šedý přeškrtnutý, tlačítko „Show“", "done": true },
+        { "text": "Delete: řádek zčervená „Delete Math? You can restore it for 24 hours.“ s Cancel a Delete", "done": true },
+        { "text": "Po smazání: předmět zmizí z bitev a Stats a přesune se do „Recently deleted“ („Gone for good in 23 h, with its stats“, Restore)", "done": true },
+        { "text": "Po 24 h se předmět i jeho statistiky trvale smažou", "done": true },
+        { "text": "Toast s Undo na 5 s", "done": true },
+        { "text": "Text v hlavičce: „Hidden subjects disappear from fights and Stats. Nothing is lost, tap Show to bring them back.“", "done": true },
+        { "text": "Dole „+ Subject“ a kompaktní „✓ Done“", "done": true },
+        { "text": "Oprava dat při spuštění: předmět, který má statistiky, ale chybí v seznamu, se vrátí do seznamu", "done": true }
       ],
       "commit": null,
       "build": null,

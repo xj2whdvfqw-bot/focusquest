@@ -89,6 +89,16 @@ struct SubjectEntry: Codable, Equatable, Sendable, Identifiable {
     var id: String { subject.id }
     var isVisible: Bool { !isHidden && deletedAt == nil }
 
+    /// Jak dlouho jde smazany predmet obnovit.
+    static let restoreWindow: TimeInterval = 24 * 60 * 60
+
+    /// Cele hodiny do trvaleho smazani ("Gone for good in 23 h"), nejmene 1.
+    func hoursUntilPurge(now: Date = Date()) -> Int {
+        guard let deletedAt else { return 0 }
+        let left = Self.restoreWindow - now.timeIntervalSince(deletedAt)
+        return max(1, Int((left / 3600).rounded(.up)))
+    }
+
     // StudySubject se porovnava jen podle id; tady se musi projevit i prejmenovani, jinak by se neulozilo.
     static func == (lhs: SubjectEntry, rhs: SubjectEntry) -> Bool {
         lhs.subject.id == rhs.subject.id && lhs.subject.title == rhs.subject.title
@@ -172,6 +182,43 @@ extension Array where Element == SubjectEntry {
     mutating func softDelete(_ subject: StudySubject, at date: Date = Date()) {
         guard let index = firstIndex(where: { $0.id == subject.id }) else { return }
         self[index].deletedAt = date
+    }
+
+    /// Obnoveni smazaneho predmetu ("Restore" nebo Undo v toastu). Skryti zustava, jak bylo.
+    mutating func restore(_ subject: StudySubject) {
+        guard let index = firstIndex(where: { $0.id == subject.id }) else { return }
+        self[index].deletedAt = nil
+    }
+
+    /// Smazane predmety, ktere jde jeste obnovit, od naposledy smazaneho.
+    var recentlyDeleted: [SubjectEntry] {
+        filter { $0.deletedAt != nil }.sorted { ($0.deletedAt ?? .distantPast) > ($1.deletedAt ?? .distantPast) }
+    }
+
+    /// Po 24 h od smazani predmet ze seznamu zmizi nadobro. Vraci id odstranenych predmetu,
+    /// aby se mohly smazat i jejich statistiky.
+    @discardableResult
+    mutating func purgeExpired(now: Date = Date()) -> Set<String> {
+        let expired = Set(filter { entry in
+            guard let deletedAt = entry.deletedAt else { return false }
+            return now.timeIntervalSince(deletedAt) >= SubjectEntry.restoreWindow
+        }.map(\.id))
+        removeAll { expired.contains($0.id) }
+        return expired
+    }
+
+    /// Oprava dat: predmet, ktery ma statistiky, ale v seznamu chybi, se do seznamu vrati.
+    /// "General" (bitvy bez predmetu) se nevraci. Vraci, jestli se neco pridalo.
+    @discardableResult
+    mutating func addMissing(from history: [SessionSummary]) -> Bool {
+        var known = Set(map(\.id))
+        var added = false
+        for subject in history.compactMap(\.subject) where subject != .general && !known.contains(subject.id) {
+            append(SubjectEntry(subject: StudySubject(id: subject.id)))
+            known.insert(subject.id)
+            added = true
+        }
+        return added
     }
 
     /// Aktualni nazev predmetu ze seznamu (po prejmenovani), jinak ulozeny.

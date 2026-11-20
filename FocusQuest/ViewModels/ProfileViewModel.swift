@@ -73,6 +73,13 @@ final class ProfileViewModel: ObservableObject {
         }
     }
 
+    /// Predmety smazane pred vic nez 24 h: jejich bitvy zmizi i ze statistik.
+    func removeSubjectStats(_ subjectIDs: Set<String>) async {
+        guard !subjectIDs.isEmpty else { return }
+        do { apply(stats: try await sync.removeSubjectStats(subjectIDs)) }
+        catch { errorMessage = "Deleted subjects could not be removed from your stats." }
+    }
+
     static let devFundsCoins = 10_000
     static let devFundsXP = 5_000
 

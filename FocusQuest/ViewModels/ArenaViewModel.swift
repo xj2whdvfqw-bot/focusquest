@@ -355,6 +355,28 @@ final class ArenaViewModel: ObservableObject {
     /// Predmety pro spravu "Your subjects": vsechny krome smazanych (i skryte).
     var managedSubjects: [SubjectEntry] { preferences.subjects.filter { $0.deletedAt == nil } }
 
+    /// "Recently deleted" ve sprave predmetu: jdou 24 h obnovit.
+    var deletedSubjects: [SubjectEntry] { preferences.subjects.recentlyDeleted }
+
+    /// Restore v "Recently deleted" nebo Undo v toastu po smazani.
+    func restoreSubject(_ subject: StudySubject) {
+        changePreferences { $0.subjects.restore(subject) }
+    }
+
+    /// Udrzba pri spusteni: predmety smazane pred vic nez 24 h zmizi nadobro (vraci jejich id,
+    /// aby se smazaly i jejich statistiky) a predmety se statistikami, ktere v seznamu chybi, se vrati.
+    @discardableResult
+    func maintainSubjects(history: [SessionSummary], now: Date = Date()) -> Set<String> {
+        var purged: Set<String> = []
+        changePreferences { preferences in
+            purged = preferences.subjects.purgeExpired(now: now)
+            let kept = history.filter { session in !(session.subject.map { purged.contains($0.id) } ?? false) }
+            preferences.subjects.addMissing(from: kept)
+            if let last = preferences.lastSubject, purged.contains(last.id) { preferences.lastSubject = nil }
+        }
+        return purged
+    }
+
     /// Prejmenovani v "Your subjects". Id zustava, takze historie bitev patri dal k predmetu.
     func renameSubject(_ subject: StudySubject, to name: String) {
         let title = name.split(whereSeparator: \.isWhitespace).joined(separator: " ")

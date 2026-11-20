@@ -47,6 +47,7 @@ struct MainTabView: View {
     @State private var settingsPresenter = SettingsPresenter()
     /// Bitva bezi pres celou obrazovku nad zalozkami, takze spodni lista neni videt.
     @State private var battlePresenter = BattlePresenter()
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         Group {
@@ -93,6 +94,10 @@ struct MainTabView: View {
                     if FocusQuestTab.launchArgument == "battle" { battlePresenter.isPresented = true }
                     if FocusQuestTab.launchArgument == "fight" { battlePresenter.openFightSheet() }
                     await presentHeroCreatorIfNeeded()
+                }
+                // Po navratu do appky: smazane predmety starsi nez 24 h zmizi i se statistikami.
+                .onChange(of: scenePhase) { _, phase in
+                    if phase == .active { Task { await maintainSubjects() } }
                 }
                 // Odchod z appky behem bitvy se netresta: hodiny bitvy bezi dal i na pozadi.
                 .fullScreenCover(isPresented: $showsHeroCreator) {
@@ -160,10 +165,19 @@ struct MainTabView: View {
         battlePresenter.isPresented = true
     }
 
+    /// Sprava predmetu pri spusteni (sekce 7): trvale smazani po 24 h vcetne statistik
+    /// a vraceni predmetu, ktere maji statistiky, ale v seznamu chybi.
+    private func maintainSubjects() async {
+        let history = container.profileViewModel.stats.sessionHistory
+        let purged = container.arenaViewModel.maintainSubjects(history: history)
+        await container.profileViewModel.removeSubjectStats(purged)
+    }
+
     /// Pri prvnim spusteni si hrac vytvori hrdinu. Screenshoty zalozek v CI tuhle obrazovku preskakuji.
     private func presentHeroCreatorIfNeeded() async {
         await container.profileViewModel.refresh()
         await container.profileViewModel.refreshProgress()
+        await maintainSubjects()
         let argument = FocusQuestTab.launchArgument
         guard argument == nil || argument == "creator" else { return }
         if !container.profileViewModel.profile.hasCreatedHero { showsHeroCreator = true }

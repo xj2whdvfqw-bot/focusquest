@@ -142,6 +142,14 @@ extension PlayerStats {
         return starts.map { DailyFocus(day: $0, minutes: minutesByDay[$0] ?? 0) }
     }
 
+    /// Trvale smazani predmetu po 24 h: zmizi jeho bitvy z historie i z Bestiare.
+    /// XP, level, pocet vyher a serie zustavaji (hrac si je vybojoval).
+    mutating func removeSubjects(_ ids: Set<String>) {
+        guard !ids.isEmpty else { return }
+        sessionHistory.removeAll { $0.subject.map { ids.contains($0.id) } ?? false }
+        bestiary.removeAll { $0.subject.map { ids.contains($0.id) } ?? false }
+    }
+
     /// Prida XP mimo bitvu (vyvojarske testovaci odmeny) a prepocita level.
     mutating func grantBonusXP(_ amount: Int) {
         totalXP += max(0, amount)
