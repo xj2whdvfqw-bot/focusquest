@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-20T22:07:18+01:00",
-  "current": "Sekce 7: Your subjects – build #35 běží (commit eefb9a7).",
-  "nextStep": "Počkat na výsledek buildu #35; mezitím připravuji sekci 8: Stats.",
+  "updated": "2026-11-20T22:27:10+01:00",
+  "current": "Sekce 7 hotová, build #35 prošel (commit eefb9a7). Začínám sekci 8: Stats.",
+  "nextStep": "Sekce 8: commit, push a build.",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -264,7 +264,7 @@
     {
       "id": 7,
       "title": "Your subjects (správa předmětů)",
-      "status": "build",
+      "status": "hotovo",
       "items": [
         { "text": "Řádky: upravitelné jméno · Hide/Show · ikona koše", "done": true },
         { "text": "Hide: předmět zmizí z fight sheetu i ze Stats, data zůstanou; řádek šedý přeškrtnutý, tlačítko „Show“", "done": true },
@@ -277,13 +277,13 @@
         { "text": "Oprava dat při spuštění: předmět, který má statistiky, ale chybí v seznamu, se vrátí do seznamu", "done": true }
       ],
       "commit": "eefb9a7",
-      "build": { "number": 35, "runId": 44817427361, "result": "běží" },
-      "note": ""
+      "build": { "number": 35, "runId": 44817427361, "result": "prošel" },
+      "note": "Hotovo, build #35 prošel včetně unit testů. Na iPhonu otestuj: (1) Your subjects (dlouhý stisk čipu ve Fight sheetu): Hide → řádek zešedne, název přeškrtnutý, žluté Show; předmět zmizí z Fight sheetu i ze Stats, po Show se vrátí i s minutami; (2) koš → řádek zčervená „Delete Math? / You can restore it for 24 hours.“, Cancel vrátí řádek, Delete ho přesune do „Recently deleted“ s „Gone for good in 24 h, with its stats“ a Restore; (3) po smazání se nahoře na 5 s ukáže toast s Undo, Undo předmět vrátí (i po smazání v režimu Edit ve Fight sheetu); (4) dole „+ Subject“ s našeptáváním a kompaktní „✓ Done“ uprostřed, vpravo nahoře ✕; (5) po 24 h (nebo posunutím data v telefonu o den) a novém otevření appky předmět zmizí i z Recently deleted a jeho bitvy ze statistik; XP a level zůstanou; (6) předmět se statistikami, který v seznamu chybí, se při spuštění vrátí. Na serveru (ne-lokální režim) se statistiky smazaných předmětů zatím nemažou."
     },
     {
       "id": 8,
       "title": "Záložka Stats",
-      "status": "cekam",
+      "status": "pracuje",
       "items": [
         { "text": "Nadpis „Your progress“; sekce Habits, dlaždice metrik, Subjects; pryč Bestiary a battle log", "done": false },
         { "text": "Habits: čísla týdnů 1, 3, 5 … nad mřížkou, každé vycentrované nad svým sloupcem (HStack, šířka buňky = šířka sloupce)", "done": false },
