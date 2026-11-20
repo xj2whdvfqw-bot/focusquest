@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-20T22:31:43+01:00",
-  "current": "Sekce 8: Stats – build #37 běží (oprava 0f4b7f6).",
-  "nextStep": "Počkat na výsledek buildu #37.",
+  "updated": "2026-11-20T23:01:42+01:00",
+  "current": "Sekce 7 a 8 hotové: build #35 (Your subjects) a #37 (Stats) prošly.",
+  "nextStep": "Otestovat build #37 na iPhonu podle poznámek v kartách 7 a 8; pak sekce 9: Hero (profil).",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -283,7 +283,7 @@
     {
       "id": 8,
       "title": "Záložka Stats",
-      "status": "build",
+      "status": "hotovo",
       "items": [
         { "text": "Nadpis „Your progress“; sekce Habits, dlaždice metrik, Subjects; pryč Bestiary a battle log", "done": true },
         { "text": "Habits: čísla týdnů 1, 3, 5 … nad mřížkou, každé vycentrované nad svým sloupcem (HStack, šířka buňky = šířka sloupce)", "done": true },
@@ -293,8 +293,8 @@
         { "text": "Prázdné stavy mají tlačítko „▶ Start a battle“", "done": true }
       ],
       "commit": "0f4b7f6",
-      "build": { "number": 37, "runId": 44821062426, "result": "běží" },
-      "note": "Build #36 spadl: Swift kompilátor nezvládl closure s @MainActor uvnitř ViewBuilderu toastu (PixelToast.swift:178, „failed to produce diagnostic“). Opraveno přesunem toastu do samostatného view ToastHost."
+      "build": { "number": 37, "runId": 44821062426, "result": "prošel" },
+      "note": "Hotovo, build #37 prošel včetně unit testů (#36 spadl na closure v toastu, opraveno přes ToastHost). Na iPhonu otestuj: (1) Stats má nadpis „Your progress“ a jen Habits, metriky a Subjects; Level, Bestiary ani battle log tam nejsou (level je v Hero); (2) Habits: 15 sloupců po týdnech, vlevo M T W T F S S, čísla 1, 3, 5 … 15 stojí přesně nad svými sloupci, 15 tyrkysově; dnešek má bílý rámeček, dny po dnešku jsou prázdné; (3) klepnutí na den ukáže krémovou bublinu „Mon 16 Nov · 45 min“ (nebo „no focus“), u krajních sloupců nevyjede z karty, další klepnutí ji schová; (4) Win rate, HP dealt, Longest streak a Focus hours v jedné skleněné kartě bez vnitřních rámečků; (5) Subjects bez skrytých a smazaných předmětů, „Edit subjects“ otevře Your subjects; (6) bez bitev: text na středu a žluté „▶ Start a battle“, které přepne na Arenu a otevře Fight sheet. Toast s Undo (sekce 7) je teď v samostatném view, Undo ověř znovu."
     },
     {
       "id": 9,
