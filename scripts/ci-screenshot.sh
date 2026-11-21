@@ -101,11 +101,15 @@ SE_UDID=$(xcrun simctl create "FocusQuest SE" com.apple.CoreSimulator.SimDeviceT
 if [ -n "$SE_UDID" ]; then
   UDID="$SE_UDID"
   xcrun simctl boot "$UDID" 2>/dev/null || true
-  xcrun simctl bootstatus "$UDID" -b
-  xcrun simctl status_bar "$UDID" override --time "9:41" --batteryState charged --batteryLevel 100 || true
-  xcrun simctl install "$UDID" "$APP"
-  # Mensi displej = mensi PNG, proto nizsi prah "vykresleno".
-  shoot "se-" 120000 dark:arena dark:fight dark:battle dark:creator dark:shop dark:settings
+  # Novy simulator startuje na pomalem CI stroji dlouho; po 8 minutach se SE vzda.
+  if with_timeout 480 xcrun simctl bootstatus "$UDID" -b; then
+    xcrun simctl status_bar "$UDID" override --time "9:41" --batteryState charged --batteryLevel 100 || true
+    xcrun simctl install "$UDID" "$APP"
+    # Mensi displej = mensi PNG, proto nizsi prah "vykresleno".
+    shoot "se-" 120000 dark:arena dark:fight dark:creator dark:settings
+  else
+    echo "::warning::iPhone SE simulator nenastartoval vcas, snimky SE chybi."
+  fi
 else
   echo "::warning::iPhone SE (3. gen.) simulator se nepodarilo vytvorit, snimky SE chybi."
 fi

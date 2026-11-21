@@ -15,7 +15,7 @@ jobs:
     # macos-26 (ARM) mel dlouhodobe plnou frontu ("capacity constraints"),
     # Intel varianta ma stejny Xcode 26 a jinou skupinu stroju.
     runs-on: macos-26-intel
-    timeout-minutes: 45
+    timeout-minutes: 60
     env:
       # Cislo buildu (CFBundleVersion) roste s kazdym behem CI.
       BUILD_NUMBER: ${{ github.run_number }}
@@ -54,7 +54,7 @@ jobs:
         continue-on-error: true
         # Vlastni limit kroku: kdyz se simulator zasekne, screenshoty se i tak nahraji
         # a build nespadne na limit celeho jobu.
-        timeout-minutes: 15
+        timeout-minutes: 28
         run: bash scripts/ci-screenshot.sh
 
       - name: Nahrani screenshotu

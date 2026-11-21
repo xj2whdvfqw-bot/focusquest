@@ -77,8 +77,8 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-21T14:02:40+01:00",
-  "current": "Rozhodnutí z auditu: všechny 3 body commitnuté (Rate this app skryté, pauza při hovoru, kontrola integrity pryč). Běží build #50.",
+  "updated": "2026-11-21T14:16:40+01:00",
+  "current": "Build #49 prošel (IPA, Release, testy); SE simulátor nestihl nastartovat v limitu screenshotů. Limit zvýšen, běží build #50 i s pauzou při hovoru.",
   "nextStep": "Počkat na build #50.",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
@@ -465,9 +465,9 @@
     {
       "id": "Rest",
       "title": "Zbytek auditu",
-      "status": "build",
+      "status": "hotovo",
       "commit": "b6e6591",
-      "build": { "number": 49, "runId": 44905106689, "result": "běží" },
+      "build": { "number": 49, "runId": 44905106689, "result": "úspěch" },
       "items": [
         { "text": "VoiceOver: lišta záložek ohlásí pořadí („Tab 1 of 5“) a je seskupená", "done": true },
         { "text": "Záloha dat: když se profil, statistiky nebo nastavení nepodaří načíst, původní data se před přepsáním uloží stranou", "done": true },
@@ -475,7 +475,7 @@
         { "text": "Dynamic Type: pevné velikosti písma rostou s nastavením textu, tlačítka bez pevné výšky", "done": true },
         { "text": "iPhone SE (3. gen.) ve screenshotech z CI", "done": true }
       ],
-      "note": "Build #48 spadl při nahrávání IPA (timeout služby artefaktů GitHubu), ne na kódu. Přeskočeno podle zadání: placený Apple Developer účet, e-mail pro Contact, autorská práva postav a hudby."
+      "note": "Hotovo, build #49 prošel (Debug IPA, Release kompilace, testy). #48 spadl jen na výpadku artefaktů GitHubu. Screenshoty iPhone SE v #49 nestihly limit 15 min (SE simulátor startoval přes 6 min); limit kroku zvýšen na 28 min a start SE omezen na 8 min, ověří build #50. Na iPhonu otestovat: VoiceOver na liště záložek (řekne „Tab 1 of 5“), velké písmo (Nastavení iPhonu › Zobrazení a jas › Velikost textu): nadpisy a tlačítka rostou, nic se neořízne."
     },
     {
       "id": "Dec",
