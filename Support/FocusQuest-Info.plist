@@ -34,16 +34,5 @@
 	<array>
 		<string>audio</string>
 	</array>
-
-	<key>API_BASE_URL</key>
-	<string>$(API_BASE_URL)</string>
-	<key>SUPABASE_ANON_KEY</key>
-	<string>$(SUPABASE_ANON_KEY)</string>
-	<key>APP_ATTEST_ENV</key>
-	<string>$(APP_ATTEST_ENV)</string>
-	<key>FOCUSQUEST_SIMULATED_BACKEND</key>
-	<string>$(FOCUSQUEST_SIMULATED_BACKEND)</string>
-	<key>PINNED_CERTIFICATE_SHA256</key>
-	<string>$(PINNED_CERTIFICATE_SHA256)</string>
 </dict>
 </plist>

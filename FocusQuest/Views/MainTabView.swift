@@ -74,6 +74,8 @@ struct MainTabView: View {
                         settingsPresenter.isPresented = false
                         shopSection = .backgrounds
                         selectedTab = .shop
+                    } onResetProgress: {
+                        await resetProgress()
                     }
                         .presentationDragIndicator(.visible)
                 }
@@ -208,6 +210,19 @@ struct MainTabView: View {
                 battlePresenter.openFightSheet()
             }
         }
+    }
+
+    /// Reset progress z Nastaveni: po smazani se list zavre, appka se vrati na Arenu
+    /// a znovu se ukaze onboarding (novy hrdina).
+    private func resetProgress() async -> Bool {
+        guard await container.resetProgress() else { return false }
+        settingsPresenter.isPresented = false
+        shopSection = .gear
+        selectedTab = .arena
+        // List Nastaveni a onboarding nejdou prepnout naraz.
+        try? await Task.sleep(for: .milliseconds(600))
+        showsHeroCreator = true
+        return true
     }
 
     /// Pri prvnim spusteni se ukaze onboarding. Screenshoty zalozek v CI tuhle obrazovku preskakuji.
@@ -365,7 +380,7 @@ private struct IntegrityLockdownView: View {
                     .accessibilityHidden(true)
                 VStack(spacing: FQSpace.sm) {
                     Text("Integrity check failed").font(.fqTitle).foregroundStyle(FQColor.textPrimary)
-                    Text("FocusQuest has disabled battles on this device to protect account integrity.")
+                    Text("FocusQuest has disabled battles on this device to keep them fair.")
                         .font(.fqSecondary)
                         .multilineTextAlignment(.center)
                         .foregroundStyle(FQColor.textSecondary)

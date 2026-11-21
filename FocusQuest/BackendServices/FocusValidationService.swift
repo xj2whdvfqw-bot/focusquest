@@ -7,44 +7,7 @@ protocol FocusValidationServiceProtocol: Sendable {
     func completeSession(sessionID: String) async throws -> CompleteSessionResponse
 }
 
-struct RemoteFocusValidationService: FocusValidationServiceProtocol {
-    let api: APIClient
-    let attestation: any AppAttestServiceProtocol
-    let signer: any CryptoSignerProtocol
-
-    func startSession(bossID: String, mode: SessionMode, targetMinutes: Int) async throws -> StartSessionResponse {
-        let request = StartSessionRequest(bossID: bossID, mode: mode, targetMinutes: Boss.clampedMinutes(targetMinutes), clientNonce: signer.makeNonce(byteCount: 24), clientUptime: ProcessInfo.processInfo.systemUptime)
-        let response = try await api.post("v1/sessions/start", body: request, as: StartSessionResponse.self)
-        if await attestation.isSupported(), let keyID = try await attestation.prepareKey(), let assertion = try await attestation.attest(keyID: keyID, challenge: Data(response.sessionNonce.utf8)) {
-            let registration = AttestationRegistrationRequest(sessionID: response.sessionID, keyID: keyID, attestation: assertion)
-            let _: EmptyAcknowledgement = try await api.post("v1/attestation", body: registration, as: EmptyAcknowledgement.self)
-        }
-        return response
-    }
-
-    func sendHeartbeat(sessionID: String, monotonicElapsedSeconds: TimeInterval, motionIntegrityToken: String, attestationAssertion: Data?, clientNonce: String, requestSignature: String?) async throws -> HeartbeatResponse {
-        let request = HeartbeatRequest(sessionID: sessionID, monotonicElapsedSeconds: monotonicElapsedSeconds, motionIntegrityToken: motionIntegrityToken, clientNonce: clientNonce)
-        let keyID = try await attestation.prepareKey()
-        let assertion: Data?
-        if let keyID { assertion = try await attestation.assertion(keyID: keyID, payload: JSONEncoder.focusQuest.encode(request)) ?? attestationAssertion }
-        else { assertion = attestationAssertion }
-        let signed = SignedRequest(payload: try JSONEncoder.focusQuest.encode(request), nonce: request.clientNonce, hmacSHA256: nil, appAttestAssertion: assertion)
-        _ = requestSignature
-        return try await api.post("v1/sessions/heartbeat", body: signed, as: HeartbeatResponse.self)
-    }
-
-    /// Boss utekl (ustup, zvednuty telefon, dosla pauza): bitva uz nic neprinese.
-    /// Jinak se nic nebere: XP, serie ani mince z drivejsich bitev zustavaji.
-    func reportViolation(sessionID: String, reason: String, monotonicElapsedSeconds: TimeInterval) async throws {
-        let request = ViolationRequest(sessionID: sessionID, reason: reason, monotonicElapsedSeconds: monotonicElapsedSeconds)
-        let _: EmptyAcknowledgement = try await api.post("v1/sessions/violation", body: request, as: EmptyAcknowledgement.self)
-    }
-
-    func completeSession(sessionID: String) async throws -> CompleteSessionResponse {
-        try await api.post("v1/sessions/complete", body: SessionIDRequest(sessionID: sessionID), as: CompleteSessionResponse.self)
-    }
-}
-
+/// Bitvy se overuji jen v telefonu (aplikace nema server).
 actor SimulatedSecureBackendService: FocusValidationServiceProtocol {
     private struct ActiveSession {
         let id: String
@@ -120,7 +83,3 @@ actor SimulatedSecureBackendService: FocusValidationServiceProtocol {
 
     enum SimulationError: Error { case unknownBoss, invalidSession, invalidClock, invalidSignature }
 }
-
-struct SessionIDRequest: Codable, Sendable { let sessionID: String }
-struct EmptyAcknowledgement: Codable, Sendable { }
-private struct AttestationRegistrationRequest: Codable, Sendable { let sessionID: String; let keyID: String; let attestation: Data }

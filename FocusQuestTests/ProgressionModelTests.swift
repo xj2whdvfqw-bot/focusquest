@@ -343,6 +343,30 @@ final class ProgressionModelTests: XCTestCase {
         XCTAssertEqual(restoredStats.totalXP, 250)
     }
 
+    func testResetProgressClearsStoredProfileAndStats() async throws {
+        let suiteName = "focusquest.tests.\(UUID().uuidString)"
+        var profile = UserProfile.fresh(deviceID: "local-preview")
+        profile.coins = 500
+        profile.hasCreatedHero = true
+        let store = LocalProfileSyncService(suiteName: suiteName)
+        try await store.saveProfile(profile)
+        let summary = SessionSummary(id: UUID(), bossName: "Slime", verifiedMinutes: 25, xpEarned: 250, completedAt: Date(), flawless: true)
+        _ = try await store.recordBattle(summary, bossDefeated: true)
+
+        try await store.resetProgress()
+        let afterReset = try await store.loadProfile()
+        let relaunch = LocalProfileSyncService(suiteName: suiteName)
+        let restored = try await relaunch.loadProfile()
+        let restoredStats = try await relaunch.loadStats()
+        UserDefaults(suiteName: suiteName)?.removePersistentDomain(forName: suiteName)
+
+        XCTAssertEqual(afterReset.coins, 0)
+        XCTAssertFalse(restored.hasCreatedHero)
+        XCTAssertEqual(restored.coins, 0)
+        XCTAssertEqual(restoredStats.wins, 0)
+        XCTAssertEqual(restoredStats.totalXP, 0)
+    }
+
     // MARK: - Bestiar, hodnosti a povolani
 
     func testBestiaryCountsDefeatsPerSubjectAndBoss() {

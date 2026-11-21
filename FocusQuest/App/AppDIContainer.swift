@@ -1,9 +1,10 @@
 import Foundation
+@preconcurrency import UserNotifications
 
+/// Sklada sluzby a modely. Aplikace nema server ani ucty: profil, statistiky
+/// i overovani bitev bezi jen v telefonu.
 @MainActor
 final class AppDIContainer {
-    let environment: AppEnvironment
-    let keychain: any KeychainServiceProtocol
     let profileSync: any ProfileSyncServiceProtocol
     let preferences: any PreferencesStoreProtocol
     let arenaViewModel: ArenaViewModel
@@ -14,34 +15,30 @@ final class AppDIContainer {
     let appBlocker: AppBlockerManager
     let runtimeSecurity: any RuntimeSecurityServiceProtocol
     let isIntegrityCompromised: Bool
+    private let activity: FocusBattleActivityController
 
-    init(environment: AppEnvironment = AppEnvironment()) {
-        self.environment = environment
-        let keychain = KeychainService()
-        let api = APIClient(baseURL: environment.apiBaseURL, pinnedCertificateSHA256: environment.pinnedCertificateSHA256, keychain: keychain)
-        let profileSync: any ProfileSyncServiceProtocol = environment.usesSimulatedBackend ? LocalProfileSyncService() : ProfileSyncService(api: api, keychain: keychain)
+    init() {
+        let profileSync: any ProfileSyncServiceProtocol = LocalProfileSyncService()
         let preferences = PreferencesStore()
         let profile = UserProfile.fresh(deviceID: "local-preview")
         let profileViewModel = ProfileViewModel(profile: profile, sync: profileSync)
-        let attestation = AppAttestService(keychain: keychain)
         let previewSigningKey = Data(CryptoSigner().makeNonce(byteCount: 48).utf8)
         let activity = FocusBattleActivityController()
-        let validation: any FocusValidationServiceProtocol = environment.usesSimulatedBackend ? SimulatedSecureBackendService(signingKey: previewSigningKey) : RemoteFocusValidationService(api: api, attestation: attestation, signer: CryptoSigner())
+        let validation: any FocusValidationServiceProtocol = SimulatedSecureBackendService(signingKey: previewSigningKey)
         let motion = MotionMonitoringService()
         let haptics = HapticEngineService()
         let audio = AudioAtmosphereService()
         let security = RuntimeSecurityService()
 
-        self.keychain = keychain
         self.profileSync = profileSync
         self.preferences = preferences
         self.profileViewModel = profileViewModel
+        self.activity = activity
         self.statsViewModel = StatsViewModel(profileSync: profileSync)
-        self.settingsViewModel = SettingsViewModel(store: preferences, profileSync: profileSync, keychain: keychain)
+        self.settingsViewModel = SettingsViewModel(store: preferences, profileSync: profileSync)
         self.appBlocker = AppBlockerManager()
         self.runtimeSecurity = security
         self.isIntegrityCompromised = security.integrityReport().isCompromised
-        if security.integrityReport().isCompromised { Task { try? await keychain.deleteAll() } }
         self.arenaViewModel = ArenaViewModel(validation: validation, motion: motion, haptics: haptics, audio: audio, security: security, preferenceStore: preferences, profileProvider: { [weak profileViewModel] in profileViewModel?.profile ?? profile }, simulationSigningKey: previewSigningKey, activity: activity, notifications: BattleNotificationService())
         // Odmenu pripisuje model Areny, ne obrazovka - prijde i kdyz bitva skonci na pozadi.
         arenaViewModel.onVictory = { [weak profileViewModel, weak arena = self.arenaViewModel] victory in
@@ -57,5 +54,20 @@ final class AppDIContainer {
 
         // Ustup z bitvy ("Retreat Anyway") jen necha bosse utect: bitva nic neprinese, serie a mince zustavaji.
         // Odchod z appky uz se netresta: bitva bezi dal i na pozadi.
+    }
+
+    /// Reset progress v Nastaveni: smaze hrdinu, mince, statistiky, predmety a nastaveni.
+    /// Vraci false, kdyz se mazani nepovedlo (data pak zustanou beze zmeny).
+    func resetProgress() async -> Bool {
+        guard arenaViewModel.isBetweenBattles else { return false }
+        guard await settingsViewModel.resetProgress() else { return false }
+        appBlocker.reset()
+        let center = UNUserNotificationCenter.current()
+        center.removeAllPendingNotificationRequests()
+        center.removeAllDeliveredNotifications()
+        await profileViewModel.reloadAfterReset()
+        arenaViewModel.selectBoss(BossWorld.allCases[0].bosses[0])
+        arenaViewModel.refreshDailyReminder(focusedToday: false)
+        return true
     }
 }

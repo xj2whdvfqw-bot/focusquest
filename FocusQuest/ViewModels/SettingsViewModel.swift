@@ -23,17 +23,14 @@ enum LegalDocument: String, Identifiable, CaseIterable {
 final class SettingsViewModel: ObservableObject {
     @Published private(set) var preferences: AppPreferences
     @Published var selectedDocument: LegalDocument?
-    @Published var showingDeleteConfirmation = false
     @Published var statusMessage: String?
-    @Published private(set) var isSignedIn = false
     /// Volano po kazde zmene predvoleb, aby se projevila hned (napr. v bezici hudbe).
     var onPreferencesChanged: ((AppPreferences) -> Void)?
     private let store: any PreferencesStoreProtocol
     private let profileSync: any ProfileSyncServiceProtocol
-    private let keychain: any KeychainServiceProtocol
 
-    init(store: any PreferencesStoreProtocol, profileSync: any ProfileSyncServiceProtocol, keychain: any KeychainServiceProtocol) {
-        self.store = store; self.profileSync = profileSync; self.keychain = keychain
+    init(store: any PreferencesStoreProtocol, profileSync: any ProfileSyncServiceProtocol) {
+        self.store = store; self.profileSync = profileSync
         preferences = store.load()
     }
 
@@ -47,25 +44,19 @@ final class SettingsViewModel: ObservableObject {
     /// Predvolby zmenene jinde (prehravac v Arene) - jen se prevezmou, uz jsou ulozene.
     func syncPreferences(_ updated: AppPreferences) { preferences = updated }
 
-    func signInWithApple(identityToken: String) async {
-        do { try await profileSync.exchangeAppleToken(identityToken); isSignedIn = true; statusMessage = "Apple account connected." }
-        catch { statusMessage = "Sign in could not be completed." }
-    }
-
-    func signOut() async {
-        do { try await profileSync.signOut(); isSignedIn = false; statusMessage = "Signed out." }
-        catch { statusMessage = "Sign out could not be completed." }
-    }
-
-    func deleteAccount() async {
+    /// Reset progress: smaze profil, statistiky a predvolby (vcetne predmetu) a vrati vychozi stav.
+    /// Vraci false, kdyz se mazani nepovedlo.
+    func resetProgress() async -> Bool {
         do {
-            try await profileSync.deleteAccount()
-            try await keychain.deleteAll()
+            try await profileSync.resetProgress()
             store.reset()
             preferences = AppPreferences()
             onPreferencesChanged?(preferences)
-            isSignedIn = false
-            statusMessage = "Account and locally stored credentials were deleted."
-        } catch { statusMessage = "Account deletion could not be completed. Check your connection and try again." }
+            statusMessage = nil
+            return true
+        } catch {
+            statusMessage = "Progress could not be reset. Try again."
+            return false
+        }
     }
 }

@@ -49,4 +49,10 @@ final class AppBlockerManager: ObservableObject {
         if selectedAppIDs.contains(app.id) { selectedAppIDs.remove(app.id) } else { selectedAppIDs.insert(app.id) }
         defaults.set(selectedAppIDs.sorted(), forKey: Self.selectionKey)
     }
+
+    /// Reset progress: vyber appek se smaze.
+    func reset() {
+        selectedAppIDs = []
+        defaults.removeObject(forKey: Self.selectionKey)
+    }
 }

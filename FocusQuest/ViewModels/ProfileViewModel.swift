@@ -161,6 +161,14 @@ final class ProfileViewModel: ObservableObject {
         } catch { errorMessage = "Verified daily progress is unavailable." }
     }
 
+    /// Po Reset progress: nacte cerstvy profil a statistiky (hrdina znovu projde onboardingem).
+    func reloadAfterReset() async {
+        previewBackground = nil
+        errorMessage = nil
+        await refresh()
+        await refreshProgress()
+    }
+
     private func save() {
         let current = profile
         Task {

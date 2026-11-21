@@ -1,5 +1,6 @@
 import Foundation
 
+/// Profil a statistiky hrace. Aplikace nema server ani ucty, vse je ulozene v telefonu.
 protocol ProfileSyncServiceProtocol: Sendable {
     func loadProfile() async throws -> UserProfile
     func loadStats() async throws -> PlayerStats
@@ -12,68 +13,9 @@ protocol ProfileSyncServiceProtocol: Sendable {
     func setLevel(_ level: Int) async throws -> PlayerStats
     /// Trvale smazani predmetu (24 h po smazani): z historie a Bestiare zmizi jeho bitvy.
     func removeSubjectStats(_ subjectIDs: Set<String>) async throws -> PlayerStats
-    func exchangeAppleToken(_ token: String) async throws
-    func signOut() async throws
-    func deleteAccount() async throws
+    /// Reset progress v Nastaveni: smaze hrdinu, mince i statistiky a vrati vychozi stav.
+    func resetProgress() async throws
 }
-
-struct ProfileSyncService: ProfileSyncServiceProtocol {
-    let api: APIClient
-    let keychain: any KeychainServiceProtocol
-
-    func loadProfile() async throws -> UserProfile {
-        try await api.get("v1/profile", as: UserProfile.self)
-    }
-
-    func loadStats() async throws -> PlayerStats {
-        try await api.get("v1/stats", as: PlayerStats.self)
-    }
-
-    func saveProfile(_ profile: UserProfile) async throws {
-        let _: EmptyAcknowledgement = try await api.post("v1/profile", body: profile, as: EmptyAcknowledgement.self)
-    }
-
-    func recordBattle(_ summary: SessionSummary, bossDefeated: Bool) async throws -> PlayerStats {
-        // Na serveru statistiky pocita sluzba pri dokonceni bitvy; tady se jen nactou.
-        try await loadStats()
-    }
-
-    func addBonusXP(_ amount: Int) async throws -> PlayerStats {
-        // XP na serveru prideluje jen server; testovaci bonus funguje jen v rezimu bez serveru.
-        _ = amount
-        return try await loadStats()
-    }
-
-    func setLevel(_ level: Int) async throws -> PlayerStats {
-        // Level na serveru se nastavit neda; funguje jen v rezimu bez serveru.
-        _ = level
-        return try await loadStats()
-    }
-
-    func removeSubjectStats(_ subjectIDs: Set<String>) async throws -> PlayerStats {
-        // Server zatim mazani predmetu nezna; statistiky se jen nactou.
-        _ = subjectIDs
-        return try await loadStats()
-    }
-
-    func exchangeAppleToken(_ token: String) async throws {
-        let response = try await api.post("v1/auth/apple", body: AppleTokenRequest(identityToken: token), as: AppleTokenExchangeResponse.self)
-        try await keychain.save(Data(response.accessToken.utf8), for: "auth-token")
-    }
-
-    func signOut() async throws {
-        try await api.delete("v1/auth/session")
-        try await keychain.delete("auth-token")
-    }
-
-    func deleteAccount() async throws {
-        try await api.delete("v1/account")
-        try await keychain.deleteAll()
-    }
-}
-
-private struct AppleTokenRequest: Codable, Sendable { let identityToken: String }
-private struct AppleTokenExchangeResponse: Codable, Sendable { let accessToken: String }
 
 /// Profil a statistiky ulozene jen v telefonu (rezim bez serveru).
 /// Uklada se do UserDefaults, takze hrdina, mince i statistiky preziji restart appky.
@@ -126,10 +68,7 @@ actor LocalProfileSyncService: ProfileSyncServiceProtocol {
         return stats
     }
 
-    func exchangeAppleToken(_ token: String) async throws { _ = token }
-    func signOut() async throws { }
-
-    func deleteAccount() async throws {
+    func resetProgress() async throws {
         profile = UserProfile.fresh(deviceID: "local-preview")
         stats = .initial
         defaults.removeObject(forKey: Self.profileKey)

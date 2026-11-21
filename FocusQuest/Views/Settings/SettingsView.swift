@@ -9,8 +9,12 @@ struct SettingsView: View {
     var onClose: (() -> Void)? = nil
     /// Otevre Shop › Backgrounds (list se predtim zavre).
     var onOpenBackgrounds: (() -> Void)? = nil
+    /// Reset progress po potvrzeni; vraci false, kdyz se nepovedl.
+    var onResetProgress: (() async -> Bool)? = nil
 
     @State private var showsSounds = false
+    @State private var showsResetConfirmation = false
+    @State private var isResetting = false
     @Environment(\.requestReview) private var requestReview
     @Environment(\.openURL) private var openURL
 
@@ -57,6 +61,39 @@ struct SettingsView: View {
                 }
                 .buttonStyle(.plain)
             }
+        }
+        ScreenSection(title: "Your data", detail: "Stored only on this iPhone") {
+            card {
+                Button { showsResetConfirmation = true } label: {
+                    HStack(spacing: FQSpace.md) {
+                        Image(systemName: "arrow.counterclockwise")
+                            .font(.system(size: 20, weight: .regular))
+                            .frame(width: 24, height: 24)
+                            .accessibilityHidden(true)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Reset progress").font(.fqBody)
+                            Text("Start over with a new hero").font(.fqMeta).foregroundStyle(FQColor.textSecondary)
+                        }
+                        Spacer(minLength: FQSpace.sm)
+                        if isResetting { ProgressView() }
+                    }
+                    .foregroundStyle(FQColor.danger)
+                    .padding(.vertical, FQSpace.sm)
+                    .frame(minHeight: 44)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .disabled(isResetting)
+            }
+            if let message = model.statusMessage {
+                Text(message).font(.fqMeta).foregroundStyle(FQColor.danger)
+            }
+        }
+        .confirmationDialog("Reset all progress?", isPresented: $showsResetConfirmation, titleVisibility: .visible) {
+            Button("Reset progress", role: .destructive) { resetProgress() }
+            Button("Keep my progress", role: .cancel) { }
+        } message: {
+            Text("Your hero, level, coins, stats, subjects and settings will be deleted from this iPhone. This can't be undone.")
         }
         #if DEBUG
         ScreenSection(title: "Debug", detail: "Not in the release build") { debugCard }
@@ -132,6 +169,15 @@ struct SettingsView: View {
 
     static var appVersion: String {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0.0"
+    }
+
+    private func resetProgress() {
+        guard let onResetProgress, !isResetting else { return }
+        isResetting = true
+        Task {
+            _ = await onResetProgress()
+            isResetting = false
+        }
     }
 
     private func contactDeveloper() {

@@ -1,18 +1,10 @@
-// Pozor: v .xcconfig je "//" komentar, proto se URL zapisuje jako https:/$()/...
-API_BASE_URL = https:/$()/localhost.invalid
-SUPABASE_ANON_KEY =
-APP_ATTEST_ENV = development
-FOCUSQUEST_SIMULATED_BACKEND = YES
-PINNED_CERTIFICATE_SHA256 =
-
 IPHONEOS_DEPLOYMENT_TARGET = 17.0
 SWIFT_VERSION = 6.0
 SWIFT_STRICT_CONCURRENCY = complete
 TARGETED_DEVICE_FAMILY = 1,2
 PRODUCT_BUNDLE_IDENTIFIER = com.focusquest.app
 
-// Vlastni klice (API_BASE_URL apod.) jsou v Support/FocusQuest-Info.plist,
-// protoze INFOPLIST_KEY_* funguje jen pro zname Apple klice.
+// Klice, ktere INFOPLIST_KEY_* neumi (fonty, Live Activities, rezim pozadi), jsou v Support/FocusQuest-Info.plist.
 GENERATE_INFOPLIST_FILE = YES
 INFOPLIST_FILE = Support/FocusQuest-Info.plist
 INFOPLIST_KEY_CFBundleDisplayName = FocusQuest
