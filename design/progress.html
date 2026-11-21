@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-21T15:02:44+01:00",
-  "current": "Build #50 prošel (pauza při hovoru, kontrola integrity pryč, Rate this app skryté). Snímky z iPhonu SE ukázaly, že Fight v Areně je pod lištou; opraveno kompaktním rozložením, běží build #51.",
-  "nextStep": "Počkat na build #51 a zkontrolovat snímek Areny na SE.",
+  "updated": "2026-11-21T15:53:20+01:00",
+  "current": "Rozhodnutí z auditu hotová: build #51 prošel, Fight v Areně je na iPhonu SE nad lištou.",
+  "nextStep": "Otestovat build #51 na iPhonu podle poznámky v kartě Rozhodnutí z auditu.",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -480,15 +480,15 @@
     {
       "id": "Dec",
       "title": "Rozhodnutí z auditu",
-      "status": "build",
-      "commit": "904eeca",
-      "build": { "number": 51, "runId": null, "result": "běží" },
+      "status": "hotovo",
+      "commit": "690f6a8",
+      "build": { "number": 51, "runId": 44911881062, "result": "úspěch" },
       "items": [
         { "text": "„Rate this app“ skrýt, dokud nebude App Store ID", "done": true },
         { "text": "Hovor během bitvy: automatická pauza (nepočítá se do jediné pauzy, bez limitu), po hovoru „Call ended – continue the battle?“, pokračuje po položení displejem dolů", "done": true },
         { "text": "Kontrola integrity (jailbreak, debugger) úplně pryč", "done": true }
       ],
-      "note": "Build #50 prošel (IPA, Release, testy, snímky iPhone SE). Snímek SE ukázal chybu: tlačítko Fight v Areně bylo z půlky pod lištou záložek; opraveno kompaktním rozložením pro nízké displeje (menší mezery a rámeček bosse). Až bude App Store ID, vrátit Rate this app s odkazem https://apps.apple.com/app/id<ID>?action=write-review."
+      "note": "Hotovo, build #51 prošel (IPA, Release, testy). Snímek iPhone SE potvrdil, že Fight i „Just 5 minutes“ jsou nad lištou; na velkém iPhonu se Arena nezměnila. Na iPhonu otestovat: zavolat si během bitvy (z jiného telefonu): bitva se pozastaví (stav „Paused for a call“), zvednutí telefonu nevyvolá alarm, po zavěšení obrazovka „Call ended – continue the battle?“ a bitva pokračuje po položení displejem dolů; Pause once zůstane k dispozici. Odmítnutý hovor: stejné, jen kratší. Settings: řádek Rate this app není. Až bude App Store ID, vrátit Rate this app s odkazem https://apps.apple.com/app/id<ID>?action=write-review. Omezení: když je aplikace během hovoru uspaná (bitva bez zvuku a zamčený telefon), hovor se zjistí až po návratu do aplikace."
     }
   ]
 }
