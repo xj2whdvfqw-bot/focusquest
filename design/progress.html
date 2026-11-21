@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-21T02:02:21+01:00",
-  "current": "Společný build #42 pro sekce 11 a 12 běží (GitHub Actions zase funguje).",
-  "nextStep": "Počkat na výsledek buildu #42, pak sekce 11 a 12 označit Hotovo.",
+  "updated": "2026-11-21T02:24:41+01:00",
+  "current": "Sekce 11 a 12 hotové: společný build #42 prošel.",
+  "nextStep": "Otestovat build #42 na iPhonu (karty 10–12); pak sekce 13 (Nastavení), build až po 2–3 sekcích.",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -91,7 +91,7 @@
         { "text": "`accent` rgb(107,230,199) pro postup, úspěch a odškrtnutí", "done": true },
         { "text": "`danger` rgb(255,84,102) pro ústup, mazání a naštvaného bosse", "done": true },
         { "text": "Skleněné karty všude: rgba(13,11,28,.60) + rozmazání 16, bez světlé hrany", "done": true },
-        { "text": "Tmavší karty na světlých pozadích (.64, karty .40): přesunuto do sekce 12, kde vzniknou světlá pozadí", "done": false },
+        { "text": "Tmavší karty na světlých pozadích (.64, karty .40): přesunuto do sekce 12, kde vzniknou světlá pozadí", "done": true },
         { "text": "Vedlejší text bílá 78 %, terciární text bílá 50 %", "done": true },
         { "text": "Pixelové písmo Pixelify Sans jen pro nadpisy obrazovek (řez 500, prostrkání +5 %, mezery mezi slovy +12 %); všechno ostatní zaoblené systémové písmo", "done": true },
         { "text": "Vedlejší text nejméně 13 pt", "done": true },
@@ -338,33 +338,33 @@
     {
       "id": 11,
       "title": "Toasty a bubliny (pixelová bublina)",
-      "status": "build",
+      "status": "hotovo",
       "items": [
-        { "text": "Krémová výplň #FFFAF0, 3pt tmavý obrys #1B1630, schodovité pixelové rohy (kroky 4 pt), tvrdý stín 0 4 0 rgba(10,8,24,.45)", "done": false },
-        { "text": "Text: zaoblené písmo 15 pt, řez 800, barva #1B1630, tabulková čísla; ne pixelové písmo", "done": false },
-        { "text": "Toasty nahoře uprostřed, šířka podle obsahu, objeví se 3krokovým sjetím dolů; Undo barvou #B4530A", "done": false },
-        { "text": "Bubliny bossů: stejný tvar + schodovitý ocásek dole uprostřed; naštvaná varianta s výplní danger a bílým textem", "done": false }
+        { "text": "Krémová výplň #FFFAF0, 3pt tmavý obrys #1B1630, schodovité pixelové rohy (kroky 4 pt), tvrdý stín 0 4 0 rgba(10,8,24,.45)", "done": true },
+        { "text": "Text: zaoblené písmo 15 pt, řez 800, barva #1B1630, tabulková čísla; ne pixelové písmo", "done": true },
+        { "text": "Toasty nahoře uprostřed, šířka podle obsahu, objeví se 3krokovým sjetím dolů; Undo barvou #B4530A", "done": true },
+        { "text": "Bubliny bossů: stejný tvar + schodovitý ocásek dole uprostřed; naštvaná varianta s výplní danger a bílým textem", "done": true }
       ],
       "commit": "a4a278c",
-      "build": { "number": 42, "runId": 44847635518, "result": "běží (společně se sekcí 12)" },
-      "note": "Kód hotový (commit a4a278c): toast teď přichází 3 skoky dolů za 0,22 s, při Reduce Motion se ukáže rovnou. Tvar, barvy, písmo 15/800, Undo #B4530A i bublina bosse s ocáskem a naštvanou variantou už specifikaci odpovídaly. Build #41 se nespustil kvůli fakturaci GitHubu (ani na druhý pokus), nejde o chybu kódu."
+      "build": { "number": 42, "runId": 44847635518, "result": "úspěch" },
+      "note": "Hotovo, build #42 prošel (#41 se nespustil kvůli fakturaci GitHubu). Nové je jen 3krokové sjetí toastu dolů za 0,22 s (při Reduce Motion se ukáže rovnou); tvar, barvy, písmo 15/800, Undo #B4530A a bublina bosse s ocáskem už odpovídaly. Na iPhonu otestovat: smazat předmět ve Fight sheetu nebo v Your subjects → toast s Undo sjede trhaně ve 3 krocích; klepat na bosse v Areně → krémová bublina, po 4 rychlých klepnutích červená s bílým textem."
     },
     {
       "id": 12,
       "title": "Světlá pozadí",
-      "status": "build",
+      "status": "hotovo",
       "items": [
-        { "text": "Světlá pozadí (isBright): Daybreak, Sunset, Pyramids, Farm, Wind Farm", "done": false },
-        { "text": "Karty zůstanou skleněné, ale tmavší (rgba(13,11,28,.64), karty .40, rozmazání 16) a s větším stínem 0 12 30 rgba(0,0,0,.32)", "done": false },
-        { "text": "Každý bílý popisek dostane silný stín (0 1 2 rgba(0,0,0,.85) + 0 0 12 rgba(0,0,0,.55)), včetně popisků sekcí, segmentů a textu karet; kromě tmavého textu na žlutých tlačítkách a vybraných čipech", "done": false },
-        { "text": "Daybreak, Pyramids, Farm a Wind Farm navíc ztmaví horní a dolní okraj obrazovky", "done": false },
-        { "text": "Na těchto pozadích zmizí kruh za bossem v Areně, místo něj vržený stín pod spritem", "done": false },
-        { "text": "Bitevní tlačítka Pause/Retreat na světlých pozadích: tmavší kruhy, výrazný stín, bílé popisky se stínem (hotové už ze sekce 5)", "done": false },
-        { "text": "Bod ze sekce 0: tmavší karty na světlých pozadích (.64)", "done": false }
+        { "text": "Světlá pozadí (isBright): Daybreak, Sunset, Pyramids, Farm, Wind Farm", "done": true },
+        { "text": "Karty zůstanou skleněné, ale tmavší (rgba(13,11,28,.64), karty .40, rozmazání 16) a s větším stínem 0 12 30 rgba(0,0,0,.32)", "done": true },
+        { "text": "Každý bílý popisek dostane silný stín (0 1 2 rgba(0,0,0,.85) + 0 0 12 rgba(0,0,0,.55)), včetně popisků sekcí, segmentů a textu karet; kromě tmavého textu na žlutých tlačítkách a vybraných čipech", "done": true },
+        { "text": "Daybreak, Pyramids, Farm a Wind Farm navíc ztmaví horní a dolní okraj obrazovky", "done": true },
+        { "text": "Na těchto pozadích zmizí kruh za bossem v Areně, místo něj vržený stín pod spritem", "done": true },
+        { "text": "Bitevní tlačítka Pause/Retreat na světlých pozadích: tmavší kruhy, výrazný stín, bílé popisky se stínem (hotové už ze sekce 5)", "done": true },
+        { "text": "Bod ze sekce 0: tmavší karty na světlých pozadích (.64)", "done": true }
       ],
       "commit": "cae62a4",
-      "build": { "number": 42, "runId": 44847635518, "result": "běží (společně se sekcí 11)" },
-      "note": "Kód hotový a commitnutý, čeká na build (GitHub billing). Na iPhonu otestovat na Daybreak, Sunset, Pyramids, Farm a Wind Farm: tmavší karty s větším stínem, stín pod bílými texty (ne na žlutých tlačítkách), ztmavení nahoře a dole (kromě Sunset), stín pod bossem v Areně."
+      "build": { "number": 42, "runId": 44847635518, "result": "úspěch" },
+      "note": "Hotovo, build #42 prošel. Odchylka: karty na světlých pozadích mají všude .64 (v prototypu některé .40); karty pozadí v Shopu .40. Stín textu je na celém obsahu obrazovek a v připnuté hlavičce, žlutá tlačítka jsou vyjmutá. Na iPhonu otestovat na Daybreak, Sunset, Pyramids, Farm a Wind Farm: čitelnost všech textů, tmavší karty s větším stínem, ztmavení nahoře a dole (kromě Sunset), stín pod bossem v Areně, plynulost rolování (stíny textu mohou zatížit GPU)."
     },
     {
       "id": 13,
