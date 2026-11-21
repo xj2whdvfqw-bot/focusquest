@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-21T12:17:39+01:00",
-  "current": "Opravy auditu: 8 bodů hotových (účty, PrivacyInfo, šifrování, jen iPhone, ikona, zabití aplikace, Motion sensor, notifikace). Běží build #46.",
-  "nextStep": "Počkat na build #46, pak GitHub Pages (Privacy, Support) a Release build v CI.",
+  "updated": "2026-11-21T12:19:09+01:00",
+  "current": "Opravy auditu: všech 10 bodů commitnutých (GitHub Pages zapnuté, CI má Release build). Build #46 běží.",
+  "nextStep": "Po buildu #46 spustit build #47 s Release kontrolou.",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -446,7 +446,7 @@
       "id": "Fix",
       "title": "Opravy auditu",
       "status": "build",
-      "commit": "0c67ad0",
+      "commit": "3f024d8",
       "build": { "number": 46, "runId": null, "result": "běží" },
       "items": [
         { "text": "Účty a celý serverový kód pryč (Apple přihlášení, smazání účtu, API, App Attest, Keychain); v Settings „Reset progress“ s potvrzením", "done": true },
@@ -457,8 +457,8 @@
         { "text": "Zabití aplikace během bitvy: zrušit notifikaci „Victory!“ a ukončit Live Activity", "done": true },
         { "text": "Onboarding: přepínač „Motion sensor“ nahradit informativním textem", "done": true },
         { "text": "Odmítnuté notifikace: skutečný stav v onboardingu i Settings + otevření nastavení iPhonu", "done": true },
-        { "text": "Privacy Policy a Support na GitHub Pages (docs/), odkazy v Settings tam; Terms = Apple EULA", "done": false },
-        { "text": "CI: Release build (kompilace)", "done": false }
+        { "text": "Privacy Policy a Support na GitHub Pages (docs/), odkazy v Settings tam; Terms = Apple EULA", "done": true },
+        { "text": "CI: Release build (kompilace)", "done": true }
       ],
       "note": "Build #45 spadl při kompilaci: rozšíření JSONEncoder.focusQuest bylo ve smazaném APIClient.swift, přesunuto do SessionPayloads.swift. Placený Apple Developer účet zatím neřešíme, e-mail pro Contact doplníme později."
     }

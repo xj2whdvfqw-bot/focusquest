@@ -39,6 +39,10 @@ jobs:
           path: build/FocusQuest.ipa
           retention-days: 14
 
+      # Release (konfigurace pro App Store) se jen zkompiluje: bez #if DEBUG kodu musi projit taky.
+      - name: Kontrola Release buildu (jen kompilace)
+        run: CONFIG=Release COMPILE_ONLY=1 bash scripts/ci-build-ipa.sh
+
       - name: Unit testy na iOS simulatoru
         run: bash scripts/ci-test.sh
 

@@ -4,6 +4,8 @@
 set -euo pipefail
 mkdir -p build
 CONFIG="${CONFIG:-Debug}"
+# COMPILE_ONLY=1: jen sestavit a zkontrolovat obsah appky, bez .ipa (kontrola Release buildu).
+COMPILE_ONLY="${COMPILE_ONLY:-0}"
 
 set -o pipefail
 xcodebuild build \
@@ -16,9 +18,9 @@ xcodebuild build \
   CODE_SIGNING_ALLOWED=NO \
   CODE_SIGNING_REQUIRED=NO \
   CODE_SIGN_IDENTITY="" \
-  2>&1 | tee build/build.log | (command -v xcbeautify >/dev/null && xcbeautify || cat) || {
+  2>&1 | tee "build/build-$CONFIG.log" | (command -v xcbeautify >/dev/null && xcbeautify || cat) || {
     echo "::group::Chyby ze suroveho logu"
-    grep -nE "error:|Stack dump|While evaluating|While emitting|BUILD FAILED" build/build.log | cut -c1-400 | head -60
+    grep -nE "error:|Stack dump|While evaluating|While emitting|BUILD FAILED" "build/build-$CONFIG.log" | cut -c1-400 | head -60
     echo "::endgroup::"
     exit 1
   }
@@ -40,6 +42,11 @@ test -f "$APP/Assets.car" || { echo "V appce chybi Assets.car (ikona)"; exit 1; 
 # Bez privacy manifestu App Store Connect build odmitne (UserDefaults, systemUptime).
 test -f "$APP/PrivacyInfo.xcprivacy" || { echo "V appce chybi PrivacyInfo.xcprivacy"; exit 1; }
 echo "Obsah appky OK: Widget Extension + 3 skladby + pixelovy font + ikona + PrivacyInfo"
+
+if [ "$COMPILE_ONLY" = "1" ]; then
+  echo "$CONFIG build OK (bez .ipa)"
+  exit 0
+fi
 
 rm -rf build/ipa build/FocusQuest.ipa
 mkdir -p build/ipa/Payload
