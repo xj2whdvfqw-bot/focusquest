@@ -490,8 +490,11 @@ final class ProgressionModelTests: XCTestCase {
         // Konec smycky navazuje na zacatek: skok mezi poslednim a prvnim vzorkem je zanedbatelny.
         let seam = abs(Int(brown[brown.count - 1]) - Int(brown[0]))
         XCTAssertLessThan(seam, 64)
+        // Spicka odpovida ztisene hlasitosti (NoiseSynth.brownPeak = 0,19 z plneho rozsahu), ne tichu.
         let peak = brown.map { abs(Int($0)) }.max() ?? 0
-        XCTAssertGreaterThan(peak, 10_000)
+        let expectedPeak = Int(NoiseSynth.brownPeak * Double(Int16.max))
+        XCTAssertGreaterThan(peak, expectedPeak * 9 / 10)
+        XCTAssertLessThanOrEqual(peak, expectedPeak + 1)
     }
 
     // MARK: - Predmety (Fight sheet)
