@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-21T12:48:42+01:00",
-  "current": "Opravy auditu: build #46 prošel (účty, PrivacyInfo, šifrování, jen iPhone, ikona, zabití aplikace, Motion sensor, notifikace). Běží build #47 s odkazy na GitHub Pages a Release kontrolou.",
-  "nextStep": "Počkat na build #47.",
+  "updated": "2026-11-21T13:23:03+01:00",
+  "current": "Opravy auditu hotové: build #47 prošel včetně Release kompilace a testů.",
+  "nextStep": "Otestovat build #47 na iPhonu podle poznámky v kartě Opravy auditu.",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -440,14 +440,14 @@
         { "text": "DROBNOST: Data po aktualizaci. UserDefaults aktualizaci přežijí a dekódování je tolerantní (`decodeIfPresent`, testy na starší data). Když se ale profil nebo statistiky nepodaří dekódovat vůbec, tiše vznikne nový profil a první uložení starý přepíše. → Při chybě dekódování uložit zálohu původních dat pod jiný klíč.", "done": false },
         { "text": "DROBNOST: Kontrola integrity. Na jailbreaknutém zařízení nebo s debuggerem v Release se celá aplikace zamkne (IntegrityLockdownView) a smaže Keychain. U offline hry bez žebříčků je to zbytečně přísné. → Po odstranění serveru kontrolu zrušit nebo jen zapsat. Mrtvý dokument `LegalDocument.antiCheat` smazat nebo přidat do Settings.", "done": false }
       ],
-      "note": "Jen audit, v kódu se nic neměnilo. Autorská práva postav a hudby jsem podle zadání vynechal. NÁVRH PRIVACY POLICY (EN, pro GitHub Pages i aplikaci, po odstranění serveru): „FocusQuest works offline. Everything you create (hero, subjects, progress, coins and settings) is stored only on your iPhone and is never sent to us or anyone else. During a battle the app reads the motion sensor on your device to check that the phone is lying face-down; these readings are processed in real time and not stored or transmitted. Notifications are scheduled locally on your device. We do not collect personal data, use analytics or advertising, or track you. If you email us, we use your message only to reply. Delete your data any time with Settings › Reset progress or by deleting the app. Contact: <e-mail podpory>. Effective date: <datum>.“ TERMS: stačí standardní Apple EULA (v App Store Connect nic neměnit) a v Settings odkaz na https://www.apple.com/legal/internet-services/itunes/dev/stdeula/, případně vlastní krátké podmínky (férová hra, bez záruky, mince nemají reálnou hodnotu). HOSTING: GitHub Pages z veřejného repa xj2whdvfqw-bot/focusquest (Settings › Pages › branch main, složka /docs), adresy …github.io/focusquest/privacy.html a /support.html. ŠTÍTEK APP PRIVACY: „Data Not Collected“ (bez serveru, analytiky, reklam a SDK třetích stran; e-mail z tlačítka Contact jde přes hráčův Mail, aplikace ho nesbírá), Tracking: No. POPISKY OPRÁVNĚNÍ: `NSMotionUsageDescription` je anglicky a srozumitelný (může zůstat, i když se nezobrazí). Notifikace popisek v Info.plist nepotřebují. Family Controls se nepoužívá (AppBlockerManager je jen maketa a výběr appek po onboardingu zmizel), takže žádný popisek ani entitlement. Live Activities: `NSSupportsLiveActivities` je nastavené. `UIBackgroundModes audio` je v pořádku, protože hraje skutečný zvuk (lo-fi a šumy); s Battle sound Off se aplikace na pozadí neudržuje. ŠIFROVÁNÍ: `ITSAppUsesNonExemptEncryption` = NO; v dotazníku „None of the algorithms mentioned above“ / exempt. VĚKOVÉ HODNOCENÍ: Cartoon or Fantasy Violence = Infrequent/Mild (pixeloví bossové ztrácejí HP, bez krve; pokud to bereš jako abstraktní ukazatel, můžeš dát None a vyjde 4+). Realistic Violence, Prolonged Graphic Violence, Sexual Content, Nudity, Profanity, Horror/Fear, Alcohol/Tobacco/Drugs, Mature/Suggestive, Simulated Gambling, Contests, Medical/Treatment, Health/Wellness = None/No. Unrestricted Web Access, User-Generated Content (předměty zůstávají v telefonu), Messaging/Chat, Advertising, Loot boxes, Parental controls, Age assurance = No. In-app purchases žádné (mince jen za hraní). Očekávané hodnocení 9+ (nebo 4+ bez násilí). OVĚŘENO BEZ PROBLÉMU: žádné „coming soon“, TODO ani placeholdery v UI. Debug věci jsou jen v Debug buildu. Senzor nepotřebuje oprávnění a má záložní start. Hudba se po budíku nebo hovoru obnoví."
+      "note": "Body BLOKUJE (kromě placeného účtu) a většina DŮLEŽITÉ jsou opravené v kartě Opravy auditu (build #47). Zbývá z auditu: placený Apple Developer účet, e-mail pro Contact, odkaz Rate this app (až bude App ID), Dynamic Type, iPhone SE, VoiceOver lišta, hovor během bitvy, záloha dat při chybě dekódování, přísná kontrola integrity. Původní podklady (věkové hodnocení: 9+ s Cartoon or Fantasy Violence Infrequent/Mild, jinak 4+; App Privacy: Data Not Collected; šifrování: ITSAppUsesNonExemptEncryption = NO, exempt) platí dál."
     },
     {
       "id": "Fix",
       "title": "Opravy auditu",
-      "status": "build",
+      "status": "hotovo",
       "commit": "981a629",
-      "build": { "number": 47, "runId": 44900839223, "result": "běží" },
+      "build": { "number": 47, "runId": 44900839223, "result": "úspěch" },
       "items": [
         { "text": "Účty a celý serverový kód pryč (Apple přihlášení, smazání účtu, API, App Attest, Keychain); v Settings „Reset progress“ s potvrzením", "done": true },
         { "text": "PrivacyInfo.xcprivacy: UserDefaults (CA92.1), systemUptime (35F9.1)", "done": true },
@@ -460,7 +460,7 @@
         { "text": "Privacy Policy a Support na GitHub Pages (docs/), odkazy v Settings tam; Terms = Apple EULA", "done": true },
         { "text": "CI: Release build (kompilace)", "done": true }
       ],
-      "note": "Build #45 spadl při kompilaci (JSONEncoder.focusQuest byl ve smazaném APIClient.swift, přesunuto). Build #46 prošel pro prvních 8 bodů. GitHub Pages běží: https://xj2whdvfqw-bot.github.io/focusquest/privacy.html a /support.html (zdroj: větev phase3-duolingo, složka docs/; po sloučení do main přepnout v Settings › Pages). Placený Apple Developer účet zatím neřešíme, e-mail pro Contact doplníme později."
+      "note": "Hotovo, build #47 prošel (Debug IPA, Release kompilace, testy). #45 spadl na chybějícím JSONEncoder.focusQuest (opraveno), #46 prošel. GitHub Pages: https://xj2whdvfqw-bot.github.io/focusquest/privacy.html a /support.html (zdroj: větev phase3-duolingo, složka docs/; po sloučení do main přepnout v repu Settings › Pages na main). Na iPhonu otestovat: ikona na ploše a v notifikacích; Settings › Reset progress (dialog, pak onboarding znovu); onboarding stránka 3 (Motion sensor jen informace, Notifications ukazuje skutečný stav, při odmítnutí otevře nastavení iPhonu); Settings › Sounds & notifications s vypnutými notifikacemi v iOS (řádek Notifications are off + Open Settings, přepínače vypnuté); zabít aplikaci během bitvy a znovu otevřít (žádná notifikace Victory!, Live Activity zmizí); odkazy Privacy Policy, Terms of Use a Support v patičce Settings. Zbývá: placený Apple Developer účet a e-mail pro Contact."
     }
   ]
 }
