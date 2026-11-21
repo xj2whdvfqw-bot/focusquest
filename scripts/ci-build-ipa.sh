@@ -6,6 +6,9 @@ mkdir -p build
 CONFIG="${CONFIG:-Debug}"
 # COMPILE_ONLY=1: jen sestavit a zkontrolovat obsah appky, bez .ipa (kontrola Release buildu).
 COMPILE_ONLY="${COMPILE_ONLY:-0}"
+# BUILD_NUMBER (v CI cislo behu): kazdy build ma vyssi CFBundleVersion, jak chce App Store Connect.
+EXTRA_SETTINGS=()
+if [ -n "${BUILD_NUMBER:-}" ]; then EXTRA_SETTINGS+=("CURRENT_PROJECT_VERSION=$BUILD_NUMBER"); fi
 
 set -o pipefail
 xcodebuild build \
@@ -18,6 +21,7 @@ xcodebuild build \
   CODE_SIGNING_ALLOWED=NO \
   CODE_SIGNING_REQUIRED=NO \
   CODE_SIGN_IDENTITY="" \
+  ${EXTRA_SETTINGS[@]+"${EXTRA_SETTINGS[@]}"} \
   2>&1 | tee "build/build-$CONFIG.log" | (command -v xcbeautify >/dev/null && xcbeautify || cat) || {
     echo "::group::Chyby ze suroveho logu"
     grep -nE "error:|Stack dump|While evaluating|While emitting|BUILD FAILED" "build/build-$CONFIG.log" | cut -c1-400 | head -60
