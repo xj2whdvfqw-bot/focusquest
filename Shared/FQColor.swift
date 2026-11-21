@@ -16,6 +16,8 @@ enum FQColor {
     static let onCta = Color(red: 42 / 255, green: 30 / 255, blue: 0)
     /// Vypln sklenenych karet: rgba(13,11,28,0.60) nad rozmazanim.
     static let card = Color(red: 13 / 255, green: 11 / 255, blue: 28 / 255).opacity(0.60)
+    /// Karta na svetlem pozadi (Daybreak, Sunset, Pyramids, Farm, Wind Farm): o neco tmavsi sklo.
+    static let cardOnBright = Color(red: 13 / 255, green: 11 / 255, blue: 28 / 255).opacity(0.64)
     static let caution = adaptive(light: (0.72, 0.42, 0.00, 1), dark: (1.0, 0.72, 0.30, 1))
 
     static let textPrimary = adaptive(light: (0.07, 0.09, 0.16, 1), dark: (1, 1, 1, 1))

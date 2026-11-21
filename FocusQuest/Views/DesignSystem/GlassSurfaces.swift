@@ -55,6 +55,7 @@ extension View {
             .padding(.top, FQSpace.sm)
             .padding(.bottom, FQSpace.md)
             .frame(maxWidth: .infinity)
+            .modifier(BrightTextShadow())
             .background { SoftHeaderBackground() }
         if #available(iOS 26.0, *) {
             safeAreaBar(edge: .top, spacing: 0) { bar }
@@ -78,19 +79,22 @@ struct GlassCardModifier: ViewModifier {
     let radius: CGFloat
     let tint: Color?
     var prominent = false
+    @Environment(\.shopBackground) private var shopBackground
 
     func body(content: Content) -> some View {
         let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
+        // Na svetlych pozadich je sklo tmavsi (.64) a stin vetsi (0 12 30 rgba(0,0,0,.32)).
+        let bright = shopBackground?.isBright == true
         // Tmave sklo: rozmazani + rgba(13,11,28,.60). Bez svetle hrany a odlesku, text na nem vynikne.
         return content
             .background {
                 ZStack {
                     if prominent { shape.fill(.regularMaterial) } else { shape.fill(.ultraThinMaterial) }
-                    shape.fill(FQColor.card)
+                    shape.fill(bright ? FQColor.cardOnBright : FQColor.card)
                     if let tint { shape.fill(tint.opacity(0.22)) }
                 }
             }
-            .shadow(color: Color.black.opacity(0.24), radius: 12, y: 12)
+            .shadow(color: Color.black.opacity(bright ? 0.32 : 0.24), radius: bright ? 15 : 12, y: 12)
     }
 }
 

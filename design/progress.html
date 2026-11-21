@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-21T01:46:02+01:00",
-  "current": "Sekce 11: build #41 běží.",
-  "nextStep": "Počkat na výsledek buildu #41.",
+  "updated": "2026-11-21T01:47:14+01:00",
+  "current": "Buildy stojí: GitHub Actions na účtu xj2whdvfqw-bot odmítá spustit job (selhaná platba nebo limit útraty). Sekce 11 a 12 jsou commitnuté a čekají na build.",
+  "nextStep": "Vyřešit billing na GitHubu (Settings → Billing & plans účtu xj2whdvfqw-bot), pak spustit build sekce 11 a 12.",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -338,7 +338,7 @@
     {
       "id": 11,
       "title": "Toasty a bubliny (pixelová bublina)",
-      "status": "build",
+      "status": "spadl",
       "items": [
         { "text": "Krémová výplň #FFFAF0, 3pt tmavý obrys #1B1630, schodovité pixelové rohy (kroky 4 pt), tvrdý stín 0 4 0 rgba(10,8,24,.45)", "done": false },
         { "text": "Text: zaoblené písmo 15 pt, řez 800, barva #1B1630, tabulková čísla; ne pixelové písmo", "done": false },
@@ -346,23 +346,25 @@
         { "text": "Bubliny bossů: stejný tvar + schodovitý ocásek dole uprostřed; naštvaná varianta s výplní danger a bílým textem", "done": false }
       ],
       "commit": "a4a278c",
-      "build": { "number": 41, "runId": 44845962238, "result": "běží" },
-      "note": "Základ už existuje: PixelToast.swift ze sekce 1 (původně pro toast zamčeného Shopu, ten je zrušen). Tady se dotáhne podle přesné specifikace a přidají se bubliny bossů."
+      "build": { "number": 41, "runId": 44845962238, "result": "nespuštěno: GitHub billing (selhaná platba / limit útraty)" },
+      "note": "Kód hotový (commit a4a278c): toast teď přichází 3 skoky dolů za 0,22 s, při Reduce Motion se ukáže rovnou. Tvar, barvy, písmo 15/800, Undo #B4530A i bublina bosse s ocáskem a naštvanou variantou už specifikaci odpovídaly. Build #41 se nespustil kvůli fakturaci GitHubu (ani na druhý pokus), nejde o chybu kódu."
     },
     {
       "id": 12,
       "title": "Světlá pozadí",
-      "status": "cekam",
+      "status": "build",
       "items": [
         { "text": "Světlá pozadí (isBright): Daybreak, Sunset, Pyramids, Farm, Wind Farm", "done": false },
         { "text": "Karty zůstanou skleněné, ale tmavší (rgba(13,11,28,.64), karty .40, rozmazání 16) a s větším stínem 0 12 30 rgba(0,0,0,.32)", "done": false },
         { "text": "Každý bílý popisek dostane silný stín (0 1 2 rgba(0,0,0,.85) + 0 0 12 rgba(0,0,0,.55)), včetně popisků sekcí, segmentů a textu karet; kromě tmavého textu na žlutých tlačítkách a vybraných čipech", "done": false },
         { "text": "Daybreak, Pyramids, Farm a Wind Farm navíc ztmaví horní a dolní okraj obrazovky", "done": false },
-        { "text": "Na těchto pozadích zmizí kruh za bossem v Areně, místo něj vržený stín pod spritem", "done": false }
+        { "text": "Na těchto pozadích zmizí kruh za bossem v Areně, místo něj vržený stín pod spritem", "done": false },
+        { "text": "Bitevní tlačítka Pause/Retreat na světlých pozadích: tmavší kruhy, výrazný stín, bílé popisky se stínem (hotové už ze sekce 5)", "done": false },
+        { "text": "Bod ze sekce 0: tmavší karty na světlých pozadích (.64)", "done": false }
       ],
       "commit": null,
       "build": null,
-      "note": "Sem patří i tmavší varianta karet, která v sekci 0 zůstala nezaškrtnutá."
+      "note": "Kód hotový a commitnutý, čeká na build (GitHub billing). Na iPhonu otestovat na Daybreak, Sunset, Pyramids, Farm a Wind Farm: tmavší karty s větším stínem, stín pod bílými texty (ne na žlutých tlačítkách), ztmavení nahoře a dole (kromě Sunset), stín pod bossem v Areně."
     },
     {
       "id": 13,

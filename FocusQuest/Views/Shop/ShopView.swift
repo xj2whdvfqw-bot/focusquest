@@ -6,6 +6,7 @@ struct ShopView: View {
     @State private var section: ShopSection = .gear
     /// Predmet, ktery si hrac prave zkousi v nahledu nahore.
     @State private var tryOnID: String?
+    @Environment(\.shopBackground) private var shopBackground
 
     enum ShopSection: String, CaseIterable, Identifiable {
         case gear, backgrounds
@@ -13,6 +14,8 @@ struct ShopView: View {
         var title: String { self == .gear ? "Gear" : "Backgrounds" }
         var heading: String { self == .gear ? "Gear up" : "Change the scenery" }
     }
+
+    private var isBright: Bool { shopBackground?.isBright == true }
 
     private var tryOn: EquipmentItem? { tryOnID.flatMap(EquipmentItem.item(withID:)) }
 
@@ -225,7 +228,8 @@ struct ShopView: View {
         .background {
             ZStack {
                 shape.fill(.ultraThinMaterial)
-                shape.fill(Color.white.opacity(0.06))
+                // Na svetlych pozadich tmave sklo rgba(13,11,28,.40), jinak jemne svetle.
+                shape.fill(isBright ? Color(red: 13 / 255, green: 11 / 255, blue: 28 / 255).opacity(0.40) : Color.white.opacity(0.06))
             }
         }
         .overlay {

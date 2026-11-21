@@ -32,6 +32,7 @@ struct ArenaView: View {
     let openPath: () -> Void
     @Environment(BattlePresenter.self) private var battle
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.shopBackground) private var shopBackground
 
     // 2a: klepani na bosse.
     @State private var poke: Poke?
@@ -230,6 +231,8 @@ struct ArenaView: View {
             .frame(maxWidth: .infinity)
             .frame(height: 52)
             .background(FQColor.cta, in: RoundedRectangle(cornerRadius: FQRadius.pill, style: .continuous))
+            // Tmavy text na zlute nedostane stin svetlych pozadi.
+            .compositingGroup()
     }
 
     // MARK: - 2a: klepani na bosse
@@ -242,6 +245,8 @@ struct ArenaView: View {
             PixelArtAvatarView(sprite: .boss(node.pixelSpriteConfig), size: 128)
                 .saturation(angry ? 1.4 : 1)
                 .shadow(color: FQColor.danger.opacity(angry ? 0.8 : 0), radius: 10)
+                // Na svetlych pozadich stoji boss bez kruhu jen s vrzenym stinem (0 6 10 rgba(0,0,0,.35)).
+                .shadow(color: Color.black.opacity(shopBackground?.isLight == true ? 0.35 : 0), radius: 5, y: 6)
                 .keyframeAnimator(initialValue: 0.0, trigger: bobs) { content, phase in
                     // Dve poskoceni: nahoru o 8 bodu s naklonem -3°, kazde 0,5 s.
                     let lift = sin(.pi * phase) * sin(.pi * phase)

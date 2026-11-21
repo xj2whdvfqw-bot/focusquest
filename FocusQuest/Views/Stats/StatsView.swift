@@ -146,6 +146,7 @@ struct StatsView: View {
                     .frame(maxWidth: .infinity)
                     .frame(height: Layout.startHeight)
                     .background(FQColor.cta, in: RoundedRectangle(cornerRadius: Layout.startRadius, style: .continuous))
+                    .compositingGroup()
             }
             .buttonStyle(.plain)
         }

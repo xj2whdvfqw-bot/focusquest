@@ -613,3 +613,17 @@ struct ActiveShopBackground: ViewModifier {
         content.environment(\.shopBackground, model.activeBackground)
     }
 }
+
+/// Na svetlych pozadich dostane bily text silny stin (0 1 2 rgba(0,0,0,.85) + 0 0 12 rgba(0,0,0,.55)).
+/// Zlute tlacitko s tmavym textem se z toho vyjme pres `.compositingGroup()`.
+/// Mimo svetla pozadi jsou stiny pruhledne, aby se pri prepnuti pozadi nemenila identita obsahu.
+struct BrightTextShadow: ViewModifier {
+    @Environment(\.shopBackground) private var shopBackground
+
+    func body(content: Content) -> some View {
+        let on = shopBackground?.isBright == true
+        content
+            .shadow(color: Color.black.opacity(on ? 0.85 : 0), radius: on ? 1 : 0, y: on ? 1 : 0)
+            .shadow(color: Color.black.opacity(on ? 0.55 : 0), radius: on ? 6 : 0)
+    }
+}

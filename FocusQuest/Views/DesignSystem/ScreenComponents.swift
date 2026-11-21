@@ -18,6 +18,8 @@ struct ScreenScaffold<Content: View>: View {
                     VStack(alignment: .leading, spacing: FQSpace.xl) {
                         content()
                     }
+                    // Svetla pozadi: bily text dostane silny stin, aby byl citelny.
+                    .modifier(BrightTextShadow())
                     .padding(.horizontal, FQSpace.lg)
                     .padding(.top, FQSpace.sm)
                     .padding(.bottom, fillsHeight ? FQSpace.lg : FQSpace.xxl)

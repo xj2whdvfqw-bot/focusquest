@@ -73,7 +73,27 @@ struct FocusQuestBackdrop: View {
     }
 
     /// Ztmaveni nahore (nadpisy) a dole (lista zalozek), aby text vzdy vynikl.
-    private var scrims: some View {
+    @ViewBuilder private var scrims: some View {
+        if shopBackground?.isLight == true {
+            // Svetla pozadi (Daybreak, Pyramids, Farm, Wind Farm): silnejsi ztmaveni nahore a dole.
+            LinearGradient(
+                stops: [
+                    .init(color: Self.lightScrim.opacity(0.55), location: 0),
+                    .init(color: Self.lightScrim.opacity(0.18), location: 0.26),
+                    .init(color: Self.lightScrim.opacity(0.12), location: 0.60),
+                    .init(color: Self.lightScrim.opacity(0.55), location: 1),
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        } else {
+            darkScrims
+        }
+    }
+
+    private static let lightScrim = Color(red: 5 / 255, green: 4 / 255, blue: 16 / 255)
+
+    private var darkScrims: some View {
         ZStack {
             Color.black.opacity(0.10)
             LinearGradient(

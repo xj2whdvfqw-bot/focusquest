@@ -48,8 +48,11 @@ enum ShopBackground: String, Codable, CaseIterable, Identifiable, Sendable {
 
     var isFree: Bool { price == 0 }
 
-    /// Svetla pozadi (sekce 12 jim pozdeji prida silnejsi stiny textu).
+    /// Svetla pozadi: tmavsi karty s vetsim stinem a silny stin pod bilym textem.
     var isBright: Bool { [.dawn, .sunset, .pyramids, .farm, .wind].contains(self) }
+
+    /// Nejsvetlejsi pozadi: navic ztmavi horni a dolni okraj a boss v Arene ma misto kruhu jen stin.
+    var isLight: Bool { [.dawn, .pyramids, .farm, .wind].contains(self) }
 
     /// Poradi v obchode: nejdriv zdarma, pak za mince od nejlevnejsiho (jako tabulka v CHANGES.md).
     static let free: [ShopBackground] = [.dawn, .sunset]
