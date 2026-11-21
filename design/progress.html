@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-21T16:07:32+01:00",
-  "current": "Koncentrické rohy: hotovo a commitnuto, běží build #52.",
-  "nextStep": "Počkat na build #52.",
+  "updated": "2026-11-21T16:35:56+01:00",
+  "current": "Koncentrické rohy hotové: build #52 prošel.",
+  "nextStep": "Otestovat build #52 na iPhonu podle poznámky v kartě Koncentrické rohy.",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -493,9 +493,9 @@
     {
       "id": "Rohy",
       "title": "Koncentrické rohy",
-      "status": "build",
-      "commit": null,
-      "build": { "number": 52, "runId": null, "result": "běží" },
+      "status": "hotovo",
+      "commit": "a089a72",
+      "build": { "number": 52, "runId": 44917503042, "result": "úspěch" },
       "items": [
         { "text": "Poloměry na jednom místě: `Shared/FQRadius.swift` (kontejnery, odsazení, odvozené vnitřní poloměry), vnitřní = vnější − odsazení", "done": true },
         { "text": "iOS 26+: ConcentricRectangle + `.containerShape` (skleněná karta, karta bitvy, karta pozadí, lišta); iOS 17–25: stejný poloměr z `FQRadius.concentric`", "done": true },
@@ -508,7 +508,7 @@
         { "text": "Live Activity a Dynamic Island: podložka pod spritem s ContainerRelativeShape", "done": true },
         { "text": "Pixel-art bubliny, toasty a sprity beze změny", "done": true }
       ],
-      "note": "Čipy (předměty, zvuk) zůstávají kapslemi: kapsle je podle Applu pro vnořené prvky v pořádku. Graf návyků (HabitsCard) má vlastní malé dlaždice dat, ty jsem neměnil."
+      "note": "Hotovo, build #52 prošel (IPA, Release, testy včetně testu pravidla vnitřní = vnější − odsazení). Nejvíc vidět: Shop (karty předmětů 24, náhled a cena 12), dialogy porážky / Call ended / výsledku (rohy 44 místo 32), panel přestávky po vítězství (rohy podle displeje), obrázek výsledku bitvy ke sdílení, Live Activity (podložka pod bossem). Čipy (předměty, zvuk) zůstávají kapslemi; graf návyků beze změny. Poloměry se mění v Shared/FQRadius.swift."
     }
   ]
 }
