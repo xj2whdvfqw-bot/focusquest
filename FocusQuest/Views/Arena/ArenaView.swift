@@ -220,6 +220,8 @@ struct ArenaView: View {
             }
         }
         .frame(maxWidth: .infinity)
+        // Fight a "Just 5 minutes" nesedi nalepene na liste zalozek (po testu #54 o 24 pt vys).
+        .padding(.bottom, isCompact ? FQSpace.sm : FQSpace.xl)
     }
 
     private func fightButton(_ node: Boss) -> some View {

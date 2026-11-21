@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-21T20:12:12+01:00",
-  "current": "Opravy po testu #53 hotové: build #54 prošel.",
-  "nextStep": "Otestovat build #54 na iPhonu podle poznámky v kartě Opravy po testu #53.",
+  "updated": "2026-11-21T20:13:44+01:00",
+  "current": "Home: Fight posunutý výš od lišty, build se spouští.",
+  "nextStep": "Počkat na výsledek buildu; pak otestovat na iPhonu.",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -549,6 +549,17 @@
         { "text": "Reduce Motion: bez zmenšení, posunu a pružiny, jen prolnutí", "done": true }
       ],
       "note": "Hotovo, build #54 prošel (IPA, Release, testy). Na iPhonu otestovat: ústup z bitvy → okno „… escaped“ je sklo, pod ním je jen scéna (žádné Begin Battle); vítězství ve stejné kartě; Shop: nadpis sekce Helmets & hats a horní karta pozadí jsou celé vidět; Nastavení bez Done; Home na menším iPhonu a s velkým písmem; přepínání záložek (prolnutí, klouzající zvýraznění, jemná vibrace); totéž se zapnutým Reduce Motion."
+    },
+    {
+      "id": "T54",
+      "title": "Home: Fight výš od lišty",
+      "status": "build",
+      "commit": "",
+      "build": { "number": null, "runId": null, "result": "" },
+      "items": [
+        { "text": "Tlačítko Fight a „Just 5 minutes“ posunuté o 24 pt výš, aby neseděly nalepené na liště záložek (na iPhonu SE o 8 pt)", "done": true }
+      ],
+      "note": "Build běží. Na iPhonu otestovat: mezera mezi „Just 5 minutes“ a lištou záložek, na menším iPhonu se Fight pořád vejde."
     }
   ]
 }
