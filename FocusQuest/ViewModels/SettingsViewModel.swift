@@ -1,28 +1,16 @@
 import Combine
 import Foundation
 
-enum LegalDocument: String, Identifiable, CaseIterable {
-    case privacy, terms, antiCheat
-    var id: String { rawValue }
-    var title: String {
-        switch self { case .privacy: "Privacy Policy"; case .terms: "Terms of Use"; case .antiCheat: "Anti-Cheat & Sensors" }
-    }
-    var content: String {
-        switch self {
-        case .privacy:
-            "FocusQuest processes motion sensor measurements on your device in real time to determine whether your phone is resting face-up. Raw motion readings are not uploaded or retained. Session timing uses monotonic uptime and server-issued session challenges; App Attest assertions may be sent to verify app integrity. Account and verified progression data are used to provide sync and gameplay. FocusQuest does not sell personal study data. You may request account deletion from Settings."
-        case .terms:
-            "Play fairly: do not modify the app, falsify session activity, or disrupt another player's raid. Verified rewards are determined by the service and may be withheld when integrity checks fail. Game names, artwork, and software are FocusQuest intellectual property. Online features require a network connection."
-        case .antiCheat:
-            "During a battle, CoreMotion pitch, roll, and gravity values are evaluated on-device at approximately 10 samples per second. The phone must lie face-down and still for verified focus. Raw sensor values are processed transiently and are not transmitted. Lifting the device starts a ten-second warning; laying it back down resumes the battle. The first expired warning in a battle is forgiven; after the second, the boss escapes and the battle earns no XP or coins. Your streak and coins are never taken away."
-        }
-    }
+/// Verejne stranky na GitHub Pages (slozka docs/ v repu). Terms of Use = standardni Apple EULA.
+enum LegalLinks {
+    static let privacy = URL(string: "https://xj2whdvfqw-bot.github.io/focusquest/privacy.html")!
+    static let support = URL(string: "https://xj2whdvfqw-bot.github.io/focusquest/support.html")!
+    static let terms = URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")!
 }
 
 @MainActor
 final class SettingsViewModel: ObservableObject {
     @Published private(set) var preferences: AppPreferences
-    @Published var selectedDocument: LegalDocument?
     @Published var statusMessage: String?
     /// Volano po kazde zmene predvoleb, aby se projevila hned (napr. v bezici hudbe).
     var onPreferencesChanged: ((AppPreferences) -> Void)?

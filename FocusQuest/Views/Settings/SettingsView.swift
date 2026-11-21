@@ -35,9 +35,7 @@ struct SettingsView: View {
         // Navrat z Nastaveni iPhonu: prepinace ukazi skutecny stav.
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { Task { notifications = await NotificationPermission.current() } }
-        }
-        .sheet(item: $model.selectedDocument) { LegalDocumentSheetView(document: $0).presentationDetents([.medium, .large]) }
-    }
+        }    }
 
     // MARK: - Hlavni stranka
 
@@ -165,9 +163,11 @@ struct SettingsView: View {
                 .font(.fqMeta)
                 .foregroundStyle(FQColor.textSecondary)
             HStack(spacing: FQSpace.sm) {
-                Button("Privacy Policy") { model.selectedDocument = .privacy }
+                Button("Privacy Policy") { openURL(LegalLinks.privacy) }
                 Text("·").accessibilityHidden(true)
-                Button("Terms of Use") { model.selectedDocument = .terms }
+                Button("Terms of Use") { openURL(LegalLinks.terms) }
+                Text("·").accessibilityHidden(true)
+                Button("Support") { openURL(LegalLinks.support) }
             }
             .font(.fqMeta.weight(.semibold))
             .foregroundStyle(FQColor.textSecondary)
