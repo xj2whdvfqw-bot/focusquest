@@ -9,7 +9,6 @@ struct OnboardingView: View {
     let onFinish: (_ startBattle: Bool) -> Void
 
     @State private var page = 1
-    @State private var motionAllowed = false
     @State private var notificationsAllowed = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -125,15 +124,13 @@ struct OnboardingView: View {
 
     private var permissionsPage: some View {
         VStack(spacing: FQSpace.lg) {
-            heading("Two quick permissions")
-            Text("Both stay on your phone.")
+            heading("Almost ready")
+            Text("Nothing leaves your phone.")
                 .font(.fqSecondary)
                 .foregroundStyle(FQColor.textSecondary)
             VStack(spacing: 0) {
-                permissionRow("Motion sensor", detail: "Knows when the phone is lifted", isOn: motionAllowed) {
-                    // Senzor polohy (CoreMotion) systemove povoleni nepotrebuje; prepinac jen potvrdi.
-                    motionAllowed = true
-                }
+                // Senzor polohy (CoreMotion) systemove povoleni nepotrebuje, proto jen informace bez prepinace.
+                motionInfoRow
                 HairlineDivider()
                 permissionRow("Notifications", detail: "Timer on the lock screen, one daily nudge", isOn: notificationsAllowed) {
                     Task { await requestNotifications() }
@@ -153,6 +150,26 @@ struct OnboardingView: View {
             let status = await UNUserNotificationCenter.current().notificationSettings().authorizationStatus
             notificationsAllowed = status == .authorized || status == .provisional
         }
+    }
+
+    private var motionInfoRow: some View {
+        HStack(spacing: FQSpace.md) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Motion sensor").font(.fqBody).foregroundStyle(FQColor.textPrimary)
+                Text("Knows when the phone is lifted. No permission needed.")
+                    .font(.fqMeta)
+                    .foregroundStyle(FQColor.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: FQSpace.sm)
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 22))
+                .foregroundStyle(FQColor.accent)
+                .accessibilityHidden(true)
+        }
+        .padding(.vertical, FQSpace.sm)
+        .frame(minHeight: 44)
+        .accessibilityElement(children: .combine)
     }
 
     private func permissionRow(_ title: String, detail: String, isOn: Bool, action: @escaping () -> Void) -> some View {

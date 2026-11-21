@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-21T12:15:48+01:00",
-  "current": "Opravy auditu: úklid notifikace Victory! a Live Activity po zabití aplikace hotový. Další: Motion sensor v onboardingu.",
-  "nextStep": "Motion sensor, odmítnuté notifikace, pak build.",
+  "updated": "2026-11-21T12:16:19+01:00",
+  "current": "Opravy auditu: přepínač Motion sensor nahrazen informací. Další: skutečný stav notifikací.",
+  "nextStep": "Odmítnuté notifikace v onboardingu a Settings, pak build.",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -446,7 +446,7 @@
       "id": "Fix",
       "title": "Opravy auditu",
       "status": "build",
-      "commit": "ab410b7",
+      "commit": "f1ab646",
       "build": { "number": 45, "runId": 44898137635, "result": "běží" },
       "items": [
         { "text": "Účty a celý serverový kód pryč (Apple přihlášení, smazání účtu, API, App Attest, Keychain); v Settings „Reset progress“ s potvrzením", "done": true },
@@ -455,7 +455,7 @@
         { "text": "Jen iPhone (`TARGETED_DEVICE_FAMILY = 1`)", "done": true },
         { "text": "Dočasná ikona 1024×1024 z pixel-art bosse na tmavém pozadí", "done": true },
         { "text": "Zabití aplikace během bitvy: zrušit notifikaci „Victory!“ a ukončit Live Activity", "done": true },
-        { "text": "Onboarding: přepínač „Motion sensor“ nahradit informativním textem", "done": false },
+        { "text": "Onboarding: přepínač „Motion sensor“ nahradit informativním textem", "done": true },
         { "text": "Odmítnuté notifikace: skutečný stav v onboardingu i Settings + otevření nastavení iPhonu", "done": false },
         { "text": "Privacy Policy a Support na GitHub Pages (docs/), odkazy v Settings tam; Terms = Apple EULA", "done": false },
         { "text": "CI: Release build (kompilace)", "done": false }
