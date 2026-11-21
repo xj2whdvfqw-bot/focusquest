@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-21T01:17:02+01:00",
-  "current": "Sekce 10 (Shop): build #39 spadl na nestabilním testu bitvy (kód se přeložil); opraveno, běží build #40.",
-  "nextStep": "Počkat na výsledek buildu #40.",
+  "updated": "2026-11-21T01:45:36+01:00",
+  "current": "Sekce 11 (toasty a bubliny): přidán 3krokový příchod toastu; ostatní body už odpovídají specifikaci.",
+  "nextStep": "Commit a build sekce 11.",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -320,25 +320,25 @@
     {
       "id": 10,
       "title": "Shop",
-      "status": "build",
+      "status": "hotovo",
       "items": [
-        { "text": "Nadpis „Gear up“ / „Change the scenery“; segmenty Gear · Backgrounds (pryč Potions a Slot)", "done": false },
-        { "text": "Připnutá hlavička bez ostré hrany: tmavé rozmazané pozadí se vytrácí ~60 pt pod ní a sahá až pod status bar", "done": false },
-        { "text": "Tlačítka koupě nikdy žlutá: pozadí bílá 14 %, bílý text", "done": false },
-        { "text": "Gear beze změny kromě stylu tlačítek", "done": false },
-        { "text": "Backgrounds: sekce „FREE“ a „FOR COINS“; karta s náhledem, jménem, popiskem, tlačítkem (Use / In use / Buy for N / „need N more“) a Preview", "done": false },
-        { "text": "10 pozadí podle tabulky: World scenes, Daybreak, Sunset (zdarma); Pyramids, Farm (800); Neon City, Crystal Cave (1000); Race Track (1200); Deep Space, Wind Farm (1500)", "done": false },
-        { "text": "Všechny scény jako pixel art na mřížce 3 pt přes Canvas (port extraBg() z HTML)", "done": false },
-        { "text": "Animace: mraky (Daybreak, Farm, Wind Farm), mávající ptáci (Sunset), kráčející velbloud (Pyramids), 3 auta dokola (Race Track), točící se vrtule (Wind Farm)", "done": false }
+        { "text": "Nadpis „Gear up“ / „Change the scenery“; segmenty Gear · Backgrounds (pryč Potions a Slot)", "done": true },
+        { "text": "Připnutá hlavička bez ostré hrany: tmavé rozmazané pozadí se vytrácí ~60 pt pod ní a sahá až pod status bar", "done": true },
+        { "text": "Tlačítka koupě nikdy žlutá: pozadí bílá 14 %, bílý text", "done": true },
+        { "text": "Gear beze změny kromě stylu tlačítek", "done": true },
+        { "text": "Backgrounds: sekce „FREE“ a „FOR COINS“; karta s náhledem, jménem, popiskem, tlačítkem (Use / In use / Buy for N / „need N more“) a Preview", "done": true },
+        { "text": "10 pozadí podle tabulky: World scenes, Daybreak, Sunset (zdarma); Pyramids, Farm (800); Neon City, Crystal Cave (1000); Race Track (1200); Deep Space, Wind Farm (1500)", "done": true },
+        { "text": "Všechny scény jako pixel art na mřížce 3 pt přes Canvas (port extraBg() z HTML)", "done": true },
+        { "text": "Animace: mraky (Daybreak, Farm, Wind Farm), mávající ptáci (Sunset), kráčející velbloud (Pyramids), 3 auta dokola (Race Track), točící se vrtule (Wind Farm)", "done": true }
       ],
       "commit": "224de5a",
-      "build": { "number": 39, "runId": 44838734620, "result": "spadl: test ArenaAntiCheatTests (časování na CI), opraveno" },
-      "note": ""
+      "build": { "number": 40, "runId": 44842782249, "result": "úspěch" },
+      "note": "Hotovo, build #40 prošel (#39 spadl jen na nestabilním testu bitvy, opraveno v cc68ea6). Pozadí jsou port extraBg()/bgLayout() do Canvas + TimelineView, 12 snímků/s; animace stojí, když je appka na pozadí, a při Reduce Motion. Zvolené pozadí je za všemi obrazovkami včetně bitvy; Preview platí jen dokud jsi v Shopu. Měkká hlavička (tmavé sklo, 60 pt přechod) je teď u všech připnutých hlaviček. Odchylka: pruhy na planetě v Deep Space jen uvnitř kruhu (v prototypu přesahovaly). Na iPhonu otestovat: záložky Gear · Backgrounds a nadpis; Buy/Equip bílé 14 %; každé pozadí (Use, Buy for N, need N more, Preview/Stop preview); animace mraků, ptáků, velblouda, aut a vrtulí; plynulost a baterie; po odchodu z appky a návratu animace pokračuje."
     },
     {
       "id": 11,
       "title": "Toasty a bubliny (pixelová bublina)",
-      "status": "cekam",
+      "status": "pracuje",
       "items": [
         { "text": "Krémová výplň #FFFAF0, 3pt tmavý obrys #1B1630, schodovité pixelové rohy (kroky 4 pt), tvrdý stín 0 4 0 rgba(10,8,24,.45)", "done": false },
         { "text": "Text: zaoblené písmo 15 pt, řez 800, barva #1B1630, tabulková čísla; ne pixelové písmo", "done": false },
