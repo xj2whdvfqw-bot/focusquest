@@ -1,7 +1,7 @@
 IPHONEOS_DEPLOYMENT_TARGET = 17.0
 SWIFT_VERSION = 6.0
 SWIFT_STRICT_CONCURRENCY = complete
-TARGETED_DEVICE_FAMILY = 1,2
+TARGETED_DEVICE_FAMILY = 1
 PRODUCT_BUNDLE_IDENTIFIER = com.focusquest.app
 
 // Klice, ktere INFOPLIST_KEY_* neumi (fonty, Live Activities, rezim pozadi), jsou v Support/FocusQuest-Info.plist.
@@ -11,5 +11,4 @@ INFOPLIST_KEY_CFBundleDisplayName = FocusQuest
 INFOPLIST_KEY_UILaunchScreen_Generation = YES
 INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES
 INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait
-INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
 // MARKETING_VERSION a CURRENT_PROJECT_VERSION jsou v project.yml (spolecne s Widget Extension).

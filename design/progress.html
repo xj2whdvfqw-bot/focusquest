@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-21T12:13:58+01:00",
-  "current": "Opravy auditu: ITSAppUsesNonExemptEncryption = NO. Další: jen iPhone.",
-  "nextStep": "Jen iPhone, pak společný build.",
+  "updated": "2026-11-21T12:14:09+01:00",
+  "current": "Opravy auditu: body účty, PrivacyInfo, šifrování a jen iPhone commitnuté. Spouštím společný build.",
+  "nextStep": "Počkat na build, pak ikona, Live Activity po zabití, Motion sensor, notifikace.",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -446,13 +446,13 @@
       "id": "Fix",
       "title": "Opravy auditu",
       "status": "pracuje",
-      "commit": "c17884e",
+      "commit": "e5f23fd",
       "build": null,
       "items": [
         { "text": "Účty a celý serverový kód pryč (Apple přihlášení, smazání účtu, API, App Attest, Keychain); v Settings „Reset progress“ s potvrzením", "done": true },
         { "text": "PrivacyInfo.xcprivacy: UserDefaults (CA92.1), systemUptime (35F9.1)", "done": true },
         { "text": "`ITSAppUsesNonExemptEncryption` = NO", "done": true },
-        { "text": "Jen iPhone (`TARGETED_DEVICE_FAMILY = 1`)", "done": false },
+        { "text": "Jen iPhone (`TARGETED_DEVICE_FAMILY = 1`)", "done": true },
         { "text": "Dočasná ikona 1024×1024 z pixel-art bosse na tmavém pozadí", "done": false },
         { "text": "Zabití aplikace během bitvy: zrušit notifikaci „Victory!“ a ukončit Live Activity", "done": false },
         { "text": "Onboarding: přepínač „Motion sensor“ nahradit informativním textem", "done": false },
