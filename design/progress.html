@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-21T13:23:03+01:00",
-  "current": "Opravy auditu hotové: build #47 prošel včetně Release kompilace a testů.",
-  "nextStep": "Otestovat build #47 na iPhonu podle poznámky v kartě Opravy auditu.",
+  "updated": "2026-11-21T13:35:11+01:00",
+  "current": "Zbytek auditu: VoiceOver lišta hotová. Další: záloha dat při chybě načtení.",
+  "nextStep": "Záloha dat, číslo buildu z CI, pak build.",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -461,6 +461,21 @@
         { "text": "CI: Release build (kompilace)", "done": true }
       ],
       "note": "Hotovo, build #47 prošel (Debug IPA, Release kompilace, testy). #45 spadl na chybějícím JSONEncoder.focusQuest (opraveno), #46 prošel. GitHub Pages: https://xj2whdvfqw-bot.github.io/focusquest/privacy.html a /support.html (zdroj: větev phase3-duolingo, složka docs/; po sloučení do main přepnout v repu Settings › Pages na main). Na iPhonu otestovat: ikona na ploše a v notifikacích; Settings › Reset progress (dialog, pak onboarding znovu); onboarding stránka 3 (Motion sensor jen informace, Notifications ukazuje skutečný stav, při odmítnutí otevře nastavení iPhonu); Settings › Sounds & notifications s vypnutými notifikacemi v iOS (řádek Notifications are off + Open Settings, přepínače vypnuté); zabít aplikaci během bitvy a znovu otevřít (žádná notifikace Victory!, Live Activity zmizí); odkazy Privacy Policy, Terms of Use a Support v patičce Settings. Zbývá: placený Apple Developer účet a e-mail pro Contact."
+    },
+    {
+      "id": "Rest",
+      "title": "Zbytek auditu",
+      "status": "pracuje",
+      "commit": null,
+      "build": null,
+      "items": [
+        { "text": "VoiceOver: lišta záložek ohlásí pořadí („Tab 1 of 5“) a je seskupená", "done": true },
+        { "text": "Záloha dat: když se profil, statistiky nebo nastavení nepodaří načíst, původní data se před přepsáním uloží stranou", "done": false },
+        { "text": "Číslo buildu (`CURRENT_PROJECT_VERSION`) z čísla běhu CI", "done": false },
+        { "text": "Dynamic Type: pevné velikosti písma rostou s nastavením textu, tlačítka bez pevné výšky", "done": false },
+        { "text": "iPhone SE (3. gen.) ve screenshotech z CI", "done": false }
+      ],
+      "note": "Přeskočeno podle zadání: placený Apple Developer účet, e-mail pro Contact, autorská práva postav a hudby."
     }
   ]
 }

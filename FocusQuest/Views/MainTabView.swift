@@ -259,6 +259,9 @@ private struct FocusQuestTabBar: View {
         }
         .padding(4)
         .frame(height: FQTabBarMetrics.height)
+        // VoiceOver: lista je jedna skupina, kazda zalozka ohlasi poradi ("Arena, selected, Tab 1 of 5").
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Tab bar")
         .background {
             ZStack {
                 Capsule().fill(.ultraThinMaterial)
@@ -266,6 +269,10 @@ private struct FocusQuestTabBar: View {
             }
             .shadow(color: .black.opacity(0.35), radius: 15, y: 10)
         }
+    }
+
+    private func position(of tab: FocusQuestTab) -> Int {
+        (FocusQuestTab.allCases.firstIndex(of: tab) ?? 0) + 1
     }
 
     private func tabButton(_ tab: FocusQuestTab) -> some View {
@@ -282,6 +289,7 @@ private struct FocusQuestTabBar: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(tab.title)
+        .accessibilityValue("Tab \(position(of: tab)) of \(FocusQuestTab.allCases.count)")
         .accessibilityAddTraits(isOn ? .isSelected : [])
     }
 }
