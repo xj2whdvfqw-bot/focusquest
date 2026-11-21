@@ -405,6 +405,17 @@ final class ProgressionModelTests: XCTestCase {
         XCTAssertFalse(ShopBackground.city.isBright)
     }
 
+    func testDebugSetLevelMovesXPToStartOfLevel() {
+        var stats = PlayerStats.initial
+        stats.setLevel(10)
+        XCTAssertEqual(stats.level, 10)
+        XCTAssertEqual(stats.totalXP, 9_000)
+        XCTAssertEqual(stats.xpIntoLevel, 0)
+        stats.setLevel(0)
+        XCTAssertEqual(stats.level, 1)
+        XCTAssertEqual(stats.totalXP, 0)
+    }
+
     func testBattleSoundMapsToMusicAndSoundscape() {
         var preferences = AppPreferences()
         XCTAssertEqual(preferences.battleSound, .lofi)

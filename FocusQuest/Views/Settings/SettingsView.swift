@@ -58,9 +58,53 @@ struct SettingsView: View {
                 .buttonStyle(.plain)
             }
         }
+        #if DEBUG
+        ScreenSection(title: "Debug", detail: "Not in the release build") { debugCard }
+        #endif
         footer
         doneButton
     }
+
+    #if DEBUG
+    /// Jen v Debug buildu: mince a level pro testovani obchodu a odznaku levelu.
+    private var debugCard: some View {
+        card {
+            VStack(alignment: .leading, spacing: FQSpace.sm) {
+                Text("Coins: \(profile.profile.coins)")
+                    .font(.fqLabel).monospacedDigit().foregroundStyle(FQColor.textSecondary)
+                ChipFlow(spacing: FQSpace.sm) {
+                    debugButton("+1 000") { profile.debugAddCoins(1_000) }
+                    debugButton("+10 000") { profile.debugAddCoins(10_000) }
+                    debugButton("Reset coins") { profile.debugResetCoins() }
+                }
+            }
+            .padding(.vertical, FQSpace.md)
+            HairlineDivider()
+            VStack(alignment: .leading, spacing: FQSpace.sm) {
+                Text("Level: \(profile.level)")
+                    .font(.fqLabel).monospacedDigit().foregroundStyle(FQColor.textSecondary)
+                ChipFlow(spacing: FQSpace.sm) {
+                    debugButton("Level −1") { profile.debugSetLevel(profile.level - 1) }
+                    debugButton("Level +1") { profile.debugSetLevel(profile.level + 1) }
+                    ForEach(Self.tierLevels, id: \.level) { tier in
+                        debugButton("\(tier.name) \(tier.level)") { profile.debugSetLevel(tier.level) }
+                    }
+                }
+            }
+            .padding(.vertical, FQSpace.md)
+        }
+    }
+
+    private static let tierLevels: [(name: String, level: Int)] = [
+        ("Bronze", 1), ("Silver", 5), ("Gold", 10), ("Sapphire", 15), ("Rainbow", 20),
+    ]
+
+    private func debugButton(_ title: String, action: @escaping () -> Void) -> some View {
+        Button(title, action: action)
+            .buttonStyle(ShopButtonStyle())
+            .monospacedDigit()
+    }
+    #endif
 
     /// "Lo-fi · 3 of 3 sounds on · reminder off"
     private var soundsSummary: String {

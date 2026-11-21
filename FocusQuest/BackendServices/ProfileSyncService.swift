@@ -8,6 +8,8 @@ protocol ProfileSyncServiceProtocol: Sendable {
     func recordBattle(_ summary: SessionSummary, bossDefeated: Bool) async throws -> PlayerStats
     /// Vyvojarske testovaci XP mimo bitvu. Vraci novy stav statistik.
     func addBonusXP(_ amount: Int) async throws -> PlayerStats
+    /// Ladeni (#if DEBUG v Nastaveni): nastavi level primo. Vraci novy stav statistik.
+    func setLevel(_ level: Int) async throws -> PlayerStats
     /// Trvale smazani predmetu (24 h po smazani): z historie a Bestiare zmizi jeho bitvy.
     func removeSubjectStats(_ subjectIDs: Set<String>) async throws -> PlayerStats
     func exchangeAppleToken(_ token: String) async throws
@@ -39,6 +41,12 @@ struct ProfileSyncService: ProfileSyncServiceProtocol {
     func addBonusXP(_ amount: Int) async throws -> PlayerStats {
         // XP na serveru prideluje jen server; testovaci bonus funguje jen v rezimu bez serveru.
         _ = amount
+        return try await loadStats()
+    }
+
+    func setLevel(_ level: Int) async throws -> PlayerStats {
+        // Level na serveru se nastavit neda; funguje jen v rezimu bez serveru.
+        _ = level
         return try await loadStats()
     }
 
@@ -102,6 +110,12 @@ actor LocalProfileSyncService: ProfileSyncServiceProtocol {
 
     func addBonusXP(_ amount: Int) async throws -> PlayerStats {
         stats.grantBonusXP(amount)
+        persist(stats, key: Self.statsKey)
+        return stats
+    }
+
+    func setLevel(_ level: Int) async throws -> PlayerStats {
+        stats.setLevel(level)
         persist(stats, key: Self.statsKey)
         return stats
     }

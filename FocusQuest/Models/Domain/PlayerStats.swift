@@ -156,6 +156,13 @@ extension PlayerStats {
         level = max(1, totalXP / Self.xpPerLevel + 1)
     }
 
+    /// Ladeni: nastavi level primo (XP na zacatek levelu). Bitvy a vyhry se nemeni.
+    mutating func setLevel(_ target: Int) {
+        let clamped = max(1, target)
+        totalXP = (clamped - 1) * Self.xpPerLevel
+        level = clamped
+    }
+
     // MARK: - Odznaky na Path
 
     /// Vyhry nad bossy cest (id -> pocet) pro odznak "✓ N×". Rozcvicka (Warm-up Wisp) se nepocita.

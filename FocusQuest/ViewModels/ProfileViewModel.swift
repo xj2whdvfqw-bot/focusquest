@@ -60,15 +60,27 @@ final class ProfileViewModel: ObservableObject {
         save()
     }
 
-    /// DOCASNE pro testovani: +10 000 minci a +5 000 XP, aby slo hned zkouset obchod.
-    func addDevFunds() {
-        profile.coins += Self.devFundsCoins
+    #if DEBUG
+    // MARK: - Ladeni (jen v Debug buildu, ne ve vydani)
+
+    func debugAddCoins(_ amount: Int) {
+        profile.coins += amount
         save()
+    }
+
+    func debugResetCoins() {
+        profile.coins = 0
+        save()
+    }
+
+    func debugSetLevel(_ level: Int) {
+        let target = max(1, level)
         Task {
-            do { apply(stats: try await sync.addBonusXP(Self.devFundsXP)) }
-            catch { errorMessage = "Dev XP could not be added." }
+            do { apply(stats: try await sync.setLevel(target)) }
+            catch { errorMessage = "Level could not be changed." }
         }
     }
+    #endif
 
     /// Predmety smazane pred vic nez 24 h: jejich bitvy zmizi i ze statistik.
     func removeSubjectStats(_ subjectIDs: Set<String>) async {
@@ -76,9 +88,6 @@ final class ProfileViewModel: ObservableObject {
         do { apply(stats: try await sync.removeSubjectStats(subjectIDs)) }
         catch { errorMessage = "Deleted subjects could not be removed from your stats." }
     }
-
-    static let devFundsCoins = 10_000
-    static let devFundsXP = 5_000
 
     /// Statistiky zmenene vitezstvim nebo bonusem; posila je i obrazovce Statistik.
     var onStatsChanged: ((PlayerStats) -> Void)?
