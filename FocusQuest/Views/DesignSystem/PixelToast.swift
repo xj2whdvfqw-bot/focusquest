@@ -200,6 +200,33 @@ private struct ToastHost: View {
     }
 }
 
+/// Pixelovy prichod toastu: 3 skoky dolu o 8 pt za 0,22 s (jako steps(3) v prototypu).
+/// Pri Omezit pohyb se toast ukaze rovnou.
+struct SteppedSlideIn: ViewModifier {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var step = 0
+
+    private static let steps = 3
+    private static let distance: CGFloat = 8
+
+    func body(content: Content) -> some View {
+        let progress = reduceMotion ? 1 : CGFloat(step) / CGFloat(Self.steps)
+        content
+            .offset(y: -Self.distance * (1 - progress))
+            .opacity(Double(progress == 0 ? 0 : progress))
+            .task {
+                guard !reduceMotion else { return }
+                for next in 1...Self.steps {
+                    try? await Task.sleep(for: .milliseconds(73))
+                    guard !Task.isCancelled else { return }
+                    var transaction = Transaction()
+                    transaction.disablesAnimations = true
+                    withTransaction(transaction) { step = next }
+                }
+            }
+    }
+}
+
 extension View {
     /// Zobrazi toast s volitelnou akci (Undo) nahore uprostred; sam zmizi po `duration`.
     func pixelToast(_ toast: Binding<ToastMessage?>) -> some View {
@@ -207,7 +234,9 @@ extension View {
             if let current = toast.wrappedValue {
                 ToastHost(toast: toast, current: current)
                     .padding(.top, FQSpace.sm)
-                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .modifier(SteppedSlideIn())
+                    // Objevi se 3 kroky (SteppedSlideIn), mizi plynulym zeslabenim.
+                    .transition(.asymmetric(insertion: .identity, removal: .opacity))
                     .id(current.id)
             }
         }
@@ -219,7 +248,9 @@ extension View {
             if let text = message.wrappedValue {
                 PixelToast(message: text)
                     .padding(.top, FQSpace.sm)
-                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .modifier(SteppedSlideIn())
+                    // Objevi se 3 kroky (SteppedSlideIn), mizi plynulym zeslabenim.
+                    .transition(.asymmetric(insertion: .identity, removal: .opacity))
                     .id(text)
                     .task(id: text) {
                         try? await Task.sleep(for: .seconds(2.6))
