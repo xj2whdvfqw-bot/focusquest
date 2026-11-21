@@ -16,6 +16,7 @@ final class AppDIContainer {
     let runtimeSecurity: any RuntimeSecurityServiceProtocol
     let isIntegrityCompromised: Bool
     private let activity: FocusBattleActivityController
+    private var didCleanUpAfterTermination = false
 
     init() {
         let profileSync: any ProfileSyncServiceProtocol = LocalProfileSyncService()
@@ -54,6 +55,16 @@ final class AppDIContainer {
 
         // Ustup z bitvy ("Retreat Anyway") jen necha bosse utect: bitva nic neprinese, serie a mince zustavaji.
         // Odchod z appky uz se netresta: bitva bezi dal i na pozadi.
+    }
+
+    /// Uklid po nasilnem ukonceni appky behem bitvy: bitva se ztratila, takze naplanovana
+    /// notifikace "Victory!" uz neplati a Live Activity nema co ukazovat.
+    /// Vola se jednou pri spusteni appky, kdy jeste zadna bitva nebezi.
+    func cleanUpAfterTermination() async {
+        guard !didCleanUpAfterTermination, arenaViewModel.isBetweenBattles else { return }
+        didCleanUpAfterTermination = true
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [BattleNotificationService.victoryIdentifier])
+        await activity.end()
     }
 
     /// Reset progress v Nastaveni: smaze hrdinu, mince, statistiky, predmety a nastaveni.

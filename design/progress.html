@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-21T12:15:28+01:00",
-  "current": "Opravy auditu: dočasná ikona (Warm-up Wisp) přidána, build #45 běží.",
-  "nextStep": "Live Activity a notifikace po zabití aplikace, Motion sensor, odmítnuté notifikace.",
+  "updated": "2026-11-21T12:15:48+01:00",
+  "current": "Opravy auditu: úklid notifikace Victory! a Live Activity po zabití aplikace hotový. Další: Motion sensor v onboardingu.",
+  "nextStep": "Motion sensor, odmítnuté notifikace, pak build.",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -446,7 +446,7 @@
       "id": "Fix",
       "title": "Opravy auditu",
       "status": "build",
-      "commit": "6050096",
+      "commit": "ab410b7",
       "build": { "number": 45, "runId": 44898137635, "result": "běží" },
       "items": [
         { "text": "Účty a celý serverový kód pryč (Apple přihlášení, smazání účtu, API, App Attest, Keychain); v Settings „Reset progress“ s potvrzením", "done": true },
@@ -454,7 +454,7 @@
         { "text": "`ITSAppUsesNonExemptEncryption` = NO", "done": true },
         { "text": "Jen iPhone (`TARGETED_DEVICE_FAMILY = 1`)", "done": true },
         { "text": "Dočasná ikona 1024×1024 z pixel-art bosse na tmavém pozadí", "done": true },
-        { "text": "Zabití aplikace během bitvy: zrušit notifikaci „Victory!“ a ukončit Live Activity", "done": false },
+        { "text": "Zabití aplikace během bitvy: zrušit notifikaci „Victory!“ a ukončit Live Activity", "done": true },
         { "text": "Onboarding: přepínač „Motion sensor“ nahradit informativním textem", "done": false },
         { "text": "Odmítnuté notifikace: skutečný stav v onboardingu i Settings + otevření nastavení iPhonu", "done": false },
         { "text": "Privacy Policy a Support na GitHub Pages (docs/), odkazy v Settings tam; Terms = Apple EULA", "done": false },

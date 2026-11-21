@@ -101,6 +101,8 @@ struct MainTabView: View {
                     }
                 }
                 .task {
+                    // Appka mohla byt ukoncena uprostred bitvy: stara notifikace "Victory!" a Live Activity pryc.
+                    await container.cleanUpAfterTermination()
                     if FocusQuestTab.launchArgument == "settings" { settingsPresenter.isPresented = true }
                     if FocusQuestTab.launchArgument == "battle" { battlePresenter.isPresented = true }
                     if FocusQuestTab.launchArgument == "fight" { battlePresenter.openFightSheet() }
