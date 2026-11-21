@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-21T01:47:21+01:00",
-  "current": "Buildy stojí: GitHub Actions na účtu xj2whdvfqw-bot odmítá spustit job (selhaná platba nebo limit útraty). Sekce 11 a 12 jsou commitnuté a čekají na build.",
-  "nextStep": "Vyřešit billing na GitHubu (Settings → Billing & plans účtu xj2whdvfqw-bot), pak spustit build sekce 11 a 12.",
+  "updated": "2026-11-21T02:02:21+01:00",
+  "current": "Společný build #42 pro sekce 11 a 12 běží (GitHub Actions zase funguje).",
+  "nextStep": "Počkat na výsledek buildu #42, pak sekce 11 a 12 označit Hotovo.",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -338,7 +338,7 @@
     {
       "id": 11,
       "title": "Toasty a bubliny (pixelová bublina)",
-      "status": "spadl",
+      "status": "build",
       "items": [
         { "text": "Krémová výplň #FFFAF0, 3pt tmavý obrys #1B1630, schodovité pixelové rohy (kroky 4 pt), tvrdý stín 0 4 0 rgba(10,8,24,.45)", "done": false },
         { "text": "Text: zaoblené písmo 15 pt, řez 800, barva #1B1630, tabulková čísla; ne pixelové písmo", "done": false },
@@ -346,7 +346,7 @@
         { "text": "Bubliny bossů: stejný tvar + schodovitý ocásek dole uprostřed; naštvaná varianta s výplní danger a bílým textem", "done": false }
       ],
       "commit": "a4a278c",
-      "build": { "number": 41, "runId": 44845962238, "result": "nespuštěno: GitHub billing (selhaná platba / limit útraty)" },
+      "build": { "number": 42, "runId": 44847635518, "result": "běží (společně se sekcí 12)" },
       "note": "Kód hotový (commit a4a278c): toast teď přichází 3 skoky dolů za 0,22 s, při Reduce Motion se ukáže rovnou. Tvar, barvy, písmo 15/800, Undo #B4530A i bublina bosse s ocáskem a naštvanou variantou už specifikaci odpovídaly. Build #41 se nespustil kvůli fakturaci GitHubu (ani na druhý pokus), nejde o chybu kódu."
     },
     {
@@ -363,7 +363,7 @@
         { "text": "Bod ze sekce 0: tmavší karty na světlých pozadích (.64)", "done": false }
       ],
       "commit": "cae62a4",
-      "build": null,
+      "build": { "number": 42, "runId": 44847635518, "result": "běží (společně se sekcí 11)" },
       "note": "Kód hotový a commitnutý, čeká na build (GitHub billing). Na iPhonu otestovat na Daybreak, Sunset, Pyramids, Farm a Wind Farm: tmavší karty s větším stínem, stín pod bílými texty (ne na žlutých tlačítkách), ztmavení nahoře a dole (kromě Sunset), stín pod bossem v Areně."
     },
     {
