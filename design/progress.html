@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-21T09:51:08+01:00",
-  "current": "Build #43 spadl na testu hlasitosti hnědého šumu (záměrně ztišen v sekci 13); test opraven, běží build #44.",
-  "nextStep": "Počkat na výsledek buildu #44.",
+  "updated": "2026-11-21T10:19:00+01:00",
+  "current": "Sekce 13, 14 a 15 hotové: společný build #44 prošel. Všechny sekce z CHANGES.md jsou hotové.",
+  "nextStep": "Otestovat build #44 na iPhonu podle poznámek v kartách 13–15.",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -369,49 +369,49 @@
     {
       "id": 13,
       "title": "Nastavení",
-      "status": "build",
+      "status": "hotovo",
       "items": [
-        { "text": "„Sounds & notifications“ (ikona zvonku) otevře samostatnou stránku se zpětným „‹ Settings“", "done": false },
-        { "text": "Battle sound: Off / Lo-fi / Brown noise / White noise", "done": false },
-        { "text": "Sound effects: Tap and battle sounds · Achievement sounds · Alarm sound · Vibrate on the alarm", "done": false },
-        { "text": "Notifications: Daily reminder (17:00) · Battle finished · Break is over", "done": false },
-        { "text": "Background: aktuální název, otevře Shop › Backgrounds; vidět vždy (Shop se nezamyká)", "done": false },
-        { "text": "Feedback: Contact the developer (ikona obálky), Rate this app (ikona hvězdy)", "done": false },
-        { "text": "Patička „FocusQuest version 1.0.0“ a „Privacy Policy · Terms of Use“; kompaktní „✓ Done“", "done": false },
-        { "text": "Ikony obrysové, 24 pt, bez podkladového čtverce", "done": false },
-        { "text": "Zvuk: vždy hraje jen jedna stopa (stopAllAudio() před spuštěním další)", "done": false },
-        { "text": "Lo-fi bez šumové vrstvy pod ním; brown noise gain 0,17, white noise gain 0,04", "done": false },
-        { "text": "Přepínače opravdu ztlumí své zvuky; s vypnutým Alarm sound telefon jen vibruje", "done": false }
+        { "text": "„Sounds & notifications“ (ikona zvonku) otevře samostatnou stránku se zpětným „‹ Settings“", "done": true },
+        { "text": "Battle sound: Off / Lo-fi / Brown noise / White noise", "done": true },
+        { "text": "Sound effects: Tap and battle sounds · Achievement sounds · Alarm sound · Vibrate on the alarm", "done": true },
+        { "text": "Notifications: Daily reminder (17:00) · Battle finished · Break is over", "done": true },
+        { "text": "Background: aktuální název, otevře Shop › Backgrounds; vidět vždy (Shop se nezamyká)", "done": true },
+        { "text": "Feedback: Contact the developer (ikona obálky), Rate this app (ikona hvězdy)", "done": true },
+        { "text": "Patička „FocusQuest version 1.0.0“ a „Privacy Policy · Terms of Use“; kompaktní „✓ Done“", "done": true },
+        { "text": "Ikony obrysové, 24 pt, bez podkladového čtverce", "done": true },
+        { "text": "Zvuk: vždy hraje jen jedna stopa (stopAllAudio() před spuštěním další)", "done": true },
+        { "text": "Lo-fi bez šumové vrstvy pod ním; brown noise gain 0,17, white noise gain 0,04", "done": true },
+        { "text": "Přepínače opravdu ztlumí své zvuky; s vypnutým Alarm sound telefon jen vibruje", "done": true }
       ],
       "commit": "16c6a9d",
-      "build": { "number": 43, "runId": 44884411265, "result": "spadl: test hlasitosti šumu očekával původní hlasitost, opraveno" },
-      "note": "Kód hotový, čeká na společný build se sekcemi 14 a 15. Nastavení: Sounds & notifications (samostatná stránka s ‹ Settings), Background (otevře Shop › Backgrounds), Feedback, patička s verzí a Privacy · Terms, kompaktní ✓ Done. Pryč: přihlášení přes Apple, smazání účtu, hlasitost a výběr skladby, Anti-Cheat dokument, vývojářská karta (přesune se do sekce 15 za #if DEBUG). Verze aplikace zvýšena na 1.0.0 (project.yml). Contact the developer otevře Mail jen s předmětem, adresa vývojáře zatím chybí. Rate this app volá systémové hodnocení (u sideloadu se nemusí ukázat). Šumy ztišeny o 65 % (white 0,20→0,07, brown 0,55→0,19); lo-fi jsou nahrávky bez šumové vrstvy. Alarm sound vypne pípání, vibrace jde zvlášť přes Vibrate on the alarm. Nové notifikace: denní připomínka v 17:00 (výchozí vypnutá, na 7 dní dopředu, dnes ne, když už bylo bojováno), Break is over po 5 min přestávky; Battle finished jde vypnout."
+      "build": { "number": 44, "runId": 44886804894, "result": "úspěch" },
+      "note": "Hotovo, build #44 prošel (#43 spadl jen na zastaralém testu hlasitosti šumu, opraveno v 7b216f6). Nastavení: Sounds & notifications (samostatná stránka s ‹ Settings), Background (otevře Shop › Backgrounds), Feedback, patička s verzí a Privacy · Terms, kompaktní ✓ Done. Pryč: přihlášení přes Apple, smazání účtu, hlasitost a výběr skladby, Anti-Cheat dokument, vývojářská karta (přesune se do sekce 15 za #if DEBUG). Verze aplikace zvýšena na 1.0.0 (project.yml). Contact the developer otevře Mail jen s předmětem, adresa vývojáře zatím chybí. Rate this app volá systémové hodnocení (u sideloadu se nemusí ukázat). Šumy ztišeny o 65 % (white 0,20→0,07, brown 0,55→0,19); lo-fi jsou nahrávky bez šumové vrstvy. Alarm sound vypne pípání, vibrace jde zvlášť přes Vibrate on the alarm. Nové notifikace: denní připomínka v 17:00 (výchozí vypnutá, na 7 dní dopředu, dnes ne, když už bylo bojováno), Break is over po 5 min přestávky; Battle finished jde vypnout. Na iPhonu otestovat: Sounds & notifications a zpět, každý zvuk bitvy (šumy výrazně tišší), vypnutý Alarm sound = při zvednutí jen vibrace, Background otevře Shop › Backgrounds, denní připomínka po zapnutí požádá o notifikace."
     },
     {
       "id": 14,
       "title": "Onboarding (první spuštění)",
-      "status": "build",
+      "status": "hotovo",
       "items": [
-        { "text": "3 stránky s tlačítkem „Skip“", "done": false },
-        { "text": "1. „Put your phone down. Beat the boss.“ se 3 pravidly", "done": false },
-        { "text": "2. „What are you studying?“: dlaždice předmětů (víc najednou) + „+ Subject“; „Continue“ / „Skip for now“", "done": false },
-        { "text": "3. „Two quick permissions“: pohybový senzor a notifikace; tlačítka „▶ Start a 5 min battle“ a „Look around first“", "done": false }
+        { "text": "3 stránky s tlačítkem „Skip“", "done": true },
+        { "text": "1. „Put your phone down. Beat the boss.“ se 3 pravidly", "done": true },
+        { "text": "2. „What are you studying?“: dlaždice předmětů (víc najednou) + „+ Subject“; „Continue“ / „Skip for now“", "done": true },
+        { "text": "3. „Two quick permissions“: pohybový senzor a notifikace; tlačítka „▶ Start a 5 min battle“ a „Look around first“", "done": true }
       ],
       "commit": "11a59f0",
-      "build": { "number": 43, "runId": 44884411265, "result": "spadl: unit testy (IPA se sestavila)" },
-      "note": "Kód hotový, čeká na společný build se sekcemi 13 a 15. Onboarding nahradil dřívější obrazovku „Create your hero“ při prvním spuštění (jméno, třída a vzhled jdou dál měnit na záložce Hero; výběr rozptylujících aplikací z ní zmizel). Stránky: pravidla s kočkou, dlaždice předmětů (vybraná klepnutím zmizí, nevybraná se přidá) + „+ Subject“, povolení. Pohybový senzor systémové povolení nepotřebuje, přepínač ho jen potvrdí; Notifications spustí systémový dotaz. „Start a 5 min battle“ spustí rozcvičku hned po zavření onboardingu (bez předmětu otevře Fight sheet). Na iPhonu otestovat po smazání a nové instalaci aplikace."
+      "build": { "number": 44, "runId": 44886804894, "result": "úspěch" },
+      "note": "Hotovo, build #44 prošel (#43 spadl jen na zastaralém testu hlasitosti šumu, opraveno v 7b216f6). Onboarding nahradil dřívější obrazovku „Create your hero“ při prvním spuštění (jméno, třída a vzhled jdou dál měnit na záložce Hero; výběr rozptylujících aplikací z ní zmizel). Stránky: pravidla s kočkou, dlaždice předmětů (vybraná klepnutím zmizí, nevybraná se přidá) + „+ Subject“, povolení. Pohybový senzor systémové povolení nepotřebuje, přepínač ho jen potvrdí; Notifications spustí systémový dotaz. „Start a 5 min battle“ spustí rozcvičku hned po zavření onboardingu (bez předmětu otevře Fight sheet). Na iPhonu otestovat po smazání a nové instalaci aplikace."
     },
     {
       "id": 15,
       "title": "Jen pro ladění (ne ve vydání)",
-      "status": "build",
+      "status": "hotovo",
       "items": [
-        { "text": "Za #if DEBUG tlačítka mincí: +1 000, +10 000, vynulovat", "done": false },
-        { "text": "Za #if DEBUG tlačítka levelu: −1, +1, Bronze 1, Silver 5, Gold 10, Sapphire 15, Rainbow 20", "done": false }
+        { "text": "Za #if DEBUG tlačítka mincí: +1 000, +10 000, vynulovat", "done": true },
+        { "text": "Za #if DEBUG tlačítka levelu: −1, +1, Bronze 1, Silver 5, Gold 10, Sapphire 15, Rainbow 20", "done": true }
       ],
       "commit": "dd73690",
-      "build": { "number": 43, "runId": 44884411265, "result": "spadl: unit testy (IPA se sestavila)" },
-      "note": "Kód hotový. V Nastavení je za #if DEBUG karta Debug: mince +1 000, +10 000, Reset coins; level −1, +1, Bronze 1, Silver 5, Gold 10, Sapphire 15, Rainbow 20 (XP se nastaví na začátek levelu). CI staví konfiguraci Debug, takže v sideloadovaném IPA karta je; ve vydání (Release) zmizí. Starou dočasnou kartu Developer (+10 000 mincí a +5 000 XP) nahradila. Level jde nastavit jen v režimu bez serveru (jako dřív bonus XP)."
+      "build": { "number": 44, "runId": 44886804894, "result": "úspěch" },
+      "note": "Hotovo, build #44 prošel (#43 spadl jen na zastaralém testu hlasitosti šumu, opraveno v 7b216f6). V Nastavení je za #if DEBUG karta Debug: mince +1 000, +10 000, Reset coins; level −1, +1, Bronze 1, Silver 5, Gold 10, Sapphire 15, Rainbow 20 (XP se nastaví na začátek levelu). CI staví konfiguraci Debug, takže v sideloadovaném IPA karta je; ve vydání (Release) zmizí. Starou dočasnou kartu Developer (+10 000 mincí a +5 000 XP) nahradila. Level jde nastavit jen v režimu bez serveru (jako dřív bonus XP). Na iPhonu otestovat: Nastavení › Debug, mince a levely (barvy kruhu a křídla od Gold 10 na záložce Hero)."
     }
   ]
 }
