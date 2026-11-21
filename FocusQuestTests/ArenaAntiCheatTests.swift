@@ -34,8 +34,13 @@ final class ArenaAntiCheatTests: XCTestCase {
         XCTAssertTrue(rig.model.hasUsedSlipGrace)
         guard case let .defeated(defeat) = rig.model.state else { return XCTFail("Boss did not escape") }
         XCTAssertEqual(defeat.reason, .phoneStayedUp)
-        try? await Task.sleep(for: .milliseconds(50))
-        let violationCount = await rig.validation.violationCount()
+        // Hlaseni porusení bezi asynchronne; na pomalem CI runneru 50 ms nestaci, cekame az 1 s.
+        var violationCount = 0
+        for _ in 0..<20 {
+            violationCount = await rig.validation.violationCount()
+            if violationCount > 0 { break }
+            try? await Task.sleep(for: .milliseconds(50))
+        }
         XCTAssertEqual(violationCount, 1)
     }
 
