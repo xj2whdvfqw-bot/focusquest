@@ -8,6 +8,8 @@ struct ScreenScaffold<Content: View>: View {
     /// Obsah je aspon tak vysoky jako obrazovka, takze Spacer v nem odsune
     /// hlavni akci dolu k palci (Arena). Kdyz se obsah nevejde, normalne roluje.
     var fillsHeight = false
+    /// Svisla mezera mezi bloky obsahu.
+    var spacing: CGFloat = FQSpace.xl
     @ViewBuilder let content: () -> Content
 
     var body: some View {
@@ -15,7 +17,7 @@ struct ScreenScaffold<Content: View>: View {
             FocusQuestBackdrop(alert: alert, scene: scene)
             GeometryReader { proxy in
                 ScrollView {
-                    VStack(alignment: .leading, spacing: FQSpace.xl) {
+                    VStack(alignment: .leading, spacing: spacing) {
                         content()
                     }
                     // Svetla pozadi: bily text dostane silny stin, aby byl citelny.

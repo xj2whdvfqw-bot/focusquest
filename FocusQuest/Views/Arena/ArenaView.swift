@@ -65,17 +65,22 @@ struct ArenaView: View {
 
     /// Ramecek bosse je 168 bodu, sprite 128, takze sprite zacina 20 bodu pod hornim okrajem.
     /// Spodek bubliny je 2 body nad hlavou, spicka ocasku tak miri tesne nad bosse.
-    private static let bossFrame: CGFloat = 168
-    private static let bubbleAnchor: CGFloat = (bossFrame - 128) / 2 - 2
+    /// Na nizkem displeji (iPhone SE) je ramecek mensi, aby se Fight vesel nad listu zalozek.
+    private var bossFrame: CGFloat { isCompact ? 140 : 168 }
+    private var bubbleAnchor: CGFloat { (bossFrame - 128) / 2 - 2 }
+
+    /// Vyska obrazovky Areny (bez listy zalozek); pod 620 bodu se mezery zmensi (iPhone SE, velke pismo).
+    @State private var availableHeight: CGFloat = 0
+    private var isCompact: Bool { availableHeight > 0 && availableHeight < 620 }
 
     /// Vyska, kterou bublina smi zabrat: od hlavy bosse po pilulku serie.
     private var bubbleRoom: CGFloat? {
         guard pillBottom > 0, bossFrameTop > 0 else { return nil }
-        return max(56, bossFrameTop + Self.bubbleAnchor - pillBottom - FQSpace.sm)
+        return max(56, bossFrameTop + bubbleAnchor - pillBottom - FQSpace.sm)
     }
 
     var body: some View {
-        ScreenScaffold(scene: .lanternGrove, fillsHeight: true) {
+        ScreenScaffold(scene: .lanternGrove, fillsHeight: true, spacing: isCompact ? FQSpace.sm : FQSpace.xl) {
             ScreenHeader(title: "Ready to focus?")
             streakPill
                 .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).maxY } action: { pillBottom = $0 }
@@ -85,6 +90,7 @@ struct ArenaView: View {
             Spacer(minLength: 0)
             actionSection
         }
+        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { availableHeight = $0 }
         .task(id: poke?.id) {
             guard let current = poke else { return }
             try? await Task.sleep(for: .seconds(current.angry ? 2.6 : 2.2))
@@ -155,7 +161,7 @@ struct ArenaView: View {
 
     /// Stred obrazovky: "Continue your path", sprite, jmeno a "Boss 1 of 7".
     private var bossSection: some View {
-        VStack(spacing: FQSpace.lg) {
+        VStack(spacing: isCompact ? FQSpace.sm : FQSpace.lg) {
             Text("Continue your path")
                 .font(.fqLabel)
                 .foregroundStyle(FQColor.textSecondary)
@@ -186,7 +192,7 @@ struct ArenaView: View {
 
     /// Dole u palce: Fight a "Just 5 minutes" (nebo "Pick a world", kdyz je svet dobyty).
     private var actionSection: some View {
-        VStack(spacing: FQSpace.lg) {
+        VStack(spacing: isCompact ? FQSpace.xs : FQSpace.lg) {
             if let node = nextNode {
                 fightButton(node)
                 Button {
@@ -267,7 +273,7 @@ struct ArenaView: View {
                         LinearKeyframe(8.0, duration: 0.72)
                     }
                 }
-                .frame(width: Self.bossFrame, height: Self.bossFrame)
+                .frame(width: bossFrame, height: bossFrame)
                 .background {
                     // Mekka cervena zare bez ostre hrany.
                     RadialGradient(
@@ -290,7 +296,7 @@ struct ArenaView: View {
             // Neviditelna kotva tesne nad hlavou bosse; bublina na ni sedi spodni hranou,
             // takze roste nahoru a sprite nikdy neprekryje (ani nastvana, ani dlouha hlaska).
             Color.clear
-                .frame(width: Self.bossFrame, height: Self.bubbleAnchor)
+                .frame(width: bossFrame, height: bubbleAnchor)
                 .overlay(alignment: .bottom) {
                     if let poke {
                         PixelSpeechBubble(text: poke.text, angry: poke.angry, maxHeight: bubbleRoom)
