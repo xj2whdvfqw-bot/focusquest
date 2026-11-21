@@ -60,3 +60,44 @@ extension Color {
         self.init(red: Double((hex >> 16) & 0xFF) / 255, green: Double((hex >> 8) & 0xFF) / 255, blue: Double(hex & 0xFF) / 255)
     }
 }
+
+/// Pevna velikost pisma z navrhu, ktera roste s Dynamic Type (nastaveni velikosti textu v iOS).
+/// Zvetsi se nejvic 1,5x, aby se rozlozeni karet a tlacitek nerozpadlo. Pro ikony v pevnych
+/// ramecich, casovace a dekorace zustava `.font(.system(size:))`.
+struct ScaledSystemFont: ViewModifier {
+    @ScaledMetric private var scaledSize: CGFloat
+    private let baseSize: CGFloat
+    private let weight: Font.Weight
+    private let design: Font.Design
+
+    init(size: CGFloat, weight: Font.Weight, design: Font.Design) {
+        baseSize = size
+        self.weight = weight
+        self.design = design
+        _scaledSize = ScaledMetric(wrappedValue: size, relativeTo: Self.textStyle(for: size))
+    }
+
+    func body(content: Content) -> some View {
+        content.font(.system(size: min(scaledSize, baseSize * Self.maxScale), weight: weight, design: design))
+    }
+
+    static let maxScale: CGFloat = 1.5
+
+    /// Textovy styl, se kterym velikost roste (podobne velke pismo roste podobne rychle).
+    static func textStyle(for size: CGFloat) -> Font.TextStyle {
+        switch size {
+        case 26...: .title
+        case 20..<26: .title3
+        case 16..<20: .body
+        case 13..<16: .subheadline
+        default: .caption
+        }
+    }
+}
+
+extension View {
+    /// `.font(.system(size:weight:design:))`, ale roste s Dynamic Type (viz ScaledSystemFont).
+    func fqFont(size: CGFloat, weight: Font.Weight = .regular, design: Font.Design = .default) -> some View {
+        modifier(ScaledSystemFont(size: size, weight: weight, design: design))
+    }
+}

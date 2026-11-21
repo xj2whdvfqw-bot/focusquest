@@ -23,7 +23,7 @@ struct SubjectManagerView: View {
             VStack(alignment: .leading, spacing: Layout.sectionGap) {
                 header
                 Text("Hidden subjects disappear from fights and Stats. Nothing is lost, tap Show to bring them back.")
-                    .font(.system(size: 15, design: .rounded))
+                    .fqFont(size: 15, design: .rounded)
                     .foregroundStyle(FQColor.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
                 list
@@ -52,7 +52,7 @@ struct SubjectManagerView: View {
     private var header: some View {
         HStack(alignment: .top, spacing: FQSpace.md) {
             Text("Your subjects")
-                .font(.system(size: 26, weight: .bold, design: .rounded))
+                .fqFont(size: 26, weight: .bold, design: .rounded)
                 .foregroundStyle(FQColor.textPrimary)
                 .accessibilityAddTraits(.isHeader)
             Spacer(minLength: 0)
@@ -72,7 +72,7 @@ struct SubjectManagerView: View {
         let entries = model.managedSubjects
         if entries.isEmpty {
             Text("No subjects yet.")
-                .font(.system(size: 15, design: .rounded))
+                .fqFont(size: 15, design: .rounded)
                 .foregroundStyle(FQColor.textSecondary)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: .infinity)
@@ -94,11 +94,11 @@ struct SubjectManagerView: View {
         HStack(spacing: FQSpace.sm) {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Delete \(subject.title)?")
-                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                    .fqFont(size: 15, weight: .bold, design: .rounded)
                     .foregroundStyle(FQColor.textPrimary)
                     .lineLimit(1)
                 Text("You can restore it for 24 hours.")
-                    .font(.system(size: 13, design: .rounded))
+                    .fqFont(size: 13, design: .rounded)
                     .foregroundStyle(FQColor.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -130,7 +130,7 @@ struct SubjectManagerView: View {
         if !deleted.isEmpty {
             VStack(alignment: .leading, spacing: Layout.rowGap) {
                 Text("Recently deleted")
-                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .fqFont(size: 13, weight: .semibold, design: .rounded)
                     .foregroundStyle(FQColor.textTertiary)
                     .accessibilityAddTraits(.isHeader)
                 // Odpocet hodin se obnovuje kazdou minutu.
@@ -147,11 +147,11 @@ struct SubjectManagerView: View {
         HStack(spacing: FQSpace.sm) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(entry.subject.title)
-                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                    .fqFont(size: 15, weight: .bold, design: .rounded)
                     .foregroundStyle(FQColor.textSecondary)
                     .lineLimit(1)
                 Text("Gone for good in \(entry.hoursUntilPurge(now: now)) h, with its stats")
-                    .font(.system(size: 13, design: .rounded))
+                    .fqFont(size: 13, design: .rounded)
                     .monospacedDigit()
                     .foregroundStyle(FQColor.textSecondary)
             }
@@ -176,7 +176,7 @@ struct SubjectManagerView: View {
                     .foregroundStyle(FQColor.textSecondary)
                 Text("Done")
             }
-            .font(.system(size: 16, weight: .bold, design: .rounded))
+            .fqFont(size: 16, weight: .bold, design: .rounded)
             .foregroundStyle(FQColor.textPrimary)
             .padding(.horizontal, 28)
             .frame(minWidth: Layout.doneMinWidth)
@@ -199,7 +199,7 @@ private struct ManagerButtonStyle: ButtonStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.system(size: 14, weight: .semibold, design: .rounded))
+            .fqFont(size: 14, weight: .semibold, design: .rounded)
             .foregroundStyle(foreground)
             .lineLimit(1)
             .padding(.horizontal, 14)
@@ -240,7 +240,7 @@ private struct SubjectRow: View {
     var body: some View {
         HStack(spacing: 10) {
             TextField("Subject name", text: $name)
-                .font(.system(size: 16, weight: .medium, design: .rounded))
+                .fqFont(size: 16, weight: .medium, design: .rounded)
                 .foregroundStyle(entry.isHidden ? FQColor.textTertiary : FQColor.textPrimary)
                 .strikethrough(entry.isHidden && !focused, color: Color.white.opacity(0.25))
                 .textInputAutocapitalization(.words)

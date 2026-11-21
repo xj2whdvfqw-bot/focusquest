@@ -68,7 +68,7 @@ struct FightSheetView: View {
     private var header: some View {
         HStack(alignment: .top, spacing: FQSpace.md) {
             Text("Fight \(boss.name)")
-                .font(.system(size: 26, weight: .bold, design: .rounded))
+                .fqFont(size: 26, weight: .bold, design: .rounded)
                 .foregroundStyle(FQColor.textPrimary)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityAddTraits(.isHeader)
@@ -97,7 +97,7 @@ struct FightSheetView: View {
                         pendingDelete = nil
                         isEditing.toggle()
                     }
-                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .fqFont(size: 13, weight: .semibold, design: .rounded)
                     .foregroundStyle(FQColor.textSecondary)
                     .frame(minHeight: 32)
                 }
@@ -161,7 +161,7 @@ struct FightSheetView: View {
                     .frame(width: 18, height: 18)
                     .background(isConfirming ? Color.black.opacity(0.25) : FQColor.alarm.opacity(0.85), in: Circle())
             }
-            .font(.system(size: 15, weight: .semibold, design: .rounded))
+            .fqFont(size: 15, weight: .semibold, design: .rounded)
             .foregroundStyle(FQColor.textPrimary)
             .lineLimit(1)
             .padding(.leading, FQChipMetrics.padding)
@@ -249,7 +249,7 @@ struct FightSheetView: View {
 
     private func sectionLabel(_ text: String) -> some View {
         Text(text)
-            .font(.system(size: 13, weight: .semibold, design: .rounded))
+            .fqFont(size: 13, weight: .semibold, design: .rounded)
             .foregroundStyle(FQColor.textSecondary)
             .accessibilityAddTraits(.isHeader)
     }

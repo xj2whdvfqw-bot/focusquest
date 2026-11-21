@@ -13,6 +13,9 @@ struct FocusQuestApp: App {
     var body: some Scene {
         WindowGroup {
             MainTabView(container: container)
+                // Text roste s Dynamic Type az po nejvetsi bezne velikosti a dve accessibility velikosti;
+                // vetsi uz by rozbily karty a plovouci listu.
+                .dynamicTypeSize(...DynamicTypeSize.accessibility2)
         }
     }
 }

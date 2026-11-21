@@ -57,12 +57,12 @@ struct ProfileView: View {
             }
             VStack(alignment: .leading, spacing: 4) {
                 Text(model.profile.username)
-                    .font(.system(size: 22, weight: .semibold, design: .rounded))
+                    .fqFont(size: 22, weight: .semibold, design: .rounded)
                     .foregroundStyle(FQColor.textPrimary)
                     .lineLimit(2)
                     .minimumScaleFactor(0.7)
                 Label(model.profile.heroClass.displayName, systemImage: model.profile.heroClass.symbol)
-                    .font(.system(size: 16, weight: .medium, design: .rounded))
+                    .fqFont(size: 16, weight: .medium, design: .rounded)
                     .foregroundStyle(FQColor.accent)
                     .lineLimit(1)
             }

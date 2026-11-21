@@ -64,13 +64,13 @@ struct StatsView: View {
     private func metric(_ title: String, value: String) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(value)
-                .font(.system(size: 22, weight: .semibold, design: .rounded))
+                .fqFont(size: 22, weight: .semibold, design: .rounded)
                 .monospacedDigit()
                 .foregroundStyle(FQColor.textPrimary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
             Text(title)
-                .font(.system(size: 13, design: .rounded))
+                .fqFont(size: 13, design: .rounded)
                 .foregroundStyle(FQColor.textSecondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -95,7 +95,7 @@ struct StatsView: View {
                 SectionHeader(title: "Subjects")
                 if !list.isEmpty {
                     Button("Edit subjects") { showsSubjectManager = true }
-                        .font(.system(size: 14, weight: .medium, design: .rounded))
+                        .fqFont(size: 14, weight: .medium, design: .rounded)
                         .underline()
                         .foregroundStyle(FQColor.textSecondary)
                         .frame(minHeight: 44)
@@ -110,12 +110,12 @@ struct StatsView: View {
                     ForEach(progress) { entry in
                         HStack(spacing: FQSpace.sm) {
                             Text(list.title(of: entry.subject))
-                                .font(.system(size: 15, weight: .medium, design: .rounded))
+                                .fqFont(size: 15, weight: .medium, design: .rounded)
                                 .foregroundStyle(FQColor.textPrimary)
                                 .lineLimit(1)
                             Spacer(minLength: FQSpace.sm)
                             Text("\(ArenaView.durationText(minutes: entry.minutes)) · \(entry.battles) \(entry.battles == 1 ? "battle" : "battles")")
-                                .font(.system(size: 13, design: .rounded))
+                                .fqFont(size: 13, design: .rounded)
                                 .monospacedDigit()
                                 .foregroundStyle(FQColor.textSecondary)
                         }
@@ -134,14 +134,14 @@ struct StatsView: View {
     private func emptyState(_ text: String) -> some View {
         VStack(spacing: 12) {
             Text(text)
-                .font(.system(size: 15, design: .rounded))
+                .fqFont(size: 15, design: .rounded)
                 .foregroundStyle(FQColor.textSecondary)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity)
             Button(action: onStartBattle) {
                 Label("Start a battle", systemImage: "play.fill")
-                    .font(.system(size: 17, weight: .bold, design: .rounded))
+                    .fqFont(size: 17, weight: .bold, design: .rounded)
                     .foregroundStyle(FQColor.onCta)
                     .frame(maxWidth: .infinity)
                     .frame(height: Layout.startHeight)

@@ -25,7 +25,7 @@ struct OnboardingView: View {
                     Spacer()
                     if page < Self.pageCount {
                         Button("Skip") { onFinish(false) }
-                            .font(.system(size: 17, weight: .semibold, design: .rounded))
+                            .fqFont(size: 17, weight: .semibold, design: .rounded)
                             .foregroundStyle(FQColor.textSecondary)
                             .frame(minWidth: 44, minHeight: 44)
                             .buttonStyle(.plain)
@@ -145,7 +145,7 @@ struct OnboardingView: View {
             .glassCard()
             ctaButton("Start a 5 min battle", symbol: "play.fill") { onFinish(true) }
             Button("Look around first") { onFinish(false) }
-                .font(.system(size: 15, weight: .semibold, design: .rounded))
+                .fqFont(size: 15, weight: .semibold, design: .rounded)
                 .foregroundStyle(FQColor.textSecondary)
                 .frame(minHeight: 44)
                 .buttonStyle(.plain)
@@ -215,7 +215,7 @@ struct OnboardingView: View {
 
     private func heading(_ text: String) -> some View {
         Text(text)
-            .font(.system(size: 28, weight: .heavy, design: .rounded))
+            .fqFont(size: 28, weight: .heavy, design: .rounded)
             .foregroundStyle(FQColor.textPrimary)
             .multilineTextAlignment(.center)
             .fixedSize(horizontal: false, vertical: true)
@@ -228,10 +228,10 @@ struct OnboardingView: View {
             Group {
                 if let symbol { Label(title, systemImage: symbol) } else { Text(title) }
             }
-            .font(.system(size: 20, weight: .heavy, design: .rounded))
+            .fqFont(size: 20, weight: .heavy, design: .rounded)
             .foregroundStyle(FQColor.onCta)
             .frame(maxWidth: .infinity)
-            .frame(height: 52)
+            .frame(minHeight: 52)
             .background(FQColor.cta, in: RoundedRectangle(cornerRadius: FQRadius.pill, style: .continuous))
         }
         .buttonStyle(.plain)

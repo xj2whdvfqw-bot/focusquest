@@ -273,7 +273,7 @@ struct BattleView: View {
                     .font(.fqHeadline)
                     .foregroundStyle(FQColor.onCta)
                     .frame(maxWidth: .infinity)
-                    .frame(height: 56)
+                    .frame(minHeight: 56)
                     .background(FQColor.cta, in: pill)
             }
             .buttonStyle(.plain)
@@ -315,7 +315,7 @@ struct BattleView: View {
                 .accessibilityHidden(true)
                 VStack(spacing: FQSpace.md) {
                     Text("Don't let \(boss.name) win")
-                        .font(.system(size: 30, weight: .bold, design: .rounded))
+                        .fqFont(size: 30, weight: .bold, design: .rounded)
                         .multilineTextAlignment(.center)
                         .foregroundStyle(FQColor.textPrimary)
                     Text(elapsed >= 60
@@ -335,7 +335,7 @@ struct BattleView: View {
                             .font(.fqHeadline)
                             .foregroundStyle(FQColor.onAccent)
                             .frame(maxWidth: .infinity)
-                            .frame(height: 58)
+                            .frame(minHeight: 58)
                             .background(FQColor.accent, in: pill)
                     }
                     .buttonStyle(.plain)
@@ -410,7 +410,7 @@ struct BattleView: View {
                 .accessibilityHidden(true)
                 VStack(spacing: FQSpace.xs) {
                     Text("Victory!")
-                        .font(.system(size: 34, weight: .bold, design: .rounded))
+                        .fqFont(size: 34, weight: .bold, design: .rounded)
                         .foregroundStyle(FQColor.textPrimary)
                     Text("\(beaten.name) defeated · \(victory.subject.title), \(ArenaView.durationText(minutes: victory.verifiedMinutes))")
                         .font(.fqSecondary)
@@ -435,7 +435,7 @@ struct BattleView: View {
                             .font(.fqHeadline)
                             .foregroundStyle(FQColor.onCta)
                             .frame(maxWidth: .infinity)
-                            .frame(height: 56)
+                            .frame(minHeight: 56)
                             .background(FQColor.cta, in: RoundedRectangle(cornerRadius: FQRadius.pill, style: .continuous))
                             .contentShape(RoundedRectangle(cornerRadius: FQRadius.pill, style: .continuous))
                     }
@@ -694,7 +694,7 @@ private struct PhoneLiftedAlarm: View {
                 PulsingCount(text: forgiven ? "0" : "\(Int(ceil(seconds)))")
                 VStack(spacing: FQSpace.sm) {
                     Text(title)
-                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                        .fqFont(size: 28, weight: .bold, design: .rounded)
                         .multilineTextAlignment(.center)
                         .foregroundStyle(.white)
                     Text(detail)
@@ -922,18 +922,18 @@ private struct BreakPanel: View {
                 .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 1) {
                     Text("Next boss")
-                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                        .fqFont(size: 11, weight: .bold, design: .rounded)
                         .textCase(.uppercase)
                         .tracking(1.1)
                         .opacity(0.72)
                     Text(boss.name)
-                        .font(.system(size: 18, weight: .heavy, design: .rounded))
+                        .fqFont(size: 18, weight: .heavy, design: .rounded)
                         .lineLimit(1)
                         .truncationMode(.tail)
                 }
                 Spacer(minLength: FQSpace.xs)
                 Text(ArenaView.durationText(minutes: boss.maxHP))
-                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .fqFont(size: 13, weight: .bold, design: .rounded)
                     .monospacedDigit()
                     .padding(.horizontal, 10)
                     .padding(.vertical, 5)

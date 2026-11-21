@@ -57,7 +57,7 @@ struct ShopView: View {
                     withAnimation(.easeOut(duration: 0.2)) { section = item }
                 } label: {
                     Text(item.title)
-                        .font(.system(size: 17, weight: selected ? .semibold : .medium, design: .rounded))
+                        .fqFont(size: 17, weight: selected ? .semibold : .medium, design: .rounded)
                         .foregroundStyle(selected ? FQColor.textPrimary : FQColor.textSecondary)
                         .padding(.horizontal, 2)
                         .frame(height: 44)
@@ -184,7 +184,7 @@ struct ShopView: View {
 
     private func sectionLabel(_ text: String) -> some View {
         Text(text.uppercased())
-            .font(.system(size: 13, weight: .bold, design: .rounded))
+            .fqFont(size: 13, weight: .bold, design: .rounded)
             .tracking(0.8)
             .foregroundStyle(FQColor.textSecondary)
             .padding(.horizontal, 4)
@@ -202,10 +202,10 @@ struct ShopView: View {
             ShopSceneThumbnail(background: background)
             VStack(alignment: .leading, spacing: 4) {
                 Text(background?.name ?? ShopBackground.worldName)
-                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+                    .fqFont(size: 16, weight: .semibold, design: .rounded)
                     .foregroundStyle(FQColor.textPrimary)
                 Text(background?.blurb ?? ShopBackground.worldBlurb)
-                    .font(.system(size: 13, design: .rounded))
+                    .fqFont(size: 13, design: .rounded)
                     .foregroundStyle(FQColor.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: FQSpace.sm)
@@ -241,7 +241,7 @@ struct ShopView: View {
     @ViewBuilder private func backgroundAction(_ background: ShopBackground?, inUse: Bool, owned: Bool) -> some View {
         if inUse {
             Label("In use", systemImage: "checkmark")
-                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                .fqFont(size: 14, weight: .semibold, design: .rounded)
                 .foregroundStyle(FQColor.accent)
                 .frame(minHeight: 36)
         } else if owned {
@@ -252,7 +252,7 @@ struct ShopView: View {
             let short = background.price - model.profile.coins
             if short > 0 {
                 Label("\(background.price) · need \(short) more", systemImage: "dollarsign.circle.fill")
-                    .font(.system(size: 13, design: .rounded))
+                    .fqFont(size: 13, design: .rounded)
                     .monospacedDigit()
                     .foregroundStyle(FQColor.textSecondary)
                     .frame(minHeight: 36)

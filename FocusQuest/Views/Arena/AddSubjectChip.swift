@@ -51,7 +51,7 @@ struct AddSubjectChip: View {
                 .accessibilityHint(completion.map { "Suggestion: \($0)" } ?? "")
                 .accessibilityAction(named: "Use suggestion") { _ = acceptCompletion() }
             Button("Add") { add(completion ?? newSubject) }
-                .font(.system(size: 13, weight: .bold, design: .rounded))
+                .fqFont(size: 13, weight: .bold, design: .rounded)
                 .foregroundStyle(FQColor.onCta)
                 .padding(.horizontal, 12)
                 .frame(height: 28)
@@ -120,7 +120,7 @@ struct AddSubjectChip: View {
 struct GhostChip: ViewModifier {
     func body(content: Content) -> some View {
         content
-            .font(.system(size: 15, weight: .medium, design: .rounded))
+            .fqFont(size: 15, weight: .medium, design: .rounded)
             .foregroundStyle(FQColor.textSecondary)
             .padding(.horizontal, FQChipMetrics.padding)
             .frame(height: FQChipMetrics.height)

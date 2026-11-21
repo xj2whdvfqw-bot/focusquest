@@ -122,10 +122,10 @@ private struct WorldCard: View {
             HStack(alignment: .top, spacing: FQSpace.md) {
                 VStack(alignment: .leading, spacing: FQSpace.xs) {
                     Text(world.title)
-                        .font(.system(size: 17, weight: .semibold, design: .rounded))
+                        .fqFont(size: 17, weight: .semibold, design: .rounded)
                         .foregroundStyle(FQColor.textPrimary)
                     Text(world.tagline)
-                        .font(.system(size: 13, design: .rounded))
+                        .fqFont(size: 13, design: .rounded)
                         .foregroundStyle(FQColor.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -141,13 +141,13 @@ private struct WorldCard: View {
             HStack(spacing: FQSpace.sm) {
                 if isComplete {
                     Text("World cleared")
-                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                        .fqFont(size: 15, weight: .semibold, design: .rounded)
                         .foregroundStyle(FQColor.textSecondary)
                         .lineLimit(1)
                 }
                 Spacer(minLength: 0)
                 Text("\(cleared) / \(bosses.count) cleared")
-                    .font(.system(size: 15, weight: .medium, design: .rounded))
+                    .fqFont(size: 15, weight: .medium, design: .rounded)
                     .monospacedDigit()
                     .foregroundStyle(FQColor.textPrimary)
             }
@@ -189,13 +189,13 @@ private struct BossTile: View {
             VStack(spacing: FQSpace.xs) {
                 art
                 Text(boss.name)
-                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .fqFont(size: 13, weight: .semibold, design: .rounded)
                     .foregroundStyle(FQColor.textPrimary)
                     .multilineTextAlignment(.center)
                     .lineLimit(2, reservesSpace: true)
                     .minimumScaleFactor(0.85)
                 Text(ArenaView.durationText(minutes: boss.maxHP))
-                    .font(.system(size: 12, design: .rounded))
+                    .fqFont(size: 12, design: .rounded)
                     .monospacedDigit()
                     .foregroundStyle(FQColor.textSecondary)
                     .lineLimit(1)
@@ -244,7 +244,7 @@ private struct WinsPill: View {
                 .font(.system(size: 10, weight: .bold))
                 .foregroundStyle(FQColor.onAccent, FQColor.accent)
             Text("\(count)×")
-                .font(.system(size: 12, weight: .bold, design: .rounded))
+                .fqFont(size: 12, weight: .bold, design: .rounded)
                 .monospacedDigit()
                 .foregroundStyle(FQColor.accent)
         }

@@ -214,7 +214,7 @@ struct SettingsView: View {
             .buttonStyle(.plain)
             .accessibilityLabel("Back to Settings")
             Text("Sounds & notifications")
-                .font(.system(size: 22, weight: .semibold, design: .rounded))
+                .fqFont(size: 22, weight: .semibold, design: .rounded)
                 .foregroundStyle(FQColor.textPrimary)
                 .accessibilityAddTraits(.isHeader)
         }
@@ -285,7 +285,7 @@ struct SettingsView: View {
     private var doneButton: some View {
         Button { onClose?() } label: {
             Label("Done", systemImage: "checkmark")
-                .font(.system(size: 15, weight: .semibold, design: .rounded))
+                .fqFont(size: 15, weight: .semibold, design: .rounded)
                 .foregroundStyle(FQColor.textPrimary)
                 .padding(.horizontal, FQSpace.xl)
                 .frame(minHeight: 44)

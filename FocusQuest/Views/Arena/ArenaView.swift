@@ -164,7 +164,7 @@ struct ArenaView: View {
                 VStack(spacing: FQSpace.sm) {
                     bossButton(node)
                     Text(node.name)
-                        .font(.system(size: 24, weight: .bold, design: .rounded))
+                        .fqFont(size: 24, weight: .bold, design: .rounded)
                         .foregroundStyle(FQColor.textPrimary)
                         .multilineTextAlignment(.center)
                         .shadow(color: .black.opacity(0.7), radius: 4, y: 2)
@@ -195,7 +195,7 @@ struct ArenaView: View {
                     battle.openFightSheet()
                 } label: {
                     Text("Not feeling it? Just 5 minutes")
-                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                        .fqFont(size: 15, weight: .semibold, design: .rounded)
                         .underline()
                         .foregroundStyle(FQColor.textSecondary)
                         .frame(maxWidth: .infinity)
@@ -226,10 +226,10 @@ struct ArenaView: View {
     /// Zlute hlavni tlacitko: zaoblene pismo, velke jen prvni pismeno.
     private func ctaLabel(_ title: String, symbol: String) -> some View {
         Label(title, systemImage: symbol)
-            .font(.system(size: 20, weight: .heavy, design: .rounded))
+            .fqFont(size: 20, weight: .heavy, design: .rounded)
             .foregroundStyle(FQColor.onCta)
             .frame(maxWidth: .infinity)
-            .frame(height: 52)
+            .frame(minHeight: 52)
             .background(FQColor.cta, in: RoundedRectangle(cornerRadius: FQRadius.pill, style: .continuous))
             // Tmavy text na zlute nedostane stin svetlych pozadi.
             .compositingGroup()
