@@ -343,6 +343,26 @@ final class ProgressionModelTests: XCTestCase {
         XCTAssertEqual(restoredStats.totalXP, 250)
     }
 
+    func testUnreadableStoredDataIsBackedUpBeforeItIsReplaced() async throws {
+        let suiteName = "focusquest.tests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        let garbage = Data("not json".utf8)
+        defaults.set(garbage, forKey: "focusquest.local-profile")
+        let store = LocalProfileSyncService(suiteName: suiteName)
+        let profile = try await store.loadProfile()
+        let backup = defaults.data(forKey: StoredDataBackup.key(for: "focusquest.local-profile"))
+
+        // Druha chyba prvni zalohu neprepise.
+        defaults.set(Data("other garbage".utf8), forKey: "focusquest.local-profile")
+        _ = LocalProfileSyncService(suiteName: suiteName)
+        let backupAfterSecondFailure = defaults.data(forKey: StoredDataBackup.key(for: "focusquest.local-profile"))
+        defaults.removePersistentDomain(forName: suiteName)
+
+        XCTAssertFalse(profile.hasCreatedHero)
+        XCTAssertEqual(backup, garbage)
+        XCTAssertEqual(backupAfterSecondFailure, garbage)
+    }
+
     func testResetProgressClearsStoredProfileAndStats() async throws {
         let suiteName = "focusquest.tests.\(UUID().uuidString)"
         var profile = UserProfile.fresh(deviceID: "local-preview")

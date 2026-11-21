@@ -15,7 +15,12 @@ final class PreferencesStore: PreferencesStoreProtocol {
     init(defaults: UserDefaults = .standard) { self.defaults = defaults }
 
     func load() -> AppPreferences {
-        guard let data = defaults.data(forKey: key), let value = try? JSONDecoder().decode(AppPreferences.self, from: data) else { return AppPreferences() }
+        guard let data = defaults.data(forKey: key) else { return AppPreferences() }
+        guard let value = try? JSONDecoder().decode(AppPreferences.self, from: data) else {
+            // Predmety a nastaveni nejdou nacist: puvodni data se ulozi stranou, nez je prepise vychozi stav.
+            StoredDataBackup.preserve(data, key: key, in: defaults)
+            return AppPreferences()
+        }
         return value
     }
 
@@ -24,7 +29,10 @@ final class PreferencesStore: PreferencesStoreProtocol {
         defaults.set(data, forKey: key)
     }
 
-    func reset() { defaults.removeObject(forKey: key) }
+    func reset() {
+        defaults.removeObject(forKey: key)
+        defaults.removeObject(forKey: StoredDataBackup.key(for: key))
+    }
 }
 
 enum AntiCheatRules {

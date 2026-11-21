@@ -73,6 +73,8 @@ actor LocalProfileSyncService: ProfileSyncServiceProtocol {
         stats = .initial
         defaults.removeObject(forKey: Self.profileKey)
         defaults.removeObject(forKey: Self.statsKey)
+        defaults.removeObject(forKey: StoredDataBackup.key(for: Self.profileKey))
+        defaults.removeObject(forKey: StoredDataBackup.key(for: Self.statsKey))
     }
 
     private func persist<Value: Encodable>(_ value: Value, key: String) {
@@ -82,6 +84,21 @@ actor LocalProfileSyncService: ProfileSyncServiceProtocol {
 
     private static func read<Value: Decodable>(_ type: Value.Type, key: String, from defaults: UserDefaults) -> Value? {
         guard let data = defaults.data(forKey: key) else { return nil }
-        return try? JSONDecoder().decode(type, from: data)
+        if let value = try? JSONDecoder().decode(type, from: data) { return value }
+        // Data nejdou nacist (poskozena nebo z nekompatibilni verze): pred prepsanim novym profilem
+        // se puvodni bajty ulozi stranou, aby se daly zachranit.
+        StoredDataBackup.preserve(data, key: key, in: defaults)
+        return nil
+    }
+}
+
+/// Zaloha dat, ktera se nepodarilo nacist. Uklada se jen prvni zaloha, aby ji pozdejsi chyba neprepsala.
+enum StoredDataBackup {
+    static func key(for key: String) -> String { key + ".unreadable-backup" }
+
+    static func preserve(_ data: Data, key: String, in defaults: UserDefaults) {
+        let backupKey = Self.key(for: key)
+        guard defaults.data(forKey: backupKey) == nil else { return }
+        defaults.set(data, forKey: backupKey)
     }
 }
