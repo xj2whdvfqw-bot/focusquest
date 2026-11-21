@@ -1,5 +1,5 @@
 import SwiftUI
-@preconcurrency import UserNotifications
+import UIKit
 
 /// Prvni spusteni: 3 stranky se "Skip".
 /// 1. pravidla hry, 2. predmety, 3. povoleni (pohyb, notifikace) a prvni 5minutova bitva.
@@ -9,8 +9,11 @@ struct OnboardingView: View {
     let onFinish: (_ startBattle: Bool) -> Void
 
     @State private var page = 1
-    @State private var notificationsAllowed = false
+    /// Skutecny stav povoleni notifikaci v iOS.
+    @State private var notifications = NotificationPermission.notDetermined
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.openURL) private var openURL
 
     private static let pageCount = 3
 
@@ -132,8 +135,9 @@ struct OnboardingView: View {
                 // Senzor polohy (CoreMotion) systemove povoleni nepotrebuje, proto jen informace bez prepinace.
                 motionInfoRow
                 HairlineDivider()
-                permissionRow("Notifications", detail: "Timer on the lock screen, one daily nudge", isOn: notificationsAllowed) {
-                    Task { await requestNotifications() }
+                permissionRow("Notifications", detail: notificationsDetail, isOn: notifications == .allowed) {
+                    if notifications == .denied { openNotificationSettings() }
+                    else { Task { notifications = await NotificationPermission.request() } }
                 }
             }
             .padding(.horizontal, FQSpace.lg)
@@ -146,9 +150,10 @@ struct OnboardingView: View {
                 .frame(minHeight: 44)
                 .buttonStyle(.plain)
         }
-        .task {
-            let status = await UNUserNotificationCenter.current().notificationSettings().authorizationStatus
-            notificationsAllowed = status == .authorized || status == .provisional
+        .task { notifications = await NotificationPermission.current() }
+        // Navrat z Nastaveni iPhonu: prepinac ukaze, co hrac v iOS zmenil.
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { Task { notifications = await NotificationPermission.current() } }
         }
     }
 
@@ -198,15 +203,12 @@ struct OnboardingView: View {
         .accessibilityAddTraits(isOn ? [.isButton, .isSelected] : .isButton)
     }
 
-    private func requestNotifications() async {
-        let center = UNUserNotificationCenter.current()
-        let granted = (try? await center.requestAuthorization(options: [.alert, .sound])) ?? false
-        if granted {
-            notificationsAllowed = true
-        } else {
-            let status = await center.notificationSettings().authorizationStatus
-            notificationsAllowed = status == .authorized || status == .provisional
-        }
+    private var notificationsDetail: String {
+        notifications == .denied ? "Off in iPhone Settings. Tap to open." : "Battle results, breaks, one daily nudge"
+    }
+
+    private func openNotificationSettings() {
+        if let url = URL(string: UIApplication.openNotificationSettingsURLString) { openURL(url) }
     }
 
     // MARK: - Stavebni prvky

@@ -1,5 +1,6 @@
 import StoreKit
 import SwiftUI
+import UIKit
 
 /// Nastaveni (list z ozubeneho kola): Sounds & notifications, Background, Feedback, patička a "✓ Done".
 /// Zvuky a notifikace jsou na samostatne strance se zpetnym "‹ Settings".
@@ -15,6 +16,9 @@ struct SettingsView: View {
     @State private var showsSounds = false
     @State private var showsResetConfirmation = false
     @State private var isResetting = false
+    /// Skutecny stav povoleni notifikaci v iOS.
+    @State private var notifications = NotificationPermission.notDetermined
+    @Environment(\.scenePhase) private var scenePhase
     @Environment(\.requestReview) private var requestReview
     @Environment(\.openURL) private var openURL
 
@@ -27,6 +31,11 @@ struct SettingsView: View {
             }
         }
         .animation(.easeOut(duration: 0.25), value: showsSounds)
+        .task { notifications = await NotificationPermission.current() }
+        // Navrat z Nastaveni iPhonu: prepinace ukazi skutecny stav.
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { Task { notifications = await NotificationPermission.current() } }
+        }
         .sheet(item: $model.selectedDocument) { LegalDocumentSheetView(document: $0).presentationDetents([.medium, .large]) }
     }
 
@@ -146,7 +155,8 @@ struct SettingsView: View {
     /// "Lo-fi · 3 of 3 sounds on · reminder off"
     private var soundsSummary: String {
         let prefs = model.preferences
-        return "\(prefs.battleSound.title) · \(prefs.soundEffectsOnCount) of 3 sounds on · reminder \(prefs.isDailyReminderEnabled ? "on" : "off")"
+        let reminder = notifications == .denied ? "notifications off" : "reminder \(prefs.isDailyReminderEnabled ? "on" : "off")"
+        return "\(prefs.battleSound.title) · \(prefs.soundEffectsOnCount) of 3 sounds on · \(reminder)"
     }
 
     private var footer: some View {
@@ -230,11 +240,18 @@ struct SettingsView: View {
         }
         ScreenSection(title: "Notifications") {
             card {
-                toggleRow("Daily reminder", detail: "A nudge at 17:00 if you haven't focused", isOn: binding(\.isDailyReminderEnabled))
-                HairlineDivider()
-                toggleRow("Battle finished", detail: "When the countdown ends", isOn: binding(\.isBattleDoneNotificationEnabled))
-                HairlineDivider()
-                toggleRow("Break is over", detail: "When your 5 minute break ends", isOn: binding(\.isBreakOverNotificationEnabled))
+                if notifications == .denied {
+                    notificationsOffRow
+                    HairlineDivider()
+                }
+                Group {
+                    toggleRow("Daily reminder", detail: "A nudge at 17:00 if you haven't focused", isOn: notificationBinding(\.isDailyReminderEnabled))
+                    HairlineDivider()
+                    toggleRow("Battle finished", detail: "When the countdown ends", isOn: notificationBinding(\.isBattleDoneNotificationEnabled))
+                    HairlineDivider()
+                    toggleRow("Break is over", detail: "When your 5 minute break ends", isOn: notificationBinding(\.isBreakOverNotificationEnabled))
+                }
+                .disabled(notifications == .denied)
             }
         }
         doneButton
@@ -318,6 +335,41 @@ struct SettingsView: View {
         }
         .tint(FQColor.accent)
         .padding(.vertical, FQSpace.sm)
+    }
+
+    /// Notifikace vypnute v iOS: vysvetleni a odkaz do Nastaveni iPhonu.
+    private var notificationsOffRow: some View {
+        HStack(spacing: FQSpace.md) {
+            Image(systemName: "bell.slash")
+                .font(.system(size: 20, weight: .regular))
+                .foregroundStyle(FQColor.textPrimary)
+                .frame(width: 24, height: 24)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Notifications are off").font(.fqBody).foregroundStyle(FQColor.textPrimary)
+                Text("Turn them on in iPhone Settings").font(.fqMeta).foregroundStyle(FQColor.textSecondary)
+            }
+            Spacer(minLength: FQSpace.sm)
+            Button("Open Settings") {
+                if let url = URL(string: UIApplication.openNotificationSettingsURLString) { openURL(url) }
+            }
+            .buttonStyle(ShopButtonStyle())
+        }
+        .padding(.vertical, FQSpace.sm)
+        .frame(minHeight: 44)
+    }
+
+    /// Prepinac notifikace ukazuje skutecny stav: kdyz iOS notifikace blokuje, je vypnuty.
+    /// Prvni zapnuti spusti systemovy dotaz na povoleni.
+    private func notificationBinding(_ keyPath: WritableKeyPath<AppPreferences, Bool>) -> Binding<Bool> {
+        Binding(
+            get: { notifications != .denied && model.preferences[keyPath: keyPath] },
+            set: { value in
+                model.update { $0[keyPath: keyPath] = value }
+                guard value, notifications == .notDetermined else { return }
+                Task { notifications = await NotificationPermission.request() }
+            }
+        )
     }
 
     private func binding(_ keyPath: WritableKeyPath<AppPreferences, Bool>) -> Binding<Bool> {

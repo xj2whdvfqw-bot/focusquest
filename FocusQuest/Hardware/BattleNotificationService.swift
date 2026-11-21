@@ -96,3 +96,25 @@ final class ForegroundNotificationPresenter: NSObject, UNUserNotificationCenterD
         [.banner, .sound]
     }
 }
+
+/// Skutecny stav povoleni notifikaci v iOS (onboarding a Nastaveni ho ukazuji, ne jen predvolby).
+enum NotificationPermission: Sendable {
+    case notDetermined, allowed, denied
+
+    static func current() async -> NotificationPermission {
+        switch await UNUserNotificationCenter.current().notificationSettings().authorizationStatus {
+        case .notDetermined: .notDetermined
+        case .denied: .denied
+        default: .allowed
+        }
+    }
+
+    /// Systemovy dotaz (jen kdyz se jeste neptal); vraci novy stav.
+    static func request() async -> NotificationPermission {
+        let center = UNUserNotificationCenter.current()
+        if await current() == .notDetermined {
+            _ = try? await center.requestAuthorization(options: [.alert, .sound])
+        }
+        return await current()
+    }
+}
