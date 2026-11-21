@@ -87,6 +87,8 @@ struct GlassCardModifier: ViewModifier {
         let bright = shopBackground?.isBright == true
         // Tmave sklo: rozmazani + rgba(13,11,28,.60). Bez svetle hrany a odlesku, text na nem vynikne.
         return content
+            // Vnorena tlacitka a nahledy (FQRadius.shape) maji rohy soustredne s kartou.
+            .fqContainer(radius: radius)
             .background {
                 ZStack {
                     if prominent { shape.fill(.regularMaterial) } else { shape.fill(.ultraThinMaterial) }

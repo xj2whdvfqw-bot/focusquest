@@ -14,7 +14,6 @@ struct StatsView: View {
         static let cardPadding: CGFloat = 16
         static let metricsInset: CGFloat = 8
         static let startHeight: CGFloat = 50
-        static let startRadius: CGFloat = 20
     }
 
     var body: some View {
@@ -145,7 +144,7 @@ struct StatsView: View {
                     .foregroundStyle(FQColor.onCta)
                     .frame(maxWidth: .infinity)
                     .frame(height: Layout.startHeight)
-                    .background(FQColor.cta, in: RoundedRectangle(cornerRadius: Layout.startRadius, style: .continuous))
+                    .background(FQColor.cta, in: FQRadius.shape(FQRadius.inCard))
                     .compositingGroup()
             }
             .buttonStyle(.plain)

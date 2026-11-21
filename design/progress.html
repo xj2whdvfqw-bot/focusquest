@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-21T15:53:20+01:00",
-  "current": "Rozhodnutí z auditu hotová: build #51 prošel, Fight v Areně je na iPhonu SE nad lištou.",
-  "nextStep": "Otestovat build #51 na iPhonu podle poznámky v kartě Rozhodnutí z auditu.",
+  "updated": "2026-11-21T16:07:32+01:00",
+  "current": "Koncentrické rohy: hotovo a commitnuto, běží build #52.",
+  "nextStep": "Počkat na build #52.",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -489,6 +489,26 @@
         { "text": "Kontrola integrity (jailbreak, debugger) úplně pryč", "done": true }
       ],
       "note": "Hotovo, build #51 prošel (IPA, Release, testy). Snímek iPhone SE potvrdil, že Fight i „Just 5 minutes“ jsou nad lištou; na velkém iPhonu se Arena nezměnila. Na iPhonu otestovat: zavolat si během bitvy (z jiného telefonu): bitva se pozastaví (stav „Paused for a call“), zvednutí telefonu nevyvolá alarm, po zavěšení obrazovka „Call ended – continue the battle?“ a bitva pokračuje po položení displejem dolů; Pause once zůstane k dispozici. Odmítnutý hovor: stejné, jen kratší. Settings: řádek Rate this app není. Až bude App Store ID, vrátit Rate this app s odkazem https://apps.apple.com/app/id<ID>?action=write-review. Omezení: když je aplikace během hovoru uspaná (bitva bez zvuku a zamčený telefon), hovor se zjistí až po návratu do aplikace."
+    },
+    {
+      "id": "Rohy",
+      "title": "Koncentrické rohy",
+      "status": "build",
+      "commit": null,
+      "build": { "number": 52, "runId": null, "result": "běží" },
+      "items": [
+        { "text": "Poloměry na jednom místě: `Shared/FQRadius.swift` (kontejnery, odsazení, odvozené vnitřní poloměry), vnitřní = vnější − odsazení", "done": true },
+        { "text": "iOS 26+: ConcentricRectangle + `.containerShape` (skleněná karta, karta bitvy, karta pozadí, lišta); iOS 17–25: stejný poloměr z `FQRadius.concentric`", "done": true },
+        { "text": "Dialogy (porážka, Call ended, výsledek): karta 44, tlačítka 20", "done": true },
+        { "text": "Panel přestávky soustředný s rohy displeje (47), tlačítka 31 a 23", "done": true },
+        { "text": "Fight sheet: Start soustředný se spodkem listu a displeje", "done": true },
+        { "text": "Lišta záložek: rohy soustředné s displejem, vybraná záložka s lištou; odsazení z tokenu", "done": true },
+        { "text": "Shop: karta předmětu 24/12, karta pozadí 24/14 (náhled, tlačítka)", "done": true },
+        { "text": "Path dlaždice, Start ve Stats, Your subjects, obrázek výsledku bitvy (44/20)", "done": true },
+        { "text": "Live Activity a Dynamic Island: podložka pod spritem s ContainerRelativeShape", "done": true },
+        { "text": "Pixel-art bubliny, toasty a sprity beze změny", "done": true }
+      ],
+      "note": "Čipy (předměty, zvuk) zůstávají kapslemi: kapsle je podle Applu pro vnořené prvky v pořádku. Graf návyků (HabitsCard) má vlastní malé dlaždice dat, ty jsem neměnil."
     }
   ]
 }

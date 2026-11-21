@@ -343,6 +343,19 @@ final class ProgressionModelTests: XCTestCase {
         XCTAssertEqual(restoredStats.totalXP, 250)
     }
 
+    func testNestedCornerRadiiAreConcentric() {
+        // Vnitrni polomer = vnejsi − odsazeni.
+        XCTAssertEqual(FQRadius.inCard, FQRadius.card - FQRadius.Inset.card)
+        XCTAssertEqual(FQRadius.inDialog, FQRadius.dialog - FQRadius.Inset.dialog)
+        XCTAssertEqual(FQRadius.inDialog, FQRadius.control, "Dialog buttons keep the control radius")
+        XCTAssertEqual(FQRadius.inSmallCard, FQRadius.smallCard - FQRadius.Inset.smallCard)
+        XCTAssertEqual(FQRadius.tabBar, FQRadius.display - FQRadius.Inset.tabBar)
+        XCTAssertEqual(FQRadius.tabHighlight, FQRadius.tabBar - FQRadius.Inset.tabHighlight)
+        // Vnoreny prvek nikdy neni vetsi nez jeho kontejner a nikdy hranaty.
+        XCTAssertLessThan(FQRadius.inSheet, FQRadius.card)
+        XCTAssertEqual(FQRadius.concentric(20, inset: 30), FQRadius.minimum)
+    }
+
     func testUnreadableStoredDataIsBackedUpBeforeItIsReplaced() async throws {
         let suiteName = "focusquest.tests.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))

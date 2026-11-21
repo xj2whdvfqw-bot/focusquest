@@ -238,7 +238,8 @@ struct FightSheetView: View {
                 .minimumScaleFactor(0.7)
                 .frame(maxWidth: .infinity)
                 .frame(height: Layout.startHeight)
-                .background(FQColor.cta, in: Capsule())
+                // Spodek listu konci u rohu displeje: rohy tlacitka jsou s nimi soustredne.
+                .background(FQColor.cta, in: FQRadius.shape(FQRadius.sheetBottomButton))
         }
         .buttonStyle(.plain)
         .disabled(!canStart)

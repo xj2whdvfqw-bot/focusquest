@@ -57,16 +57,16 @@ struct BattleReceiptCard: View {
                     }
                 }
                 .padding(FQSpace.lg)
-                .background(Color.white.opacity(0.10), in: RoundedRectangle(cornerRadius: FQRadius.card, style: .continuous))
-                .overlay { RoundedRectangle(cornerRadius: FQRadius.card, style: .continuous).strokeBorder(Color.white.opacity(0.22), lineWidth: 1) }
+                .background(Color.white.opacity(0.10), in: RoundedRectangle(cornerRadius: FQRadius.inDialog, style: .continuous))
+                .overlay { RoundedRectangle(cornerRadius: FQRadius.inDialog, style: .continuous).strokeBorder(Color.white.opacity(0.22), lineWidth: 1) }
                 Spacer(minLength: 0)
             }
             .padding(.horizontal, FQSpace.xl)
             .padding(.top, 40)
             .padding(.bottom, FQSpace.xl)
         }
-        .clipShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 32, style: .continuous).strokeBorder(Color.white.opacity(0.24), lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: FQRadius.dialog, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: FQRadius.dialog, style: .continuous).strokeBorder(Color.white.opacity(0.24), lineWidth: 1))
         .environment(\.colorScheme, .dark)
     }
 }

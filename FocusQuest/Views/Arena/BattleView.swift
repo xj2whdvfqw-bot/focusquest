@@ -18,8 +18,6 @@ struct BattleView: View {
 
     /// Rozmery ladene v Battle Card Lab (webovy prototyp). Pill je tu vlastni, aby se nezmenily ostatni obrazovky.
     private enum Layout {
-        static let pillRadius: CGFloat = 15
-        static let cardRadius: CGFloat = 45
         static let screenGutter: CGFloat = 15
         static let stackGap: CGFloat = 12
         static let topIcon: CGFloat = 56
@@ -41,8 +39,9 @@ struct BattleView: View {
         static let actionGap: CGFloat = 50
     }
 
-    private var pill: RoundedRectangle { RoundedRectangle(cornerRadius: Layout.pillRadius, style: .continuous) }
-    private var cardShape: RoundedRectangle { RoundedRectangle(cornerRadius: Layout.cardRadius, style: .continuous) }
+    /// Tlacitka na obrazovce ustupu (bez karty).
+    private var pill: RoundedRectangle { RoundedRectangle(cornerRadius: FQRadius.battleButton, style: .continuous) }
+    private var cardShape: RoundedRectangle { RoundedRectangle(cornerRadius: FQRadius.battleCard, style: .continuous) }
     private var boss: Boss { model.selectedBoss }
     private var world: BossWorld { boss.world }
     private var isWarning: Bool { if case .warningCountdown = model.state { true } else { false } }
@@ -188,6 +187,7 @@ struct BattleView: View {
         .padding(.top, Layout.cardPadTop)
         .padding(.bottom, Layout.cardPadBottom)
         .frame(maxWidth: .infinity)
+        .fqContainer(radius: FQRadius.battleCard)
         .background(.ultraThinMaterial, in: cardShape)
         .background(boss.accent.opacity(0.06), in: cardShape)
         .overlay { cardShape.strokeBorder(Color.white.opacity(Layout.cardBorder), lineWidth: 1) }
@@ -286,7 +286,7 @@ struct BattleView: View {
                     .foregroundStyle(FQColor.onCta)
                     .frame(maxWidth: .infinity)
                     .frame(minHeight: 56)
-                    .background(FQColor.cta, in: pill)
+                    .background(FQColor.cta, in: FQRadius.shape(FQRadius.inBattleCard))
             }
             .buttonStyle(.plain)
         case .awaitingFlatPlacement:
@@ -571,13 +571,13 @@ struct BattleView: View {
                         .padding(.vertical, FQSpace.xs)
                 }
                 .prominentGlassButtonStyle()
-                .buttonBorderShape(.roundedRectangle(radius: FQRadius.control))
+                .buttonBorderShape(.roundedRectangle(radius: FQRadius.inDialog))
                 .controlSize(.large)
                 .tint(FQColor.accent)
             }
             .padding(FQSpace.xl)
             .frame(maxWidth: 360)
-            .glassCard(prominent: true)
+            .glassCard(radius: FQRadius.dialog, prominent: true)
             .padding(.horizontal, FQSpace.xl)
             .transition(.scale(scale: 0.92).combined(with: .opacity))
         }
@@ -617,7 +617,7 @@ struct BattleView: View {
                             .padding(.vertical, FQSpace.xs)
                     }
                     .prominentGlassButtonStyle()
-                    .buttonBorderShape(.roundedRectangle(radius: FQRadius.control))
+                    .buttonBorderShape(.roundedRectangle(radius: FQRadius.inDialog))
                     .controlSize(.large)
                     .tint(FQColor.accent)
                 } else {
@@ -633,7 +633,7 @@ struct BattleView: View {
             }
             .padding(FQSpace.xl)
             .frame(maxWidth: 360)
-            .glassCard(prominent: true)
+            .glassCard(radius: FQRadius.dialog, prominent: true)
             .padding(.horizontal, FQSpace.xl)
         }
         .accessibilityAddTraits(.isModal)
@@ -659,13 +659,13 @@ struct BattleView: View {
                         .padding(.vertical, FQSpace.xs)
                 }
                 .prominentGlassButtonStyle()
-                .buttonBorderShape(.roundedRectangle(radius: FQRadius.control))
+                .buttonBorderShape(.roundedRectangle(radius: FQRadius.inDialog))
                 .controlSize(.large)
                 .tint(FQColor.accent)
             }
             .padding(FQSpace.xl)
             .frame(maxWidth: 360)
-            .glassCard(prominent: true)
+            .glassCard(radius: FQRadius.dialog, prominent: true)
             .padding(.horizontal, FQSpace.xl)
         }
         .accessibilityAddTraits(.isModal)
@@ -941,7 +941,7 @@ private struct BreakPanel: View {
             .padding(.top, FQSpace.sm)
             .padding(.bottom, FQSpace.xl)
             .frame(maxWidth: 520)
-            .glassCard(prominent: true)
+            .glassCard(radius: FQRadius.breakPanel, prominent: true)
             .padding(.horizontal, FQSpace.sm)
             .padding(.bottom, FQSpace.sm)
         }
@@ -1011,8 +1011,8 @@ private struct BreakPanel: View {
             .foregroundStyle(FQColor.onCta)
             .padding(.horizontal, FQSpace.sm)
             .frame(height: 60)
-            .background(FQColor.cta, in: RoundedRectangle(cornerRadius: FQRadius.pill, style: .continuous))
-            .contentShape(RoundedRectangle(cornerRadius: FQRadius.pill, style: .continuous))
+            .background(FQColor.cta, in: FQRadius.shape(FQRadius.inBreakPanel))
+            .contentShape(FQRadius.shape(FQRadius.inBreakPanel))
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Next boss: \(boss.name), \(ArenaView.durationText(minutes: boss.maxHP))")
@@ -1036,8 +1036,8 @@ private struct BreakPanel: View {
             }
             .frame(maxWidth: .infinity, alignment: .center)
             .padding(FQSpace.md)
-            .background(FQColor.fill, in: RoundedRectangle(cornerRadius: FQRadius.control, style: .continuous))
-            .contentShape(RoundedRectangle(cornerRadius: FQRadius.control, style: .continuous))
+            .background(FQColor.fill, in: FQRadius.shape(FQRadius.breakPanelBottom))
+            .contentShape(FQRadius.shape(FQRadius.breakPanelBottom))
         }
         .buttonStyle(.plain)
     }

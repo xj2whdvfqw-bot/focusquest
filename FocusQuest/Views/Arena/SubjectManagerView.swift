@@ -112,9 +112,9 @@ struct SubjectManagerView: View {
         .padding(.leading, 14)
         .padding(.trailing, 8)
         .padding(.vertical, 10)
-        .background(FQColor.danger.opacity(0.14), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(FQColor.danger.opacity(0.14), in: RoundedRectangle(cornerRadius: FQRadius.inSheet, style: .continuous))
         .overlay {
-            RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(FQColor.danger.opacity(0.4), lineWidth: 1)
+            RoundedRectangle(cornerRadius: FQRadius.inSheet, style: .continuous).strokeBorder(FQColor.danger.opacity(0.4), lineWidth: 1)
         }
     }
 
@@ -164,7 +164,7 @@ struct SubjectManagerView: View {
         .padding(.leading, 14)
         .padding(.trailing, 8)
         .padding(.vertical, 10)
-        .background(Color.white.opacity(0.025), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(Color.white.opacity(0.025), in: RoundedRectangle(cornerRadius: FQRadius.inSheet, style: .continuous))
     }
 
     /// Kompaktni obrysove "✓ Done" uprostred (ne pres celou sirku).
@@ -182,9 +182,9 @@ struct SubjectManagerView: View {
             .frame(minWidth: Layout.doneMinWidth)
             .frame(height: Layout.doneHeight)
             .overlay {
-                RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(Color.white.opacity(0.28), lineWidth: 1.5)
+                RoundedRectangle(cornerRadius: FQRadius.inSheet, style: .continuous).strokeBorder(Color.white.opacity(0.28), lineWidth: 1.5)
             }
-            .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .contentShape(RoundedRectangle(cornerRadius: FQRadius.inSheet, style: .continuous))
         }
         .buttonStyle(.plain)
         .frame(maxWidth: .infinity)
@@ -272,7 +272,7 @@ private struct SubjectRow: View {
         .padding(.leading, 14)
         .padding(.trailing, 4)
         .padding(.vertical, 2)
-        .background(Color.white.opacity(entry.isHidden ? 0.025 : 0.06), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(Color.white.opacity(entry.isHidden ? 0.025 : 0.06), in: RoundedRectangle(cornerRadius: FQRadius.inSheet, style: .continuous))
         .onChange(of: entry.subject.title) { _, title in if !focused { name = title } }
     }
 

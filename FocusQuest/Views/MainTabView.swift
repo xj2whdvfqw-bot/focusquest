@@ -30,9 +30,10 @@ private enum FocusQuestTab: String, CaseIterable, Identifiable {
 /// Rozmery plovouci listy zalozek (hodnoty z design/focusquest.html).
 enum FQTabBarMetrics {
     static let height: CGFloat = 62
-    static let sideInset: CGFloat = 22
+    /// Bok i spodek listy maji stejne odsazeni od displeje, aby byly rohy soustredne s displejem.
+    static let sideInset: CGFloat = FQRadius.Inset.tabBar
     /// Vzdalenost od spodni hrany displeje (ne od bezpecne zony).
-    static let bottom: CGFloat = 22
+    static let bottom: CGFloat = FQRadius.Inset.tabBar
     static let iconSize: CGFloat = 26
     /// Mezera mezi koncem obsahu a horni hranou listy je v prototypu 24 pt. ScreenScaffold uz dole
     /// odsazuje o FQSpace.xxl (32), takze rezerva konci o 8 pt niz nez horni hrana listy.
@@ -253,15 +254,18 @@ private struct FocusQuestTabBar: View {
                 tabButton(tab)
             }
         }
-        .padding(4)
+        .padding(FQRadius.Inset.tabHighlight)
         .frame(height: FQTabBarMetrics.height)
+        // Vybrana zalozka ma rohy soustredne s listou.
+        .fqContainer(radius: FQRadius.tabBar)
         // VoiceOver: lista je jedna skupina, kazda zalozka ohlasi poradi ("Arena, selected, Tab 1 of 5").
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Tab bar")
         .background {
             ZStack {
-                Capsule().fill(.ultraThinMaterial)
-                Capsule().fill(Color(red: 40 / 255, green: 40 / 255, blue: 48 / 255).opacity(0.45))
+                // Spodni rohy listy jsou soustredne s rohy displeje (vyska 62 = polokruhove konce).
+                FQRadius.shape(FQRadius.tabBar).fill(.ultraThinMaterial)
+                FQRadius.shape(FQRadius.tabBar).fill(Color(red: 40 / 255, green: 40 / 255, blue: 48 / 255).opacity(0.45))
             }
             .shadow(color: .black.opacity(0.35), radius: 15, y: 10)
         }
@@ -280,8 +284,8 @@ private struct FocusQuestTabBar: View {
                 .frame(width: FQTabBarMetrics.iconSize, height: FQTabBarMetrics.iconSize)
                 .foregroundStyle(isOn ? FQColor.cta : FQColor.textPrimary)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background { if isOn { Capsule().fill(Color.white.opacity(0.14)) } }
-                .contentShape(Capsule())
+                .background { if isOn { FQRadius.shape(FQRadius.tabHighlight).fill(Color.white.opacity(0.14)) } }
+                .contentShape(FQRadius.shape(FQRadius.tabHighlight))
         }
         .buttonStyle(.plain)
         .accessibilityLabel(tab.title)

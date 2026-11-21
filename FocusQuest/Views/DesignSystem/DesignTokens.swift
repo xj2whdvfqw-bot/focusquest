@@ -15,14 +15,7 @@ enum FQSpace {
     static let xxxl: CGFloat = 48
 }
 
-/// Velka zaobleni: vzdusny "frosted glass" vzhled.
-enum FQRadius {
-    static let card: CGFloat = 32
-    static let control: CGFloat = 20
-    /// Pilulky (appky v onboardingu, volby casu): skoro polokruhove konce.
-    static let pill: CGFloat = 26
-    static let tile: CGFloat = 12
-}
+// Polomery rohu (FQRadius) jsou v Shared/FQRadius.swift: sdili je appka i Live Activity.
 
 /// Typografie: SF Pro Rounded (systemove pismo, zaoblena varianta), tri rezy (regular / medium / semibold).
 /// Vedlejsi text nikdy pod 13 pt. Pixelove pismo (Pixelify Sans) jen pro nadpisy obrazovek, viz `ScreenTitle`.

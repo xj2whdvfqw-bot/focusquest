@@ -126,7 +126,7 @@ struct ShopView: View {
                     HeroAvatarView(appearance: wearing(item), heroClass: model.profile.heroClass, size: 72)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, FQSpace.sm)
-                        .background(FQColor.fill, in: RoundedRectangle(cornerRadius: FQRadius.control, style: .continuous))
+                        .background(FQColor.fill, in: FQRadius.shape(FQRadius.inSmallCard))
                     if equipped {
                         Image(systemName: "checkmark.circle.fill").font(.fqLabel).foregroundStyle(FQColor.accent).padding(FQSpace.xs)
                     }
@@ -141,7 +141,7 @@ struct ShopView: View {
             gearButton(item, owned: owned, equipped: equipped)
         }
         .padding(FQSpace.md)
-        .glassCard(radius: FQRadius.control, tint: isTryingOn ? FQColor.accent : nil)
+        .glassCard(radius: FQRadius.smallCard, tint: isTryingOn ? FQColor.accent : nil)
     }
 
     @ViewBuilder private func gearButton(_ item: EquipmentItem, owned: Bool, equipped: Bool) -> some View {
@@ -197,7 +197,7 @@ struct ShopView: View {
         let inUse = model.selectedBackground == background
         let owned = background.map { model.owns($0) } ?? true
         let previewing = background != nil && model.previewBackground == background
-        let shape = RoundedRectangle(cornerRadius: 20, style: .continuous)
+        let shape = RoundedRectangle(cornerRadius: FQRadius.smallCard, style: .continuous)
         return HStack(alignment: .top, spacing: 14) {
             ShopSceneThumbnail(background: background)
             VStack(alignment: .leading, spacing: 4) {
@@ -225,7 +225,9 @@ struct ShopView: View {
             .frame(maxWidth: .infinity, minHeight: 132, alignment: .topLeading)
             .padding(.vertical, 4)
         }
-        .padding(10)
+        .padding(FQRadius.Inset.backgroundCard)
+        // Nahled a tlacitka uvnitr maji rohy soustredne s kartou.
+        .fqContainer(radius: FQRadius.smallCard)
         .background {
             ZStack {
                 shape.fill(.ultraThinMaterial)
@@ -278,7 +280,9 @@ struct ShopButtonStyle: ButtonStyle {
     @Environment(\.isEnabled) private var isEnabled
 
     func makeBody(configuration: Configuration) -> some View {
-        let shape = RoundedRectangle(cornerRadius: fullWidth ? FQRadius.control : 18, style: .continuous)
+        // Plna sirka = spodek karty predmetu, jinak tlacitko v karte pozadi (soustredne s kartou).
+        let shape = FQRadius.shape(fullWidth ? FQRadius.inSmallCard : FQRadius.inBackgroundCard)
+        let border: CGFloat = highlighted ? 2 : 1
         return configuration.label
             .font(.system(size: 14, weight: .semibold, design: .rounded))
             .foregroundStyle(highlighted ? FQColor.accent : (isEnabled ? Color.white : FQColor.textSecondary))
@@ -289,7 +293,8 @@ struct ShopButtonStyle: ButtonStyle {
             }
             .overlay {
                 if outlined {
-                    shape.strokeBorder(highlighted ? FQColor.accent : Color.white.opacity(0.25), lineWidth: highlighted ? 2 : 1)
+                    // Obrys uvnitr tvaru (AnyShape neumi strokeBorder).
+                    shape.stroke(highlighted ? FQColor.accent : Color.white.opacity(0.25), lineWidth: border).padding(border / 2)
                 }
             }
             .contentShape(shape)

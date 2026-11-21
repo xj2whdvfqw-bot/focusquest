@@ -12,6 +12,7 @@ struct FocusBattleLiveActivity: Widget {
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
                     StaticPixelSprite(sprite: .boss(context.attributes.bossSpriteID), size: 44)
+                        .spritePlatter()
                         .padding(.leading, 4)
                 }
                 DynamicIslandExpandedRegion(.trailing) {
@@ -63,6 +64,7 @@ private struct LockScreenBattleView: View {
     var body: some View {
         HStack(spacing: 12) {
             StaticPixelSprite(sprite: .boss(attributes.bossSpriteID), size: 48)
+                .spritePlatter()
             VStack(alignment: .leading, spacing: 8) {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text(BattleCopy.title(attributes: attributes, state: state))
@@ -82,7 +84,7 @@ private struct LockScreenBattleView: View {
             }
         }
         .foregroundStyle(.white)
-        .padding(16)
+        .padding(FQRadius.Inset.liveActivity)
     }
 }
 
@@ -120,5 +122,15 @@ private enum BattleCopy {
         if state.isWarning { return "Put it back or the boss escapes" }
         if state.focusStartedAt == nil { return "Lay iPhone face-down to start" }
         return "Boss health \(max(0, state.bossHP)) / \(state.bossMaxHP)"
+    }
+}
+
+private extension View {
+    /// Jemna podlozka pod spritem bosse. ContainerRelativeShape ma rohy soustredne se systemovym
+    /// tvarem Live Activity a Dynamic Islandu (vnejsi polomer − odsazeni), na iOS 17 i 26.
+    /// Samotny sprite zustava pixelovy se schodovitymi okraji.
+    func spritePlatter() -> some View {
+        padding(FQRadius.Inset.spritePlatter)
+            .background(ContainerRelativeShape().fill(Color.white.opacity(0.10)))
     }
 }

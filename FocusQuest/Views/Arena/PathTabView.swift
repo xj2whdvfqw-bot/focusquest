@@ -204,8 +204,8 @@ private struct BossTile: View {
             .padding(.horizontal, FQSpace.xs)
             .padding(.bottom, 10)
             .frame(maxWidth: .infinity)
-            .background(Color.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .background(Color.white.opacity(0.05), in: FQRadius.shape(FQRadius.inCard))
+            .contentShape(FQRadius.shape(FQRadius.inCard))
         }
         .buttonStyle(TileButtonStyle())
         .accessibilityLabel(wins > 0 ? "\(boss.name), defeated \(wins) times. Fight again, \(boss.maxHP) minutes" : "Fight \(boss.name), \(boss.maxHP) minutes")

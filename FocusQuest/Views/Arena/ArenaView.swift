@@ -115,7 +115,7 @@ struct ArenaView: View {
             StreakBadge(days: days, burning: burning)
                 .padding(.vertical, 10)
                 .padding(.horizontal, 14)
-                .glassCard(radius: 100)
+                .glassCard(radius: FQRadius.capsule)
                 .overlay {
                     Capsule()
                         .strokeBorder(Self.ember.opacity(0.55), lineWidth: 3)

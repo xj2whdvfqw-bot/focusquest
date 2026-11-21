@@ -586,7 +586,8 @@ struct ShopSceneThumbnail: View {
         }
         .frame(width: 92, height: 132)
         .background(Color(red: 11 / 255, green: 9 / 255, blue: 24 / 255))
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        // Nahled lezi v karte pozadi: rohy soustredne s kartou.
+        .clipShape(FQRadius.shape(FQRadius.inBackgroundCard))
         .accessibilityHidden(true)
     }
 }
