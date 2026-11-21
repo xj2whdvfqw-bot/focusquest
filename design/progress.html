@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-21T17:40:04+01:00",
-  "current": "Zavírání oken tahem dolů: hotovo a commitnuto, běží build #53.",
-  "nextStep": "Počkat na build #53.",
+  "updated": "2026-11-21T18:13:12+01:00",
+  "current": "Zavírání oken tahem dolů hotové: build #53 prošel.",
+  "nextStep": "Otestovat build #53 na iPhonu podle poznámky v kartě Zavírání oken tahem dolů.",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -513,9 +513,9 @@
     {
       "id": "Tah",
       "title": "Zavírání oken tahem dolů",
-      "status": "build",
-      "commit": null,
-      "build": { "number": 53, "runId": null, "result": "běží" },
+      "status": "hotovo",
+      "commit": "1b948c9",
+      "build": { "number": 53, "runId": 44925821358, "result": "úspěch" },
       "items": [
         { "text": "Fight sheet: bez křížku, tah dolů zavírá (systémový sheet: sleduje prst, vzdálenost a rychlost, rolování až od vrchu)", "done": true },
         { "text": "Your subjects (z Fight sheetu i ze Stats): bez křížku, tah dolů zavírá", "done": true },
@@ -527,7 +527,7 @@
         { "text": "Rozepsaný nový předmět: tah se zeptá „Discard the new subject?“", "done": true },
         { "text": "Beze změny: bitva a onboarding (celoobrazovkové, tahem nejdou zavřít)", "done": true }
       ],
-      "note": "Shop nemá vyjíždějící okno s detailem pozadí: Preview se zapíná přímo v kartě pozadí, takže tam nebylo co měnit."
+      "note": "Hotovo, build #53 prošel (IPA, Release, testy). Shop nemá vyjíždějící okno s detailem pozadí (Preview je přímo v kartě). Na iPhonu otestovat: tah dolů ve Fight sheetu, Your subjects, editoru vzhledu a Settings (pomalý krátký tah okno vrátí, rychlý švih zavře; v rolovaném obsahu se zavírá až od vrchu); rozepsat nový předmět a táhnout dolů = okno se vrátí a zeptá „Discard the new subject?“; ťuknout na × u předmětu (potvrzení smazání) a táhnout = okno se vrátí a potvrzení zmizí; Reset progress: během dialogu okno nejde stáhnout; VoiceOver: gesto dvěma prsty Z zavře okno, na nadpisu okna je akce Close."
     }
   ]
 }
