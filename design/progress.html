@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-21T09:20:41+01:00",
-  "current": "Společný build #43 pro sekce 13, 14 a 15 běží.",
-  "nextStep": "Počkat na výsledek buildu #43.",
+  "updated": "2026-11-21T09:44:45+01:00",
+  "current": "Build #43 (sekce 13–15): IPA se sestavila, unit testy spadly; čekám na log.",
+  "nextStep": "Přečíst log buildu #43 a opravit padající test.",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -369,7 +369,7 @@
     {
       "id": 13,
       "title": "Nastavení",
-      "status": "build",
+      "status": "spadl",
       "items": [
         { "text": "„Sounds & notifications“ (ikona zvonku) otevře samostatnou stránku se zpětným „‹ Settings“", "done": false },
         { "text": "Battle sound: Off / Lo-fi / Brown noise / White noise", "done": false },
@@ -384,13 +384,13 @@
         { "text": "Přepínače opravdu ztlumí své zvuky; s vypnutým Alarm sound telefon jen vibruje", "done": false }
       ],
       "commit": "16c6a9d",
-      "build": { "number": 43, "runId": 44884411265, "result": "běží (společně se sekcemi 14 a 15)" },
+      "build": { "number": 43, "runId": 44884411265, "result": "spadl: unit testy (IPA se sestavila)" },
       "note": "Kód hotový, čeká na společný build se sekcemi 14 a 15. Nastavení: Sounds & notifications (samostatná stránka s ‹ Settings), Background (otevře Shop › Backgrounds), Feedback, patička s verzí a Privacy · Terms, kompaktní ✓ Done. Pryč: přihlášení přes Apple, smazání účtu, hlasitost a výběr skladby, Anti-Cheat dokument, vývojářská karta (přesune se do sekce 15 za #if DEBUG). Verze aplikace zvýšena na 1.0.0 (project.yml). Contact the developer otevře Mail jen s předmětem, adresa vývojáře zatím chybí. Rate this app volá systémové hodnocení (u sideloadu se nemusí ukázat). Šumy ztišeny o 65 % (white 0,20→0,07, brown 0,55→0,19); lo-fi jsou nahrávky bez šumové vrstvy. Alarm sound vypne pípání, vibrace jde zvlášť přes Vibrate on the alarm. Nové notifikace: denní připomínka v 17:00 (výchozí vypnutá, na 7 dní dopředu, dnes ne, když už bylo bojováno), Break is over po 5 min přestávky; Battle finished jde vypnout."
     },
     {
       "id": 14,
       "title": "Onboarding (první spuštění)",
-      "status": "build",
+      "status": "spadl",
       "items": [
         { "text": "3 stránky s tlačítkem „Skip“", "done": false },
         { "text": "1. „Put your phone down. Beat the boss.“ se 3 pravidly", "done": false },
@@ -398,19 +398,19 @@
         { "text": "3. „Two quick permissions“: pohybový senzor a notifikace; tlačítka „▶ Start a 5 min battle“ a „Look around first“", "done": false }
       ],
       "commit": "11a59f0",
-      "build": { "number": 43, "runId": 44884411265, "result": "běží (společně se sekcemi 13 a 15)" },
+      "build": { "number": 43, "runId": 44884411265, "result": "spadl: unit testy (IPA se sestavila)" },
       "note": "Kód hotový, čeká na společný build se sekcemi 13 a 15. Onboarding nahradil dřívější obrazovku „Create your hero“ při prvním spuštění (jméno, třída a vzhled jdou dál měnit na záložce Hero; výběr rozptylujících aplikací z ní zmizel). Stránky: pravidla s kočkou, dlaždice předmětů (vybraná klepnutím zmizí, nevybraná se přidá) + „+ Subject“, povolení. Pohybový senzor systémové povolení nepotřebuje, přepínač ho jen potvrdí; Notifications spustí systémový dotaz. „Start a 5 min battle“ spustí rozcvičku hned po zavření onboardingu (bez předmětu otevře Fight sheet). Na iPhonu otestovat po smazání a nové instalaci aplikace."
     },
     {
       "id": 15,
       "title": "Jen pro ladění (ne ve vydání)",
-      "status": "build",
+      "status": "spadl",
       "items": [
         { "text": "Za #if DEBUG tlačítka mincí: +1 000, +10 000, vynulovat", "done": false },
         { "text": "Za #if DEBUG tlačítka levelu: −1, +1, Bronze 1, Silver 5, Gold 10, Sapphire 15, Rainbow 20", "done": false }
       ],
       "commit": "dd73690",
-      "build": { "number": 43, "runId": 44884411265, "result": "běží (společně se sekcemi 13 a 14)" },
+      "build": { "number": 43, "runId": 44884411265, "result": "spadl: unit testy (IPA se sestavila)" },
       "note": "Kód hotový. V Nastavení je za #if DEBUG karta Debug: mince +1 000, +10 000, Reset coins; level −1, +1, Bronze 1, Silver 5, Gold 10, Sapphire 15, Rainbow 20 (XP se nastaví na začátek levelu). CI staví konfiguraci Debug, takže v sideloadovaném IPA karta je; ve vydání (Release) zmizí. Starou dočasnou kartu Developer (+10 000 mincí a +5 000 XP) nahradila. Level jde nastavit jen v režimu bez serveru (jako dřív bonus XP)."
     }
   ]
