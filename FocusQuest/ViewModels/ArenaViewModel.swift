@@ -369,6 +369,22 @@ final class ArenaViewModel: ObservableObject {
         return result
     }
 
+    /// Onboarding ("What are you studying?"): vybrana dlazdice klepnutim zmizi uplne
+    /// (novy hrac k ni nema statistiky), nevybrana se prida.
+    func toggleOnboardingSubject(named name: String) {
+        guard isBetweenBattles else { return }
+        let key = name.lowercased()
+        guard let entry = preferences.subjects.first(where: { $0.isVisible && $0.subject.title.lowercased() == key }) else {
+            addSubject(named: name)
+            return
+        }
+        changePreferences { preferences in
+            preferences.subjects.removeAll { $0.id == entry.id }
+            if preferences.lastSubject == entry.subject { preferences.lastSubject = nil }
+        }
+        if selectedSubject == entry.subject { selectedSubject = preferences.preselectedSubject }
+    }
+
     /// Mekke smazani predmetu z rezimu Edit ve Fight sheetu; vyber preskoci na jiny viditelny predmet.
     func deleteSubject(_ subject: StudySubject) {
         guard isBetweenBattles else { return }

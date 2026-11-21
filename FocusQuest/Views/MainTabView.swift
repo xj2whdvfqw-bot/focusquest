@@ -109,8 +109,9 @@ struct MainTabView: View {
                     if phase == .active { Task { await maintainSubjects() } }
                 }
                 // Odchod z appky behem bitvy se netresta: hodiny bitvy bezi dal i na pozadi.
+                // Prvni spusteni: 3strankovy onboarding (pravidla, predmety, povoleni).
                 .fullScreenCover(isPresented: $showsHeroCreator) {
-                    HeroCreatorView(model: container.profileViewModel, blocker: container.appBlocker) { showsHeroCreator = false }
+                    OnboardingView(arena: container.arenaViewModel) { startBattle in finishOnboarding(startBattle: startBattle) }
                 }
             }
         }
@@ -189,7 +190,27 @@ struct MainTabView: View {
         container.arenaViewModel.refreshDailyReminder(focusedToday: container.profileViewModel.todayVerifiedMinutes > 0)
     }
 
-    /// Pri prvnim spusteni si hrac vytvori hrdinu. Screenshoty zalozek v CI tuhle obrazovku preskakuji.
+    /// Konec onboardingu. "Start a 5 min battle" spusti rozcvicku (Warm-up Wisp), az se onboarding zavre.
+    private func finishOnboarding(startBattle: Bool) {
+        container.profileViewModel.completeHeroCreation()
+        showsHeroCreator = false
+        guard startBattle else { return }
+        Task { @MainActor in
+            // Dva celoobrazovkove listy nejdou prepnout naraz; bitva se otevre po zavreni onboardingu.
+            try? await Task.sleep(for: .milliseconds(600))
+            let arena = container.arenaViewModel
+            arena.prepareQuickBattle()
+            if arena.selectedSubject != nil {
+                arena.startSession()
+                battlePresenter.isPresented = true
+            } else {
+                // Bez predmetu bitva nezacne; Fight sheet nabidne pridani predmetu.
+                battlePresenter.openFightSheet()
+            }
+        }
+    }
+
+    /// Pri prvnim spusteni se ukaze onboarding. Screenshoty zalozek v CI tuhle obrazovku preskakuji.
     private func presentHeroCreatorIfNeeded() async {
         await container.profileViewModel.refresh()
         await container.profileViewModel.refreshProgress()

@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-21T09:17:00+01:00",
-  "current": "Sekce 13 (Settings) napsaná a commitnutá; build až po sekcích 13–15 dohromady.",
-  "nextStep": "Sekce 14: onboarding.",
+  "updated": "2026-11-21T09:19:11+01:00",
+  "current": "Sekce 13 a 14 napsané a commitnuté; build až po sekci 15.",
+  "nextStep": "Sekce 15: debug tlačítka za #if DEBUG, pak společný build.",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -383,14 +383,14 @@
         { "text": "Lo-fi bez šumové vrstvy pod ním; brown noise gain 0,17, white noise gain 0,04", "done": false },
         { "text": "Přepínače opravdu ztlumí své zvuky; s vypnutým Alarm sound telefon jen vibruje", "done": false }
       ],
-      "commit": null,
+      "commit": "16c6a9d",
       "build": null,
       "note": "Kód hotový, čeká na společný build se sekcemi 14 a 15. Nastavení: Sounds & notifications (samostatná stránka s ‹ Settings), Background (otevře Shop › Backgrounds), Feedback, patička s verzí a Privacy · Terms, kompaktní ✓ Done. Pryč: přihlášení přes Apple, smazání účtu, hlasitost a výběr skladby, Anti-Cheat dokument, vývojářská karta (přesune se do sekce 15 za #if DEBUG). Verze aplikace zvýšena na 1.0.0 (project.yml). Contact the developer otevře Mail jen s předmětem, adresa vývojáře zatím chybí. Rate this app volá systémové hodnocení (u sideloadu se nemusí ukázat). Šumy ztišeny o 65 % (white 0,20→0,07, brown 0,55→0,19); lo-fi jsou nahrávky bez šumové vrstvy. Alarm sound vypne pípání, vibrace jde zvlášť přes Vibrate on the alarm. Nové notifikace: denní připomínka v 17:00 (výchozí vypnutá, na 7 dní dopředu, dnes ne, když už bylo bojováno), Break is over po 5 min přestávky; Battle finished jde vypnout."
     },
     {
       "id": 14,
       "title": "Onboarding (první spuštění)",
-      "status": "cekam",
+      "status": "pracuje",
       "items": [
         { "text": "3 stránky s tlačítkem „Skip“", "done": false },
         { "text": "1. „Put your phone down. Beat the boss.“ se 3 pravidly", "done": false },
@@ -399,7 +399,7 @@
       ],
       "commit": null,
       "build": null,
-      "note": ""
+      "note": "Kód hotový, čeká na společný build se sekcemi 13 a 15. Onboarding nahradil dřívější obrazovku „Create your hero“ při prvním spuštění (jméno, třída a vzhled jdou dál měnit na záložce Hero; výběr rozptylujících aplikací z ní zmizel). Stránky: pravidla s kočkou, dlaždice předmětů (vybraná klepnutím zmizí, nevybraná se přidá) + „+ Subject“, povolení. Pohybový senzor systémové povolení nepotřebuje, přepínač ho jen potvrdí; Notifications spustí systémový dotaz. „Start a 5 min battle“ spustí rozcvičku hned po zavření onboardingu (bez předmětu otevře Fight sheet). Na iPhonu otestovat po smazání a nové instalaci aplikace."
     },
     {
       "id": 15,
