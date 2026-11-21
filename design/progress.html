@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-21T12:16:19+01:00",
-  "current": "Opravy auditu: přepínač Motion sensor nahrazen informací. Další: skutečný stav notifikací.",
-  "nextStep": "Odmítnuté notifikace v onboardingu a Settings, pak build.",
+  "updated": "2026-11-21T12:17:29+01:00",
+  "current": "Opravy auditu: build #45 spadl (chyběl JSONEncoder.focusQuest ze smazaného APIClient), opraveno. Dokončuji stav notifikací.",
+  "nextStep": "Commit notifikací a nový build pro všech 8 bodů.",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -445,9 +445,9 @@
     {
       "id": "Fix",
       "title": "Opravy auditu",
-      "status": "build",
-      "commit": "f1ab646",
-      "build": { "number": 45, "runId": 44898137635, "result": "běží" },
+      "status": "spadl",
+      "commit": "44ffd52",
+      "build": { "number": 45, "runId": 44898137635, "result": "spadl: JSONEncoder.focusQuest chyběl po smazání APIClient" },
       "items": [
         { "text": "Účty a celý serverový kód pryč (Apple přihlášení, smazání účtu, API, App Attest, Keychain); v Settings „Reset progress“ s potvrzením", "done": true },
         { "text": "PrivacyInfo.xcprivacy: UserDefaults (CA92.1), systemUptime (35F9.1)", "done": true },
@@ -460,7 +460,7 @@
         { "text": "Privacy Policy a Support na GitHub Pages (docs/), odkazy v Settings tam; Terms = Apple EULA", "done": false },
         { "text": "CI: Release build (kompilace)", "done": false }
       ],
-      "note": "Placený Apple Developer účet zatím neřešíme, e-mail pro Contact doplníme později."
+      "note": "Build #45 spadl při kompilaci: rozšíření JSONEncoder.focusQuest bylo ve smazaném APIClient.swift, přesunuto do SessionPayloads.swift. Placený Apple Developer účet zatím neřešíme, e-mail pro Contact doplníme později."
     }
   ]
 }

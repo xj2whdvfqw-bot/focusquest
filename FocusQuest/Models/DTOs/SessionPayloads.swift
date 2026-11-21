@@ -24,3 +24,14 @@ struct CompleteSessionResponse: Codable, Sendable {
     let boss: Boss
     let xpEarned: Int
 }
+
+extension JSONEncoder {
+    /// Kodovani podepisovaneho heartbeatu bitvy (kontrola v telefonu).
+    static var focusQuest: JSONEncoder {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        // Podepisovany payload musi mit stale stejne poradi klicu.
+        encoder.outputFormatting = [.sortedKeys]
+        return encoder
+    }
+}
