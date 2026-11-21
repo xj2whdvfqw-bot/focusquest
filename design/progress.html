@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-21T19:45:01+01:00",
-  "current": "Opravy po testu #53 commitnuté, build se spouští.",
-  "nextStep": "Počkat na výsledek buildu; při chybě opravit a spustit znovu.",
+  "updated": "2026-11-21T20:12:12+01:00",
+  "current": "Opravy po testu #53 hotové: build #54 prošel.",
+  "nextStep": "Otestovat build #54 na iPhonu podle poznámky v kartě Opravy po testu #53.",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -532,9 +532,9 @@
     {
       "id": "T53",
       "title": "Opravy po testu #53",
-      "status": "build",
-      "commit": "",
-      "build": { "number": null, "runId": null, "result": "" },
+      "status": "hotovo",
+      "commit": "388ed6e",
+      "build": { "number": 54, "runId": 44937256949, "result": "úspěch" },
       "items": [
         { "text": "Výsledková okna (boss utekl, vítězství, Battle stopped, Call ended): skleněná karta, jemné ztmavení 28 %, bez prosvítající karty bitvy s „Begin Battle“; objevení pružinou", "done": true },
         { "text": "Panel přestávky: stejné jemné ztmavení a sklo", "done": true },
@@ -548,7 +548,7 @@
         { "text": "Haptika: přepnutí záložky, otevření Fight sheetu, start bitvy, vítězství, útěk bosse, Collect Loot, výběr a nákup v Shopu", "done": true },
         { "text": "Reduce Motion: bez zmenšení, posunu a pružiny, jen prolnutí", "done": true }
       ],
-      "note": "Build běží. Na iPhonu otestovat: ústup z bitvy → okno „… escaped“ je sklo, pod ním je jen scéna (žádné Begin Battle); vítězství ve stejné kartě; Shop: nadpis sekce Helmets & hats a horní karta pozadí jsou celé vidět; Nastavení bez Done; Home na menším iPhonu a s velkým písmem; přepínání záložek (prolnutí, klouzající zvýraznění, jemná vibrace); totéž se zapnutým Reduce Motion."
+      "note": "Hotovo, build #54 prošel (IPA, Release, testy). Na iPhonu otestovat: ústup z bitvy → okno „… escaped“ je sklo, pod ním je jen scéna (žádné Begin Battle); vítězství ve stejné kartě; Shop: nadpis sekce Helmets & hats a horní karta pozadí jsou celé vidět; Nastavení bez Done; Home na menším iPhonu a s velkým písmem; přepínání záložek (prolnutí, klouzající zvýraznění, jemná vibrace); totéž se zapnutým Reduce Motion."
     }
   ]
 }
