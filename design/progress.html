@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-21T13:41:00+01:00",
-  "current": "Zbytek auditu: build #48 spadl jen na výpadku úložiště artefaktů GitHubu (kompilace prošla). Běží build #49 se všemi 5 body.",
-  "nextStep": "Počkat na build #49.",
+  "updated": "2026-11-21T13:59:18+01:00",
+  "current": "Rozhodnutí z auditu: Rate this app skryté. Další: pauza při hovoru.",
+  "nextStep": "Pauza při hovoru, odstranění kontroly integrity, pak build.",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -476,6 +476,19 @@
         { "text": "iPhone SE (3. gen.) ve screenshotech z CI", "done": true }
       ],
       "note": "Build #48 spadl při nahrávání IPA (timeout služby artefaktů GitHubu), ne na kódu. Přeskočeno podle zadání: placený Apple Developer účet, e-mail pro Contact, autorská práva postav a hudby."
+    },
+    {
+      "id": "Dec",
+      "title": "Rozhodnutí z auditu",
+      "status": "pracuje",
+      "commit": null,
+      "build": null,
+      "items": [
+        { "text": "„Rate this app“ skrýt, dokud nebude App Store ID", "done": true },
+        { "text": "Hovor během bitvy: automatická pauza (nepočítá se do jediné pauzy, bez limitu), po hovoru „Call ended – continue the battle?“, pokračuje po položení displejem dolů", "done": false },
+        { "text": "Kontrola integrity (jailbreak, debugger) úplně pryč", "done": false }
+      ],
+      "note": "Až bude App Store ID, vrátit Rate this app s odkazem https://apps.apple.com/app/id<ID>?action=write-review."
     }
   ]
 }

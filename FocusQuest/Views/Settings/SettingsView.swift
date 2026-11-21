@@ -1,4 +1,3 @@
-import StoreKit
 import SwiftUI
 import UIKit
 
@@ -19,7 +18,6 @@ struct SettingsView: View {
     /// Skutecny stav povoleni notifikaci v iOS.
     @State private var notifications = NotificationPermission.notDetermined
     @Environment(\.scenePhase) private var scenePhase
-    @Environment(\.requestReview) private var requestReview
     @Environment(\.openURL) private var openURL
 
     var body: some View {
@@ -62,11 +60,8 @@ struct SettingsView: View {
                     linkRow(icon: "envelope", title: "Contact the developer", detail: "Report a bug or suggest an idea")
                 }
                 .buttonStyle(.plain)
-                HairlineDivider()
-                Button { requestReview() } label: {
-                    linkRow(icon: "star", title: "Rate this app", detail: "A quick rating helps a lot")
-                }
-                .buttonStyle(.plain)
+                // "Rate this app" je skryte, dokud appka nema App Store ID. Pak se vrati s primym odkazem
+                // https://apps.apple.com/app/id<ID>?action=write-review (requestReview() casto nic neukaze).
             }
         }
         ScreenSection(title: "Your data", detail: "Stored only on this iPhone") {
