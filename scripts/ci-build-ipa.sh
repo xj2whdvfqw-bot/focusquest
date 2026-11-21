@@ -34,9 +34,12 @@ for track in calm-currents tokyo-sunset peaceful-drift; do
 done
 # Bez fontu by nadpisy tise spadly na systemove pismo.
 test -f "$APP/PixelifySans-Medium.ttf" || { echo "V appce chybi font PixelifySans-Medium.ttf"; exit 1; }
+# Bez ikony App Store Connect build odmitne a notifikace maji prazdny ctverec.
+/usr/libexec/PlistBuddy -c "Print :CFBundleIcons:CFBundlePrimaryIcon:CFBundleIconName" "$APP/Info.plist" >/dev/null 2>&1 || { echo "V Info.plist chybi CFBundleIconName (ikona)"; exit 1; }
+test -f "$APP/Assets.car" || { echo "V appce chybi Assets.car (ikona)"; exit 1; }
 # Bez privacy manifestu App Store Connect build odmitne (UserDefaults, systemUptime).
 test -f "$APP/PrivacyInfo.xcprivacy" || { echo "V appce chybi PrivacyInfo.xcprivacy"; exit 1; }
-echo "Obsah appky OK: Widget Extension + 3 skladby + pixelovy font + PrivacyInfo"
+echo "Obsah appky OK: Widget Extension + 3 skladby + pixelovy font + ikona + PrivacyInfo"
 
 rm -rf build/ipa build/FocusQuest.ipa
 mkdir -p build/ipa/Payload

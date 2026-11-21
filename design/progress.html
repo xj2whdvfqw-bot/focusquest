@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-21T12:14:09+01:00",
-  "current": "Opravy auditu: body účty, PrivacyInfo, šifrování a jen iPhone commitnuté. Spouštím společný build.",
-  "nextStep": "Počkat na build, pak ikona, Live Activity po zabití, Motion sensor, notifikace.",
+  "updated": "2026-11-21T12:15:28+01:00",
+  "current": "Opravy auditu: dočasná ikona (Warm-up Wisp) přidána, build #45 běží.",
+  "nextStep": "Live Activity a notifikace po zabití aplikace, Motion sensor, odmítnuté notifikace.",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -445,15 +445,15 @@
     {
       "id": "Fix",
       "title": "Opravy auditu",
-      "status": "pracuje",
-      "commit": "e5f23fd",
-      "build": null,
+      "status": "build",
+      "commit": "6050096",
+      "build": { "number": 45, "runId": 44898137635, "result": "běží" },
       "items": [
         { "text": "Účty a celý serverový kód pryč (Apple přihlášení, smazání účtu, API, App Attest, Keychain); v Settings „Reset progress“ s potvrzením", "done": true },
         { "text": "PrivacyInfo.xcprivacy: UserDefaults (CA92.1), systemUptime (35F9.1)", "done": true },
         { "text": "`ITSAppUsesNonExemptEncryption` = NO", "done": true },
         { "text": "Jen iPhone (`TARGETED_DEVICE_FAMILY = 1`)", "done": true },
-        { "text": "Dočasná ikona 1024×1024 z pixel-art bosse na tmavém pozadí", "done": false },
+        { "text": "Dočasná ikona 1024×1024 z pixel-art bosse na tmavém pozadí", "done": true },
         { "text": "Zabití aplikace během bitvy: zrušit notifikaci „Victory!“ a ukončit Live Activity", "done": false },
         { "text": "Onboarding: přepínač „Motion sensor“ nahradit informativním textem", "done": false },
         { "text": "Odmítnuté notifikace: skutečný stav v onboardingu i Settings + otevření nastavení iPhonu", "done": false },
