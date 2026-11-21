@@ -29,6 +29,11 @@ struct SettingsView: View {
             }
         }
         .animation(.easeOut(duration: 0.25), value: showsSounds)
+        // Zavreni tahem dolu; ne behem potvrzeni "Reset progress" a ne behem mazani.
+        // VoiceOver escape: ze stranky zvuku zpet na Nastaveni, z hlavni stranky zavrit.
+        .fqSheetDismissal(blocked: showsResetConfirmation || isResetting) {
+            if showsSounds { showsSounds = false } else { onClose?() }
+        }
         .task { notifications = await NotificationPermission.current() }
         // Navrat z Nastaveni iPhonu: prepinace ukazi skutecny stav.
         .onChange(of: scenePhase) { _, phase in

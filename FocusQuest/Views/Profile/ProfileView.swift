@@ -165,6 +165,8 @@ struct AppearanceEditorSheet: View {
                 .glassCard()
         }
         .pinnedTopHeader { header }
+        // Zmeny se ukladaji hned, takze tah dolu muze okno zavrit vzdy.
+        .fqSheetDismissal(blocked: false, close: onClose)
     }
 
     private var header: some View {
@@ -179,16 +181,9 @@ struct AppearanceEditorSheet: View {
             }
             .accessibilityElement(children: .combine)
             .accessibilityAddTraits(.isHeader)
+            // Krizek nahradil tah dolu; VoiceOver zavira akci "Close" nebo escape gestem.
+            .fqSheetCloseAction(onClose)
             Spacer(minLength: 0)
-            Button(action: onClose) {
-                Image(systemName: "xmark")
-                    .font(.system(size: 15, weight: .semibold, design: .rounded))
-                    .foregroundStyle(FQColor.textPrimary)
-                    .frame(width: 44, height: 44)
-                    .glassControl(in: Circle(), interactive: true)
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Close appearance editor")
         }
         .padding(FQSpace.md)
         .glassCard()

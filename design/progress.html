@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-21T16:35:56+01:00",
-  "current": "Koncentrické rohy hotové: build #52 prošel.",
-  "nextStep": "Otestovat build #52 na iPhonu podle poznámky v kartě Koncentrické rohy.",
+  "updated": "2026-11-21T17:40:04+01:00",
+  "current": "Zavírání oken tahem dolů: hotovo a commitnuto, běží build #53.",
+  "nextStep": "Počkat na build #53.",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -509,6 +509,25 @@
         { "text": "Pixel-art bubliny, toasty a sprity beze změny", "done": true }
       ],
       "note": "Hotovo, build #52 prošel (IPA, Release, testy včetně testu pravidla vnitřní = vnější − odsazení). Nejvíc vidět: Shop (karty předmětů 24, náhled a cena 12), dialogy porážky / Call ended / výsledku (rohy 44 místo 32), panel přestávky po vítězství (rohy podle displeje), obrázek výsledku bitvy ke sdílení, Live Activity (podložka pod bossem). Čipy (předměty, zvuk) zůstávají kapslemi; graf návyků beze změny. Poloměry se mění v Shared/FQRadius.swift."
+    },
+    {
+      "id": "Tah",
+      "title": "Zavírání oken tahem dolů",
+      "status": "build",
+      "commit": null,
+      "build": { "number": 53, "runId": null, "result": "běží" },
+      "items": [
+        { "text": "Fight sheet: bez křížku, tah dolů zavírá (systémový sheet: sleduje prst, vzdálenost a rychlost, rolování až od vrchu)", "done": true },
+        { "text": "Your subjects (z Fight sheetu i ze Stats): bez křížku, tah dolů zavírá", "done": true },
+        { "text": "Editor vzhledu hrdiny (Hero): bez křížku, tah dolů zavírá", "done": true },
+        { "text": "Settings: tah dolů zavírá (Done zůstává), ne během potvrzení Reset progress a mazání", "done": true },
+        { "text": "Úchyt nahoře zůstává ve všech oknech", "done": true },
+        { "text": "VoiceOver: escape gesto (dvěma prsty Z) a akce „Close“ na nadpisu okna", "done": true },
+        { "text": "Potvrzení smazání předmětu blokuje tah (okno zajede zpět, potvrzení se zruší)", "done": true },
+        { "text": "Rozepsaný nový předmět: tah se zeptá „Discard the new subject?“", "done": true },
+        { "text": "Beze změny: bitva a onboarding (celoobrazovkové, tahem nejdou zavřít)", "done": true }
+      ],
+      "note": "Shop nemá vyjíždějící okno s detailem pozadí: Preview se zapíná přímo v kartě pozadí, takže tam nebylo co měnit."
     }
   ]
 }

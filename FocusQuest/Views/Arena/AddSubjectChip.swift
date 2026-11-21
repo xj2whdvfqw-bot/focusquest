@@ -8,6 +8,8 @@ struct AddSubjectChip: View {
     @ObservedObject var model: ArenaViewModel
     /// Predmety, ktere hrac uz ma; ty se jako navrh nenabizi.
     let taken: [StudySubject]
+    /// Je rozepsany novy predmet (pole s textem). Okno ho pak nezavre tahem bez zeptani.
+    var hasDraft: Binding<Bool>? = nil
     /// Predmet se pridal (`.created`), nebo uz existoval a jen se vybral (`.existing`).
     let onAdded: (SubjectAddResult) -> Void
 
@@ -30,7 +32,10 @@ struct AddSubjectChip: View {
             if isAdding { field } else { addButton }
         }
         .animation(.easeOut(duration: 0.18), value: isAdding)
+        .onChange(of: isDraft) { _, value in hasDraft?.wrappedValue = value }
     }
+
+    private var isDraft: Bool { isAdding && !newSubject.trimmingCharacters(in: .whitespaces).isEmpty }
 
     private var field: some View {
         HStack(spacing: 6) {

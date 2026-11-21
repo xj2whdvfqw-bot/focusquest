@@ -14,6 +14,9 @@ struct FightSheetView: View {
     @State private var showsManager = false
     @State private var toast: ToastMessage?
     @State private var contentHeight: CGFloat = 480
+    /// Rozepsany novy predmet: tah dolu okno nezavre, nejdriv se zepta.
+    @State private var hasSubjectDraft = false
+    @State private var asksDiscardDraft = false
 
     private enum Layout {
         static let sheetBackground = Color(red: 22 / 255, green: 20 / 255, blue: 34 / 255)
@@ -22,7 +25,6 @@ struct FightSheetView: View {
         static let chipGap: CGFloat = 8
         static let startHeight: CGFloat = 72
         static let startFont: CGFloat = 22
-        static let closeSize: CGFloat = 44
         static let visibleChips = 5
     }
 
@@ -59,6 +61,12 @@ struct FightSheetView: View {
         .presentationCornerRadius(FQRadius.card)
         .preferredColorScheme(.dark)
         .sheet(isPresented: $showsManager) { SubjectManagerView(model: model) }
+        // Zavreni tahem dolu; ne behem potvrzeni smazani a ne s rozepsanym predmetem.
+        .fqSheetDismissal(blocked: pendingDelete != nil || hasSubjectDraft, onBlockedAttempt: blockedCloseAttempt, close: onClose)
+        .confirmationDialog("Discard the new subject?", isPresented: $asksDiscardDraft, titleVisibility: .visible) {
+            Button("Discard subject", role: .destructive) { onClose() }
+            Button("Keep editing", role: .cancel) { }
+        }
         .animation(.easeOut(duration: 0.18), value: isEditing)
         .animation(.easeOut(duration: 0.18), value: showsAllSubjects)
     }
@@ -73,16 +81,19 @@ struct FightSheetView: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityAddTraits(.isHeader)
             Spacer(minLength: 0)
-            Button(action: onClose) {
-                Image(systemName: "xmark")
-                    .font(.system(size: 15, weight: .semibold, design: .rounded))
-                    .foregroundStyle(FQColor.textPrimary)
-                    .frame(width: Layout.closeSize, height: Layout.closeSize)
-                    .glassControl(in: Circle(), interactive: true)
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Close")
         }
+        // Krizek nahradil tah dolu; VoiceOver zavira akci "Close" nebo escape gestem.
+        .fqSheetCloseAction(requestClose)
+    }
+
+    /// Zavreni pres VoiceOver: stejna pravidla jako tah dolu.
+    private func requestClose() {
+        if pendingDelete != nil || hasSubjectDraft { blockedCloseAttempt() } else { onClose() }
+    }
+
+    /// Pokus zavrit zablokovane okno: rozepsany predmet se zepta, potvrzeni smazani se zrusi.
+    private func blockedCloseAttempt() {
+        if hasSubjectDraft { asksDiscardDraft = true } else { pendingDelete = nil }
     }
 
     // MARK: - Predmety
@@ -112,7 +123,7 @@ struct FightSheetView: View {
                         .modifier(GhostChip())
                 }
                 if !isEditing {
-                    AddSubjectChip(model: model, taken: subjects) { result in
+                    AddSubjectChip(model: model, taken: subjects, hasDraft: $hasSubjectDraft) { result in
                         if case let .existing(subject) = result {
                             toast = ToastMessage(text: "You already have \(subject.title). Picked it.")
                         }
