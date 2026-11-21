@@ -35,7 +35,7 @@ final class AppDIContainer {
         self.statsViewModel = StatsViewModel(profileSync: profileSync)
         self.settingsViewModel = SettingsViewModel(store: preferences, profileSync: profileSync)
         self.appBlocker = AppBlockerManager()
-        self.arenaViewModel = ArenaViewModel(validation: validation, motion: motion, haptics: haptics, audio: audio, preferenceStore: preferences, profileProvider: { [weak profileViewModel] in profileViewModel?.profile ?? profile }, simulationSigningKey: previewSigningKey, activity: activity, notifications: BattleNotificationService())
+        self.arenaViewModel = ArenaViewModel(validation: validation, motion: motion, haptics: haptics, audio: audio, preferenceStore: preferences, profileProvider: { [weak profileViewModel] in profileViewModel?.profile ?? profile }, simulationSigningKey: previewSigningKey, activity: activity, notifications: BattleNotificationService(), calls: CallMonitoringService())
         // Odmenu pripisuje model Areny, ne obrazovka - prijde i kdyz bitva skonci na pozadi.
         arenaViewModel.onVictory = { [weak profileViewModel, weak arena = self.arenaViewModel] victory in
             profileViewModel?.recordVictory(victory)

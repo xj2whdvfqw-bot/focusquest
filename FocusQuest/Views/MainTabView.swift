@@ -93,7 +93,7 @@ struct MainTabView: View {
             // Bezici bitva musi byt videt vzdy, at ji hrac spustil odkudkoli.
             .onReceive(container.arenaViewModel.$state) { state in
                 switch state {
-                case .awaitingFlatPlacement, .focusing, .paused, .warningCountdown: battlePresenter.isPresented = true
+                case .awaitingFlatPlacement, .focusing, .paused, .warningCountdown, .callPaused: battlePresenter.isPresented = true
                 default: break
                 }
             }

@@ -9,6 +9,9 @@ enum ArenaState: Equatable {
     case paused(elapsedSeconds: Int, secondsLeft: Int)
     /// Zvednuty telefon. `forgiven` = prvni propadly odpocet v bitve byl prave odpusten ("Slip forgiven").
     case warningCountdown(secondsRemaining: Double, frozenElapsedSeconds: Int, forgiven: Bool)
+    /// Telefonni hovor: hodiny stoji bez casoveho limitu a nepocita se to do "Pause once".
+    /// `callEnded` = hovor skoncil a bitva pokracuje, az telefon zase lezi displejem dolu.
+    case callPaused(elapsedSeconds: Int, callEnded: Bool)
     /// Technicka chyba (server, hodiny). Nic se nebere.
     case penalized(reason: String)
     case victory(BattleVictory)
@@ -86,7 +89,9 @@ final class ArenaViewModel: ObservableObject {
     private let simulationSigningKey: Data
     private let activity: (any FocusBattleActivityServiceProtocol)?
     private let notifications: (any BattleNotificationServiceProtocol)?
+    private let calls: (any CallMonitoringServiceProtocol)?
     private var postureTask: Task<Void, Never>?
+    private var callTask: Task<Void, Never>?
     private var timerTask: Task<Void, Never>?
     private var sessionStartUptime: TimeInterval = 0
     private var sessionStartWallClock = Date()
@@ -96,7 +101,8 @@ final class ArenaViewModel: ObservableObject {
     private var pausedAt: TimeInterval?
     private var isFinishing = false
 
-    init(validation: any FocusValidationServiceProtocol, motion: any MotionMonitoringServiceProtocol, haptics: any HapticEngineServiceProtocol, audio: any AudioAtmosphereServiceProtocol, preferenceStore: any PreferencesStoreProtocol, profileProvider: @escaping @MainActor () -> UserProfile, signer: any CryptoSignerProtocol = CryptoSigner(), simulationSigningKey: Data = Data(), activity: (any FocusBattleActivityServiceProtocol)? = nil, notifications: (any BattleNotificationServiceProtocol)? = nil) {
+    init(validation: any FocusValidationServiceProtocol, motion: any MotionMonitoringServiceProtocol, haptics: any HapticEngineServiceProtocol, audio: any AudioAtmosphereServiceProtocol, preferenceStore: any PreferencesStoreProtocol, profileProvider: @escaping @MainActor () -> UserProfile, signer: any CryptoSignerProtocol = CryptoSigner(), simulationSigningKey: Data = Data(), activity: (any FocusBattleActivityServiceProtocol)? = nil, notifications: (any BattleNotificationServiceProtocol)? = nil, calls: (any CallMonitoringServiceProtocol)? = nil) {
+        self.calls = calls
         self.validation = validation
         self.motion = motion
         self.haptics = haptics
@@ -149,6 +155,16 @@ final class ArenaViewModel: ObservableObject {
             }
         }
         Task { [weak self] in await self?.createServerSession() }
+        callTask?.cancel()
+        if let calls {
+            let stream = calls.callUpdates()
+            callTask = Task { [weak self] in
+                for await active in stream {
+                    guard !Task.isCancelled else { break }
+                    self?.handleCall(active: active)
+                }
+            }
+        }
     }
 
     /// Vzdat bitvu nebo zavrit obrazovku s vysledkem.
@@ -292,12 +308,54 @@ final class ArenaViewModel: ObservableObject {
         if posture == .lifted { beginWarning(elapsed: elapsed) }
     }
 
+    // MARK: - Telefonni hovor
+
+    /// Hovor zacal: bitva se pozastavi bez limitu a nepocita se to do jedine pauzy.
+    /// Hovor skoncil: obrazovka "Call ended" a bitva pokracuje po polozeni telefonu displejem dolu.
+    func handleCall(active: Bool) {
+        guard !isFinishing else { return }
+        if active {
+            let elapsed: Int
+            switch state {
+            case .focusing(let value), .paused(let value, _), .warningCountdown(_, let value, _): elapsed = value
+            // Dalsi hovor hned po skonceni predchoziho.
+            case .callPaused(let value, true): elapsed = value
+            default: return
+            }
+            timerTask?.cancel()
+            timerTask = nil
+            warningStartedAt = nil
+            pausedAt = nil
+            state = .callPaused(elapsedSeconds: elapsed, callEnded: false)
+            audio.stop()
+            let bossHP = selectedBoss.currentHP
+            Task { await notifications?.cancelVictory() }
+            Task { await activity?.update(bossHP: bossHP, elapsedSeconds: elapsed, warningSecondsRemaining: nil) }
+        } else if case let .callPaused(elapsed, false) = state {
+            state = .callPaused(elapsedSeconds: elapsed, callEnded: true)
+        }
+    }
+
+    /// Bez senzoru ("Start without sensor") se polozeni nehlida: po hovoru pokracuje tlacitko.
+    func continueAfterCall() {
+        guard isSensorBypassed, case let .callPaused(elapsed, true) = state else { return }
+        resumeAfterCall(elapsed: elapsed)
+    }
+
+    private func resumeAfterCall(elapsed: Int) {
+        // Hodiny navazou presne tam, kde hovor bitvu zastavil; cas hovoru se nepocita.
+        sessionStartUptime = MonotonicClock.now - TimeInterval(elapsed)
+        sessionStartWallClock = Date().addingTimeInterval(-TimeInterval(elapsed))
+        haptics.triggerRecovery(enabled: preferences.isHapticsEnabled)
+        beginFocusing(elapsed: elapsed)
+    }
+
     /// "Retreat Anyway": boss uteče, bitva nic neprinese. Serie a mince zustavaji.
     func retreat() {
         guard !isFinishing else { return }
         let elapsed: Int
         switch state {
-        case .focusing(let value), .paused(let value, _), .warningCountdown(_, let value, _): elapsed = value
+        case .focusing(let value), .paused(let value, _), .warningCountdown(_, let value, _), .callPaused(let value, _): elapsed = value
         case .awaitingFlatPlacement:
             // Hodiny se jeste nerozbehly: odchod nic nestoji.
             stopSession()
@@ -327,7 +385,7 @@ final class ArenaViewModel: ObservableObject {
     /// Bitva prave bezi (hodiny tikaji, je pozastavena nebo bezi odpocet zvednuteho telefonu).
     var isBattleRunning: Bool {
         switch state {
-        case .focusing, .paused, .warningCountdown: true
+        case .focusing, .paused, .warningCountdown, .callPaused: true
         default: false
         }
     }
@@ -520,6 +578,7 @@ final class ArenaViewModel: ObservableObject {
         posture = value
         if value == .lyingStill {
             if case let .warningCountdown(_, frozenElapsed, _) = state { recoverFocus(elapsed: frozenElapsed) }
+            else if case let .callPaused(elapsed, true) = state { resumeAfterCall(elapsed: elapsed) }
             else if case .awaitingFlatPlacement = state, activeSession != nil { startFocusClock() }
         } else if value == .lifted, !isFinishing, case let .focusing(elapsed) = state {
             beginWarning(elapsed: elapsed)
@@ -714,8 +773,9 @@ final class ArenaViewModel: ObservableObject {
     /// Zastavi vse, co bitva rozbehla: casovace, senzory, hudbu, Live Activity a notifikaci.
     /// Po vitezstvi notifikace zustava - pokud je appka na pozadi, prave ona hrace zavola zpatky.
     private func tearDownBattle(keepNotification: Bool = false) {
-        postureTask?.cancel(); timerTask?.cancel()
-        postureTask = nil; timerTask = nil
+        postureTask?.cancel(); timerTask?.cancel(); callTask?.cancel()
+        postureTask = nil; timerTask = nil; callTask = nil
+        calls?.stop()
         warningStartedAt = nil
         pausedAt = nil
         audio.stop()

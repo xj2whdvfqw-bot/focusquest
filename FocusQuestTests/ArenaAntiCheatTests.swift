@@ -82,6 +82,51 @@ final class ArenaAntiCheatTests: XCTestCase {
         XCTAssertEqual(defeat.reason, .retreated)
     }
 
+    func testCallPausesWithoutUsingThePauseAndResumesWhenPhoneIsDown() async {
+        let rig = makeRig(hapticsEnabled: false)
+        rig.model.startSession()
+        await waitForSession(rig.model)
+        await rig.model.handlePosture(.lyingStill)
+        rig.model.handleCall(active: true)
+        guard case .callPaused(_, false) = rig.model.state else { return XCTFail("Call did not pause the battle") }
+        XCTAssertFalse(rig.model.hasUsedPause, "A call must not use the single pause")
+        XCTAssertTrue(rig.model.isBattleRunning)
+
+        // Zvednuti telefonu behem hovoru se netresta.
+        await rig.model.handlePosture(.lifted)
+        guard case .callPaused(_, false) = rig.model.state else { return XCTFail("Lifting during a call must be ignored") }
+
+        rig.model.handleCall(active: false)
+        guard case .callPaused(_, true) = rig.model.state else { return XCTFail("Call end was not shown") }
+        await rig.model.handlePosture(.lyingStill)
+        XCTAssertTrue(isFocusing(rig.model.state))
+        rig.model.pauseBattle()
+        XCTAssertTrue(isPaused(rig.model.state), "The single pause is still available after a call")
+        rig.model.stopSession()
+    }
+
+    func testCallDuringLiftedWarningCancelsTheWarningWithoutUsingGrace() async {
+        let rig = makeRig(hapticsEnabled: false)
+        rig.model.startSession()
+        await waitForSession(rig.model)
+        await rig.model.handlePosture(.lyingStill)
+        await rig.model.handlePosture(.lifted)
+        XCTAssertTrue(isWarning(rig.model.state))
+        rig.model.handleCall(active: true)
+        guard case .callPaused(_, false) = rig.model.state else { return XCTFail("Call did not replace the warning") }
+        XCTAssertFalse(rig.model.hasUsedSlipGrace)
+        rig.model.stopSession()
+    }
+
+    func testCallBeforeTheClockStartsIsIgnored() async {
+        let rig = makeRig(hapticsEnabled: false)
+        rig.model.startSession()
+        await waitForSession(rig.model)
+        rig.model.handleCall(active: true)
+        guard case .awaitingFlatPlacement = rig.model.state else { return XCTFail("Nothing to pause before the clock runs") }
+        rig.model.stopSession()
+    }
+
     /// Vzorky po 0,1 s (10 Hz) od casu `start` do `start + seconds`; vrati ohlasene zmeny stavu.
     private func feed(_ detector: inout PostureDetector, z: Double, from start: Double, seconds: Double) -> [DevicePostureState] {
         var reported: [DevicePostureState] = []

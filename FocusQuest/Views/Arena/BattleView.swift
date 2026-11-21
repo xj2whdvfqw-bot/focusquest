@@ -46,7 +46,12 @@ struct BattleView: View {
     private var boss: Boss { model.selectedBoss }
     private var world: BossWorld { boss.world }
     private var isWarning: Bool { if case .warningCountdown = model.state { true } else { false } }
-    private var isPaused: Bool { if case .paused = model.state { true } else { false } }
+    private var isPaused: Bool {
+        switch model.state {
+        case .paused, .callPaused: true
+        default: false
+        }
+    }
     private var isIdle: Bool { if case .idle = model.state { true } else { false } }
     private var isVictory: Bool { if case .victory = model.state { true } else { false } }
     private var elapsed: Int {
@@ -54,6 +59,7 @@ struct BattleView: View {
         case .focusing(let value): value
         case .paused(let value, _): value
         case .warningCountdown(_, let value, _): value
+        case .callPaused(let value, _): value
         default: 0
         }
     }
@@ -94,6 +100,7 @@ struct BattleView: View {
             if case let .warningCountdown(seconds, _, forgiven) = model.state {
                 PhoneLiftedAlarm(seconds: seconds, forgiven: forgiven, graceUsed: model.hasUsedSlipGrace, bossName: boss.name)
             }
+            if case .callPaused(_, true) = model.state, !showsRetreatConfirm { callEndedOverlay.transition(.opacity) }
             if case let .penalized(reason) = model.state {
                 resultOverlay(icon: "exclamationmark.triangle.fill", title: "Battle stopped", detail: "\(reason) Nothing was taken from you.")
             }
@@ -218,7 +225,7 @@ struct BattleView: View {
     /// Behem bitvy ubyva pruh po sekundach podle odpoctu; jinak ukazuje skutecne HP bosse.
     private var bossHealthFraction: Double {
         switch model.state {
-        case .focusing, .paused, .warningCountdown:
+        case .focusing, .paused, .warningCountdown, .callPaused:
             model.targetSeconds > 0 ? Double(remaining) / Double(model.targetSeconds) : 0
         default:
             boss.healthFraction
@@ -245,6 +252,11 @@ struct BattleView: View {
             CenteredIconText("Paused · back in \(Self.minutesSeconds(secondsLeft)) or the boss escapes", systemImage: "pause.fill")
                 .font(.fqLabel)
                 .monospacedDigit()
+                .foregroundStyle(FQColor.caution)
+                .multilineTextAlignment(.center)
+        case .callPaused:
+            CenteredIconText("Paused for a call · no time limit", systemImage: "phone.fill")
+                .font(.fqLabel)
                 .foregroundStyle(FQColor.caution)
                 .multilineTextAlignment(.center)
         case .focusing, .warningCountdown:
@@ -283,6 +295,9 @@ struct BattleView: View {
                 model.retreat()
                 onExit()
             }
+        case .callPaused:
+            // Hovor pauzu nespotrebuje; jedine, co jde udelat, je ustoupit.
+            BattleActionButton(symbol: "flag.fill", caption: "Retreat", tone: .danger) { showsRetreatConfirm = true }
         case .focusing, .paused, .warningCountdown:
             HStack(spacing: Layout.actionGap) {
                 if isPaused {
@@ -570,6 +585,60 @@ struct BattleView: View {
     }
 
     /// Technicka chyba (server, hodiny): nic se nebere, jen tlacitko "Back".
+    /// Po hovoru: bitva stoji, dokud hrac nepolozi telefon zase displejem dolu.
+    private var callEndedOverlay: some View {
+        ZStack {
+            Color.black.opacity(0.5).ignoresSafeArea()
+            VStack(spacing: FQSpace.lg) {
+                Image(systemName: "phone.down.fill")
+                    .font(.system(size: 40, weight: .semibold, design: .rounded))
+                    .foregroundStyle(FQColor.accent)
+                    .accessibilityHidden(true)
+                VStack(spacing: FQSpace.sm) {
+                    Text("Call ended – continue the battle?")
+                        .font(.fqTitle)
+                        .multilineTextAlignment(.center)
+                        .foregroundStyle(FQColor.textPrimary)
+                        .accessibilityAddTraits(.isHeader)
+                    Text(model.isSensorBypassed
+                         ? "The call didn't use your pause. \(clockText) left against \(boss.name)."
+                         : "Put your phone face-down to keep fighting. The call didn't use your pause, \(clockText) left.")
+                        .font(.fqSecondary)
+                        .multilineTextAlignment(.center)
+                        .foregroundStyle(FQColor.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                if model.isSensorBypassed {
+                    Button { model.continueAfterCall() } label: {
+                        Text("Continue battle")
+                            .font(.fqHeadline)
+                            .foregroundStyle(FQColor.onAccent)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, FQSpace.xs)
+                    }
+                    .prominentGlassButtonStyle()
+                    .buttonBorderShape(.roundedRectangle(radius: FQRadius.control))
+                    .controlSize(.large)
+                    .tint(FQColor.accent)
+                } else {
+                    Label("Waiting for the phone to lie face-down", systemImage: "iphone.gen3")
+                        .font(.fqLabel)
+                        .foregroundStyle(FQColor.textSecondary)
+                }
+                Button("Retreat") { showsRetreatConfirm = true }
+                    .font(.fqLabel)
+                    .foregroundStyle(FQColor.textSecondary)
+                    .frame(minHeight: 44)
+                    .buttonStyle(.plain)
+            }
+            .padding(FQSpace.xl)
+            .frame(maxWidth: 360)
+            .glassCard(prominent: true)
+            .padding(.horizontal, FQSpace.xl)
+        }
+        .accessibilityAddTraits(.isModal)
+    }
+
     private func resultOverlay(icon: String, title: String, detail: String) -> some View {
         ZStack {
             Color.black.opacity(0.5).ignoresSafeArea()
