@@ -34,7 +34,9 @@ for track in calm-currents tokyo-sunset peaceful-drift; do
 done
 # Bez fontu by nadpisy tise spadly na systemove pismo.
 test -f "$APP/PixelifySans-Medium.ttf" || { echo "V appce chybi font PixelifySans-Medium.ttf"; exit 1; }
-echo "Obsah appky OK: Widget Extension + 3 skladby + pixelovy font"
+# Bez privacy manifestu App Store Connect build odmitne (UserDefaults, systemUptime).
+test -f "$APP/PrivacyInfo.xcprivacy" || { echo "V appce chybi PrivacyInfo.xcprivacy"; exit 1; }
+echo "Obsah appky OK: Widget Extension + 3 skladby + pixelovy font + PrivacyInfo"
 
 rm -rf build/ipa build/FocusQuest.ipa
 mkdir -p build/ipa/Payload
