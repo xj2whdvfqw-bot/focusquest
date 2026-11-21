@@ -3,7 +3,8 @@ import SwiftUI
 /// Obchod: za mince z bitev se kupuje vybaveni (hned videt na pixelovem hrdinovi) a pozadi.
 struct ShopView: View {
     @ObservedObject var model: ProfileViewModel
-    @State private var section: ShopSection = .gear
+    /// Gear nebo Backgrounds; drzi ho MainTabView, aby Nastaveni mohlo otevrit Backgrounds.
+    @Binding var section: ShopSection
     /// Predmet, ktery si hrac prave zkousi v nahledu nahore.
     @State private var tryOnID: String?
     @Environment(\.shopBackground) private var shopBackground

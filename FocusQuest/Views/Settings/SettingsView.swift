@@ -1,174 +1,194 @@
+import StoreKit
 import SwiftUI
-import AuthenticationServices
 
+/// Nastaveni (list z ozubeneho kola): Sounds & notifications, Background, Feedback, patička a "✓ Done".
+/// Zvuky a notifikace jsou na samostatne strance se zpetnym "‹ Settings".
 struct SettingsView: View {
     @ObservedObject var model: SettingsViewModel
-    /// Nastaveni se otevira jako list ozubenym kolem na kterekoli zalozce; tohle ho zavre.
+    @ObservedObject var profile: ProfileViewModel
     var onClose: (() -> Void)? = nil
+    /// Otevre Shop › Backgrounds (list se predtim zavre).
+    var onOpenBackgrounds: (() -> Void)? = nil
+
+    @State private var showsSounds = false
+    @Environment(\.requestReview) private var requestReview
+    @Environment(\.openURL) private var openURL
 
     var body: some View {
         ScreenScaffold {
-            HStack(alignment: .center) {
-                ScreenTitle(title: "Settings")
-                Spacer(minLength: FQSpace.sm)
-                if let onClose {
-                    Button(action: onClose) {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 15, weight: .semibold, design: .rounded))
-                            .foregroundStyle(FQColor.textPrimary)
-                            .frame(width: 44, height: 44)
-                            .glassControl(in: Circle(), interactive: true)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Close settings")
-                }
-            }
-            .padding(.top, onClose == nil ? 0 : FQSpace.md)
-            ScreenSection(title: "Sensory") { sensoryCard }
-            ScreenSection(title: "Soundscape") { soundscapeCard }
-            ScreenSection(title: "Privacy & fair play") { legalCard }
-            ScreenSection(title: "Account & data") { accountCard }
-            // DOCASNE: testovaci odmeny. Pred vydanim do App Storu odstranit.
-            ScreenSection(title: "Developer", detail: "Temporary") { developerCard }
-            if let message = model.statusMessage {
-                Text(message).font(.fqSecondary).foregroundStyle(FQColor.textSecondary).padding(.horizontal, FQSpace.xs)
+            if showsSounds {
+                soundsPage.transition(.move(edge: .trailing).combined(with: .opacity))
+            } else {
+                mainPage.transition(.move(edge: .leading).combined(with: .opacity))
             }
         }
+        .animation(.easeOut(duration: 0.25), value: showsSounds)
         .sheet(item: $model.selectedDocument) { LegalDocumentSheetView(document: $0).presentationDetents([.medium, .large]) }
-        .confirmationDialog("Permanently delete your account and data?", isPresented: $model.showingDeleteConfirmation, titleVisibility: .visible) {
-            Button("Delete Account", role: .destructive) { Task { await model.deleteAccount() } }
-            Button("Cancel", role: .cancel) { }
-        } message: { Text("Your account and locally stored credentials will be removed. This cannot be undone.") }
     }
 
-    // MARK: - Karty
+    // MARK: - Hlavni stranka
 
-    private var sensoryCard: some View {
+    @ViewBuilder private var mainPage: some View {
+        ScreenTitle(title: "Settings")
+            .padding(.top, FQSpace.md)
         card {
-            toggleRow("Haptic vibrations", icon: "iphone.radiowaves.left.and.right", isOn: binding(\.isHapticsEnabled))
-            Text("Visual anti-cheat warnings and penalties remain active when haptics are muted.")
-                .font(.fqMeta)
-                .foregroundStyle(FQColor.textSecondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.bottom, FQSpace.md)
-            HairlineDivider()
-            toggleRow("Lo-fi background music", icon: "music.note", isOn: binding(\.isMusicEnabled))
-            HairlineDivider()
-            toggleRow("8-bit sound effects & alarms", icon: "bell.fill", isOn: binding(\.isSFXEnabled))
-        }
-    }
-
-    private var soundscapeCard: some View {
-        card {
-            HStack(spacing: FQSpace.md) {
-                IconTile(symbol: "music.note.list")
-                Text("Starting track").font(.fqBody).foregroundStyle(FQColor.textPrimary)
-                Spacer(minLength: FQSpace.sm)
-                ValueMenu(title: "Starting track", valueText: model.preferences.selectedTrack.title, selection: Binding(get: { model.preferences.selectedTrack }, set: { track in model.update { $0.selectedTrack = track } })) {
-                    ForEach(AmbientTrack.allCases) { Text($0.title).tag($0) }
-                }
+            Button { showsSounds = true } label: {
+                linkRow(icon: "bell", title: "Sounds & notifications", detail: soundsSummary)
             }
-            .padding(.vertical, FQSpace.xs)
-            HairlineDivider()
-            HStack(spacing: FQSpace.md) {
-                Image(systemName: "speaker.fill").accessibilityHidden(true)
-                Slider(value: Binding(get: { model.preferences.ambientVolume }, set: { volume in model.update { $0.ambientVolume = volume } }), in: 0...1)
-                    .tint(FQColor.accent)
-                    .accessibilityLabel("Music volume")
-                Image(systemName: "speaker.wave.3.fill").accessibilityHidden(true)
-            }
-            .font(.fqSecondary)
-            .foregroundStyle(FQColor.textSecondary)
-            .padding(.vertical, FQSpace.md)
-            HairlineDivider()
-            Text("Tracks play one after another during a battle. Music by HoliznaCC0, released into the public domain (CC0).")
-                .font(.fqMeta)
-                .foregroundStyle(FQColor.textSecondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.vertical, FQSpace.md)
+            .buttonStyle(.plain)
         }
-    }
-
-    private var legalCard: some View {
-        card {
-            ForEach(Array(LegalDocument.allCases.enumerated()), id: \.element.id) { index, document in
-                if index > 0 { HairlineDivider() }
-                Button { model.selectedDocument = document } label: {
-                    HStack(spacing: FQSpace.md) {
-                        IconTile(symbol: icon(for: document))
-                        Text(document.title).font(.fqBody).foregroundStyle(FQColor.textPrimary)
-                        Spacer(minLength: FQSpace.sm)
-                        Image(systemName: "chevron.right").font(.fqMeta.weight(.semibold)).foregroundStyle(FQColor.textTertiary)
-                    }
-                    .padding(.vertical, FQSpace.sm)
-                    .contentShape(Rectangle())
+        ScreenSection(title: "Background") {
+            card {
+                Button { onOpenBackgrounds?() } label: {
+                    linkRow(icon: nil, title: profile.selectedBackground?.name ?? ShopBackground.worldName, detail: "Change it in Shop › Backgrounds")
                 }
                 .buttonStyle(.plain)
             }
         }
+        ScreenSection(title: "Feedback") {
+            card {
+                Button { contactDeveloper() } label: {
+                    linkRow(icon: "envelope", title: "Contact the developer", detail: "Report a bug or suggest an idea")
+                }
+                .buttonStyle(.plain)
+                HairlineDivider()
+                Button { requestReview() } label: {
+                    linkRow(icon: "star", title: "Rate this app", detail: "A quick rating helps a lot")
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        footer
+        doneButton
     }
 
-    private var accountCard: some View {
-        card {
+    /// "Lo-fi · 3 of 3 sounds on · reminder off"
+    private var soundsSummary: String {
+        let prefs = model.preferences
+        return "\(prefs.battleSound.title) · \(prefs.soundEffectsOnCount) of 3 sounds on · reminder \(prefs.isDailyReminderEnabled ? "on" : "off")"
+    }
+
+    private var footer: some View {
+        VStack(spacing: FQSpace.xs) {
+            Text("FocusQuest version \(Self.appVersion)")
+                .font(.fqMeta)
+                .foregroundStyle(FQColor.textSecondary)
+            HStack(spacing: FQSpace.sm) {
+                Button("Privacy Policy") { model.selectedDocument = .privacy }
+                Text("·").accessibilityHidden(true)
+                Button("Terms of Use") { model.selectedDocument = .terms }
+            }
+            .font(.fqMeta.weight(.semibold))
+            .foregroundStyle(FQColor.textSecondary)
+            .buttonStyle(.plain)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.top, FQSpace.sm)
+    }
+
+    static var appVersion: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0.0"
+    }
+
+    private func contactDeveloper() {
+        // Adresa vyvojare zatim neni; Mail se otevre s predvyplnenym predmetem a hrac adresu doplni.
+        var components = URLComponents()
+        components.scheme = "mailto"
+        components.queryItems = [URLQueryItem(name: "subject", value: "FocusQuest \(Self.appVersion) feedback")]
+        if let url = components.url { openURL(url) }
+    }
+
+    // MARK: - Sounds & notifications
+
+    @ViewBuilder private var soundsPage: some View {
+        VStack(alignment: .leading, spacing: FQSpace.xs) {
+            Button { showsSounds = false } label: {
+                HStack(spacing: 2) {
+                    Image(systemName: "chevron.left").font(.system(size: 17, weight: .semibold))
+                    Text("Settings").font(.system(size: 17, weight: .medium, design: .rounded))
+                }
+                .foregroundStyle(FQColor.textPrimary)
+                .frame(minHeight: 44)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Back to Settings")
+            Text("Sounds & notifications")
+                .font(.system(size: 22, weight: .semibold, design: .rounded))
+                .foregroundStyle(FQColor.textPrimary)
+                .accessibilityAddTraits(.isHeader)
+        }
+        .padding(.top, FQSpace.sm)
+        ScreenSection(title: "Battle sound") {
+            card {
+                ForEach(Array(BattleSound.allCases.enumerated()), id: \.element) { index, sound in
+                    if index > 0 { HairlineDivider() }
+                    radioRow(sound)
+                }
+            }
+        }
+        ScreenSection(title: "Sound effects") {
+            card {
+                toggleRow("Tap and battle sounds", detail: "Clicks, hits and small effects", isOn: binding(\.isSFXEnabled))
+                HairlineDivider()
+                toggleRow("Achievement sounds", detail: "Victory jingle and level up", isOn: binding(\.isAchievementSoundEnabled))
+                HairlineDivider()
+                toggleRow("Alarm sound", detail: "Beeps when the phone is lifted", isOn: binding(\.isAlarmSoundEnabled))
+                HairlineDivider()
+                toggleRow("Vibrate on the alarm", detail: "When the phone is lifted mid-battle", isOn: binding(\.isHapticsEnabled))
+            }
+        }
+        ScreenSection(title: "Notifications") {
+            card {
+                toggleRow("Daily reminder", detail: "A nudge at 17:00 if you haven't focused", isOn: binding(\.isDailyReminderEnabled))
+                HairlineDivider()
+                toggleRow("Battle finished", detail: "When the countdown ends", isOn: binding(\.isBattleDoneNotificationEnabled))
+                HairlineDivider()
+                toggleRow("Break is over", detail: "When your 5 minute break ends", isOn: binding(\.isBreakOverNotificationEnabled))
+            }
+        }
+        doneButton
+    }
+
+    private func radioRow(_ sound: BattleSound) -> some View {
+        let selected = model.preferences.battleSound == sound
+        return Button {
+            model.update { $0.battleSound = sound }
+        } label: {
             HStack(spacing: FQSpace.md) {
-                IconTile(symbol: model.isSignedIn ? "icloud.fill" : "icloud.slash", color: model.isSignedIn ? FQColor.accent : FQColor.textSecondary)
-                Text(model.isSignedIn ? "Cloud sync connected with Apple" : "Cloud sync not connected").font(.fqBody).foregroundStyle(FQColor.textPrimary)
-                Spacer(minLength: 0)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(sound.title).font(.fqBody).foregroundStyle(FQColor.textPrimary)
+                    Text(sound.detail).font(.fqMeta).foregroundStyle(FQColor.textSecondary)
+                }
+                Spacer(minLength: FQSpace.sm)
+                Image(systemName: selected ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 22))
+                    .foregroundStyle(selected ? FQColor.accent : FQColor.textTertiary)
             }
             .padding(.vertical, FQSpace.sm)
-            HairlineDivider()
-            Group {
-                if model.isSignedIn {
-                    Button { Task { await model.signOut() } } label: {
-                        Label("Sign Out", systemImage: "rectangle.portrait.and.arrow.right").font(.fqHeadline).frame(maxWidth: .infinity)
-                    }
-                    .glassButtonStyle()
-                    .buttonBorderShape(.roundedRectangle(radius: FQRadius.control))
-                    .controlSize(.large)
-                    .tint(FQColor.textPrimary)
-                } else {
-                    SignInWithAppleButton(.signIn, onRequest: { request in request.requestedScopes = [.fullName, .email] }, onCompletion: handleAppleSignIn)
-                        .signInWithAppleButtonStyle(.white)
-                        .frame(height: 48)
-                        .clipShape(RoundedRectangle(cornerRadius: FQRadius.tile, style: .continuous))
-                }
-            }
-            .padding(.vertical, FQSpace.md)
-            HairlineDivider()
-            Button(role: .destructive) { model.showingDeleteConfirmation = true } label: {
-                HStack(spacing: FQSpace.md) {
-                    IconTile(symbol: "trash.fill", color: FQColor.danger)
-                    Text("Delete account and data").font(.fqBody).foregroundStyle(FQColor.danger)
-                    Spacer(minLength: 0)
-                }
-                .padding(.vertical, FQSpace.sm)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
+            .frame(minHeight: 44)
+            .contentShape(Rectangle())
         }
-    }
-
-    /// DOCASNE: +10 000 minci a +5 000 XP pro testovani obchodu.
-    private var developerCard: some View {
-        card {
-            Button { model.addDevFunds() } label: {
-                HStack(spacing: FQSpace.md) {
-                    IconTile(symbol: "hammer.fill")
-                    VStack(alignment: .leading, spacing: FQSpace.xs) {
-                        Text("Add Dev Funds").font(.fqBody).foregroundStyle(FQColor.textPrimary)
-                        Text("+10,000 coins and +5,000 XP").font(.fqMeta).foregroundStyle(FQColor.textSecondary)
-                    }
-                    Spacer(minLength: 0)
-                    Image(systemName: "plus.circle.fill").font(.system(size: 22)).foregroundStyle(FQColor.accent)
-                }
-                .padding(.vertical, FQSpace.sm)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(selected ? [.isSelected] : [])
     }
 
     // MARK: - Stavebni prvky
+
+    private var doneButton: some View {
+        Button { onClose?() } label: {
+            Label("Done", systemImage: "checkmark")
+                .font(.system(size: 15, weight: .semibold, design: .rounded))
+                .foregroundStyle(FQColor.textPrimary)
+                .padding(.horizontal, FQSpace.xl)
+                .frame(minHeight: 44)
+                .overlay(Capsule().strokeBorder(FQColor.textSecondary.opacity(0.55), lineWidth: 1))
+                .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .frame(maxWidth: .infinity)
+        .accessibilityLabel("Done, close settings")
+    }
 
     private func card<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
         VStack(spacing: 0) { content() }
@@ -177,37 +197,40 @@ struct SettingsView: View {
             .glassCard()
     }
 
-    private func toggleRow(_ title: String, icon: String, isOn: Binding<Bool>) -> some View {
-        Toggle(isOn: isOn) {
-            HStack(spacing: FQSpace.md) {
-                IconTile(symbol: icon)
+    /// Radek s odkazem: obrysova ikona 24 pt bez podkladu, nazev, popisek a sipka.
+    private func linkRow(icon: String?, title: String, detail: String) -> some View {
+        HStack(spacing: FQSpace.md) {
+            if let icon {
+                Image(systemName: icon)
+                    .font(.system(size: 20, weight: .regular))
+                    .foregroundStyle(FQColor.textPrimary)
+                    .frame(width: 24, height: 24)
+                    .accessibilityHidden(true)
+            }
+            VStack(alignment: .leading, spacing: 2) {
                 Text(title).font(.fqBody).foregroundStyle(FQColor.textPrimary)
+                Text(detail).font(.fqMeta).foregroundStyle(FQColor.textSecondary)
+            }
+            Spacer(minLength: FQSpace.sm)
+            Image(systemName: "chevron.right").font(.fqMeta.weight(.semibold)).foregroundStyle(FQColor.textTertiary)
+        }
+        .padding(.vertical, FQSpace.sm)
+        .frame(minHeight: 44)
+        .contentShape(Rectangle())
+    }
+
+    private func toggleRow(_ title: String, detail: String, isOn: Binding<Bool>) -> some View {
+        Toggle(isOn: isOn) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).font(.fqBody).foregroundStyle(FQColor.textPrimary)
+                Text(detail).font(.fqMeta).foregroundStyle(FQColor.textSecondary)
             }
         }
         .tint(FQColor.accent)
         .padding(.vertical, FQSpace.sm)
     }
 
-    private func icon(for document: LegalDocument) -> String {
-        switch document {
-        case .privacy: "hand.raised.fill"
-        case .terms: "doc.text.fill"
-        case .antiCheat: "shield.lefthalf.filled"
-        }
-    }
-
     private func binding(_ keyPath: WritableKeyPath<AppPreferences, Bool>) -> Binding<Bool> {
         Binding(get: { model.preferences[keyPath: keyPath] }, set: { value in model.update { $0[keyPath: keyPath] = value } })
-    }
-
-    private func handleAppleSignIn(_ result: Result<ASAuthorization, Error>) {
-        guard case let .success(authorization) = result,
-              let credential = authorization.credential as? ASAuthorizationAppleIDCredential,
-              let tokenData = credential.identityToken,
-              let token = String(data: tokenData, encoding: .utf8) else {
-            if case let .failure(error) = result { model.statusMessage = error.localizedDescription }
-            return
-        }
-        Task { await model.signInWithApple(identityToken: token) }
     }
 }

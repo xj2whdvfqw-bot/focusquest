@@ -74,8 +74,9 @@ final class AudioAtmosphereService: NSObject, AudioAtmosphereServiceProtocol, AV
         countdownTick(preferences: preferences, secondsRemaining: secondsRemaining)
     }
 
+    /// Pipnuti odpoctu pri zvednuti telefonu. S vypnutym Alarm sound telefon jen vibruje.
     func countdownTick(preferences: AppPreferences, secondsRemaining: Int) {
-        guard preferences.isSFXEnabled else { return }
+        guard preferences.isAlarmSoundEnabled else { return }
         let frequency = 660 + (5 - max(0, min(5, secondsRemaining))) * 95
         playTone(frequency: Double(frequency), duration: 0.14, volume: 0.55)
     }
@@ -98,7 +99,8 @@ final class AudioAtmosphereService: NSObject, AudioAtmosphereServiceProtocol, AV
     // MARK: - Hudba a sumy
 
     private func startAmbient() {
-        stopAmbient()
+        // Vzdy hraje jen jedna stopa: vsechno ostatni se zastavi pred spustenim dalsi.
+        stopAllAudio()
         do {
             guard let player = try makeAmbientPlayer() else { return }
             // .playback + rezim "audio" v Info.plist = zvuk hraje i se zamcenou obrazovkou.
@@ -140,6 +142,13 @@ final class AudioAtmosphereService: NSObject, AudioAtmosphereServiceProtocol, AV
         let data = Self.wav(samples: samples, sampleRate: NoiseSynth.sampleRate)
         noiseCache[soundscape] = data
         return data
+    }
+
+    /// Zastavi hudbu, sum i tony odpoctu.
+    private func stopAllAudio() {
+        stopAmbient()
+        warningPlayer?.stop()
+        warningPlayer = nil
     }
 
     private func stopAmbient() {
@@ -231,11 +240,14 @@ private extension Data {
 enum NoiseSynth {
     static let sampleRate = 32_000
     static let loopSeconds = 8
+    /// Hlasitost sumu je asi o 65 % nizsi nez driv (prototyp: brown gain 0,17, white 0,04).
+    static let whiteGain = 0.07
+    static let brownPeak = 0.19
 
     /// Bily sum: kazdy vzorek je nahodny, zadna frekvence neprevlada.
     static func whiteNoise(seed: UInt64 = 0x9E37_79B9_7F4A_7C15) -> [Int16] {
         var generator = Generator(state: seed)
-        return (0..<sampleRate * loopSeconds).map { _ in Int16(generator.nextUnit() * 0.20 * Double(Int16.max)) }
+        return (0..<sampleRate * loopSeconds).map { _ in Int16(generator.nextUnit() * Self.whiteGain * Double(Int16.max)) }
     }
 
     /// Hnedy sum: bily sum protazeny integratorem, takze prevladaji hluboke tony (zni jako vodopad).
@@ -255,7 +267,7 @@ enum NoiseSynth {
             values[index] -= drift * Double(index) / Double(count - 1)
             peak = max(peak, abs(values[index]))
         }
-        let gain = peak > 0 ? 0.55 / peak : 0
+        let gain = peak > 0 ? Self.brownPeak / peak : 0
         return values.map { Int16($0 * gain * Double(Int16.max)) }
     }
 

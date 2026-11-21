@@ -12,7 +12,7 @@ options:
 # Verze musi byt stejna pro appku i jeji Widget Extension, proto je na urovni projektu.
 settings:
   base:
-    MARKETING_VERSION: "0.3.0"
+    MARKETING_VERSION: "1.0.0"
     CURRENT_PROJECT_VERSION: "3"
 
 targets:

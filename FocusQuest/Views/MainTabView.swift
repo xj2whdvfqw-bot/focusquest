@@ -43,6 +43,8 @@ struct MainTabView: View {
     let container: AppDIContainer
     @State private var selectedTab = FocusQuestTab.initial
     @State private var showsHeroCreator = false
+    /// Zalozka obchodu; Nastaveni ji umi prepnout na Backgrounds.
+    @State private var shopSection: ShopView.ShopSection = .gear
     /// Ozubene kolo na kazde zalozce otevira tentyz list Nastaveni.
     @State private var settingsPresenter = SettingsPresenter()
     /// Bitva bezi pres celou obrazovku nad zalozkami, takze spodni lista neni videt.
@@ -65,7 +67,14 @@ struct MainTabView: View {
                 .environment(settingsPresenter)
                 .environment(battlePresenter)
                 .sheet(isPresented: Binding(get: { settingsPresenter.isPresented }, set: { settingsPresenter.isPresented = $0 })) {
-                    SettingsView(model: container.settingsViewModel) { settingsPresenter.isPresented = false }
+                    SettingsView(model: container.settingsViewModel, profile: container.profileViewModel) {
+                        settingsPresenter.isPresented = false
+                    } onOpenBackgrounds: {
+                        // Background v Nastaveni: list se zavre a otevre se Shop › Backgrounds.
+                        settingsPresenter.isPresented = false
+                        shopSection = .backgrounds
+                        selectedTab = .shop
+                    }
                         .presentationDragIndicator(.visible)
                 }
                 .sheet(isPresented: Binding(get: { battlePresenter.showsFightSheet }, set: { battlePresenter.showsFightSheet = $0 }), onDismiss: { startBattleAfterFightSheet() }) {
@@ -121,7 +130,7 @@ struct MainTabView: View {
             PathTabView(model: container.arenaViewModel, profileModel: container.profileViewModel)
                 .tabPage(reserve: reserve)
                 .tag(FocusQuestTab.path)
-            ShopView(model: container.profileViewModel)
+            ShopView(model: container.profileViewModel, section: $shopSection)
                 .tabPage(reserve: reserve)
                 .tag(FocusQuestTab.shop)
             StatsView(model: container.statsViewModel, arena: container.arenaViewModel) {
@@ -176,6 +185,8 @@ struct MainTabView: View {
         let history = container.profileViewModel.stats.sessionHistory
         let purged = container.arenaViewModel.maintainSubjects(history: history)
         await container.profileViewModel.removeSubjectStats(purged)
+        // Denni pripominka v 17:00: dnes ne, pokud uz hrac dnes bojoval.
+        container.arenaViewModel.refreshDailyReminder(focusedToday: container.profileViewModel.todayVerifiedMinutes > 0)
     }
 
     /// Pri prvnim spusteni si hrac vytvori hrdinu. Screenshoty zalozek v CI tuhle obrazovku preskakuji.

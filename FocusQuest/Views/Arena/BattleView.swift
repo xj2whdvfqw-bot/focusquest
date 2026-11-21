@@ -517,6 +517,9 @@ struct BattleView: View {
             onDone: closeResult,
             onBreakOver: { model.announceBreakOver() }
         )
+        // Notifikace "Break is over" prijde i se zamcenou obrazovkou; po odchodu z prestavky se zrusi.
+        .onAppear { model.breakStarted(seconds: BreakPanel.breakSeconds) }
+        .onDisappear { model.breakEnded() }
         .transition(.move(edge: .bottom).combined(with: .opacity))
     }
 

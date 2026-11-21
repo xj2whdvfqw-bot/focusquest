@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-21T02:24:41+01:00",
-  "current": "Sekce 11 a 12 hotové: společný build #42 prošel.",
-  "nextStep": "Otestovat build #42 na iPhonu (karty 10–12); pak sekce 13 (Nastavení), build až po 2–3 sekcích.",
+  "updated": "2026-11-21T09:17:00+01:00",
+  "current": "Sekce 13 (Settings) napsaná a commitnutá; build až po sekcích 13–15 dohromady.",
+  "nextStep": "Sekce 14: onboarding.",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -369,7 +369,7 @@
     {
       "id": 13,
       "title": "Nastavení",
-      "status": "cekam",
+      "status": "pracuje",
       "items": [
         { "text": "„Sounds & notifications“ (ikona zvonku) otevře samostatnou stránku se zpětným „‹ Settings“", "done": false },
         { "text": "Battle sound: Off / Lo-fi / Brown noise / White noise", "done": false },
@@ -385,7 +385,7 @@
       ],
       "commit": null,
       "build": null,
-      "note": ""
+      "note": "Kód hotový, čeká na společný build se sekcemi 14 a 15. Nastavení: Sounds & notifications (samostatná stránka s ‹ Settings), Background (otevře Shop › Backgrounds), Feedback, patička s verzí a Privacy · Terms, kompaktní ✓ Done. Pryč: přihlášení přes Apple, smazání účtu, hlasitost a výběr skladby, Anti-Cheat dokument, vývojářská karta (přesune se do sekce 15 za #if DEBUG). Verze aplikace zvýšena na 1.0.0 (project.yml). Contact the developer otevře Mail jen s předmětem, adresa vývojáře zatím chybí. Rate this app volá systémové hodnocení (u sideloadu se nemusí ukázat). Šumy ztišeny o 65 % (white 0,20→0,07, brown 0,55→0,19); lo-fi jsou nahrávky bez šumové vrstvy. Alarm sound vypne pípání, vibrace jde zvlášť přes Vibrate on the alarm. Nové notifikace: denní připomínka v 17:00 (výchozí vypnutá, na 7 dní dopředu, dnes ne, když už bylo bojováno), Break is over po 5 min přestávky; Battle finished jde vypnout."
     },
     {
       "id": 14,

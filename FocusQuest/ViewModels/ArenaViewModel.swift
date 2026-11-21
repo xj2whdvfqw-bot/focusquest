@@ -212,6 +212,29 @@ final class ArenaViewModel: ObservableObject {
         startSession()
     }
 
+    // MARK: - Notifikace mimo bitvu
+
+    /// Posledni znamy stav "dnes uz hrac bojoval" (pro denni pripominku).
+    private var focusedToday = false
+
+    /// Naplanuje denni pripominku v 17:00 (nebo ji zrusi, kdyz je vypnuta).
+    func refreshDailyReminder(focusedToday: Bool) {
+        self.focusedToday = focusedToday
+        let enabled = preferences.isDailyReminderEnabled
+        Task { await notifications?.updateDailyReminder(enabled: enabled, focusedToday: focusedToday) }
+    }
+
+    /// Zacatek 5minutove prestavky: notifikace "Break is over", pokud je zapnuta.
+    func breakStarted(seconds: Int) {
+        guard preferences.isBreakOverNotificationEnabled else { return }
+        Task { await notifications?.scheduleBreakOver(after: seconds) }
+    }
+
+    /// Prestavka skoncila nebo ji hrac opustil: notifikace uz neni potreba.
+    func breakEnded() {
+        Task { await notifications?.cancelBreakOver() }
+    }
+
     /// Prestavka dobehla do 0:00: kratka melodie a jemna vibrace.
     func announceBreakOver() {
         audio.breakOver(preferences: preferences)
@@ -427,7 +450,9 @@ final class ArenaViewModel: ObservableObject {
     }
 
     func updatePreferences(_ updated: AppPreferences) {
+        let reminderChanged = updated.isDailyReminderEnabled != preferences.isDailyReminderEnabled
         preferences = updated
+        if reminderChanged { refreshDailyReminder(focusedToday: focusedToday) }
         preferenceStore.save(updated)
         audio.apply(preferences: updated)
         // Vybrany predmet mohl zmizet (smazani, skryti, smazani uctu) nebo se prejmenovat.
@@ -501,7 +526,9 @@ final class ArenaViewModel: ObservableObject {
         // Notifikace prijde v cas konce bitvy i se zamcenou obrazovkou.
         let bossName = selectedBoss.name
         let remaining = targetSeconds - elapsed
-        Task { await notifications?.scheduleVictory(bossName: bossName, after: remaining) }
+        if preferences.isBattleDoneNotificationEnabled {
+            Task { await notifications?.scheduleVictory(bossName: bossName, after: remaining) }
+        }
         timerTask?.cancel()
         timerTask = Task { [weak self] in await self?.runFocusTicker() }
     }

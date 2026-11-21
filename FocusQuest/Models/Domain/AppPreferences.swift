@@ -62,10 +62,47 @@ enum Soundscape: String, Codable, CaseIterable, Sendable, Identifiable {
     }
 }
 
+/// Zvuk bitvy v Nastaveni (Off / Lo-fi / Brown noise / White noise).
+enum BattleSound: String, CaseIterable, Identifiable, Sendable {
+    case off, lofi, brownNoise, whiteNoise
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .off: "Off"
+        case .lofi: "Lo-fi"
+        case .brownNoise: "Brown noise"
+        case .whiteNoise: "White noise"
+        }
+    }
+
+    var detail: String {
+        switch self {
+        case .off: "Silence"
+        case .lofi: "Soft keys and a lazy beat"
+        case .brownNoise: "Deep, like distant rain"
+        case .whiteNoise: "Bright, masks chatter"
+        }
+    }
+}
+
 struct AppPreferences: Codable, Equatable, Sendable {
+    /// Vibrate on the alarm: vibrace pri zvednuti telefonu (a dalsi drobne vibrace bitvy).
     var isHapticsEnabled = true
     var isMusicEnabled = true
+    /// Tap and battle sounds: klepnuti, zasahy a drobne efekty.
     var isSFXEnabled = true
+    /// Achievement sounds: vitezna znelka a level up.
+    var isAchievementSoundEnabled = true
+    /// Alarm sound: pipani pri zvednuti telefonu. Vypnuto = telefon jen vibruje.
+    var isAlarmSoundEnabled = true
+    /// Daily reminder v 17:00, kdyz se ten den jeste nebojovalo.
+    var isDailyReminderEnabled = false
+    /// Notifikace "Battle finished" na konci odpoctu.
+    var isBattleDoneNotificationEnabled = true
+    /// Notifikace "Break is over" na konci 5minutove prestavky.
+    var isBreakOverNotificationEnabled = true
     var ambientVolume = 0.55
     var selectedTrack: AmbientTrack = .calmCurrents
     var soundscape: Soundscape = .lofi
@@ -79,7 +116,31 @@ struct AppPreferences: Codable, Equatable, Sendable {
 
     enum CodingKeys: String, CodingKey {
         case isHapticsEnabled, isMusicEnabled, isSFXEnabled, ambientVolume, selectedTrack, soundscape, clearedNodesByWorld, lastSubject, lastBossID, subjects
+        case isAchievementSoundEnabled, isAlarmSoundEnabled, isDailyReminderEnabled, isBattleDoneNotificationEnabled, isBreakOverNotificationEnabled
     }
+
+    /// Zvuk bitvy jako jedna volba: Off vypne hudbu, ostatni zapnou a vyberou zanr.
+    var battleSound: BattleSound {
+        get {
+            guard isMusicEnabled else { return .off }
+            switch soundscape {
+            case .lofi: return .lofi
+            case .brownNoise: return .brownNoise
+            case .whiteNoise: return .whiteNoise
+            }
+        }
+        set {
+            switch newValue {
+            case .off: isMusicEnabled = false
+            case .lofi: isMusicEnabled = true; soundscape = .lofi
+            case .brownNoise: isMusicEnabled = true; soundscape = .brownNoise
+            case .whiteNoise: isMusicEnabled = true; soundscape = .whiteNoise
+            }
+        }
+    }
+
+    /// Kolik ze 3 zvukovych prepinacu (efekty, uspechy, alarm) je zapnuto.
+    var soundEffectsOnCount: Int { [isSFXEnabled, isAchievementSoundEnabled, isAlarmSoundEnabled].filter { $0 }.count }
 
     /// Predmet, ktery se ma ve Fight sheetu predvybrat: naposledy pouzity, pokud je videt, jinak prvni viditelny.
     var preselectedSubject: StudySubject? {
@@ -115,6 +176,11 @@ extension AppPreferences {
         ambientVolume = try container.decodeIfPresent(Double.self, forKey: .ambientVolume) ?? fallback.ambientVolume
         selectedTrack = try container.decodeIfPresent(AmbientTrack.self, forKey: .selectedTrack) ?? fallback.selectedTrack
         soundscape = (try? container.decodeIfPresent(Soundscape.self, forKey: .soundscape)) ?? fallback.soundscape
+        isAchievementSoundEnabled = (try? container.decodeIfPresent(Bool.self, forKey: .isAchievementSoundEnabled)) ?? fallback.isAchievementSoundEnabled
+        isAlarmSoundEnabled = (try? container.decodeIfPresent(Bool.self, forKey: .isAlarmSoundEnabled)) ?? fallback.isAlarmSoundEnabled
+        isDailyReminderEnabled = (try? container.decodeIfPresent(Bool.self, forKey: .isDailyReminderEnabled)) ?? fallback.isDailyReminderEnabled
+        isBattleDoneNotificationEnabled = (try? container.decodeIfPresent(Bool.self, forKey: .isBattleDoneNotificationEnabled)) ?? fallback.isBattleDoneNotificationEnabled
+        isBreakOverNotificationEnabled = (try? container.decodeIfPresent(Bool.self, forKey: .isBreakOverNotificationEnabled)) ?? fallback.isBreakOverNotificationEnabled
         // Starsi verze mely vlastni delku bitvy (bossMinutes, bossMinutesByID); ta se zamerne zahodi.
         clearedNodesByWorld = (try? container.decodeIfPresent([String: Int].self, forKey: .clearedNodesByWorld)) ?? [:]
         lastSubject = try? container.decodeIfPresent(StudySubject.self, forKey: .lastSubject)

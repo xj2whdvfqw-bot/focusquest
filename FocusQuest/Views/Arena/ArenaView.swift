@@ -145,7 +145,7 @@ struct ArenaView: View {
         guard streakTaps >= 5 else { return }
         streakTaps = 0
         fireStart = now
-        EffectSounds.shared.play(.jingle, enabled: model.preferences.isSFXEnabled)
+        EffectSounds.shared.play(.jingle, enabled: model.preferences.isAchievementSoundEnabled)
     }
 
     /// #EB5016, oranzovy okraj horici pilulky.

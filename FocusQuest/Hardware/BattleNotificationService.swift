@@ -7,6 +7,17 @@ protocol BattleNotificationServiceProtocol: Sendable {
     func requestAuthorizationIfNeeded() async
     func scheduleVictory(bossName: String, after seconds: Int) async
     func cancelVictory() async
+    /// "Break is over" po zadanem poctu sekund (konec 5minutove prestavky).
+    func scheduleBreakOver(after seconds: Int) async
+    func cancelBreakOver() async
+    /// Denni pripominka v 17:00 na pristich 7 dni; dnesni se vynecha, kdyz uz hrac dnes bojoval.
+    func updateDailyReminder(enabled: Bool, focusedToday: Bool) async
+}
+
+extension BattleNotificationServiceProtocol {
+    func scheduleBreakOver(after seconds: Int) async { }
+    func cancelBreakOver() async { }
+    func updateDailyReminder(enabled: Bool, focusedToday: Bool) async { }
 }
 
 struct BattleNotificationService: BattleNotificationServiceProtocol {
@@ -31,6 +42,49 @@ struct BattleNotificationService: BattleNotificationServiceProtocol {
 
     func cancelVictory() async {
         UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [Self.victoryIdentifier])
+    }
+
+    static let breakIdentifier = "focusquest.break.over"
+    static let reminderPrefix = "focusquest.reminder."
+    static let reminderHour = 17
+
+    func scheduleBreakOver(after seconds: Int) async {
+        let center = UNUserNotificationCenter.current()
+        center.removePendingNotificationRequests(withIdentifiers: [Self.breakIdentifier])
+        let content = UNMutableNotificationContent()
+        content.title = "Break is over"
+        content.body = "Fresh head. Time for the next boss."
+        content.sound = .default
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: TimeInterval(max(1, seconds)), repeats: false)
+        try? await center.add(UNNotificationRequest(identifier: Self.breakIdentifier, content: content, trigger: trigger))
+    }
+
+    func cancelBreakOver() async {
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [Self.breakIdentifier])
+    }
+
+    func updateDailyReminder(enabled: Bool, focusedToday: Bool) async {
+        let center = UNUserNotificationCenter.current()
+        let identifiers = (0..<8).map { Self.reminderPrefix + String($0) }
+        center.removePendingNotificationRequests(withIdentifiers: identifiers)
+        guard enabled else { return }
+        await requestAuthorizationIfNeeded()
+        let calendar = Calendar.current
+        let now = Date()
+        for (offset, identifier) in identifiers.enumerated() {
+            guard let day = calendar.date(byAdding: .day, value: offset, to: now),
+                  let fireDate = calendar.date(bySettingHour: Self.reminderHour, minute: 0, second: 0, of: day),
+                  fireDate > now else { continue }
+            // Kdo uz dnes bojoval, dnes pripominku nedostane.
+            if offset == 0 && focusedToday { continue }
+            let content = UNMutableNotificationContent()
+            content.title = "Your boss is waiting"
+            content.body = "No battle yet today. Put your phone down for a few minutes."
+            content.sound = .default
+            let components = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: fireDate)
+            let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
+            try? await center.add(UNNotificationRequest(identifier: identifier, content: content, trigger: trigger))
+        }
     }
 }
 

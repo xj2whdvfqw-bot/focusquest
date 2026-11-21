@@ -405,6 +405,31 @@ final class ProgressionModelTests: XCTestCase {
         XCTAssertFalse(ShopBackground.city.isBright)
     }
 
+    func testBattleSoundMapsToMusicAndSoundscape() {
+        var preferences = AppPreferences()
+        XCTAssertEqual(preferences.battleSound, .lofi)
+        preferences.battleSound = .brownNoise
+        XCTAssertTrue(preferences.isMusicEnabled)
+        XCTAssertEqual(preferences.soundscape, .brownNoise)
+        preferences.battleSound = .off
+        XCTAssertFalse(preferences.isMusicEnabled)
+        XCTAssertEqual(preferences.battleSound, .off)
+        preferences.battleSound = .whiteNoise
+        XCTAssertEqual(preferences.battleSound, .whiteNoise)
+    }
+
+    func testOlderPreferencesGetSoundAndNotificationDefaults() throws {
+        let json = Data(#"{"isHapticsEnabled":false,"isMusicEnabled":true,"isSFXEnabled":false}"#.utf8)
+        let preferences = try JSONDecoder().decode(AppPreferences.self, from: json)
+        XCTAssertFalse(preferences.isHapticsEnabled)
+        XCTAssertTrue(preferences.isAchievementSoundEnabled)
+        XCTAssertTrue(preferences.isAlarmSoundEnabled)
+        XCTAssertFalse(preferences.isDailyReminderEnabled)
+        XCTAssertTrue(preferences.isBattleDoneNotificationEnabled)
+        XCTAssertTrue(preferences.isBreakOverNotificationEnabled)
+        XCTAssertEqual(preferences.soundEffectsOnCount, 2)
+    }
+
     func testOlderProfileDecodesWithoutBackgrounds() throws {
         let json = Data(#"{"userID":"a","username":"Hero1","title":"x","heroClass":"cyberRonin","avatarMatrix":[],"dailyFocusGoalMinutes":60}"#.utf8)
         let profile = try JSONDecoder().decode(UserProfile.self, from: json)
