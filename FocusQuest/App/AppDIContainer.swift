@@ -13,8 +13,6 @@ final class AppDIContainer {
     let settingsViewModel: SettingsViewModel
     /// Hlida odchod z appky behem bitvy a drzi vyber "blokovanych" appek z uvodu.
     let appBlocker: AppBlockerManager
-    let runtimeSecurity: any RuntimeSecurityServiceProtocol
-    let isIntegrityCompromised: Bool
     private let activity: FocusBattleActivityController
     private var didCleanUpAfterTermination = false
 
@@ -29,7 +27,6 @@ final class AppDIContainer {
         let motion = MotionMonitoringService()
         let haptics = HapticEngineService()
         let audio = AudioAtmosphereService()
-        let security = RuntimeSecurityService()
 
         self.profileSync = profileSync
         self.preferences = preferences
@@ -38,9 +35,7 @@ final class AppDIContainer {
         self.statsViewModel = StatsViewModel(profileSync: profileSync)
         self.settingsViewModel = SettingsViewModel(store: preferences, profileSync: profileSync)
         self.appBlocker = AppBlockerManager()
-        self.runtimeSecurity = security
-        self.isIntegrityCompromised = security.integrityReport().isCompromised
-        self.arenaViewModel = ArenaViewModel(validation: validation, motion: motion, haptics: haptics, audio: audio, security: security, preferenceStore: preferences, profileProvider: { [weak profileViewModel] in profileViewModel?.profile ?? profile }, simulationSigningKey: previewSigningKey, activity: activity, notifications: BattleNotificationService())
+        self.arenaViewModel = ArenaViewModel(validation: validation, motion: motion, haptics: haptics, audio: audio, preferenceStore: preferences, profileProvider: { [weak profileViewModel] in profileViewModel?.profile ?? profile }, simulationSigningKey: previewSigningKey, activity: activity, notifications: BattleNotificationService())
         // Odmenu pripisuje model Areny, ne obrazovka - prijde i kdyz bitva skonci na pozadi.
         arenaViewModel.onVictory = { [weak profileViewModel, weak arena = self.arenaViewModel] victory in
             profileViewModel?.recordVictory(victory)

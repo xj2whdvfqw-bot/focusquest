@@ -53,70 +53,66 @@ struct MainTabView: View {
 
     var body: some View {
         Group {
-            if container.isIntegrityCompromised {
-                IntegrityLockdownView()
-            } else {
-                GeometryReader { proxy in
-                    // Obsah musi koncit 24 pt nad listou; bezpecna zona dole uz cast teto vysky pokryva.
-                    let reserve = max(0, FQTabBarMetrics.bottom + FQTabBarMetrics.height + FQTabBarMetrics.contentGap - proxy.safeAreaInsets.bottom)
-                    ZStack {
-                        tabs(reserve: reserve)
-                        tabChrome
-                    }
+            GeometryReader { proxy in
+                // Obsah musi koncit 24 pt nad listou; bezpecna zona dole uz cast teto vysky pokryva.
+                let reserve = max(0, FQTabBarMetrics.bottom + FQTabBarMetrics.height + FQTabBarMetrics.contentGap - proxy.safeAreaInsets.bottom)
+                ZStack {
+                    tabs(reserve: reserve)
+                    tabChrome
                 }
-                .environment(settingsPresenter)
-                .environment(battlePresenter)
-                .sheet(isPresented: Binding(get: { settingsPresenter.isPresented }, set: { settingsPresenter.isPresented = $0 })) {
-                    SettingsView(model: container.settingsViewModel, profile: container.profileViewModel) {
-                        settingsPresenter.isPresented = false
-                    } onOpenBackgrounds: {
-                        // Background v Nastaveni: list se zavre a otevre se Shop › Backgrounds.
-                        settingsPresenter.isPresented = false
-                        shopSection = .backgrounds
-                        selectedTab = .shop
-                    } onResetProgress: {
-                        await resetProgress()
-                    }
-                        .presentationDragIndicator(.visible)
+            }
+            .environment(settingsPresenter)
+            .environment(battlePresenter)
+            .sheet(isPresented: Binding(get: { settingsPresenter.isPresented }, set: { settingsPresenter.isPresented = $0 })) {
+                SettingsView(model: container.settingsViewModel, profile: container.profileViewModel) {
+                    settingsPresenter.isPresented = false
+                } onOpenBackgrounds: {
+                    // Background v Nastaveni: list se zavre a otevre se Shop › Backgrounds.
+                    settingsPresenter.isPresented = false
+                    shopSection = .backgrounds
+                    selectedTab = .shop
+                } onResetProgress: {
+                    await resetProgress()
                 }
-                .sheet(isPresented: Binding(get: { battlePresenter.showsFightSheet }, set: { battlePresenter.showsFightSheet = $0 }), onDismiss: { startBattleAfterFightSheet() }) {
-                    FightSheetView(model: container.arenaViewModel) {
-                        battlePresenter.startsAfterSheet = true
-                        battlePresenter.showsFightSheet = false
-                    } onClose: {
-                        battlePresenter.showsFightSheet = false
-                    }
+                    .presentationDragIndicator(.visible)
+            }
+            .sheet(isPresented: Binding(get: { battlePresenter.showsFightSheet }, set: { battlePresenter.showsFightSheet = $0 }), onDismiss: { startBattleAfterFightSheet() }) {
+                FightSheetView(model: container.arenaViewModel) {
+                    battlePresenter.startsAfterSheet = true
+                    battlePresenter.showsFightSheet = false
+                } onClose: {
+                    battlePresenter.showsFightSheet = false
                 }
-                .fullScreenCover(isPresented: Binding(get: { battlePresenter.isPresented }, set: { battlePresenter.isPresented = $0 }), onDismiss: { openAfterBattle() }) {
-                    BattleView(model: container.arenaViewModel, profileModel: container.profileViewModel, onExit: { battlePresenter.isPresented = false }, onExitTo: { destination in
-                        battlePresenter.afterBattle = destination
-                        battlePresenter.isPresented = false
-                    })
+            }
+            .fullScreenCover(isPresented: Binding(get: { battlePresenter.isPresented }, set: { battlePresenter.isPresented = $0 }), onDismiss: { openAfterBattle() }) {
+                BattleView(model: container.arenaViewModel, profileModel: container.profileViewModel, onExit: { battlePresenter.isPresented = false }, onExitTo: { destination in
+                    battlePresenter.afterBattle = destination
+                    battlePresenter.isPresented = false
+                })
+            }
+            // Bezici bitva musi byt videt vzdy, at ji hrac spustil odkudkoli.
+            .onReceive(container.arenaViewModel.$state) { state in
+                switch state {
+                case .awaitingFlatPlacement, .focusing, .paused, .warningCountdown: battlePresenter.isPresented = true
+                default: break
                 }
-                // Bezici bitva musi byt videt vzdy, at ji hrac spustil odkudkoli.
-                .onReceive(container.arenaViewModel.$state) { state in
-                    switch state {
-                    case .awaitingFlatPlacement, .focusing, .paused, .warningCountdown: battlePresenter.isPresented = true
-                    default: break
-                    }
-                }
-                .task {
-                    // Appka mohla byt ukoncena uprostred bitvy: stara notifikace "Victory!" a Live Activity pryc.
-                    await container.cleanUpAfterTermination()
-                    if FocusQuestTab.launchArgument == "settings" { settingsPresenter.isPresented = true }
-                    if FocusQuestTab.launchArgument == "battle" { battlePresenter.isPresented = true }
-                    if FocusQuestTab.launchArgument == "fight" { battlePresenter.openFightSheet() }
-                    await presentHeroCreatorIfNeeded()
-                }
-                // Po navratu do appky: smazane predmety starsi nez 24 h zmizi i se statistikami.
-                .onChange(of: scenePhase) { _, phase in
-                    if phase == .active { Task { await maintainSubjects() } }
-                }
-                // Odchod z appky behem bitvy se netresta: hodiny bitvy bezi dal i na pozadi.
-                // Prvni spusteni: 3strankovy onboarding (pravidla, predmety, povoleni).
-                .fullScreenCover(isPresented: $showsHeroCreator) {
-                    OnboardingView(arena: container.arenaViewModel) { startBattle in finishOnboarding(startBattle: startBattle) }
-                }
+            }
+            .task {
+                // Appka mohla byt ukoncena uprostred bitvy: stara notifikace "Victory!" a Live Activity pryc.
+                await container.cleanUpAfterTermination()
+                if FocusQuestTab.launchArgument == "settings" { settingsPresenter.isPresented = true }
+                if FocusQuestTab.launchArgument == "battle" { battlePresenter.isPresented = true }
+                if FocusQuestTab.launchArgument == "fight" { battlePresenter.openFightSheet() }
+                await presentHeroCreatorIfNeeded()
+            }
+            // Po navratu do appky: smazane predmety starsi nez 24 h zmizi i se statistikami.
+            .onChange(of: scenePhase) { _, phase in
+                if phase == .active { Task { await maintainSubjects() } }
+            }
+            // Odchod z appky behem bitvy se netresta: hodiny bitvy bezi dal i na pozadi.
+            // Prvni spusteni: 3strankovy onboarding (pravidla, predmety, povoleni).
+            .fullScreenCover(isPresented: $showsHeroCreator) {
+                OnboardingView(arena: container.arenaViewModel) { startBattle in finishOnboarding(startBattle: startBattle) }
             }
         }
         // Pixelova krajina je nocni, proto je appka vzdy v tmavem rezimu (text na skle vynikne).
@@ -376,30 +372,5 @@ private struct TabBarFade: View {
         .frame(maxWidth: .infinity)
         .allowsHitTesting(false)
         .accessibilityHidden(true)
-    }
-}
-
-private struct IntegrityLockdownView: View {
-    var body: some View {
-        ZStack {
-            FocusQuestBackdrop(alert: true, scene: .dungeonRuins)
-            VStack(spacing: FQSpace.lg) {
-                Image(systemName: "lock.shield.fill")
-                    .font(.system(size: 40, weight: .semibold, design: .rounded))
-                    .foregroundStyle(FQColor.danger)
-                    .accessibilityHidden(true)
-                VStack(spacing: FQSpace.sm) {
-                    Text("Integrity check failed").font(.fqTitle).foregroundStyle(FQColor.textPrimary)
-                    Text("FocusQuest has disabled battles on this device to keep them fair.")
-                        .font(.fqSecondary)
-                        .multilineTextAlignment(.center)
-                        .foregroundStyle(FQColor.textSecondary)
-                }
-            }
-            .padding(FQSpace.xl)
-            .frame(maxWidth: 360)
-            .glassCard()
-            .padding(.horizontal, FQSpace.xl)
-        }
     }
 }

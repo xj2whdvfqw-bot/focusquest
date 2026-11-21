@@ -80,7 +80,6 @@ final class ArenaViewModel: ObservableObject {
     private let motion: any MotionMonitoringServiceProtocol
     private let haptics: any HapticEngineServiceProtocol
     private let audio: any AudioAtmosphereServiceProtocol
-    private let security: any RuntimeSecurityServiceProtocol
     private let preferenceStore: any PreferencesStoreProtocol
     private let profileProvider: @MainActor () -> UserProfile
     private let signer: any CryptoSignerProtocol
@@ -97,12 +96,11 @@ final class ArenaViewModel: ObservableObject {
     private var pausedAt: TimeInterval?
     private var isFinishing = false
 
-    init(validation: any FocusValidationServiceProtocol, motion: any MotionMonitoringServiceProtocol, haptics: any HapticEngineServiceProtocol, audio: any AudioAtmosphereServiceProtocol, security: any RuntimeSecurityServiceProtocol, preferenceStore: any PreferencesStoreProtocol, profileProvider: @escaping @MainActor () -> UserProfile, signer: any CryptoSignerProtocol = CryptoSigner(), simulationSigningKey: Data = Data(), activity: (any FocusBattleActivityServiceProtocol)? = nil, notifications: (any BattleNotificationServiceProtocol)? = nil) {
+    init(validation: any FocusValidationServiceProtocol, motion: any MotionMonitoringServiceProtocol, haptics: any HapticEngineServiceProtocol, audio: any AudioAtmosphereServiceProtocol, preferenceStore: any PreferencesStoreProtocol, profileProvider: @escaping @MainActor () -> UserProfile, signer: any CryptoSignerProtocol = CryptoSigner(), simulationSigningKey: Data = Data(), activity: (any FocusBattleActivityServiceProtocol)? = nil, notifications: (any BattleNotificationServiceProtocol)? = nil) {
         self.validation = validation
         self.motion = motion
         self.haptics = haptics
         self.audio = audio
-        self.security = security
         self.preferenceStore = preferenceStore
         self.profileProvider = profileProvider
         self.signer = signer
@@ -129,7 +127,7 @@ final class ArenaViewModel: ObservableObject {
     }
 
     func startSession() {
-        guard selectedSubject != nil, isBetweenBattles, !security.integrityReport().isCompromised else { return }
+        guard selectedSubject != nil, isBetweenBattles else { return }
         lastBeaten = nil
         hasUsedPause = false
         hasUsedSlipGrace = false

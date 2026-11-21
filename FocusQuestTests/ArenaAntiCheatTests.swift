@@ -167,7 +167,7 @@ final class ArenaAntiCheatTests: XCTestCase {
         let motion = MotionSpy()
         let haptics = HapticsSpy()
         let audio = AudioSpy()
-        let model = ArenaViewModel(validation: validation, motion: motion, haptics: haptics, audio: audio, security: SecuritySpy(), preferenceStore: PreferencesSpy(value: prefs), profileProvider: { .fresh(deviceID: "test-device") })
+        let model = ArenaViewModel(validation: validation, motion: motion, haptics: haptics, audio: audio, preferenceStore: PreferencesSpy(value: prefs), profileProvider: { .fresh(deviceID: "test-device") })
         model.selectSubject(.math)
         return Rig(model: model, validation: validation, haptics: haptics, audio: audio)
     }
@@ -239,6 +239,3 @@ private final class PreferencesSpy: PreferencesStoreProtocol {
     func reset() { value = AppPreferences() }
 }
 
-private struct SecuritySpy: RuntimeSecurityServiceProtocol {
-    func integrityReport() -> RuntimeIntegrityReport { RuntimeIntegrityReport(isCompromised: false, findings: []) }
-}
