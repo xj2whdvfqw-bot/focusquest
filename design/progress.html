@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-21T12:19:09+01:00",
-  "current": "Opravy auditu: všech 10 bodů commitnutých (GitHub Pages zapnuté, CI má Release build). Build #46 běží.",
-  "nextStep": "Po buildu #46 spustit build #47 s Release kontrolou.",
+  "updated": "2026-11-21T12:48:42+01:00",
+  "current": "Opravy auditu: build #46 prošel (účty, PrivacyInfo, šifrování, jen iPhone, ikona, zabití aplikace, Motion sensor, notifikace). Běží build #47 s odkazy na GitHub Pages a Release kontrolou.",
+  "nextStep": "Počkat na build #47.",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -446,8 +446,8 @@
       "id": "Fix",
       "title": "Opravy auditu",
       "status": "build",
-      "commit": "3f024d8",
-      "build": { "number": 46, "runId": null, "result": "běží" },
+      "commit": "981a629",
+      "build": { "number": 47, "runId": 44900839223, "result": "běží" },
       "items": [
         { "text": "Účty a celý serverový kód pryč (Apple přihlášení, smazání účtu, API, App Attest, Keychain); v Settings „Reset progress“ s potvrzením", "done": true },
         { "text": "PrivacyInfo.xcprivacy: UserDefaults (CA92.1), systemUptime (35F9.1)", "done": true },
@@ -460,7 +460,7 @@
         { "text": "Privacy Policy a Support na GitHub Pages (docs/), odkazy v Settings tam; Terms = Apple EULA", "done": true },
         { "text": "CI: Release build (kompilace)", "done": true }
       ],
-      "note": "Build #45 spadl při kompilaci: rozšíření JSONEncoder.focusQuest bylo ve smazaném APIClient.swift, přesunuto do SessionPayloads.swift. Placený Apple Developer účet zatím neřešíme, e-mail pro Contact doplníme později."
+      "note": "Build #45 spadl při kompilaci (JSONEncoder.focusQuest byl ve smazaném APIClient.swift, přesunuto). Build #46 prošel pro prvních 8 bodů. GitHub Pages běží: https://xj2whdvfqw-bot.github.io/focusquest/privacy.html a /support.html (zdroj: větev phase3-duolingo, složka docs/; po sloučení do main přepnout v Settings › Pages). Placený Apple Developer účet zatím neřešíme, e-mail pro Contact doplníme později."
     }
   ]
 }
