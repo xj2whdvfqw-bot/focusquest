@@ -54,7 +54,7 @@ a všechny opravy z auditu jsou hotové.
   - Pixel-art bubliny, toasty a sprity mají schválně schodovité rohy, nesahat na ně.
   - Čipy zůstávají kapslemi.
 - **Zavírání oken tahem dolů bez křížků.** Týká se Fight sheetu, Your subjects, editoru vzhledu a Settings
-  (tam zůstává Done). Pomocný kód je v `Views/DesignSystem/SheetDismissal.swift`.
+  (od testu #53 bez Done). Pomocný kód je v `Views/DesignSystem/SheetDismissal.swift`.
   - Úchyt nahoře zůstává.
   - VoiceOver zavírá gestem escape (dva prsty Z) nebo akcí „Close“ na nadpisu okna.
   - Tah okno nezavře:
@@ -63,6 +63,28 @@ a všechny opravy z auditu jsou hotové.
     - během Reset progress.
   - Rozepsaný nový předmět: tah se zeptá „Discard the new subject?“. Pokus o zavření se zachytí přes UIKit
     (`presentationControllerDidAttemptToDismiss` přes přeposílajícího delegáta), protože SwiftUI na iOS 17 tuhle událost nemá.
+- **Výsledková okna jsou skleněná** (`ResultDialog` v `Views/DesignSystem/Motion.swift`): útěk bosse, vítězství,
+  Battle stopped a Call ended.
+  - Jemné ztmavení scény 28 % a skleněná karta (`glassCard`, ultraThin materiál), panel přestávky má stejné ztmavení.
+  - Pod výsledkem se karta bitvy schová, aby neprosvítala (dřív bylo vidět „Begin Battle“).
+  - Karta se objeví pružinou (0,92 → 1), s Reduce Motion jen prolnutím.
+- **Shop nemá velké pixelové nadpisy** („Gear up“, „Change the scenery“ jsou pryč). Hlavička je kompaktní:
+  malý štítek „Shop“, mince, ozubené kolo, záložky Gear/Backgrounds a u Gear menší náhled hrdiny.
+- **Připnutá hlavička (`pinnedTopHeader`)**: přechod do průhledna (24 pt) je součástí odsazení obsahu,
+  takže na začátku nic nepodjíždí pod hlavičku. Dřív přesahoval 60 pt a zakrýval nadpis první sekce.
+- **Settings nemají tlačítko Done**, zavírá se jen tahem dolů (VoiceOver gestem escape).
+- **Skeletony místo spinnerů**: pro načítání obsahu se používá skeleton ve tvaru obsahu (redacted + jemný lesk),
+  ne `ProgressView`. Teď se v appce nic nenačítá (všechna data jsou v telefonu), takže žádný skeleton zatím není.
+  Jediné kolečko je u Reset progress a to značí probíhající akci, ne načítání.
+- **Animace** (`FQMotion`, `FQPressStyle`, `TabSwitchEntrance` v `Motion.swift`):
+  - krátké, 0,2–0,35 s,
+  - přechod záložek: obsah se prolne a vyjede o 10 pt, krajina stojí; zvýraznění v tab baru klouže (`matchedGeometryEffect`),
+  - stisk tlačítek 0,96, podtržítko Gear/Backgrounds klouže, vybraný předmět v Shopu se zvedne na 1,02,
+  - každá změna záložky jde přes `switchTab(to:)`, aby se přechod spustil ve stejném překreslení (jinak by obsah problikl),
+  - Reduce Motion: bez zmenšení, posunu a pružiny, jen prolnutí.
+- **Haptika v UI** (`sensoryFeedback`): přepnutí záložky, otevření Fight sheetu, start bitvy, vítězství, útěk bosse,
+  Collect Loot, výběr a nákup v Shopu. Přepínač „Vibrate on the alarm“ se týká jen alarmu zvednutého telefonu.
+- Home: volné místo nad a pod bossem v poměru 1 : 2, boss je blíž středu a nad Fight je vzduch.
 - Dynamic Type:
   - texty s pevnou velikostí používají `fqFont(size:weight:design:)` a rostou nejvýš 1,5×,
   - aplikace má strop `accessibility2`,

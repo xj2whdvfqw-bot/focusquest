@@ -252,7 +252,7 @@ struct FightSheetView: View {
                 // Spodek listu konci u rohu displeje: rohy tlacitka jsou s nimi soustredne.
                 .background(FQColor.cta, in: FQRadius.shape(FQRadius.sheetBottomButton))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.fqPress)
         .disabled(!canStart)
         .opacity(canStart ? 1 : 0.35)
         .accessibilityHint(model.selectedSubject == nil ? "Add a subject first" : "")

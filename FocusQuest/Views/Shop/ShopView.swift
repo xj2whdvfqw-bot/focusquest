@@ -7,13 +7,15 @@ struct ShopView: View {
     @Binding var section: ShopSection
     /// Predmet, ktery si hrac prave zkousi v nahledu nahore.
     @State private var tryOnID: String?
+    /// Podtrzitko vybrane zalozky obchodu klouze mezi Gear a Backgrounds.
+    @Namespace private var tabUnderline
     @Environment(\.shopBackground) private var shopBackground
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     enum ShopSection: String, CaseIterable, Identifiable {
         case gear, backgrounds
         var id: String { rawValue }
         var title: String { self == .gear ? "Gear" : "Backgrounds" }
-        var heading: String { self == .gear ? "Gear up" : "Change the scenery" }
     }
 
     private var isBright: Bool { shopBackground?.isBright == true }
@@ -34,17 +36,31 @@ struct ShopView: View {
             case .backgrounds: backgroundList
             }
         }
-        // Nadpis je stejny jako na ostatnich zalozkach. Pod nim jsou zalozky obchodu
-        // a u vybaveni pripnuty nahled hrdiny, aby bylo vyzkouseni videt i pri rolovani.
+        // Kompaktni hlavicka bez velkeho nadpisu: maly stitek "Shop", mince a ozubene kolo,
+        // pod tim zalozky obchodu a u vybaveni pripnuty nahled hrdiny (vyzkouseni je videt i pri rolovani).
         .pinnedTopHeader {
-            VStack(alignment: .leading, spacing: FQSpace.md) {
-                ScreenHeader(eyebrow: "Shop", title: section.heading)
+            VStack(alignment: .leading, spacing: FQSpace.sm) {
+                HStack(spacing: FQSpace.md) {
+                    Text("Shop")
+                        .font(.fqLabel)
+                        .foregroundStyle(FQColor.textSecondary)
+                        .accessibilityAddTraits(.isHeader)
+                    Spacer(minLength: FQSpace.sm)
+                    coinsLabel
+                    SettingsGearButton()
+                }
                 sectionTabs
-                if section == .gear { previewCard }
+                if section == .gear {
+                    previewCard.transition(.opacity)
+                }
             }
         }
         // Nahled pozadi plati jen v obchode.
         .onDisappear { model.previewBackground = nil }
+        // Haptika: vyzkouseni predmetu = vyber, nakup = uspech.
+        .sensoryFeedback(.selection, trigger: tryOnID)
+        .sensoryFeedback(.selection, trigger: section)
+        .sensoryFeedback(.success, trigger: model.profile.coins) { old, new in new < old }
     }
 
     // MARK: Zalozky
@@ -54,7 +70,7 @@ struct ShopView: View {
             ForEach(ShopSection.allCases) { item in
                 let selected = item == section
                 Button {
-                    withAnimation(.easeOut(duration: 0.2)) { section = item }
+                    withAnimation(FQMotion.spring(reduceMotion: reduceMotion)) { section = item }
                 } label: {
                     Text(item.title)
                         .fqFont(size: 17, weight: selected ? .semibold : .medium, design: .rounded)
@@ -62,7 +78,13 @@ struct ShopView: View {
                         .padding(.horizontal, 2)
                         .frame(height: 44)
                         .overlay(alignment: .bottom) {
-                            Rectangle().fill(FQColor.textPrimary).frame(height: 2).opacity(selected ? 1 : 0)
+                            // Jedno podtrzitko, ktere pri prepnuti klouze na druhou zalozku.
+                            if selected {
+                                Rectangle()
+                                    .fill(FQColor.textPrimary)
+                                    .frame(height: 2)
+                                    .matchedGeometryEffect(id: "underline", in: tabUnderline)
+                            }
                         }
                         .contentShape(Rectangle())
                 }
@@ -87,22 +109,22 @@ struct ShopView: View {
     }
 
     private var previewCard: some View {
-        HStack(spacing: FQSpace.lg) {
-            HeroAvatarView(appearance: previewAppearance, heroClass: model.profile.heroClass, size: 72)
-                .animation(.easeOut(duration: 0.2), value: previewAppearance)
+        // Kompaktni: mensi hrdina a jeden radek textu, aby zbylo vic mista na predmety.
+        HStack(spacing: FQSpace.md) {
+            HeroAvatarView(appearance: previewAppearance, heroClass: model.profile.heroClass, size: 52)
+                .animation(FQMotion.quick, value: previewAppearance)
                 .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: FQSpace.xs) {
-                Text(tryOn.map { "Trying on \($0.name)" } ?? "Tap an item to try it on")
-                    .font(.fqHeadline)
-                    .foregroundStyle(FQColor.textPrimary)
-                    .lineLimit(2)
-                coinsLabel
-            }
-            .accessibilityElement(children: .combine)
+            Text(tryOn.map { "Trying on \($0.name)" } ?? "Tap an item to try it on")
+                .font(.fqLabel)
+                .foregroundStyle(FQColor.textPrimary)
+                .lineLimit(2)
+                .contentTransition(.opacity)
+                .animation(FQMotion.quick, value: tryOnID)
             Spacer(minLength: 0)
         }
-        .padding(FQSpace.md)
-        .glassCard()
+        .padding(.horizontal, FQSpace.md)
+        .padding(.vertical, FQSpace.sm)
+        .glassCard(radius: FQRadius.smallCard)
     }
 
     private var coinsLabel: some View {
@@ -119,7 +141,7 @@ struct ShopView: View {
         let isTryingOn = tryOnID == item.id
         return VStack(alignment: .leading, spacing: FQSpace.sm) {
             Button {
-                withAnimation(.easeOut(duration: 0.2)) { tryOnID = isTryingOn ? nil : item.id }
+                withAnimation(FQMotion.spring(reduceMotion: reduceMotion)) { tryOnID = isTryingOn ? nil : item.id }
             } label: {
                 ZStack(alignment: .topTrailing) {
                     // Mini hrdina uz s timto predmetem - je hned videt, jak bude vypadat.
@@ -132,8 +154,9 @@ struct ShopView: View {
                     }
                 }
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.fqPress)
             .accessibilityLabel("Try on \(item.name)")
+            .accessibilityAddTraits(isTryingOn ? .isSelected : [])
             VStack(alignment: .leading, spacing: 2) {
                 Text(item.name).font(.fqLabel).foregroundStyle(FQColor.textPrimary).lineLimit(1)
                 Text(item.summary).font(.fqMeta).foregroundStyle(FQColor.textSecondary).lineLimit(2, reservesSpace: true)
@@ -142,6 +165,8 @@ struct ShopView: View {
         }
         .padding(FQSpace.md)
         .glassCard(radius: FQRadius.smallCard, tint: isTryingOn ? FQColor.accent : nil)
+        // Vybrany predmet se jemne zvedne (s Reduce Motion jen zbarvi).
+        .scaleEffect(isTryingOn && !reduceMotion ? 1.02 : 1)
     }
 
     @ViewBuilder private func gearButton(_ item: EquipmentItem, owned: Bool, equipped: Bool) -> some View {
@@ -173,7 +198,6 @@ struct ShopView: View {
 
     private var backgroundList: some View {
         VStack(alignment: .leading, spacing: 12) {
-            coinsLabel.padding(.horizontal, 4)
             sectionLabel("Free")
             backgroundCard(nil)
             ForEach(ShopBackground.free) { backgroundCard($0) }
@@ -278,6 +302,7 @@ struct ShopButtonStyle: ButtonStyle {
     var outlined = false
     var highlighted = false
     @Environment(\.isEnabled) private var isEnabled
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     func makeBody(configuration: Configuration) -> some View {
         // Plna sirka = spodek karty predmetu, jinak tlacitko v karte pozadi (soustredne s kartou).
@@ -299,6 +324,7 @@ struct ShopButtonStyle: ButtonStyle {
             }
             .contentShape(shape)
             .opacity(isEnabled ? 1 : 0.6)
+            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.96 : 1)
             .animation(.easeOut(duration: 0.15), value: configuration.isPressed)
     }
 }

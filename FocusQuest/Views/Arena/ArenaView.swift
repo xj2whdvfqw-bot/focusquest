@@ -84,9 +84,12 @@ struct ArenaView: View {
             ScreenHeader(title: "Ready to focus?")
             streakPill
                 .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).maxY } action: { pillBottom = $0 }
-            // Dva stejne Spacery: blok s bossem je svisle uprostred mezi pilulkou a tlacitkem Fight.
-            Spacer(minLength: 0)
+            // Volne misto: 1 dil nad bossem, 2 dily pod nim. Boss tak sedi blizko stredu obrazovky
+            // a mezi nim a tlacitkem Fight je vzduch. Kdyz se obsah nevejde (SE, velke pismo),
+            // spacery maji jen minimum a obrazovka roluje.
+            Spacer(minLength: isCompact ? FQSpace.xs : FQSpace.md)
             bossSection
+            Spacer(minLength: isCompact ? FQSpace.sm : FQSpace.lg)
             Spacer(minLength: 0)
             actionSection
         }
@@ -161,13 +164,14 @@ struct ArenaView: View {
 
     /// Stred obrazovky: "Continue your path", sprite, jmeno a "Boss 1 of 7".
     private var bossSection: some View {
-        VStack(spacing: isCompact ? FQSpace.sm : FQSpace.lg) {
+        // Popisek, boss a jmeno drzi pohromade jako jeden blok.
+        VStack(spacing: isCompact ? FQSpace.xs : FQSpace.sm) {
             Text("Continue your path")
                 .font(.fqLabel)
                 .foregroundStyle(FQColor.textSecondary)
                 .shadow(color: .black.opacity(0.7), radius: 4, y: 2)
             if let node = nextNode {
-                VStack(spacing: FQSpace.sm) {
+                VStack(spacing: FQSpace.xs) {
                     bossButton(node)
                     Text(node.name)
                         .fqFont(size: 24, weight: .bold, design: .rounded)
@@ -208,11 +212,11 @@ struct ArenaView: View {
                         .frame(minHeight: 44)
                         .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.fqPress)
                 .disabled(!model.isBetweenBattles)
             } else {
                 Button(action: openPath) { ctaLabel("Pick a world", symbol: "map.fill") }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.fqPress)
             }
         }
         .frame(maxWidth: .infinity)
@@ -225,7 +229,7 @@ struct ArenaView: View {
         } label: {
             ctaLabel("Fight · \(ArenaView.durationText(minutes: node.maxHP))", symbol: "play.fill")
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.fqPress)
         .disabled(!model.isBetweenBattles)
     }
 

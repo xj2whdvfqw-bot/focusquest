@@ -43,6 +43,8 @@ enum FQTabBarMetrics {
 struct MainTabView: View {
     let container: AppDIContainer
     @State private var selectedTab = FocusQuestTab.initial
+    /// Pocet prepnuti zalozek: spousti prechod obsahu (TabSwitchEntrance).
+    @State private var tabSwitches = 0
     @State private var showsHeroCreator = false
     /// Zalozka obchodu; Nastaveni ji umi prepnout na Backgrounds.
     @State private var shopSection: ShopView.ShopSection = .gear
@@ -59,9 +61,15 @@ struct MainTabView: View {
                 let reserve = max(0, FQTabBarMetrics.bottom + FQTabBarMetrics.height + FQTabBarMetrics.contentGap - proxy.safeAreaInsets.bottom)
                 ZStack {
                     tabs(reserve: reserve)
+                        .environment(\.fqTabSwitch, tabSwitches)
                     tabChrome
                 }
             }
+            // Prepnuti zalozky: prechod obsahu a jemna haptika.
+            .sensoryFeedback(.selection, trigger: selectedTab)
+            // Otevreni Fight sheetu a start bitvy jsou hlavni akce: kratke ťuknuti.
+            .sensoryFeedback(.impact(weight: .light), trigger: battlePresenter.showsFightSheet) { _, open in open }
+            .sensoryFeedback(.impact(weight: .medium), trigger: battlePresenter.isPresented) { _, open in open }
             .environment(settingsPresenter)
             .environment(battlePresenter)
             .sheet(isPresented: Binding(get: { settingsPresenter.isPresented }, set: { settingsPresenter.isPresented = $0 })) {
@@ -71,7 +79,7 @@ struct MainTabView: View {
                     // Background v Nastaveni: list se zavre a otevre se Shop › Backgrounds.
                     settingsPresenter.isPresented = false
                     shopSection = .backgrounds
-                    selectedTab = .shop
+                    switchTab(to: .shop)
                 } onResetProgress: {
                     await resetProgress()
                 }
@@ -123,10 +131,22 @@ struct MainTabView: View {
         .modifier(ActiveShopBackground(model: container.profileViewModel))
     }
 
+    /// Kazda zmena zalozky jde pres switchTab, aby se prechod obsahu spustil ve stejnem
+    /// prekresleni jako samotne prepnuti (jinak by nova zalozka na jeden snimek problikla).
+    private var tabSelection: Binding<FocusQuestTab> {
+        Binding(get: { selectedTab }, set: { switchTab(to: $0) })
+    }
+
+    private func switchTab(to tab: FocusQuestTab) {
+        guard tab != selectedTab else { return }
+        tabSwitches += 1
+        selectedTab = tab
+    }
+
     /// Systemovy TabView drzi stav kazde zalozky; jeho vlastni lista je skryta, kreslime FocusQuestTabBar.
     private func tabs(reserve: CGFloat) -> some View {
-        TabView(selection: $selectedTab) {
-            ArenaView(model: container.arenaViewModel, profileModel: container.profileViewModel) { selectedTab = .path }
+        TabView(selection: tabSelection) {
+            ArenaView(model: container.arenaViewModel, profileModel: container.profileViewModel) { switchTab(to: .path) }
                 .tabPage(reserve: reserve)
                 .tag(FocusQuestTab.arena)
             PathTabView(model: container.arenaViewModel, profileModel: container.profileViewModel)
@@ -136,7 +156,7 @@ struct MainTabView: View {
                 .tabPage(reserve: reserve)
                 .tag(FocusQuestTab.shop)
             StatsView(model: container.statsViewModel, arena: container.arenaViewModel) {
-                selectedTab = .arena
+                switchTab(to: .arena)
                 battlePresenter.openFightSheet()
             }
                 .tabPage(reserve: reserve)
@@ -151,7 +171,7 @@ struct MainTabView: View {
     private var tabChrome: some View {
         ZStack(alignment: .bottom) {
             TabBarFade()
-            FocusQuestTabBar(selection: $selectedTab)
+            FocusQuestTabBar(selection: tabSelection)
             .padding(.horizontal, FQTabBarMetrics.sideInset)
             .padding(.bottom, FQTabBarMetrics.bottom)
         }
@@ -166,7 +186,7 @@ struct MainTabView: View {
         battlePresenter.afterBattle = nil
         switch destination {
         case .fightSheet: battlePresenter.openFightSheet()
-        case .path: selectedTab = .path
+        case .path: switchTab(to: .path)
         }
     }
 
@@ -217,7 +237,7 @@ struct MainTabView: View {
         guard await container.resetProgress() else { return false }
         settingsPresenter.isPresented = false
         shopSection = .gear
-        selectedTab = .arena
+        switchTab(to: .arena)
         // List Nastaveni a onboarding nejdou prepnout naraz.
         try? await Task.sleep(for: .milliseconds(600))
         showsHeroCreator = true
@@ -247,6 +267,9 @@ private extension View {
 /// Vsechny zalozky vcetne Obchodu jsou dostupne od zacatku.
 private struct FocusQuestTabBar: View {
     @Binding var selection: FocusQuestTab
+    /// Zvyrazneni vybrane zalozky je jeden tvar, ktery pri prepnuti klouze na novou ikonu.
+    @Namespace private var highlight
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         HStack(spacing: 0) {
@@ -254,6 +277,8 @@ private struct FocusQuestTabBar: View {
                 tabButton(tab)
             }
         }
+        // Animuje se jen lista (presun zvyrazneni a barva ikony), ne obsah zalozek.
+        .animation(FQMotion.spring(reduceMotion: reduceMotion), value: selection)
         .padding(FQRadius.Inset.tabHighlight)
         .frame(height: FQTabBarMetrics.height)
         // Vybrana zalozka ma rohy soustredne s listou.
@@ -284,10 +309,16 @@ private struct FocusQuestTabBar: View {
                 .frame(width: FQTabBarMetrics.iconSize, height: FQTabBarMetrics.iconSize)
                 .foregroundStyle(isOn ? FQColor.cta : FQColor.textPrimary)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background { if isOn { FQRadius.shape(FQRadius.tabHighlight).fill(Color.white.opacity(0.14)) } }
+                .background {
+                    if isOn {
+                        FQRadius.shape(FQRadius.tabHighlight)
+                            .fill(Color.white.opacity(0.14))
+                            .matchedGeometryEffect(id: "highlight", in: highlight)
+                    }
+                }
                 .contentShape(FQRadius.shape(FQRadius.tabHighlight))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.fqPress)
         .accessibilityLabel(tab.title)
         .accessibilityValue("Tab \(position(of: tab)) of \(FocusQuestTab.allCases.count)")
         .accessibilityAddTraits(isOn ? .isSelected : [])

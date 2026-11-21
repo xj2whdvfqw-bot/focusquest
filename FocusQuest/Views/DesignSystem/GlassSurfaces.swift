@@ -48,14 +48,17 @@ extension View {
     }
 
     /// Hlavicka pripnuta k hornimu okraji; obsah pod ni roluje a rozmaze se.
+    /// Prechod do pruhledna pod hlavickou je soucasti odsazeni obsahu: na zacatku je obsah cely
+    /// pod nim (nic nepodjizdi), pri rolovani pod nim plynule mizi.
     @ViewBuilder func pinnedTopHeader<Header: View>(@ViewBuilder _ header: () -> Header) -> some View {
         let bar = header()
             .frame(maxWidth: 640)
             .padding(.horizontal, FQSpace.lg)
             .padding(.top, FQSpace.sm)
-            .padding(.bottom, FQSpace.md)
+            .padding(.bottom, FQSpace.sm)
             .frame(maxWidth: .infinity)
             .modifier(BrightTextShadow())
+            .padding(.bottom, SoftHeaderBackground.fade)
             .background { SoftHeaderBackground() }
         if #available(iOS 26.0, *) {
             safeAreaBar(edge: .top, spacing: 0) { bar }
@@ -102,13 +105,14 @@ struct GlassCardModifier: ViewModifier {
 
 /// Rozmazany prechod pod pripnutou listou: u obsahu pruhledny, u okraje obrazovky plny material.
 /// Pozadi pripnute hlavicky bez ostre hrany: tmave rozmazane sklo sahá az pod stavovy radek
-/// a 60 pt pod hlavickou plynule mizi do pruhledna.
+/// a ve spodnich 24 pt (`fade`, uz zapocitanych ve vysce listy) plynule mizi do pruhledna.
+/// Driv prechod presahoval 60 pt pod listu a zakryval nadpis prvni sekce.
 private struct SoftHeaderBackground: View {
-    static let fade: CGFloat = 60
+    static let fade: CGFloat = 24
 
     var body: some View {
         GeometryReader { proxy in
-            let total = proxy.size.height + Self.fade
+            let total = proxy.size.height
             let solid = max(0, (total - Self.fade) / max(1, total))
             ZStack {
                 Rectangle().fill(.ultraThinMaterial)

@@ -1,7 +1,8 @@
 import SwiftUI
 import UIKit
 
-/// Nastaveni (list z ozubeneho kola): Sounds & notifications, Background, Feedback, patička a "✓ Done".
+/// Nastaveni (list z ozubeneho kola): Sounds & notifications, Background, Feedback a paticka.
+/// Zavira se jen tahem dolu (tlacitko Done je pryc), VoiceOver gestem escape.
 /// Zvuky a notifikace jsou na samostatne strance se zpetnym "‹ Settings".
 struct SettingsView: View {
     @ObservedObject var model: SettingsViewModel
@@ -106,7 +107,6 @@ struct SettingsView: View {
         ScreenSection(title: "Debug", detail: "Not in the release build") { debugCard }
         #endif
         footer
-        doneButton
     }
 
     #if DEBUG
@@ -175,6 +175,8 @@ struct SettingsView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.top, FQSpace.sm)
+        // Paticka nesedi na spodnim okraji listu (Done pod ni uz neni).
+        .padding(.bottom, FQSpace.xl)
     }
 
     static var appVersion: String {
@@ -254,7 +256,6 @@ struct SettingsView: View {
                 .disabled(notifications == .denied)
             }
         }
-        doneButton
     }
 
     private func radioRow(_ sound: BattleSound) -> some View {
@@ -281,21 +282,6 @@ struct SettingsView: View {
     }
 
     // MARK: - Stavebni prvky
-
-    private var doneButton: some View {
-        Button { onClose?() } label: {
-            Label("Done", systemImage: "checkmark")
-                .fqFont(size: 15, weight: .semibold, design: .rounded)
-                .foregroundStyle(FQColor.textPrimary)
-                .padding(.horizontal, FQSpace.xl)
-                .frame(minHeight: 44)
-                .overlay(Capsule().strokeBorder(FQColor.textSecondary.opacity(0.55), lineWidth: 1))
-                .contentShape(Capsule())
-        }
-        .buttonStyle(.plain)
-        .frame(maxWidth: .infinity)
-        .accessibilityLabel("Done, close settings")
-    }
 
     private func card<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
         VStack(spacing: 0) { content() }

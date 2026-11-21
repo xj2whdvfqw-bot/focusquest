@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-21T18:13:12+01:00",
-  "current": "Zavírání oken tahem dolů hotové: build #53 prošel.",
-  "nextStep": "Otestovat build #53 na iPhonu podle poznámky v kartě Zavírání oken tahem dolů.",
+  "updated": "2026-11-21T19:45:01+01:00",
+  "current": "Opravy po testu #53 commitnuté, build se spouští.",
+  "nextStep": "Počkat na výsledek buildu; při chybě opravit a spustit znovu.",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -528,6 +528,27 @@
         { "text": "Beze změny: bitva a onboarding (celoobrazovkové, tahem nejdou zavřít)", "done": true }
       ],
       "note": "Hotovo, build #53 prošel (IPA, Release, testy). Shop nemá vyjíždějící okno s detailem pozadí (Preview je přímo v kartě). Na iPhonu otestovat: tah dolů ve Fight sheetu, Your subjects, editoru vzhledu a Settings (pomalý krátký tah okno vrátí, rychlý švih zavře; v rolovaném obsahu se zavírá až od vrchu); rozepsat nový předmět a táhnout dolů = okno se vrátí a zeptá „Discard the new subject?“; ťuknout na × u předmětu (potvrzení smazání) a táhnout = okno se vrátí a potvrzení zmizí; Reset progress: během dialogu okno nejde stáhnout; VoiceOver: gesto dvěma prsty Z zavře okno, na nadpisu okna je akce Close."
+    },
+    {
+      "id": "T53",
+      "title": "Opravy po testu #53",
+      "status": "build",
+      "commit": "",
+      "build": { "number": null, "runId": null, "result": "" },
+      "items": [
+        { "text": "Výsledková okna (boss utekl, vítězství, Battle stopped, Call ended): skleněná karta, jemné ztmavení 28 %, bez prosvítající karty bitvy s „Begin Battle“; objevení pružinou", "done": true },
+        { "text": "Panel přestávky: stejné jemné ztmavení a sklo", "done": true },
+        { "text": "Shop: bez velkých nadpisů „Gear up“ / „Change the scenery“, kompaktní hlavička (Shop, mince, ozubené kolo), menší náhled hrdiny", "done": true },
+        { "text": "Shop a Hero: obsah nepodjíždí pod hlavičku (přechod pod hlavičkou je součástí odsazení, 24 pt místo 60)", "done": true },
+        { "text": "Nastavení: bez tlačítka Done, patička s odsazením od spodního okraje", "done": true },
+        { "text": "Home: boss blíž středu, volné místo 1 : 2 nad a pod bossem, víc vzduchu nad Fight; na SE a s velkým písmem roluje", "done": true },
+        { "text": "Skeletony: v appce se nic nenačítá (data jsou v telefonu), jediné kolečko je u Reset progress (probíhající akce) → beze změny", "done": true },
+        { "text": "Přechod záložek: obsah se prolne a vyjede o 10 pt (0,25 s), zvýraznění v tab baru klouže (matchedGeometryEffect)", "done": true },
+        { "text": "Mikroanimace: stisk tlačítek 0,96, výběr předmětu v Shopu, klouzající podtržítko Gear/Backgrounds, počítání XP a mincí, pružina u výsledků", "done": true },
+        { "text": "Haptika: přepnutí záložky, otevření Fight sheetu, start bitvy, vítězství, útěk bosse, Collect Loot, výběr a nákup v Shopu", "done": true },
+        { "text": "Reduce Motion: bez zmenšení, posunu a pružiny, jen prolnutí", "done": true }
+      ],
+      "note": "Build běží. Na iPhonu otestovat: ústup z bitvy → okno „… escaped“ je sklo, pod ním je jen scéna (žádné Begin Battle); vítězství ve stejné kartě; Shop: nadpis sekce Helmets & hats a horní karta pozadí jsou celé vidět; Nastavení bez Done; Home na menším iPhonu a s velkým písmem; přepínání záložek (prolnutí, klouzající zvýraznění, jemná vibrace); totéž se zapnutým Reduce Motion."
     }
   ]
 }

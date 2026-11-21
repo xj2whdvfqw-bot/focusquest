@@ -29,6 +29,8 @@ struct ScreenScaffold<Content: View>: View {
                     .frame(maxWidth: 640)
                     .frame(maxWidth: .infinity)
                     .frame(minHeight: fillsHeight ? proxy.size.height : nil, alignment: .top)
+                    // Po prepnuti zalozky se obsah plynule objevi (krajina za nim stoji).
+                    .modifier(TabSwitchEntrance())
                 }
                 .scrollIndicators(.hidden)
             }
