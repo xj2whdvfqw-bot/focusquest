@@ -39,7 +39,7 @@ final class ProgressionModelTests: XCTestCase {
     // MARK: - Predvolby
 
     func testPreferencesSavedByOlderVersionKeepTheirValues() throws {
-        let legacy = Data(#"{"isHapticsEnabled":false,"isMusicEnabled":true,"isSFXEnabled":true,"ambientVolume":0.3,"selectedTrack":"tokyoSunset","bossMinutes":1,"bossMinutesByID":{"web-slacker":60}}"#.utf8)
+        let legacy = Data(#"{"isHapticsEnabled":false,"isMusicEnabled":true,"isSFXEnabled":true,"ambientVolume":0.3,"selectedTrack":"tokyoSunset","bossMinutes":1,"bossMinutesByID":{"farm-bunny":60}}"#.utf8)
         let preferences = try JSONDecoder().decode(AppPreferences.self, from: legacy)
         XCTAssertFalse(preferences.isHapticsEnabled)
         XCTAssertEqual(preferences.ambientVolume, 0.3, accuracy: 0.0001)
@@ -48,38 +48,38 @@ final class ProgressionModelTests: XCTestCase {
         XCTAssertNil(preferences.lastSubject)
         // Stare vlastni delky bitev se zahodi; cesta zacina od prvniho uzlu.
         XCTAssertTrue(preferences.clearedNodesByWorld.isEmpty)
-        XCTAssertEqual(preferences.clearedNodes(in: .heroes), 0)
+        XCTAssertEqual(preferences.clearedNodes(in: .farm), 0)
     }
 
     func testPathProgressCountsClearedNodesInOrderInEachWorld() {
         var preferences = AppPreferences()
-        let heroes = BossWorld.heroes.bosses
-        let villains = BossWorld.villains.bosses
+        let farm = BossWorld.farm.bosses
+        let forest = BossWorld.forest.bosses
         // Vyhra nad uzlem mimo poradi cestu neposune.
-        preferences.markCleared(heroes[2])
-        XCTAssertEqual(preferences.clearedNodes(in: .heroes), 0)
+        preferences.markCleared(farm[2])
+        XCTAssertEqual(preferences.clearedNodes(in: .farm), 0)
 
-        preferences.markCleared(heroes[0])
-        XCTAssertEqual(preferences.clearedNodes(in: .heroes), 1)
-        XCTAssertEqual(BossWorld.heroes.frontierBoss(cleared: 1)?.id, heroes[1].id)
+        preferences.markCleared(farm[0])
+        XCTAssertEqual(preferences.clearedNodes(in: .farm), 1)
+        XCTAssertEqual(BossWorld.farm.frontierBoss(cleared: 1)?.id, farm[1].id)
 
         // Opakovana vyhra nad starsim uzlem nic nemeni.
-        preferences.markCleared(heroes[0])
-        XCTAssertEqual(preferences.clearedNodes(in: .heroes), 1)
+        preferences.markCleared(farm[0])
+        XCTAssertEqual(preferences.clearedNodes(in: .farm), 1)
 
         // Kazdy svet ma vlastni cestu.
-        XCTAssertEqual(preferences.clearedNodes(in: .villains), 0)
+        XCTAssertEqual(preferences.clearedNodes(in: .forest), 0)
 
         // Dobyty svet uz nema dalsi uzel.
-        for boss in villains { preferences.markCleared(boss) }
-        XCTAssertEqual(preferences.clearedNodes(in: .villains), villains.count)
-        XCTAssertNil(BossWorld.villains.frontierBoss(cleared: villains.count))
+        for boss in forest { preferences.markCleared(boss) }
+        XCTAssertEqual(preferences.clearedNodes(in: .forest), forest.count)
+        XCTAssertNil(BossWorld.forest.frontierBoss(cleared: forest.count))
     }
 
     func testPreferencesRoundTripKeepsSoundscapePathProgressAndSubject() throws {
         var preferences = AppPreferences()
         preferences.soundscape = .brownNoise
-        preferences.clearedNodesByWorld = [BossWorld.heroes.rawValue: 3, BossWorld.farm.rawValue: 1]
+        preferences.clearedNodesByWorld = [BossWorld.reef.rawValue: 3, BossWorld.farm.rawValue: 1]
         preferences.lastSubject = .german
         preferences.lastBossID = Boss.roster[1].id
         let data = try JSONEncoder().encode(preferences)
@@ -235,21 +235,40 @@ final class ProgressionModelTests: XCTestCase {
             }
         }
         for boss in Boss.roster {
-            let rows = SpritePalette.bossRows[boss.pixelSpriteConfig] ?? SpritePalette.worldBossRows[boss.pixelSpriteConfig]
+            let rows = SpritePalette.bossRows[boss.pixelSpriteConfig] ?? SpritePalette.originalBossRows[boss.pixelSpriteConfig]
             XCTAssertNotNil(rows, "\(boss.name) has no sprite")
             XCTAssertEqual(rows?.count, 16, boss.name)
             XCTAssertTrue(rows?.allSatisfy { $0.count == 16 } ?? false, boss.name)
         }
     }
 
-    func testLegacyDojoAndFarmBossIDsMapToNewBosses() {
-        XCTAssertEqual(BossWorld(rawValue: "sewerDojo"), .dojo)
-        XCTAssertEqual(BossWorld(rawValue: "brainrot"), .farm)
-        XCTAssertEqual(Boss.find("leo-napardo")?.id, "dojo-karate")
-        XCTAssertEqual(Boss.find("banana-bandit")?.id, "farm-bunny")
-        XCTAssertEqual(Boss.find("iron-distraction")?.id, "farm-horse")
-        XCTAssertEqual(Boss.find("web-slacker")?.id, "web-slacker")
-        XCTAssertNil(Boss.find("no-such-boss"))
+    func testOlderWorldProgressMigratesToCurrentWorlds() throws {
+        // Klice starsich verzi: tri odstranene svety a stare klice Dojo a Farm.
+        let json = Data(#"{"clearedNodesByWorld":{"heroes":7,"villains":4,"fairyTale":2,"sewerDojo":3,"brainrot":9,"unknownWorld":5},"lastBossID":"no-longer-here"}"#.utf8)
+        let preferences = try JSONDecoder().decode(AppPreferences.self, from: json)
+        XCTAssertEqual(preferences.clearedNodes(in: .reef), 7)
+        XCTAssertEqual(preferences.clearedNodes(in: .forest), 4)
+        XCTAssertEqual(preferences.clearedNodes(in: .highSchool), 2)
+        XCTAssertEqual(preferences.clearedNodes(in: .dojo), 3)
+        // Farm ma jen 7 bossu: postup se zastropuje.
+        XCTAssertEqual(preferences.clearedNodesByWorld[BossWorld.farm.rawValue], 7)
+        XCTAssertEqual(Set(preferences.clearedNodesByWorld.keys), Set(BossWorld.allCases.map(\.rawValue)).subtracting([BossWorld.history.rawValue, BossWorld.planets.rawValue]))
+        // Boss, ktery uz neexistuje, se nenajde a appka nespadne.
+        XCTAssertNil(Boss.find(preferences.lastBossID))
+        XCTAssertNil(preferences.revealedWorlds)
+    }
+
+    func testRemovedBossesInStatsBecomeRetired() throws {
+        var stats = PlayerStats.initial
+        let gone = SessionSummary(id: UUID(), bossName: "Gone Boss", verifiedMinutes: 20, xpEarned: 240, completedAt: Date(), flawless: true, subject: .math, bossID: "no-longer-here", isQuick: false)
+        stats.record(gone, bossDefeated: true)
+        stats.record(SessionSummary(id: UUID(), bossName: "Other Gone", verifiedMinutes: 25, xpEarned: 300, completedAt: Date(), flawless: true, subject: .math, bossID: "also-gone", isQuick: false), bossDefeated: true)
+        let loaded = try JSONDecoder().decode(PlayerStats.self, from: JSONEncoder().encode(stats))
+        XCTAssertTrue(loaded.sessionHistory.allSatisfy { $0.bossName == PlayerStats.retiredBossName })
+        XCTAssertEqual(loaded.bestiary.count, 1, "Retired bosses of one subject merge into one row")
+        XCTAssertEqual(loaded.bestiary.first?.defeats, 2)
+        XCTAssertTrue(loaded.pathWins.isEmpty)
+        XCTAssertEqual(loaded.totalXP, stats.totalXP)
     }
 
     // MARK: - Odmeny
@@ -642,18 +661,34 @@ final class ProgressionModelTests: XCTestCase {
 
     // MARK: - Rozcvicka (Warm-up Wisp)
 
-    func testKeepGoingPicksShortestUnbeatenBossAcrossWorlds() {
-        // Nikdo neporazeny: nejkratsi (10 min) je prvni boss prvniho sveta.
-        XCTAssertEqual(Boss.shortestUnbeaten { _ in false }?.id, BossWorld.heroes.bosses[0].id)
-        // Prvni boss Hero Heights porazeny: shoda 10 min vyhraje prvni v poradi svetu (Villain Vault).
-        let first = BossWorld.heroes.bosses[0]
-        XCTAssertEqual(Boss.shortestUnbeaten { $0.id == first.id }?.id, BossWorld.villains.bosses[0].id)
-        // Vsechny 10minutove porazene: nejkratsi zbyvajici je 15 min, prvni v poradi.
-        let next = Boss.shortestUnbeaten { $0.maxHP <= 10 }
-        XCTAssertEqual(next?.maxHP, 15)
-        XCTAssertEqual(next?.id, BossWorld.heroes.bosses[1].id)
-        XCTAssertNil(Boss.shortestUnbeaten { _ in true })
+    func testNextWorldUnlocksOnlyAfterTheFinalBoss() {
+        var preferences = AppPreferences()
+        let farm = BossWorld.farm.bosses
+        XCTAssertTrue(preferences.isUnlocked(.farm))
+        XCTAssertFalse(preferences.isUnlocked(.forest))
+        XCTAssertEqual(preferences.currentBoss(anchor: nil)?.id, farm[0].id)
+        // Jen boss na rade jde do bitvy, dalsi jsou zamceni.
+        XCTAssertTrue(preferences.canFight(farm[0]))
+        XCTAssertFalse(preferences.canFight(farm[1]))
+        XCTAssertFalse(preferences.canFight(BossWorld.forest.bosses[0]))
+        // Vsichni krome finalniho: dalsi svet je porad zamceny.
+        for boss in farm.dropLast() { preferences.markCleared(boss) }
+        XCTAssertFalse(preferences.isUnlocked(.forest))
+        XCTAssertEqual(preferences.currentBoss(anchor: .farm)?.id, farm.last?.id)
+        // Finalni boss: Whisperwood se odemkne a je na rade jeho prvni boss.
+        preferences.markCleared(farm[farm.count - 1])
+        XCTAssertTrue(preferences.isUnlocked(.forest))
+        XCTAssertEqual(preferences.currentBoss(anchor: .farm)?.id, BossWorld.forest.bosses[0].id)
+        XCTAssertTrue(preferences.canFight(farm[2]), "Beaten bosses can be fought again")
+        XCTAssertFalse(preferences.isUnlocked(.reef))
         XCTAssertFalse(Boss.roster.contains { $0.isWarmUp }, "The warm-up boss is never on a Path")
+    }
+
+    func testEveryBossHasAQuipAndSevenNewBossesPerNewWorld() {
+        for world in [BossWorld.forest, .reef, .highSchool] { XCTAssertEqual(world.bosses.count, 7, world.title) }
+        XCTAssertEqual(BossWorld.allCases.first, .farm)
+        XCTAssertEqual(BossWorld.allCases.last, .planets)
+        for boss in Boss.roster { XCTAssertFalse(boss.quip.isEmpty, boss.name) }
     }
 
     func testWarmUpWinGivesRewardsButNoPathBadge() {
@@ -680,7 +715,7 @@ final class ProgressionModelTests: XCTestCase {
     }
 
     func testOlderQuickWinsOnPathBossesAreDroppedFromBadgesOnce() throws {
-        let boss = BossWorld.heroes.bosses[0]
+        let boss = BossWorld.farm.bosses[0]
         var stats = PlayerStats.initial
         // Starsi verze: rychla 5min bitva proti bossovi z Path a normalni bitva, obe bez znacky isQuick.
         stats.record(SessionSummary(id: UUID(), bossName: boss.name, verifiedMinutes: 5, xpEarned: 60, completedAt: Date(), flawless: true, subject: .math, bossID: boss.id), bossDefeated: true)

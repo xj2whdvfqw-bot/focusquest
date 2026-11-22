@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-22T13:47:42+01:00",
-  "current": "A1–A6 hotové: build #56 prošel.",
-  "nextStep": "Otestovat build #56 na iPhonu podle poznámek v kartách A1–A6 (notifikace: Settings › Debug notifications › Test notifications).",
+  "updated": "2026-11-22T14:31:22+01:00",
+  "current": "B1+B2 hotové v kódu, další B3 mapa.",
+  "nextStep": "B3: interaktivní mapa místo seznamu; build až na konci.",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -639,6 +639,51 @@
         { "text": "Reduce Motion: jen prolnutí, bez squashe", "done": true }
       ],
       "note": "Hotovo, build #56 prošel. Systémový stránkovaný TabView se nepoužil (nepouští krajinu pod stavový řádek), swipe je vlastní gesto. Na iPhonu otestovat: ťuknutí na záložku = bublina se zmáčkne, přeletí a pružně roztáhne; swipe doleva/doprava po obrazovce přepne na sousední záložku a obsah vyjede ze strany; svislé rolování a posuvník denního cíle v Hero swipe nespustí; se zapnutým Reduce Motion jen prolnutí."
+    },
+    {
+      "id": "B1",
+      "title": "Odstranění tří parodických světů",
+      "status": "pracuje",
+      "commit": "",
+      "build": { "number": null, "runId": null, "result": "" },
+      "items": [
+        { "text": "Tři světy s parodiemi chráněných postav pryč včetně bossů, spritů, textů, ID a testů", "done": true },
+        { "text": "Migrace: postup ve třech odstraněných světech přejde na Coral Deep, Whisperwood a Snoozeville High (strop 7), staré klíče Dojo a Farm na nové", "done": true },
+        { "text": "Statistiky: boss, který už neexistuje, se jmenuje „Retired boss“ (minuty, XP a předměty zůstanou), starý vybraný boss se nahradí aktuálním", "done": true },
+        { "text": "Jména odstraněna i z design/ (CHANGES.md, DECISIONS.md, progress.html, prototyp)", "done": false }
+      ],
+      "note": ""
+    },
+    {
+      "id": "B2",
+      "title": "Tři nové světy po 7 bossech",
+      "status": "pracuje",
+      "commit": "",
+      "build": { "number": null, "runId": null, "result": "" },
+      "items": [
+        { "text": "Whisperwood (lesní skřítci): Puffcap … Old Oakdrowse", "done": true },
+        { "text": "Coral Deep (podmořský svět): Driftwell the Seahorse … The Kraken of Later", "done": true },
+        { "text": "Snoozeville High (střední škola): Theo Theorem … Principal Postpone", "done": true },
+        { "text": "21 vlastních pixel-art spritů 16×16, hláška u každého z 54 bossů", "done": true },
+        { "text": "Pořadí: Farm → Whisperwood → Coral Deep → Dojo → Snoozeville High → History Hall → Orbit; další svět se odemkne po finálním bossovi", "done": true }
+      ],
+      "note": ""
+    },
+    {
+      "id": "B3",
+      "title": "Interaktivní mapa",
+      "status": "cekam",
+      "commit": "",
+      "build": { "number": null, "runId": null, "result": "" },
+      "items": [
+        { "text": "Velká pixelová mapa, posun tažením a pinch-zoom, nikdy celá najednou", "done": false },
+        { "text": "7 regionů ve vlastním prostředí, klikatá cesta, zastávky (poražený s vlajkou, aktuální pulzuje s hrdinou, zamčený)", "done": false },
+        { "text": "Mlha nad zamčenými regiony, po odemčení se jednou rozplyne", "done": false },
+        { "text": "Kamera najede na aktuálního bosse, klepnutí na zastávku = skleněná karta s bitvou", "done": false },
+        { "text": "Výkon: terén jako malá bitmapa (1 px = 4 body) ve vrstvách, žádný obří obrázek", "done": false },
+        { "text": "VoiceOver popisky zastávek a alternativní seznam", "done": false }
+      ],
+      "note": ""
     }
   ]
 }

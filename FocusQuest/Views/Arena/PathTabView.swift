@@ -50,7 +50,7 @@ struct PathTabView: View {
     /// V debug buildu `-initialTab path` rozbali prvni svet (CI screenshoty).
     static var initialOpenWorld: BossWorld? {
         #if DEBUG
-        return UserDefaults.standard.string(forKey: "initialTab") == "path" ? .heroes : nil
+        return UserDefaults.standard.string(forKey: "initialTab") == "path" ? .farm : nil
         #else
         return nil
         #endif

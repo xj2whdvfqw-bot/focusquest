@@ -2,7 +2,7 @@ import Foundation
 
 struct SessionSummary: Identifiable, Codable, Sendable {
     let id: UUID
-    let bossName: String
+    var bossName: String
     let verifiedMinutes: Int
     let xpEarned: Int
     let completedAt: Date
@@ -88,6 +88,7 @@ extension PlayerStats {
         sessionHistory = try container.decode([SessionSummary].self, forKey: .sessionHistory)
         bestiary = (try? container.decodeIfPresent([BestiaryEntry].self, forKey: .bestiary)) ?? []
         excludeLegacyQuickWins()
+        retireRemovedBosses()
         // Starsi verze ukladaly i heroHP, bestCombo a lastQuestFailedAt (ustup mazal serii).
         // Nic z toho uz v appce neni, klice se pri cteni ignoruji a serie z nich nikdy nespadne.
     }
@@ -192,6 +193,35 @@ extension PlayerStats {
             bestiary[entry].defeats -= 1
         }
         bestiary.removeAll { $0.defeats <= 0 }
+    }
+
+    /// Jmeno bosse ze starsi verze, ktery uz v appce neni (zaznam si necha minuty, XP a predmet).
+    static let retiredBossName = "Retired boss"
+    static let retiredBossID = "retired"
+
+    /// Bossove, kteri uz v appce nejsou (odstranene svety a stara id), se v historii a Bestiari
+    /// prejmenuji na "Retired boss" a jejich radky v Bestiari se slouci po predmetech.
+    /// Odznaky na mape je nepocitaji (pathWins zna jen existujici bosse).
+    mutating func retireRemovedBosses() {
+        let knownNames = Set(Boss.allBosses.map(\.name))
+        for index in sessionHistory.indices {
+            let session = sessionHistory[index]
+            let known = session.bossID.map { Boss.find($0) != nil } ?? knownNames.contains(session.bossName)
+            if !known {
+                sessionHistory[index].bossName = Self.retiredBossName
+                if session.bossID != nil { sessionHistory[index].bossID = Self.retiredBossID }
+            }
+        }
+        var merged: [BestiaryEntry] = []
+        for entry in bestiary {
+            guard Boss.find(entry.bossID) == nil else { merged.append(entry); continue }
+            if let index = merged.firstIndex(where: { $0.bossID == Self.retiredBossID && $0.subject == entry.subject }) {
+                merged[index].defeats += entry.defeats
+            } else {
+                merged.append(BestiaryEntry(bossID: Self.retiredBossID, bossName: Self.retiredBossName, subject: entry.subject, defeats: entry.defeats))
+            }
+        }
+        bestiary = merged
     }
 
     private mutating func recordDefeat(bossID: String, bossName: String, subject: StudySubject?) {

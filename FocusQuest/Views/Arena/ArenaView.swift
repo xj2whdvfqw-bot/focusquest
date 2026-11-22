@@ -54,10 +54,10 @@ struct ArenaView: View {
         let angry: Bool
     }
 
-    /// Svet, ve kterem hrac naposledy bojoval, a jeho dalsi neporazeny boss.
-    private var world: BossWorld { model.arenaPathBoss.world }
-    private var cleared: Int { model.clearedNodes(in: world) }
-    private var nextNode: Boss? { cleared < world.bosses.count ? world.bosses[cleared] : nil }
+    /// Aktualni boss mapy (stejny, u ktereho na mape stoji hrdina) a jeho svet.
+    /// Po finalnim bossovi sveta je to prvni boss nove odemceneho sveta.
+    private var nextNode: Boss? { model.currentMapBoss }
+    private var world: BossWorld { nextNode?.world ?? BossWorld.allCases[BossWorld.allCases.count - 1] }
 
     /// Spodni hrana pilulky serie a horni hrana ramecku bosse (globalne): kolik mista ma bublina nad bossem.
     @State private var pillBottom: CGFloat = 0
@@ -184,7 +184,7 @@ struct ArenaView: View {
                         .shadow(color: .black.opacity(0.7), radius: 4, y: 2)
                 }
             } else {
-                Label("\(world.title) conquered", systemImage: "checkmark.seal.fill")
+                Label("Every world conquered", systemImage: "checkmark.seal.fill")
                     .font(.fqHeadline)
                     .foregroundStyle(world.accent)
             }
@@ -384,11 +384,11 @@ extension Boss {
 extension BossWorld {
     var accent: Color {
         switch self {
-        case .heroes: Color(red: 0.95, green: 0.35, blue: 0.38)
-        case .villains: Color(red: 0.66, green: 0.47, blue: 0.95)
-        case .dojo: Color(red: 0.38, green: 0.82, blue: 0.48)
-        case .fairyTale: Color(red: 0.98, green: 0.78, blue: 0.36)
         case .farm: Color(red: 0.96, green: 0.58, blue: 0.70)
+        case .forest: Color(red: 0.55, green: 0.85, blue: 0.40)
+        case .reef: Color(red: 0.38, green: 0.62, blue: 1.00)
+        case .dojo: Color(red: 0.38, green: 0.82, blue: 0.48)
+        case .highSchool: Color(red: 0.98, green: 0.78, blue: 0.36)
         case .history: Color(red: 0.45, green: 0.72, blue: 0.98)
         case .planets: Color(red: 0.98, green: 0.62, blue: 0.30)
         }
@@ -396,11 +396,11 @@ extension BossWorld {
 
     var scene: BackdropScene {
         switch self {
-        case .heroes: .castleKeep
-        case .villains: .dungeonRuins
-        case .dojo: .lanternGrove
-        case .fairyTale: .enchantedForest
         case .farm: .enchantedForest
+        case .forest: .enchantedForest
+        case .reef: .dungeonRuins
+        case .dojo: .lanternGrove
+        case .highSchool: .castleKeep
         case .history: .castleKeep
         case .planets: .starlitPeaks
         }

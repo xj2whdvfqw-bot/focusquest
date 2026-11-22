@@ -66,6 +66,8 @@ enum SpritePalette {
         case "A": Color(red: 0.62, green: 0.67, blue: 0.75)   // sediva
         case "L": Color(red: 0.55, green: 0.86, blue: 1.00)   // svitici modra
         case "U": Color(red: 0.17, green: 0.29, blue: 0.70)   // namornicka modra
+        case "M": Color(red: 0.18, green: 0.45, blue: 0.25)   // tmave zelena (mech, listi)
+        case "H": Color(red: 0.40, green: 0.24, blue: 0.12)   // tmave hneda (kura, cepice zaludu)
         default: .clear
         }
     }
@@ -73,7 +75,7 @@ enum SpritePalette {
     static func rows(for sprite: PixelSprite, startled: Bool) -> [String] {
         switch sprite {
         case .boss(let id):
-            return bossRows[id] ?? worldBossRows[id] ?? specialBossRows[id] ?? slimeRows
+            return bossRows[id] ?? originalBossRows[id] ?? specialBossRows[id] ?? slimeRows
         case .companion(let id):
             if id == "ember-dragonling" { return ["................", ".....OO..OO.....", "....OOOOOOOO....", "...OOOOWWOOOO...", "...OOOOOOOOOO...", "....OOOOOOOO....", ".....OOOOOO.....", "....OOO..OOO....", "...OO......OO...", "..OO........OO..", "................", "................", "................", "................", "................", "................"] }
             // Lo-fi kocka: svetle seda se zlutyma ocima, aby byla videt na tmavem pozadi.

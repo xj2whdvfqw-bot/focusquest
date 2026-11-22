@@ -147,7 +147,7 @@ actor BattleNotificationService: BattleNotificationServiceProtocol {
     func scheduleTestNotifications() async -> Bool {
         guard await isAuthorized() else { return false }
         let tests: [(String, String, String)] = [
-            ("focusquest.test.victory", "Victory!", Self.victoryBody("Web-Slacker")),
+            ("focusquest.test.victory", "Victory!", Self.victoryBody(BossWorld.allCases[0].bosses[0].name)),
             ("focusquest.test.break", Self.breakTitle, Self.breakBody),
             ("focusquest.test.reminder", Self.reminderTitle, Self.reminderBody),
         ]

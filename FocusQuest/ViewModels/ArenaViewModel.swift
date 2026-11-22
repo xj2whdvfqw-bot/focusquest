@@ -113,8 +113,14 @@ final class ArenaViewModel: ObservableObject {
         self.simulationSigningKey = simulationSigningKey
         self.activity = activity
         self.notifications = notifications
-        let stored = preferenceStore.load()
-        let remembered = Boss.find(stored.lastBossID)
+        var stored = preferenceStore.load()
+        // Prvni spusteni verze s mapou: svety, ktere uz jsou odemcene, mlhu nemaji (bez animace).
+        if stored.revealedWorlds == nil {
+            stored.revealedWorlds = BossWorld.allCases.filter { stored.isUnlocked($0) }.map(\.rawValue)
+            preferenceStore.save(stored)
+        }
+        // Boss ze starsi verze, ktery uz v appce neni, se nahradi aktualnim bossem mapy.
+        let remembered = Boss.find(stored.lastBossID) ?? stored.currentBoss(anchor: nil)
         self.preferences = stored
         self.selectedBoss = remembered ?? BossWorld.allCases[0].bosses[0]
         self.selectedSubject = stored.preselectedSubject
@@ -187,12 +193,33 @@ final class ArenaViewModel: ObservableObject {
         selectedBoss = Boss.warmUpWisp
     }
 
-    /// "Keep going" po rozcvicce: neporazeny boss s nejkratsi bitvou napric svety. Porazeny je boss,
-    /// ktery ma na Path odznak vyhry, nebo lezi v uz dobyte casti cesty sveta.
-    func keepGoingBoss(pathWins: [String: Int]) -> Boss? {
-        Boss.shortestUnbeaten { boss in
-            (pathWins[boss.id] ?? 0) > 0 || boss.nodeIndex < clearedNodes(in: boss.world)
-        }
+    /// "Keep going" po rozcvicce: aktualni boss mapy (dalsi svety jsou zamcene, takze jiny na rade neni).
+    func keepGoingBoss(pathWins: [String: Int]) -> Boss? { currentMapBoss }
+
+    // MARK: - Mapa
+
+    /// Aktualni boss mapy: na rade ve svete posledni bitvy, jinak v prvnim odemcenem nedobytem svete.
+    /// Nil = vsechny svety dobyte. Hrdina na mape stoji u nej a kamera na nej najede.
+    var currentMapBoss: Boss? { preferences.currentBoss(anchor: pathAnchor.world) }
+
+    func isUnlocked(_ world: BossWorld) -> Bool { preferences.isUnlocked(world) }
+
+    func canFight(_ boss: Boss, wins: Int) -> Bool { preferences.canFight(boss, wins: wins) }
+
+    /// Odemceny svet, nad kterym se jeste nerozplynula mlha (animace na mape).
+    func needsReveal(_ world: BossWorld) -> Bool {
+        // Prvni svet mlhu nikdy nema.
+        world.previous != nil && isUnlocked(world) && !(preferences.revealedWorlds ?? []).contains(world.rawValue)
+    }
+
+    /// Mlha nad svetem se rozplynula: priste uz se animace neprehraje.
+    func markRevealed(_ world: BossWorld) {
+        var revealed = preferences.revealedWorlds ?? []
+        guard !revealed.contains(world.rawValue) else { return }
+        revealed.append(world.rawValue)
+        preferences.revealedWorlds = revealed
+        preferenceStore.save(preferences)
+        onPreferencesChanged?(preferences)
     }
 
     // MARK: - Prestavka
@@ -211,12 +238,9 @@ final class ArenaViewModel: ObservableObject {
         return Boss.find(preferences.lastBossID).flatMap { $0.isWarmUp ? nil : $0 } ?? BossWorld.allCases[0].bosses[0]
     }
 
-    /// Boss na rade na ceste: nejdriv ve svete posledni bitvy, pak v dalsich svetech. Nil = vse dobyto.
-    var upcomingPathBoss: Boss? {
-        let current = pathAnchor.world
-        let worlds = [current] + BossWorld.allCases.filter { $0 != current }
-        return worlds.lazy.compactMap { $0.frontierBoss(cleared: self.clearedNodes(in: $0)) }.first
-    }
+    /// Boss na rade na ceste (NEXT BOSS v prestavce): aktualni boss mapy. Po finalnim bossovi sveta
+    /// je to prvni boss nove odemceneho sveta. Nil = vse dobyto.
+    var upcomingPathBoss: Boss? { currentMapBoss }
 
     /// "NEXT BOSS" z prestavky: bitva zacne hned, predmet zustava stejny.
     func startNextBoss(_ boss: Boss) {

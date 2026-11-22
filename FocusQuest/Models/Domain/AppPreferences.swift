@@ -118,11 +118,14 @@ struct AppPreferences: Codable, Equatable, Sendable {
     var isBattleSoundEnabled = true
     /// Hlasitost zvukovych efektu 0...1 (hudba bitvy ma vlastni ambientVolume).
     var effectsVolume = 0.8
+    /// Svety, nad kterymi uz se na mape rozplynula mlha (animace se prehraje jen jednou).
+    /// nil = jeste nenastaveno (prvni spusteni nove verze): ArenaViewModel sem zapise uz odemcene svety.
+    var revealedWorlds: [String]? = nil
 
     enum CodingKeys: String, CodingKey {
         case isHapticsEnabled, isMusicEnabled, isSFXEnabled, ambientVolume, selectedTrack, soundscape, clearedNodesByWorld, lastSubject, lastBossID, subjects
         case isAchievementSoundEnabled, isAlarmSoundEnabled, isDailyReminderEnabled, isBattleDoneNotificationEnabled, isBreakOverNotificationEnabled
-        case isBattleSoundEnabled, effectsVolume
+        case isBattleSoundEnabled, effectsVolume, revealedWorlds
     }
 
     /// Zvuk bitvy jako jedna volba: Off vypne hudbu, ostatni zapnou a vyberou zanr.
@@ -161,13 +164,53 @@ struct AppPreferences: Codable, Equatable, Sendable {
     }
 
     /// Porazeni uzlu na rade posune cestu o krok dal; vyhra nad jinym uzlem postup nemeni
-    /// (na Path si hrac muze vybrat kohokoli, "2 / 4 cleared" pocita jen souvislou radu od zacatku).
+    /// ("2 / 7 cleared" pocita jen souvislou radu od zacatku).
     mutating func markCleared(_ boss: Boss) {
         // Rozcvicka nepatri do zadneho sveta a cestu nikdy neposouva.
         guard !boss.isWarmUp else { return }
         let world = boss.world
         guard boss.nodeIndex == clearedNodes(in: world) else { return }
         clearedNodesByWorld[world.rawValue] = boss.nodeIndex + 1
+    }
+
+    // MARK: - Mapa: odemykani
+
+    /// Svet je odemceny, kdyz je prvni na mape, kdyz je predchozi svet cely dobyty (porazeny
+    /// finalni boss), nebo kdyz v nem hrac uz ma postup (starsi verze nic nezamykaly).
+    func isUnlocked(_ world: BossWorld) -> Bool {
+        guard let previous = world.previous else { return true }
+        if clearedNodes(in: world) > 0 { return true }
+        return clearedNodes(in: previous) >= previous.bosses.count
+    }
+
+    /// Jde s bossem bojovat? Ve odemcenem svete porazeni (opakovane) a ten na rade;
+    /// dalsi az po nem. `wins` = vyhry nad bossem z Bestiare (starsi verze dovolily boj mimo poradi).
+    func canFight(_ boss: Boss, wins: Int = 0) -> Bool {
+        guard !boss.isWarmUp else { return true }
+        guard isUnlocked(boss.world) else { return false }
+        return boss.nodeIndex <= clearedNodes(in: boss.world) || wins > 0
+    }
+
+    /// Aktualni boss mapy: na rade ve svete `anchor` (posledni bitva), kdyz je odemceny a nedobyty;
+    /// jinak prvni boss na rade v prvnim odemcenem nedobytem svete. Nil = vsechny svety dobyte.
+    func currentBoss(anchor: BossWorld?) -> Boss? {
+        if let anchor, isUnlocked(anchor), let boss = anchor.frontierBoss(cleared: clearedNodes(in: anchor)) { return boss }
+        return BossWorld.allCases.lazy
+            .filter { isUnlocked($0) }
+            .compactMap { $0.frontierBoss(cleared: clearedNodes(in: $0)) }
+            .first
+    }
+
+    /// Prevede postup ulozeny starsimi verzemi pod dnesni klice svetu (viz BossWorld.legacyWorldKeys).
+    /// Kdyz uz novy svet postup ma, plati vyssi hodnota; pocet se zastropuje poctem bossu sveta.
+    static func migratedProgress(_ stored: [String: Int]) -> [String: Int] {
+        var result: [String: Int] = [:]
+        for (key, value) in stored {
+            guard let world = BossWorld(rawValue: key) ?? BossWorld.legacyWorldKeys[key] else { continue }
+            let capped = min(world.bosses.count, max(0, value))
+            result[world.rawValue] = max(result[world.rawValue] ?? 0, capped)
+        }
+        return result
     }
 }
 
@@ -191,7 +234,8 @@ extension AppPreferences {
         isBattleSoundEnabled = (try? container.decodeIfPresent(Bool.self, forKey: .isBattleSoundEnabled)) ?? isSFXEnabled
         effectsVolume = min(1, max(0, (try? container.decodeIfPresent(Double.self, forKey: .effectsVolume)) ?? fallback.effectsVolume))
         // Starsi verze mely vlastni delku bitvy (bossMinutes, bossMinutesByID); ta se zamerne zahodi.
-        clearedNodesByWorld = (try? container.decodeIfPresent([String: Int].self, forKey: .clearedNodesByWorld)) ?? [:]
+        clearedNodesByWorld = Self.migratedProgress((try? container.decodeIfPresent([String: Int].self, forKey: .clearedNodesByWorld)) ?? [:])
+        revealedWorlds = try? container.decodeIfPresent([String].self, forKey: .revealedWorlds)
         lastSubject = try? container.decodeIfPresent(StudySubject.self, forKey: .lastSubject)
         lastBossID = try? container.decodeIfPresent(String.self, forKey: .lastBossID)
         if let stored = try? container.decodeIfPresent([SubjectEntry].self, forKey: .subjects) {
