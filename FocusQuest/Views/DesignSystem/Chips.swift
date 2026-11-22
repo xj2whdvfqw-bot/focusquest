@@ -43,7 +43,7 @@ struct FQChip: View {
         Button(action: action) {
             Text(title).fqChip(selected: isSelected, compact: compact)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.fqPress)
         // Cil dotyku aspon 44 pt i u nizsiho cipu.
         .frame(minHeight: 44)
         .contentShape(Rectangle())

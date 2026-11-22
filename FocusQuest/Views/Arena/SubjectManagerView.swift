@@ -197,7 +197,7 @@ struct SubjectManagerView: View {
             }
             .contentShape(RoundedRectangle(cornerRadius: FQRadius.inSheet, style: .continuous))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.fqPress)
         .frame(maxWidth: .infinity)
     }
 }
@@ -277,7 +277,7 @@ private struct SubjectRow: View {
                     .frame(width: 44, height: 44)
                     .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.fqPress)
             .accessibilityLabel("Delete \(entry.subject.title)")
         }
         .padding(.leading, 14)

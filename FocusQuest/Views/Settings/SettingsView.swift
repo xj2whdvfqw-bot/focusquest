@@ -20,6 +20,7 @@ struct SettingsView: View {
     @State private var notifications = NotificationPermission.notDetermined
     /// Jak daleko hrac tahne podstranku od leveho okraje doprava (navrat zpet jako v iOS).
     @State private var backDrag: CGFloat = 0
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.openURL) private var openURL
 
@@ -84,14 +85,14 @@ struct SettingsView: View {
             Button { showsSounds = true } label: {
                 linkRow(icon: "bell", title: "Sounds & notifications", detail: soundsSummary)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.fqPress)
         }
         ScreenSection(title: "Background") {
             card {
                 Button { onOpenBackgrounds?() } label: {
                     linkRow(icon: nil, title: profile.selectedBackground?.name ?? ShopBackground.worldName, detail: "Change it in Shop › Backgrounds")
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.fqPress)
             }
         }
         ScreenSection(title: "Feedback") {
@@ -99,7 +100,7 @@ struct SettingsView: View {
                 Button { contactDeveloper() } label: {
                     linkRow(icon: "envelope", title: "Contact the developer", detail: "Report a bug or suggest an idea")
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.fqPress)
                 // "Rate this app" je skryte, dokud appka nema App Store ID. Pak se vrati s primym odkazem
                 // https://apps.apple.com/app/id<ID>?action=write-review (requestReview() casto nic neukaze).
             }
@@ -124,7 +125,7 @@ struct SettingsView: View {
                     .frame(minHeight: 44)
                     .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.fqPress)
                 .disabled(isResetting)
             }
             if let message = model.statusMessage {
@@ -184,11 +185,11 @@ struct SettingsView: View {
     }
     #endif
 
-    /// "Lo-fi · 3 of 3 sounds on · reminder off"
+    /// "Lo-fi · 3 of 4 sounds on · reminder off"
     private var soundsSummary: String {
         let prefs = model.preferences
         let reminder = notifications == .denied ? "notifications off" : "reminder \(prefs.isDailyReminderEnabled ? "on" : "off")"
-        return "\(prefs.battleSound.title) · \(prefs.soundEffectsOnCount) of 3 sounds on · \(reminder)"
+        return "\(prefs.battleSound.title) · \(prefs.soundEffectsOnCount) of 4 sounds on · \(reminder)"
     }
 
     private var footer: some View {
@@ -205,7 +206,7 @@ struct SettingsView: View {
             }
             .font(.fqMeta.weight(.semibold))
             .foregroundStyle(FQColor.textSecondary)
-            .buttonStyle(.plain)
+            .buttonStyle(.fqPress)
         }
         .frame(maxWidth: .infinity)
         .padding(.top, FQSpace.sm)
@@ -247,7 +248,7 @@ struct SettingsView: View {
                 .frame(minHeight: 44)
                 .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.fqPress)
             .accessibilityLabel("Back to Settings")
             Text("Sounds & notifications")
                 .fqFont(size: 22, weight: .semibold, design: .rounded)
@@ -265,13 +266,35 @@ struct SettingsView: View {
         }
         ScreenSection(title: "Sound effects") {
             card {
-                toggleRow("Tap and battle sounds", detail: "Clicks, hits and small effects", isOn: binding(\.isSFXEnabled))
+                // Kazdy prepinac ma pod sebou zkusebni kartu, ktera se pri zapnuti rozbali.
+                feedbackToggle("Tap sounds", detail: "A soft click on buttons and controls", isOn: binding(\.isSFXEnabled)) {
+                    demoButton("Try tapping") { FQFeedback.shared.play(.tap) }
+                }
                 HairlineDivider()
-                toggleRow("Achievement sounds", detail: "Victory jingle and level up", isOn: binding(\.isAchievementSoundEnabled))
+                feedbackToggle("Haptics", detail: "Vibrations on taps, wins and the phone-lifted alarm", isOn: binding(\.isHapticsEnabled)) {
+                    demoButton("Light") { FQFeedback.shared.haptic(.light) }
+                    demoButton("Strong") { FQFeedback.shared.haptic(.heavy) }
+                    demoButton("Success") { FQFeedback.shared.haptic(.success) }
+                }
                 HairlineDivider()
-                toggleRow("Alarm sound", detail: "Beeps when the phone is lifted", isOn: binding(\.isAlarmSoundEnabled))
+                feedbackToggle("Battle sounds", detail: "Attack, hit, victory and the boss escaping", isOn: binding(\.isBattleSoundEnabled)) {
+                    demoButton("Attack") { FQFeedback.shared.play(.attack) }
+                    demoButton("Hit") { FQFeedback.shared.play(.hit) }
+                    demoButton("Victory") { FQFeedback.shared.play(.victory) }
+                    demoButton("Escape") { FQFeedback.shared.play(.escape) }
+                }
                 HairlineDivider()
-                toggleRow("Vibrate on the alarm", detail: "When the phone is lifted mid-battle", isOn: binding(\.isHapticsEnabled))
+                feedbackToggle("Reward sounds", detail: "Coins, XP and level up", isOn: binding(\.isAchievementSoundEnabled)) {
+                    demoButton("Coins") { FQFeedback.shared.play(.coin) }
+                    demoButton("XP") { FQFeedback.shared.play(.xp) }
+                    demoButton("Level up") { FQFeedback.shared.play(.levelUp) }
+                }
+                HairlineDivider()
+                feedbackToggle("Alarm sound", detail: "Beeps when the phone is lifted", isOn: binding(\.isAlarmSoundEnabled)) {
+                    demoButton("Play beep") { FQFeedback.shared.play(.alarm) }
+                }
+                HairlineDivider()
+                effectsVolumeRow
             }
         }
         ScreenSection(title: "Notifications") {
@@ -311,7 +334,7 @@ struct SettingsView: View {
             .frame(minHeight: 44)
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.fqPress)
         .accessibilityAddTraits(selected ? [.isSelected] : [])
     }
 
@@ -354,6 +377,62 @@ struct SettingsView: View {
             }
         }
         .tint(FQColor.toggleOn)
+        .padding(.vertical, FQSpace.sm)
+        // Prepinac je ovladaci prvek: klik a vibrace stejne jako tlacitka.
+        .onChange(of: isOn.wrappedValue) { FQFeedback.shared.tap() }
+    }
+
+    /// Prepinac zvuku nebo haptiky; kdyz je zapnuty, pod nim se animovane rozbali zkusebni karta.
+    private func feedbackToggle<Demo: View>(_ title: String, detail: String, isOn: Binding<Bool>, @ViewBuilder demo: () -> Demo) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            toggleRow(title, detail: detail, isOn: Binding(
+                get: { isOn.wrappedValue },
+                set: { value in withAnimation(FQMotion.spring(reduceMotion: reduceMotion)) { isOn.wrappedValue = value } }
+            ))
+            if isOn.wrappedValue {
+                VStack(alignment: .leading, spacing: FQSpace.sm) {
+                    Text("Try it").font(.fqMeta).foregroundStyle(FQColor.textSecondary)
+                    ChipFlow(spacing: FQSpace.sm) { demo() }
+                }
+                .padding(FQSpace.md)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(FQColor.fill, in: FQRadius.shape(FQRadius.inSmallCard))
+                .padding(.bottom, FQSpace.md)
+                .transition(reduceMotion ? .opacity : .opacity.combined(with: .move(edge: .top)))
+            }
+        }
+        .clipped()
+    }
+
+    private func demoButton(_ title: String, action: @escaping () -> Void) -> some View {
+        Button(title, action: action)
+            .buttonStyle(ShopButtonStyle(outlined: true))
+    }
+
+    /// Hlasitost efektu (klepnuti, bitva, odmeny, alarm). Po pusteni posuvniku zazni ukazka.
+    private var effectsVolumeRow: some View {
+        VStack(alignment: .leading, spacing: FQSpace.xs) {
+            HStack {
+                Text("Effects volume").font(.fqBody).foregroundStyle(FQColor.textPrimary)
+                Spacer(minLength: FQSpace.sm)
+                Text("\(Int((model.preferences.effectsVolume * 100).rounded())) %")
+                    .font(.fqMeta)
+                    .monospacedDigit()
+                    .foregroundStyle(FQColor.textSecondary)
+            }
+            HStack(spacing: FQSpace.sm) {
+                Image(systemName: "speaker.fill").font(.fqMeta).foregroundStyle(FQColor.textSecondary).accessibilityHidden(true)
+                Slider(
+                    value: Binding(get: { model.preferences.effectsVolume }, set: { value in model.update { $0.effectsVolume = value } }),
+                    in: 0...1,
+                    onEditingChanged: { editing in if !editing { FQFeedback.shared.preview(.coin) } }
+                )
+                .tint(FQColor.accent)
+                .accessibilityLabel("Effects volume")
+                .accessibilityValue("\(Int((model.preferences.effectsVolume * 100).rounded())) percent")
+                Image(systemName: "speaker.wave.3.fill").font(.fqMeta).foregroundStyle(FQColor.textSecondary).accessibilityHidden(true)
+            }
+        }
         .padding(.vertical, FQSpace.sm)
     }
 

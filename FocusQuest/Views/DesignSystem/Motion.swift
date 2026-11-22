@@ -13,9 +13,11 @@ enum FQMotion {
     static func spring(reduceMotion: Bool) -> Animation { reduceMotion ? quick : pop }
 }
 
-/// Tlacitko se pri stisku jemne zmenši (0,96) a malinko ztmavne. S Reduce Motion jen ztmavne.
+/// Spolecny styl vsech tlacitek appky: pri stisku se jemne zmensi (0,97) a malinko ztmavne
+/// (s Reduce Motion jen ztmavne) a FQFeedback prehraje klik a jemnou vibraci
+/// (podle prepinacu Tap sounds a Haptics v Nastaveni).
 struct FQPressStyle: ButtonStyle {
-    var scale: CGFloat = 0.96
+    var scale: CGFloat = 0.97
 
     func makeBody(configuration: Configuration) -> some View {
         PressBody(configuration: configuration, scale: scale)
@@ -31,6 +33,19 @@ struct FQPressStyle: ButtonStyle {
                 .scaleEffect(configuration.isPressed && !reduceMotion ? scale : 1)
                 .opacity(configuration.isPressed ? 0.88 : 1)
                 .animation(.easeOut(duration: 0.15), value: configuration.isPressed)
+                .modifier(TapFeedback(isPressed: configuration.isPressed))
+        }
+    }
+}
+
+/// Klik a vibrace v okamziku dotyku tlacitka (jako klavesnice iOS). Pouzivaji ho vsechny styly tlacitek.
+struct TapFeedback: ViewModifier {
+    let isPressed: Bool
+    @Environment(\.isEnabled) private var isEnabled
+
+    func body(content: Content) -> some View {
+        content.onChange(of: isPressed) { _, pressed in
+            if pressed && isEnabled { FQFeedback.shared.tap() }
         }
     }
 }

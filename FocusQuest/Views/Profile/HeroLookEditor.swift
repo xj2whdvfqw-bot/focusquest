@@ -69,7 +69,7 @@ struct HeroLookEditor: View {
                                 .frame(width: 44, height: 44)
                                 .contentShape(Rectangle())
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.fqPress)
                         .accessibilityLabel("\(title) \(option.displayName)")
                         .accessibilityAddTraits(isSelected ? .isSelected : [])
                     }

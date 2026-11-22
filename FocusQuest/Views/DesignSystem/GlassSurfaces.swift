@@ -17,12 +17,12 @@ extension View {
         modifier(GlassControlModifier(shape: shape, tint: tint, interactive: interactive))
     }
 
-    /// Hlavni akce na obrazovce (vyplnene sklo v akcentove barve).
+    /// Hlavni akce na obrazovce (vyplnene sklo v akcentove barve). Klik a vibrace pres FQFeedback.
     @ViewBuilder func prominentGlassButtonStyle() -> some View {
         if #available(iOS 26.0, *) {
-            buttonStyle(.glassProminent)
+            buttonStyle(.glassProminent).simultaneousGesture(TapGesture().onEnded { FQFeedback.shared.tap() })
         } else {
-            buttonStyle(.borderedProminent)
+            buttonStyle(.borderedProminent).simultaneousGesture(TapGesture().onEnded { FQFeedback.shared.tap() })
         }
     }
 
@@ -71,9 +71,9 @@ extension View {
     /// Vedlejsi akce (pruhledne sklo).
     @ViewBuilder func glassButtonStyle() -> some View {
         if #available(iOS 26.0, *) {
-            buttonStyle(.glass)
+            buttonStyle(.glass).simultaneousGesture(TapGesture().onEnded { FQFeedback.shared.tap() })
         } else {
-            buttonStyle(.bordered)
+            buttonStyle(.bordered).simultaneousGesture(TapGesture().onEnded { FQFeedback.shared.tap() })
         }
     }
 }

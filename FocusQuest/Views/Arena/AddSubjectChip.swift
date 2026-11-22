@@ -61,7 +61,7 @@ struct AddSubjectChip: View {
                 .padding(.horizontal, 12)
                 .frame(height: 28)
                 .background(FQColor.cta, in: Capsule())
-                .buttonStyle(.plain)
+                .buttonStyle(.fqPress)
         }
         .padding(.leading, 14)
         .padding(.trailing, 6)
@@ -82,7 +82,7 @@ struct AddSubjectChip: View {
             Label("Subject", systemImage: "plus")
                 .labelStyle(ChipLabelStyle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.fqPress)
         .modifier(GhostChip())
         .accessibilityLabel("Add subject")
     }

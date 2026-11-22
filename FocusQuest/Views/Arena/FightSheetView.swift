@@ -119,7 +119,7 @@ struct FightSheetView: View {
                 }
                 if !isEditing, !showsAllSubjects, subjects.count > Layout.visibleChips {
                     Button("More…") { showsAllSubjects = true }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.fqPress)
                         .modifier(GhostChip())
                 }
                 if !isEditing {
@@ -181,7 +181,7 @@ struct FightSheetView: View {
             .background(isConfirming ? FQColor.alarm : FQColor.alarm.opacity(0.14), in: Capsule())
             .contentShape(Capsule())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.fqPress)
         .accessibilityLabel(isConfirming ? "Tap again to delete \(subject.title)" : "Delete \(subject.title)")
     }
 

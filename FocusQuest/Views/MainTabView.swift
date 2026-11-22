@@ -66,10 +66,10 @@ struct MainTabView: View {
                 }
             }
             // Prepnuti zalozky: prechod obsahu a jemna haptika.
-            .sensoryFeedback(.selection, trigger: selectedTab)
+            .fqHaptic(.selection, trigger: selectedTab)
             // Otevreni Fight sheetu a start bitvy jsou hlavni akce: kratke ťuknuti.
-            .sensoryFeedback(.impact(weight: .light), trigger: battlePresenter.showsFightSheet) { _, open in open }
-            .sensoryFeedback(.impact(weight: .medium), trigger: battlePresenter.isPresented) { _, open in open }
+            .fqHaptic(.light, trigger: battlePresenter.showsFightSheet) { _, open in open }
+            .fqHaptic(.medium, trigger: battlePresenter.isPresented) { _, open in open }
             .environment(settingsPresenter)
             .environment(battlePresenter)
             .sheet(isPresented: Binding(get: { settingsPresenter.isPresented }, set: { settingsPresenter.isPresented = $0 })) {

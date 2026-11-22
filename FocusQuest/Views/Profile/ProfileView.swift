@@ -51,7 +51,7 @@ struct ProfileView: View {
                         .frame(width: 44, height: 44)
                         .contentShape(Circle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.fqPress)
                 .padding(.vertical, -5)
                 .accessibilityLabel("Edit appearance")
             }
@@ -92,7 +92,7 @@ struct ProfileView: View {
                 Button { model.updateUsername(usernameDraft) } label: {
                     Image(systemName: "checkmark.circle.fill").font(.system(size: 24)).foregroundStyle(FQColor.accent)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.fqPress)
                 .frame(width: 44, height: 44)
                 .accessibilityLabel("Save username")
             }

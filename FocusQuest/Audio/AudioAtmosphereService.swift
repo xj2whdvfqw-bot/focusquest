@@ -93,7 +93,11 @@ final class AudioAtmosphereService: NSObject, AudioAtmosphereServiceProtocol, AV
         isWarning = false
         stopAmbient()
         warningPlayer?.stop()
-        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        let session = AVAudioSession.sharedInstance()
+        try? session.setActive(false, options: .notifyOthersOnDeactivation)
+        // Mimo bitvu hraji jen efekty: kategorie .ambient respektuje tichy rezim
+        // a neprerusi hudbu z jinych appek (.playback plati jen pro hudbu bitvy).
+        try? session.setCategory(.ambient, mode: .default, options: [.mixWithOthers])
     }
 
     // MARK: - Hudba a sumy
@@ -187,7 +191,7 @@ final class AudioAtmosphereService: NSObject, AudioAtmosphereServiceProtocol, AV
     // MARK: - Tony odpoctu
 
     func breakOver(preferences: AppPreferences) {
-        guard preferences.isSFXEnabled else { return }
+        guard preferences.isBattleSoundEnabled else { return }
         try? AVAudioSession.sharedInstance().setActive(true)
         playTone(frequency: 784, duration: 0.16, volume: 0.5)
         Task { @MainActor [weak self] in

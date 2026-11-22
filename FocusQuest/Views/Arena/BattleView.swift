@@ -54,6 +54,7 @@ struct BattleView: View {
     private var isIdle: Bool { if case .idle = model.state { true } else { false } }
     private var isVictory: Bool { if case .victory = model.state { true } else { false } }
     private var isDefeat: Bool { if case .defeated = model.state { true } else { false } }
+    private var isFocusing: Bool { if case .focusing = model.state { true } else { false } }
     /// Vysledek bitvy (vyhra, utek bosse, chyba): karta bitvy pod oknem uz neni videt.
     private var showsResult: Bool {
         switch model.state {
@@ -118,9 +119,15 @@ struct BattleView: View {
         }
         .preferredColorScheme(.dark)
         .animation(.easeOut(duration: 0.25), value: showsResult)
-        // Haptika: vyhra = uspech, utek bosse = varovani.
-        .sensoryFeedback(.success, trigger: isVictory) { _, now in now }
-        .sensoryFeedback(.warning, trigger: isDefeat) { _, now in now }
+        // Zvuky a haptika pres FQFeedback: vyhra = fanfara a uspech, utek bosse = sestup a varovani.
+        .fqHaptic(.success, trigger: isVictory) { _, now in now }
+        .fqSound(.victory, trigger: isVictory) { _, now in now }
+        .fqHaptic(.warning, trigger: isDefeat) { _, now in now }
+        .fqSound(.escape, trigger: isDefeat) { _, now in now }
+        // Zacatek bitvy (i navrat z pauzy nebo po zvednuti telefonu): zvuk utoku.
+        .fqSound(.attack, trigger: isFocusing) { _, now in now }
+        // Novy level po vyhre.
+        .fqSound(.levelUp, trigger: profileModel.level) { old, new in new > old }
         .animation(FQMotion.spring(reduceMotion: reduceMotion), value: showsBreak)
         .animation(.easeOut(duration: 0.2), value: showsRetreatConfirm)
         .onChange(of: model.state) { _, value in
@@ -137,8 +144,13 @@ struct BattleView: View {
     }
 
     /// XP a mince se nacitaji od nuly 0,9 s se zpomalenim (s Reduce Motion hned cele).
+    /// Az se dopocitaji (po vitezne fanfare), zazni zvuk XP (Reward sounds).
     private func countUpRewards() {
         rewardProgress = 0
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(1_100))
+            if isVictory { FQFeedback.shared.play(.xp) }
+        }
         if reduceMotion { rewardProgress = 1; return }
         withAnimation(.easeOut(duration: 0.9).delay(0.2)) { rewardProgress = 1 }
     }
@@ -449,7 +461,8 @@ struct BattleView: View {
                             .contentShape(FQRadius.shape(FQRadius.inDialog))
                     }
                     .buttonStyle(.fqPress)
-                    .sensoryFeedback(.impact(weight: .medium), trigger: showsBreak) { _, now in now }
+                    .fqHaptic(.medium, trigger: showsBreak) { _, now in now }
+                    .fqSound(.coin, trigger: showsBreak) { _, now in now }
                     if let keepGoing {
                         Button { openKeepGoing(keepGoing) } label: {
                             Label("Keep going · \(keepGoing.name) · \(ArenaView.durationText(minutes: keepGoing.maxHP))", systemImage: "play.fill")

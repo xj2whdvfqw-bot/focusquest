@@ -88,12 +88,13 @@ enum BattleSound: String, CaseIterable, Identifiable, Sendable {
 }
 
 struct AppPreferences: Codable, Equatable, Sendable {
-    /// Vibrate on the alarm: vibrace pri zvednuti telefonu (a dalsi drobne vibrace bitvy).
+    /// Haptics: vsechny vibrace (tlacitka, vysledky bitvy, alarm pri zvednuti telefonu).
     var isHapticsEnabled = true
     var isMusicEnabled = true
-    /// Tap and battle sounds: klepnuti, zasahy a drobne efekty.
+    /// Tap sounds: klik pri klepnuti na tlacitka a ovladaci prvky.
+    /// (Klic v ulozenych datech zustava "isSFXEnabled" kvuli starsim verzim.)
     var isSFXEnabled = true
-    /// Achievement sounds: vitezna znelka a level up.
+    /// Reward sounds: mince, XP, level up. (Klic "isAchievementSoundEnabled" kvuli starsim verzim.)
     var isAchievementSoundEnabled = true
     /// Alarm sound: pipani pri zvednuti telefonu. Vypnuto = telefon jen vibruje.
     var isAlarmSoundEnabled = true
@@ -113,10 +114,15 @@ struct AppPreferences: Codable, Equatable, Sendable {
     var lastBossID: String?
     /// Predmety hrace v pevnem poradi (poradi cipu ve Fight sheetu), vcetne skrytych a smazanych.
     var subjects: [SubjectEntry] = StudySubject.defaults.map { SubjectEntry(subject: $0) }
+    /// Battle sounds: utok, zasah, vitezstvi, utek bosse a konec prestavky.
+    var isBattleSoundEnabled = true
+    /// Hlasitost zvukovych efektu 0...1 (hudba bitvy ma vlastni ambientVolume).
+    var effectsVolume = 0.8
 
     enum CodingKeys: String, CodingKey {
         case isHapticsEnabled, isMusicEnabled, isSFXEnabled, ambientVolume, selectedTrack, soundscape, clearedNodesByWorld, lastSubject, lastBossID, subjects
         case isAchievementSoundEnabled, isAlarmSoundEnabled, isDailyReminderEnabled, isBattleDoneNotificationEnabled, isBreakOverNotificationEnabled
+        case isBattleSoundEnabled, effectsVolume
     }
 
     /// Zvuk bitvy jako jedna volba: Off vypne hudbu, ostatni zapnou a vyberou zanr.
@@ -139,8 +145,8 @@ struct AppPreferences: Codable, Equatable, Sendable {
         }
     }
 
-    /// Kolik ze 3 zvukovych prepinacu (efekty, uspechy, alarm) je zapnuto.
-    var soundEffectsOnCount: Int { [isSFXEnabled, isAchievementSoundEnabled, isAlarmSoundEnabled].filter { $0 }.count }
+    /// Kolik ze 4 zvukovych prepinacu (klepnuti, bitva, odmeny, alarm) je zapnuto.
+    var soundEffectsOnCount: Int { [isSFXEnabled, isBattleSoundEnabled, isAchievementSoundEnabled, isAlarmSoundEnabled].filter { $0 }.count }
 
     /// Predmet, ktery se ma ve Fight sheetu predvybrat: naposledy pouzity, pokud je videt, jinak prvni viditelny.
     var preselectedSubject: StudySubject? {
@@ -181,6 +187,9 @@ extension AppPreferences {
         isDailyReminderEnabled = (try? container.decodeIfPresent(Bool.self, forKey: .isDailyReminderEnabled)) ?? fallback.isDailyReminderEnabled
         isBattleDoneNotificationEnabled = (try? container.decodeIfPresent(Bool.self, forKey: .isBattleDoneNotificationEnabled)) ?? fallback.isBattleDoneNotificationEnabled
         isBreakOverNotificationEnabled = (try? container.decodeIfPresent(Bool.self, forKey: .isBreakOverNotificationEnabled)) ?? fallback.isBreakOverNotificationEnabled
+        // Starsi verze mely jeden prepinac "Tap and battle sounds"; bitevni zvuky prevezmou jeho hodnotu.
+        isBattleSoundEnabled = (try? container.decodeIfPresent(Bool.self, forKey: .isBattleSoundEnabled)) ?? isSFXEnabled
+        effectsVolume = min(1, max(0, (try? container.decodeIfPresent(Double.self, forKey: .effectsVolume)) ?? fallback.effectsVolume))
         // Starsi verze mely vlastni delku bitvy (bossMinutes, bossMinutesByID); ta se zamerne zahodi.
         clearedNodesByWorld = (try? container.decodeIfPresent([String: Int].self, forKey: .clearedNodesByWorld)) ?? [:]
         lastSubject = try? container.decodeIfPresent(StudySubject.self, forKey: .lastSubject)

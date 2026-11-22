@@ -64,7 +64,7 @@ struct PixelToast: View {
                     .frame(minWidth: 44, minHeight: 44)
                     .contentShape(Rectangle())
                     .padding(.vertical, -12)
-                    .buttonStyle(.plain)
+                    .buttonStyle(.fqPress)
             }
         }
             .font(.system(size: 15, weight: .heavy, design: .rounded))

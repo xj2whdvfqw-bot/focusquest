@@ -57,10 +57,9 @@ struct ShopView: View {
         }
         // Nahled pozadi plati jen v obchode.
         .onDisappear { model.previewBackground = nil }
-        // Haptika: vyzkouseni predmetu = vyber, nakup = uspech.
-        .sensoryFeedback(.selection, trigger: tryOnID)
-        .sensoryFeedback(.selection, trigger: section)
-        .sensoryFeedback(.success, trigger: model.profile.coins) { old, new in new < old }
+        // Nakup: zvuk mince a vibrace uspechu (klik a vibraci pri klepnuti dava styl tlacitek).
+        .fqHaptic(.success, trigger: model.profile.coins) { old, new in new < old }
+        .fqSound(.coin, trigger: model.profile.coins) { old, new in new < old }
     }
 
     // MARK: Zalozky
@@ -88,7 +87,7 @@ struct ShopView: View {
                         }
                         .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.fqPress)
                 .accessibilityAddTraits(selected ? .isSelected : [])
             }
             Spacer(minLength: 0)
@@ -326,6 +325,7 @@ struct ShopButtonStyle: ButtonStyle {
             .opacity(isEnabled ? 1 : 0.6)
             .scaleEffect(configuration.isPressed && !reduceMotion ? 0.96 : 1)
             .animation(.easeOut(duration: 0.15), value: configuration.isPressed)
+            .modifier(TapFeedback(isPressed: configuration.isPressed))
     }
 }
 

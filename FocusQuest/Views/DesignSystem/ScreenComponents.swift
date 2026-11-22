@@ -124,7 +124,7 @@ struct SettingsGearButton: View {
                     .frame(width: 44, height: 44)
                     .glassControl(in: Circle(), interactive: true)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.fqPress)
             .accessibilityLabel("Settings")
         }
     }

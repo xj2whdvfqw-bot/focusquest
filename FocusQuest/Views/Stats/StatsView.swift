@@ -99,7 +99,7 @@ struct StatsView: View {
                         .foregroundStyle(FQColor.textSecondary)
                         .frame(minHeight: 44)
                         .padding(.trailing, FQSpace.xs)
-                        .buttonStyle(.plain)
+                        .buttonStyle(.fqPress)
                 }
             }
             if progress.isEmpty {
@@ -147,7 +147,7 @@ struct StatsView: View {
                     .background(FQColor.cta, in: FQRadius.shape(FQRadius.inCard))
                     .compositingGroup()
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.fqPress)
         }
         .padding(Layout.cardPadding)
         .glassCard()

@@ -141,7 +141,7 @@ struct ArenaView: View {
                     }
                 }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.fqPress)
         .accessibilityLabel(days == 1 ? "1 day streak" : "\(days) days streak")
     }
 
@@ -154,7 +154,7 @@ struct ArenaView: View {
         guard streakTaps >= 5 else { return }
         streakTaps = 0
         fireStart = now
-        EffectSounds.shared.play(.jingle, enabled: model.preferences.isAchievementSoundEnabled)
+        FQFeedback.shared.play(.levelUp)
     }
 
     /// #EB5016, oranzovy okraj horici pilulky.
@@ -333,7 +333,7 @@ struct ArenaView: View {
         if !reduceMotion {
             if angry { shakes += 1 } else { bobs += 1 }
         }
-        EffectSounds.shared.play(angry ? .hit : .click, enabled: model.preferences.isSFXEnabled)
+        FQFeedback.shared.play(angry ? .hit : .tap)
         AccessibilityNotification.Announcement(text).post()
     }
 

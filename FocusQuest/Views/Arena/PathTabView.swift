@@ -74,7 +74,7 @@ private struct WorldCard: View {
     var body: some View {
         VStack(spacing: 0) {
             Button(action: onToggle) { header }
-                .buttonStyle(.plain)
+                .buttonStyle(.fqPress)
                 .accessibilityAddTraits(isOpen ? .isSelected : [])
                 .accessibilityHint(isOpen ? "Hides the bosses" : "Shows the bosses")
             if isOpen {
@@ -262,5 +262,6 @@ private struct TileButtonStyle: ButtonStyle {
         configuration.label
             .scaleEffect(configuration.isPressed ? 0.97 : 1)
             .animation(.easeOut(duration: 0.15), value: configuration.isPressed)
+            .modifier(TapFeedback(isPressed: configuration.isPressed))
     }
 }
