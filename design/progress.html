@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-22T15:21:06+01:00",
-  "current": "Build #57 prošel, ale terén mapy se na screenshotu nestihl vykreslit; zrychleno, build #58 se spouští.",
-  "nextStep": "Počkat na build #58 a zkontrolovat screenshot mapy.",
+  "updated": "2026-11-22T15:45:48+01:00",
+  "current": "B1–B3 hotové: build #58 prošel.",
+  "nextStep": "Otestovat build #58 na iPhonu podle poznámek v kartách B1–B3.",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -643,23 +643,23 @@
     {
       "id": "B1",
       "title": "Odstranění tří parodických světů",
-      "status": "build",
+      "status": "hotovo",
       "commit": "91752e5",
-      "build": { "number": 57, "runId": 45028843644, "result": "" },
+      "build": { "number": 58, "runId": 45032352031, "result": "úspěch" },
       "items": [
         { "text": "Tři světy s parodiemi chráněných postav pryč včetně bossů, spritů, textů, ID a testů", "done": true },
         { "text": "Migrace: postup ve třech odstraněných světech přejde na Coral Deep, Whisperwood a Snoozeville High (strop 7), staré klíče Dojo a Farm na nové", "done": true },
         { "text": "Statistiky: boss, který už neexistuje, se jmenuje „Retired boss“ (minuty, XP a předměty zůstanou), starý vybraný boss se nahradí aktuálním", "done": true },
         { "text": "Jména odstraněna i z design/ (CHANGES.md, DECISIONS.md, progress.html, prototyp)", "done": true }
       ],
-      "note": ""
+      "note": "Hotovo, build #58 prošel. Na iPhonu otestovat: po aktualizaci appka nespadne, starý postup je v nových světech, ve Stats místo starých bossů „Retired boss“."
     },
     {
       "id": "B2",
       "title": "Tři nové světy po 7 bossech",
-      "status": "build",
+      "status": "hotovo",
       "commit": "91752e5",
-      "build": { "number": 57, "runId": 45028843644, "result": "" },
+      "build": { "number": 58, "runId": 45032352031, "result": "úspěch" },
       "items": [
         { "text": "Whisperwood (lesní skřítci): Puffcap … Old Oakdrowse", "done": true },
         { "text": "Coral Deep (podmořský svět): Driftwell the Seahorse … The Kraken of Later", "done": true },
@@ -667,14 +667,14 @@
         { "text": "21 vlastních pixel-art spritů 16×16, hláška u každého z 54 bossů", "done": true },
         { "text": "Pořadí: Farm → Whisperwood → Coral Deep → Dojo → Snoozeville High → History Hall → Orbit; další svět se odemkne po finálním bossovi", "done": true }
       ],
-      "note": ""
+      "note": "Hotovo, build #58 prošel. Na iPhonu otestovat: sprity a hlášky nových bossů (karta bosse na mapě), Whisperwood se odemkne až po Neigh-ver Mind."
     },
     {
       "id": "B3",
       "title": "Interaktivní mapa",
-      "status": "build",
+      "status": "hotovo",
       "commit": "ed9ad02",
-      "build": { "number": 57, "runId": 45028843644, "result": "" },
+      "build": { "number": 58, "runId": 45032352031, "result": "úspěch" },
       "items": [
         { "text": "Velká pixelová mapa, posun tažením a pinch-zoom, nikdy celá najednou", "done": true },
         { "text": "7 regionů ve vlastním prostředí, klikatá cesta, zastávky (poražený s vlajkou, aktuální pulzuje s hrdinou, zamčený)", "done": true },
@@ -683,7 +683,7 @@
         { "text": "Výkon: terén jako malá bitmapa (1 px = 4 body) ve vrstvách, žádný obří obrázek", "done": true },
         { "text": "VoiceOver popisky zastávek a alternativní seznam", "done": true }
       ],
-      "note": "Build #57 prošel (IPA, testy), ale na screenshotu za 6 s ještě nebyl terén (Debug build na pomalém simulátoru) a štítek Farm překrýval hrdinu. Opraveno: generování přímo do paměti, nejdřív hrubý náhled (1 px = 16 bodů) za zlomek sekundy, plná mapa se po prvním výpočtu uloží do Caches a pak se načte hned; štítky světů uprostřed spodní hrany regionu a nad mlhou; mlha přesahuje do sousedního světa jen 16 bodů."
+      "note": "Hotovo, build #58 prošel (první build #57 ukázal na screenshotu jen náhradní plochu, opraveno rychlejším generováním, náhledem a uložením do Caches). Na iPhonu otestovat: tažení a pinch-zoom, kamera najede na aktuálního bosse, ťuknutí na zastávku = karta s Fight, tah dolů kartu zavře, terčík vrátí kameru, List přepne na seznam se zámky, vodorovný tah na mapě nepřepíná záložky, první otevření mapy (generování) a druhé (okamžitě), VoiceOver popisky zastávek."
     }
   ]
 }

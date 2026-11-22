@@ -3,7 +3,7 @@
 Doplňuje `design/CHANGES.md` (zadání sekcí 0–15) a `design/progress.html` (stav, buildy, co otestovat).
 Tady je to, co v nich není: rozhodnutí, která padla během práce, otevřené body a známé pasti.
 
-Stav k 22. 11. 2026: větev `phase3-duolingo`, opravy po testu #55 (A1–A6) hotové, poslední zelený build #56. Všechny sekce z CHANGES.md
+Stav k 22. 11. 2026: větev `phase3-duolingo`, poslední zelený build #58 (B1–B3: nové světy a mapa). Všechny sekce z CHANGES.md
 a všechny opravy z auditu jsou hotové.
 
 ## 1. Rozhodnutí
@@ -58,7 +58,9 @@ a všechny opravy z auditu jsou hotové.
 - **Mapa (záložka Path)**:
   - `UIScrollView` v `ZoomableMapView` (posun, setrvačnost, pinch-zoom 0,5–1,6×, nikdy celá mapa najednou), obsah je SwiftUI v `UIHostingController`,
   - mapa 2400 × 3600 bodů; terén včetně cesty, dekorací a staveb je pixelová bitmapa 600 × 900 px (1 px = 4 body, asi 2 MB) generovaná v kódu
-    na pozadí (`MapTerrain`), zobrazená bez vyhlazování; nad ní vrstvy: názvy světů, zastávky, hrdina a mlha (bitmapa 1 px = 16 bodů),
+    na pozadí (`MapTerrain`), zobrazená bez vyhlazování; nejdřív se ukáže hrubý náhled (1 px = 16 bodů), plná mapa se uloží
+    do Caches (`map-terrain-v1.rgba`, při změně vzhledu zvýšit verzi) a další otevření je okamžité;
+    nad ní vrstvy: zastávky, hrdina, mlha (bitmapa 1 px = 16 bodů) a názvy světů,
   - cesta se v každém světě jednou přehoupne z jedné strany na druhou, zastávky jsou rovnoměrně po její délce (`MapLayout`),
   - zastávky: poražený má vlajku, aktuální pulzuje a stojí u něj hrdina, zamčený je šedý se zámkem,
   - kamera po otevření mapy najede z oddálení na aktuálního bosse; tlačítko s terčíkem vrátí kameru zpět,
