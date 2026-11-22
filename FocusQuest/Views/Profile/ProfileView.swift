@@ -138,6 +138,8 @@ struct ProfileView: View {
                 in: 30...180,
                 step: 15,
                 onEditingChanged: { editing in
+                    // Tazeni posuvniku nesmi prepnout zalozku (vnitrni gesto ma prednost pred swipem).
+                    TabSwipeLock.isLocked = editing
                     guard !editing, let goal = goalDraft else { return }
                     model.updateDailyGoal(goal)
                     goalDraft = nil

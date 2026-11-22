@@ -85,34 +85,54 @@ struct ResultDialog<Content: View>: View {
 
 // MARK: - Prechod mezi zalozkami
 
-private struct TabSwitchKey: EnvironmentKey {
-    static let defaultValue = 0
+/// Stav prepinani zalozek, ktery MainTabView posila obrazovkam (ScreenScaffold).
+struct TabMotion: Equatable {
+    /// Zvysi se pri kazdem prepnuti zalozky (spousti prechod obsahu).
+    var switches = 0
+    /// +1 = nova zalozka je vpravo (obsah prijede zprava), -1 = vlevo.
+    var direction: CGFloat = 1
+    /// Jak daleko hrac prave tahne obsah prstem (vodorovny swipe mezi zalozkami).
+    var drag: CGFloat = 0
+}
+
+private struct TabMotionKey: EnvironmentKey {
+    static let defaultValue = TabMotion()
 }
 
 extension EnvironmentValues {
-    /// Zvysi se pri kazdem prepnuti zalozky; obsah obrazovky (ScreenScaffold) se pak plynule objevi.
-    var fqTabSwitch: Int {
-        get { self[TabSwitchKey.self] }
-        set { self[TabSwitchKey.self] = newValue }
+    var fqTabMotion: TabMotion {
+        get { self[TabMotionKey.self] }
+        set { self[TabMotionKey.self] = newValue }
     }
 }
 
-/// Obsah nove zalozky se prolne (0 → 1) a jemne vyjede o 10 bodu zdola, 0,25 s.
-/// Pozadi (krajina) stoji, hybe se jen obsah. S Reduce Motion jen prolnuti.
+/// Swipe mezi zalozkami nesmi prebit vnitrni vodorovna gesta (posuvnik denniho cile).
+/// Ovladaci prvek si ho behem tazeni zamkne.
+@MainActor
+enum TabSwipeLock {
+    static var isLocked = false
+}
+
+/// Obsah nove zalozky vyjede ve smeru poradi zalozek (o 48 bodu) a prolne se, 0,3 s s pruzinou.
+/// Behem tazeni prstem jde obsah s prstem. Pozadi (krajina) stoji, hybe se jen obsah.
+/// S Reduce Motion jen prolnuti, zadny posun.
 struct TabSwitchEntrance: ViewModifier {
-    @Environment(\.fqTabSwitch) private var trigger
+    @Environment(\.fqTabMotion) private var motion
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     func body(content: Content) -> some View {
-        content.keyframeAnimator(initialValue: 1.0, trigger: trigger) { view, progress in
-            view
-                .opacity(progress)
-                .offset(y: reduceMotion ? 0 : (1 - progress) * 10)
-        } keyframes: { _ in
-            KeyframeTrack {
-                MoveKeyframe(0.0)
-                CubicKeyframe(1.0, duration: 0.25)
+        let travel: CGFloat = reduceMotion ? 0 : 48 * motion.direction
+        content
+            .offset(x: reduceMotion ? 0 : motion.drag)
+            .keyframeAnimator(initialValue: 1.0, trigger: motion.switches) { view, progress in
+                view
+                    .opacity(0.25 + 0.75 * progress)
+                    .offset(x: (1 - progress) * travel)
+            } keyframes: { _ in
+                KeyframeTrack {
+                    MoveKeyframe(0.0)
+                    SpringKeyframe(1.0, duration: 0.3, spring: .snappy)
+                }
             }
-        }
     }
 }

@@ -43,8 +43,9 @@ enum FQTabBarMetrics {
 struct MainTabView: View {
     let container: AppDIContainer
     @State private var selectedTab = FocusQuestTab.initial
-    /// Pocet prepnuti zalozek: spousti prechod obsahu (TabSwitchEntrance).
-    @State private var tabSwitches = 0
+    /// Prepinani zalozek (pocet, smer, tazeni prstem): spousti prechod obsahu (TabSwitchEntrance).
+    @State private var tabMotion = TabMotion()
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var showsHeroCreator = false
     /// Zalozka obchodu; Nastaveni ji umi prepnout na Backgrounds.
     @State private var shopSection: ShopView.ShopSection = .gear
@@ -61,7 +62,9 @@ struct MainTabView: View {
                 let reserve = max(0, FQTabBarMetrics.bottom + FQTabBarMetrics.height + FQTabBarMetrics.contentGap - proxy.safeAreaInsets.bottom)
                 ZStack {
                     tabs(reserve: reserve)
-                        .environment(\.fqTabSwitch, tabSwitches)
+                        .environment(\.fqTabMotion, tabMotion)
+                        // Vodorovny swipe prepina zalozky v poradi Arena ↔ Path ↔ Shop ↔ Stats ↔ Hero.
+                        .simultaneousGesture(tabSwipe)
                     tabChrome
                 }
             }
@@ -139,8 +142,37 @@ struct MainTabView: View {
 
     private func switchTab(to tab: FocusQuestTab) {
         guard tab != selectedTab else { return }
-        tabSwitches += 1
+        tabMotion.direction = index(of: tab) > index(of: selectedTab) ? 1 : -1
+        tabMotion.switches += 1
         selectedTab = tab
+    }
+
+    private func index(of tab: FocusQuestTab) -> Int { FocusQuestTab.allCases.firstIndex(of: tab) ?? 0 }
+
+    /// Swipe mezi zalozkami: obsah jde s prstem (na krajich jen kousek, jako guma),
+    /// po ~70 bodech nebo rychlem svihu prepne na sousedni zalozku. Svisle rolovani ma prednost
+    /// (tah musi byt vyrazne vodorovny) a posuvnik si swipe zamkne (TabSwipeLock).
+    /// S Reduce Motion obsah s prstem nejde, zalozka se jen prolne.
+    private var tabSwipe: some Gesture {
+        DragGesture(minimumDistance: 24)
+            .onChanged { value in
+                guard !TabSwipeLock.isLocked else { return }
+                let dx = value.translation.width
+                guard tabMotion.drag != 0 || abs(dx) > abs(value.translation.height) * 1.8 else { return }
+                guard !reduceMotion else { return }
+                let atEdge = (dx > 0 && selectedTab == FocusQuestTab.allCases.first) || (dx < 0 && selectedTab == FocusQuestTab.allCases.last)
+                tabMotion.drag = atEdge ? dx * 0.2 : dx * 0.6
+            }
+            .onEnded { value in
+                defer { withAnimation(FQMotion.pop) { tabMotion.drag = 0 } }
+                guard !TabSwipeLock.isLocked else { return }
+                let dx = value.translation.width
+                let predicted = value.predictedEndTranslation.width
+                guard abs(dx) > abs(value.translation.height) * 1.8, abs(dx) > 70 || abs(predicted) > 180 else { return }
+                let target = index(of: selectedTab) + (dx < 0 ? 1 : -1)
+                guard FocusQuestTab.allCases.indices.contains(target) else { return }
+                switchTab(to: FocusQuestTab.allCases[target])
+            }
     }
 
     /// Systemovy TabView drzi stav kazde zalozky; jeho vlastni lista je skryta, kreslime FocusQuestTabBar.
@@ -253,8 +285,6 @@ private extension View {
 /// Vsechny zalozky vcetne Obchodu jsou dostupne od zacatku.
 private struct FocusQuestTabBar: View {
     @Binding var selection: FocusQuestTab
-    /// Zvyrazneni vybrane zalozky je jeden tvar, ktery pri prepnuti klouze na novou ikonu.
-    @Namespace private var highlight
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
@@ -263,8 +293,10 @@ private struct FocusQuestTabBar: View {
                 tabButton(tab)
             }
         }
-        // Animuje se jen lista (presun zvyrazneni a barva ikony), ne obsah zalozek.
-        .animation(FQMotion.spring(reduceMotion: reduceMotion), value: selection)
+        // Bublina vybrane zalozky je jeden tvar pod ikonami. S Reduce Motion se nehybe (viz tabButton).
+        .background { if !reduceMotion { movingBubble } }
+        // Barva ikon se prolne; bublina ma vlastni pruzinu.
+        .animation(FQMotion.quick, value: selection)
         .padding(FQRadius.Inset.tabHighlight)
         .frame(height: FQTabBarMetrics.height)
         // Vybrana zalozka ma rohy soustredne s listou.
@@ -282,6 +314,40 @@ private struct FocusQuestTabBar: View {
         }
     }
 
+    /// Bublina pri prepnuti: nejdriv se zmackne (squash 0,8 × 0,86), preleti na novou zalozku
+    /// pruzinou s malym prekmitem a tam se pruzne roztahne (1,12 → 1). Celkem asi 0,35 s.
+    private var movingBubble: some View {
+        GeometryReader { proxy in
+            let width = proxy.size.width / CGFloat(FocusQuestTab.allCases.count)
+            FQRadius.shape(FQRadius.tabHighlight)
+                .fill(Color.white.opacity(0.14))
+                .frame(width: width, height: proxy.size.height)
+                .keyframeAnimator(initialValue: BubbleSquash(), trigger: selection) { view, squash in
+                    view.scaleEffect(x: squash.x, y: squash.y)
+                } keyframes: { _ in
+                    KeyframeTrack(\.x) {
+                        CubicKeyframe(0.8, duration: 0.07)
+                        CubicKeyframe(1.12, duration: 0.15)
+                        SpringKeyframe(1.0, duration: 0.13, spring: .bouncy)
+                    }
+                    KeyframeTrack(\.y) {
+                        CubicKeyframe(0.86, duration: 0.07)
+                        CubicKeyframe(1.05, duration: 0.15)
+                        SpringKeyframe(1.0, duration: 0.13, spring: .bouncy)
+                    }
+                }
+                .offset(x: width * CGFloat(position(of: selection) - 1))
+                .animation(.spring(response: 0.35, dampingFraction: 0.68), value: selection)
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+
+    private struct BubbleSquash {
+        var x: CGFloat = 1
+        var y: CGFloat = 1
+    }
+
     private func position(of tab: FocusQuestTab) -> Int {
         (FocusQuestTab.allCases.firstIndex(of: tab) ?? 0) + 1
     }
@@ -296,10 +362,11 @@ private struct FocusQuestTabBar: View {
                 .foregroundStyle(isOn ? FQColor.cta : FQColor.textPrimary)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background {
-                    if isOn {
+                    // Reduce Motion: bublina se jen prolne na novou zalozku, bez squashe a preletu.
+                    if isOn && reduceMotion {
                         FQRadius.shape(FQRadius.tabHighlight)
                             .fill(Color.white.opacity(0.14))
-                            .matchedGeometryEffect(id: "highlight", in: highlight)
+                            .transition(.opacity)
                     }
                 }
                 .contentShape(FQRadius.shape(FQRadius.tabHighlight))

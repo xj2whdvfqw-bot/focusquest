@@ -3,7 +3,7 @@
 Doplňuje `design/CHANGES.md` (zadání sekcí 0–15) a `design/progress.html` (stav, buildy, co otestovat).
 Tady je to, co v nich není: rozhodnutí, která padla během práce, otevřené body a známé pasti.
 
-Stav k 21. 11. 2026: větev `phase3-duolingo`, poslední zelený build #53. Všechny sekce z CHANGES.md
+Stav k 22. 11. 2026: větev `phase3-duolingo`, opravy po testu #55 (A1–A6) hotové, build viz progress.html. Všechny sekce z CHANGES.md
 a všechny opravy z auditu jsou hotové.
 
 ## 1. Rozhodnutí
@@ -76,14 +76,51 @@ a všechny opravy z auditu jsou hotové.
 - **Skeletony místo spinnerů**: pro načítání obsahu se používá skeleton ve tvaru obsahu (redacted + jemný lesk),
   ne `ProgressView`. Teď se v appce nic nenačítá (všechna data jsou v telefonu), takže žádný skeleton zatím není.
   Jediné kolečko je u Reset progress a to značí probíhající akci, ne načítání.
+- **Paleta bez tyrkysové** (od testu #55, vše v `Shared/FQColor.swift`):
+  - `accent` je bílý (text na něm `onAccent` téměř černý #0D0B1C), Live Activity `liveAccent` bílá,
+  - šedé odstíny pro vedlejší prvky, zapnutý přepínač má šedou stopu `toggleOn` (bílá kulička na bílé by zmizela),
+  - žlutá jen pro hlavní CTA, červená (`danger`) pro ústup a mazání, mince zlaté (`coin`, komponenta `CoinLabel`),
+  - další barvy nepřidávat.
+  - Kontrast WCAG AA (spočítaný pro tmavé i světlé scény): sklo na světlých pozadích `cardOnBright` .78 (dřív .64),
+    terciární text bílá 62 % (dřív 50 %), `danger` rgb(255,120,135) (dřív 255,84,102). Bílá na skle ≥ 7:1, vedlejší 78 % ≥ 4,5:1.
 - **Animace** (`FQMotion`, `FQPressStyle`, `TabSwitchEntrance` v `Motion.swift`):
   - krátké, 0,2–0,35 s,
-  - přechod záložek: obsah se prolne a vyjede o 10 pt, krajina stojí; zvýraznění v tab baru klouže (`matchedGeometryEffect`),
-  - stisk tlačítek 0,96, podtržítko Gear/Backgrounds klouže, vybraný předmět v Shopu se zvedne na 1,02,
-  - každá změna záložky jde přes `switchTab(to:)`, aby se přechod spustil ve stejném překreslení (jinak by obsah problikl),
-  - Reduce Motion: bez zmenšení, posunu a pružiny, jen prolnutí.
-- **Haptika v UI** (`sensoryFeedback`): přepnutí záložky, otevření Fight sheetu, start bitvy, vítězství, útěk bosse,
-  Collect Loot, výběr a nákup v Shopu. Přepínač „Vibrate on the alarm“ se týká jen alarmu zvednutého telefonu.
+  - stisk tlačítek 0,97, podtržítko Gear/Backgrounds klouže, vybraný předmět v Shopu se zvedne na 1,02,
+  - Reduce Motion: bez zmenšení, posunu, squashe a pružiny, jen prolnutí.
+- **Tab bar a přechody záložek** (od testu #55):
+  - bublina výběru je jeden tvar pod ikonami: zmáčkne se (0,8 × 0,86), přeletí pružinou s malým překmitem a roztáhne se (1,12 → 1), asi 0,35 s,
+  - obsah nové záložky vyjede ve směru pořadí záložek (48 pt) a prolne se, krajina stojí,
+  - vodorovný swipe po obrazovce přepíná na sousední záložku (obsah jde s prstem, na krajích jen kousek; přepne po ~70 pt nebo švihu),
+  - swipe nesmí přebít vnitřní gesta: musí být výrazně vodorovný (|dx| > 1,8 × |dy|) a posuvník si ho zamkne (`TabSwipeLock`).
+    Systémový TabView se stránkováním se nepoužil, protože nepouští pozadí obrazovek pod stavový řádek.
+  - každá změna záložky jde přes `switchTab(to:)` (směr a spuštění přechodu ve stejném překreslení).
+- **Zvuky a haptika: jeden centrální `FQFeedback`** (`Audio/FQFeedback.swift`), samostatné přepínače v Settings › Sounds:
+  - Tap sounds (klik na tlačítka a ovládací prvky), Haptics (všechny vibrace včetně alarmu), Battle sounds (útok, zásah,
+    vítězství, útěk bosse, konec přestávky), Reward sounds (mince, XP, level up, série v plamenech), Alarm sound, hlasitost efektů,
+  - u každého zapnutého přepínače se rozbalí karta „Try it“ s ukázkou,
+  - tlačítka dostávají klik a vibraci přes společný styl (`FQPressStyle` / `TapFeedback`, i `ShopButtonStyle`, dlaždice Path,
+    skleněná tlačítka a přepínače), nové tlačítko má proto používat `.buttonStyle(.fqPress)`, ne `.plain`,
+  - zvuky jsou syntetické tóny generované v kódu (`EffectSounds`), žádné soubory, tedy žádná licence,
+  - efekty mimo bitvu hrají přes audio session `.ambient`: respektují přepínač ticha a nepřeruší hudbu z jiných appek;
+    hudba bitvy zůstává `.playback` s `mixWithOthers` a po bitvě se session vrací na `.ambient`,
+  - v uložených datech zůstávají klíče `isSFXEnabled` (= Tap sounds) a `isAchievementSoundEnabled` (= Reward sounds);
+    nový `isBattleSoundEnabled` převezme hodnotu starého společného přepínače.
+- **Notifikace jsou jen lokální** (`UNUserNotificationCenter`), žádný push/APNs: appka je sideloadovaná s bezplatným Apple ID
+  a entitlement `aps-environment` nemá. Typy (`BattleNotificationService`, actor):
+
+  | Typ | Identifikátor | Kdy | Text |
+  |---|---|---|---|
+  | Victory! | `focusquest.battle.victory` | na konec odpočtu bitvy (plánuje se při startu a po návratu z pauzy či zvednutí; ruší se pauzou, zvednutím, ústupem, útěkem bosse a po zabití appky) | „{boss} is defeated. Open FocusQuest to collect your XP and coins.“ |
+  | Break is over | `focusquest.break.over` | 5 min po Collect Loot (ruší se odchodem z přestávky) | „Fresh head. Time for the next boss.“ |
+  | Daily reminder | `focusquest.reminder.0…7` | 17:00 místního času na 7 dní dopředu, když je zapnutý; dnes ne, pokud už se bojovalo | „Your boss is waiting“ / „No battle yet today. Put your phone down for a few minutes.“ |
+
+  - každé plánování se nejdřív zeptá na povolení (jen když se iOS ještě neptal), chyby jdou do logu (`Logger`, kategorie notifications),
+  - Settings ukazují skutečný stav (Allowed, Not allowed yet + Allow, Banners off nebo Off + Open Settings),
+  - Debug: „Test notifications“ naplánuje každý typ za 5, 7 a 9 s, „Show pending“ vypíše naplánované s časem.
+- **Onboarding** má 4 stránky (pravidla, předměty, hrdina, povolení) ve stránkovaném pageru se swipem a tečkami;
+  krok hrdiny používá `FQChip` a `HeroLookEditor` jako záložka Hero. Doporučení 5min bitvy na konci je pryč.
+- **Návrat v Settings tahem od levého okraje**: podstránka Sounds & notifications nemá NavigationStack, proto vlastní gesto
+  (začátek do 32 pt od okraje, stránka jde s prstem, zpět po ~100 pt nebo švihu). Tlačítko ‹ Settings zůstává.
 - Home: volné místo nad a pod bossem v poměru 1 : 2, boss je blíž středu a nad Fight je vzduch.
 - Dynamic Type:
   - texty s pevnou velikostí používají `fqFont(size:weight:design:)` a rostou nejvýš 1,5×,

@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-22T13:11:48+01:00",
-  "current": "A5 notifikace hotové v kódu, další A6 tab bar a swipe mezi taby.",
-  "nextStep": "A6: squash bubliny, swipe mezi taby, Reduce Motion; pak push a build.",
+  "updated": "2026-11-22T13:14:42+01:00",
+  "current": "A1–A6 hotové v kódu, push a build se spouští.",
+  "nextStep": "Počkat na výsledek buildu; při chybě opravit a spustit znovu.",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -618,7 +618,7 @@
       "id": "A5",
       "title": "Notifikace",
       "status": "pracuje",
-      "commit": "",
+      "commit": "2fc1066",
       "build": { "number": null, "runId": null, "result": "" },
       "items": [
         { "text": "Příčina a oprava plánování lokálních notifikací", "done": true },
@@ -630,15 +630,15 @@
     {
       "id": "A6",
       "title": "Tab bar: squash a swipe mezi taby",
-      "status": "cekam",
+      "status": "pracuje",
       "commit": "",
       "build": { "number": null, "runId": null, "result": "" },
       "items": [
-        { "text": "Bublina výběru se zmáčkne, přeletí a pružně roztáhne (~0,35 s)", "done": false },
-        { "text": "Obsah tabů jde přepínat horizontálním swipem, vnitřní gesta mají přednost", "done": false },
-        { "text": "Reduce Motion: jen prolnutí, bez squashe", "done": false }
+        { "text": "Bublina výběru se zmáčkne, přeletí a pružně roztáhne (~0,35 s)", "done": true },
+        { "text": "Obsah tabů jde přepínat horizontálním swipem, vnitřní gesta mají přednost", "done": true },
+        { "text": "Reduce Motion: jen prolnutí, bez squashe", "done": true }
       ],
-      "note": ""
+      "note": "Zbývá build. Systémový stránkovaný TabView se nepoužil (nepouští krajinu pod stavový řádek), swipe je vlastní gesto. Na iPhonu otestovat: ťuknutí na záložku = bublina se zmáčkne, přeletí a pružně roztáhne; swipe doleva/doprava po obrazovce přepne na sousední záložku a obsah vyjede ze strany; svislé rolování a posuvník denního cíle v Hero swipe nespustí; se zapnutým Reduce Motion jen prolnutí."
     }
   ]
 }
