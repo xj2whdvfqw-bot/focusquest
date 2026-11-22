@@ -42,6 +42,7 @@ enum MapTerrain {
         "r": RGB(196, 64, 60), "w": RGB(240, 236, 224), "k": RGB(40, 36, 48), "y": RGB(250, 210, 90),
         "o": RGB(236, 140, 60), "p": RGB(240, 120, 160), "s": RGB(150, 150, 164), "S": RGB(110, 110, 126),
         "h": RGB(226, 190, 96), "b": RGB(90, 150, 230), "m": RGB(206, 70, 70), "n": RGB(90, 70, 130),
+        "x": RGB(150, 36, 30), "X": RGB(96, 22, 20),
     ]
 
     private static let tree = [".ggg.", "gGGGg", "GGGGG", "GGdGG", ".GGG.", "..t..", "..t.."]
@@ -60,6 +61,8 @@ enum MapTerrain {
     private static let house = ["..rr..", ".rrrr.", "rrrrrr", "wwwwww", "wkwwkw", "wwkkww"]
     private static let tower = ["s.s.s", "sssss", "sskss", "sssss", "sssss", "sskss", "sssss", "SSSSS"]
     private static let dome = ["..www..", ".wwkww.", "wwwwwww", "sssssss", "skssssk", "sssssss"]
+    /// Krizek na Farm (easter egg MapEasterEgg.farmX).
+    private static let treasureMark = ["xX...xX", ".xX.xX.", "..xXX..", ".xX.xX.", "xX...xX"]
 
     // MARK: - Render
 
@@ -89,22 +92,45 @@ enum MapTerrain {
             pixels[i] = color.r; pixels[i + 1] = color.g; pixels[i + 2] = color.b
         }
 
-        // 1. Zakladni teren kazdeho sveta (vlnita hranice jako MapLayout.worldIndex).
-        let worldCount = Double(worlds.count)
-        var wave = [Double](repeating: 0, count: cols)
-        for x in 0..<cols {
-            let xp = (Double(x) + 0.5) * cell
-            wave[x] = 40 * sin(xp / 92) + 24 * sin(xp / 36 + 1.3)
-        }
+        // 1. Zakladni teren kazdeho sveta. Hranice je organicka (MapLayout.worldIndex: dlouha vlna + sum)
+        // a pixely na ni se nahodne promichaji (jitter), takze svety do sebe prechazeji bez rovnych svu.
         let planets = MapLayout.band(of: .planets)
         let sky = (top: Double(planets.minY), height: Double(max(1, planets.height)))
         for y in 0..<rows {
-            let yp = (Double(y) + 0.5) * cell
             for x in 0..<cols {
-                let t = Double(MapLayout.progress(y: CGFloat(yp + wave[x])))
-                let world = min(worlds.count - 1, max(0, Int((t * worldCount).rounded(.down))))
+                let jitter = (hash(x * step, y * step, 63) - 0.5) * 22
+                let world = MapLayout.worldIndex(cellX: x * step, cellY: y * step, jitter: jitter)
                 worldOf[y * cols + x] = UInt8(world)
                 set(x, y, ground(worlds[world], x: x * step, y: y * step, sky: sky))
+            }
+        }
+
+        // 1b. Pobrezi: kolem Reefu pas pisku na souši a melcina ve vode, takze trava prechazi v pisek a vodu.
+        if let reefIndex = worlds.firstIndex(of: .reef) {
+            let reef = UInt8(reefIndex)
+            let reach = max(1, 4 / step)
+            for y in 0..<rows {
+                for x in 0..<cols {
+                    let own = worldOf[y * cols + x]
+                    let ownReef = own == reef
+                    var nearest = Int.max
+                    var d = 1
+                    while d <= reach, nearest == .max {
+                        if y - d >= 0, (worldOf[(y - d) * cols + x] == reef) != ownReef { nearest = d }
+                        else if y + d < rows, (worldOf[(y + d) * cols + x] == reef) != ownReef { nearest = d }
+                        else if x - d >= 0, (worldOf[y * cols + x - d] == reef) != ownReef { nearest = d }
+                        else if x + d < cols, (worldOf[y * cols + x + d] == reef) != ownReef { nearest = d }
+                        d += 1
+                    }
+                    guard nearest != .max else { continue }
+                    let fine = hash(x * step, y * step, 64)
+                    if ownReef {
+                        if nearest * step <= 2 { set(x, y, fine > 0.5 ? RGB(232, 208, 146) : RGB(222, 196, 134)) }
+                        else { set(x, y, RGB(64, 140, 200)) }
+                    } else if nearest * step <= 3 {
+                        set(x, y, fine > 0.5 ? RGB(232, 208, 146) : RGB(222, 196, 134))
+                    }
+                }
             }
         }
 
@@ -265,6 +291,16 @@ enum MapTerrain {
             }
         }
 
+        if step == 1 {
+            // Easter egg: krizek v levem dolnim rohu Farm.
+            let mark = MapEasterEgg.farmXCell
+            for (dy, row) in treasureMark.enumerated() {
+                for (dx, char) in row.enumerated() where char != "." {
+                    if let color = stampColors[char] { set(mark.x + dx, mark.y + dy, color) }
+                }
+            }
+        }
+
         // 5. Cesta: hlinena, pres vodu drevene mustky, ve vesmiru svitici kameny.
         // Kruhy se prekryvaji, staci kazdy druhy bod.
         let borderRadius = max(1, 6 / step), roadRadius = max(1, 5 / step)
@@ -273,6 +309,22 @@ enum MapTerrain {
                 disc(cx, cy, radius: pass == 0 ? borderRadius : roadRadius) { x, y in
                     let world = worlds[Int(worldOf[y * cols + x])]
                     set(x, y, pass == 0 ? roadBorder(world) : roadSurface(world, x: x * step, y: y * step))
+                }
+            }
+        }
+        // 6. Okraj mapy jako pixelovy pergamen: zubaty okraj, tmave hnedy a svetly lem, otrhane rohy.
+        // Mimo mapu je pruhledno (vidi se tmave pozadi).
+        for y in 0..<rows {
+            for x in 0..<cols {
+                let depth = MapLayout.parchmentDepth(cellX: x * step, cellY: y * step)
+                guard depth < 4 else { continue }
+                let i = (y * cols + x) * 4
+                if depth < 0 {
+                    pixels[i] = 0; pixels[i + 1] = 0; pixels[i + 2] = 0; pixels[i + 3] = 0
+                } else if depth < 2 {
+                    set(x, y, hash(x * step, y * step, 75) > 0.5 ? RGB(86, 54, 30) : RGB(74, 46, 26))
+                } else {
+                    set(x, y, hash(x * step, y * step, 76) > 0.5 ? RGB(222, 194, 138) : RGB(206, 176, 120))
                 }
             }
         }
@@ -345,57 +397,116 @@ enum MapTerrain {
         }
     }
 
-    // MARK: - Mlha nad zamcenym svetem
+    // MARK: - Zamcene svety: zavoj a mraky
 
-    /// O kolik bodu mlha presahuje spodni hranici sveta do odemcene krajiny (mekky prechod).
-    static let fogOverhang: CGFloat = 96
+    /// Obrazek prekryvu mapy a kam patri (v bodech mapy).
+    struct Overlay: Sendable {
+        let width: Int
+        let height: Int
+        let pixels: [UInt8]
+        let frame: CGRect
+    }
 
-    /// Mlha nad zamcenym svetem (1 pixel = 16 bodu, kresli se s vyhlazovanim, takze je mekka):
-    ///  - jemny tmavy zavoj pres cely svet (krajina je videt, jen ztlumena),
-    ///  - u prvniho zamceneho sveta (`frontier`) pas mraku pres hranici s odemcenou krajinou:
-    ///    nejhustsi primo na hranici, do 160 bodu nahoru a 96 bodu dolu plynule ridne.
-    /// Vraci (sirka, vyska, premultiplied RGBA).
-    static func fog(for world: BossWorld, frontier: Bool) -> (width: Int, height: Int, pixels: [UInt8]) {
+    /// O kolik bodu mraky presahuji spodni hranici sveta do krajiny pod nim (oble chomacky).
+    static let cloudOverhang: CGFloat = 96
+
+    /// Jemny tmavy zavoj pres prvni zamceny svet (krajina je videt, jen ztmavena). Sleduje stejnou
+    /// organickou hranici jako teren (MapLayout.worldIndex), takze nikde neni rovny vodorovny okraj.
+    /// 1 pixel = 8 bodu, kresli se s vyhlazovanim (mekky okraj). Premultiplied RGBA.
+    static func veil(for world: BossWorld) -> Overlay {
+        let scale: CGFloat = 8
+        let index = BossWorld.allCases.firstIndex(of: world) ?? 0
         let band = MapLayout.band(of: world)
-        let scale: CGFloat = 16
+        let top = max(0, band.minY - MapLayout.boundaryReach)
+        let bottom = min(MapLayout.size.height, band.maxY + MapLayout.boundaryReach)
         let width = Int(MapLayout.size.width / scale)
-        let height = Int(((band.height + fogOverhang) / scale).rounded(.up))
-        // Radek, kde je hranice sveta (spodni okraj pasu).
-        let border = Double(band.height / scale)
-        let above = 10.0, below = Double(fogOverhang / scale)
-        let seed = (BossWorld.allCases.firstIndex(of: world) ?? 0) * 17 + 40
+        let height = Int(((bottom - top) / scale).rounded(.up))
         var pixels = [UInt8](repeating: 0, count: width * height * 4)
+        let alpha = 0.5
         for y in 0..<height {
-            // Kladne = nad hranici (v zamcenem svete), zaporne = pod ni (v odemcene krajine).
-            let distance = border - (Double(y) + 0.5)
-            let veilBase = 0.34
-            let veil: Double = distance >= 0 ? veilBase : (frontier ? veilBase * max(0, 1 + distance / below) : 0)
+            let py = top + (CGFloat(y) + 0.5) * scale
             for x in 0..<width {
-                var cloud = 0.0
-                if frontier {
-                    let reach = distance >= 0 ? above : below
-                    let falloff = max(0, 1 - abs(distance) / reach)
-                    let n = noise(x, y, scale: 5, seed: seed)
-                    cloud = min(1, max(0, (n * 0.9 + falloff - 0.78) * 2.4))
-                }
-                let cloudAlpha = cloud * 0.9
-                let alpha = max(veil, cloudAlpha)
-                guard alpha > 0.01 else { continue }
-                // Barva: tmave modry zavoj, svetle mraky (s jemnym stinovanim podle sumu).
-                let mix = alpha > 0 ? cloudAlpha / alpha : 0
-                let shade = 214 + 30 * noise(x, y, scale: 3, seed: seed + 7)
-                let r = 22 + (shade - 22) * mix
-                let g = 24 + (shade - 22) * mix
-                let b = 44 + (shade + 12 - 44) * mix
-                let a = min(1, alpha)
+                let px = (CGFloat(x) + 0.5) * scale
+                let cellX = Int(px / MapLayout.cell), cellY = Int(py / MapLayout.cell)
+                guard MapLayout.worldIndex(cellX: cellX, cellY: cellY) == index,
+                      MapLayout.parchmentDepth(cellX: cellX, cellY: cellY) >= 0 else { continue }
                 let i = (y * width + x) * 4
-                pixels[i] = UInt8(min(255, r * a))
-                pixels[i + 1] = UInt8(min(255, g * a))
-                pixels[i + 2] = UInt8(min(255, b * a))
-                pixels[i + 3] = UInt8(a * 255)
+                pixels[i] = UInt8(10 * alpha); pixels[i + 1] = UInt8(10 * alpha); pixels[i + 2] = UInt8(26 * alpha)
+                pixels[i + 3] = UInt8(alpha * 255)
             }
         }
-        return (width, height, pixels)
+        return Overlay(width: width, height: height, pixels: pixels, frame: CGRect(x: 0, y: top, width: MapLayout.size.width, height: CGFloat(height) * scale))
+    }
+
+    /// Plne nepruhledne pixelove mraky pres svet (a vse nad nim zakryji mraky vyssich svetu):
+    /// zadni bossove ani cesta neprosvitaji. Spodni okraj tvori oble chomacky (pulkruhy ruzne velikosti)
+    /// pod organickou hranici sveta, mraky maji tmavsi obrys, stin u spodku a svetle skvrny.
+    /// 1 pixel = 8 bodu, kresli se bez vyhlazovani (pixel-art). Okraj mapy (pergamen) nechavaji volny.
+    static func clouds(for world: BossWorld) -> Overlay {
+        let scale: CGFloat = 8
+        let index = BossWorld.allCases.firstIndex(of: world) ?? 0
+        let band = MapLayout.band(of: world)
+        let top = max(0, band.minY - MapLayout.boundaryReach)
+        let bottom = min(MapLayout.size.height, band.maxY + MapLayout.boundaryReach + cloudOverhang)
+        let width = Int(MapLayout.size.width / scale)
+        let height = Int(((bottom - top) / scale).rounded(.up))
+        let seed = index * 19 + 80
+
+        // Nejnizsi radek sveta v kazdem sloupci (organicka hranice).
+        var boundary = [Int](repeating: -1, count: width)
+        for x in 0..<width {
+            let cellX = Int((CGFloat(x) + 0.5) * scale / MapLayout.cell)
+            for y in stride(from: height - 1, through: 0, by: -1) {
+                let cellY = Int((top + (CGFloat(y) + 0.5) * scale) / MapLayout.cell)
+                if MapLayout.worldIndex(cellX: cellX, cellY: cellY) >= index { boundary[x] = y; break }
+            }
+        }
+        // Chomacky: pulkruhy s nahodnym polomerem 3–7 pixelu kazdych ~7 pixelu.
+        var puff = [Double](repeating: 1, count: width)
+        var center = -4
+        while center < width + 8 {
+            let radius = 3 + hash(center, index, seed) * 4
+            let low = max(0, center - Int(radius)), high = min(width - 1, center + Int(radius))
+            if low <= high {
+                for x in low...high {
+                    let dx = Double(x - center)
+                    puff[x] = max(puff[x], max(0, radius * radius - dx * dx).squareRoot())
+                }
+            }
+            center += 5 + Int(hash(center, index, seed + 1) * 4)
+        }
+        var inside = [Bool](repeating: false, count: width * height)
+        for x in 0..<width where boundary[x] >= 0 {
+            let limit = Double(boundary[x]) + 1 + puff[x]
+            for y in 0..<height where Double(y) <= limit {
+                let cellX = Int((CGFloat(x) + 0.5) * scale / MapLayout.cell)
+                let cellY = Int((top + (CGFloat(y) + 0.5) * scale) / MapLayout.cell)
+                if MapLayout.parchmentDepth(cellX: cellX, cellY: cellY) >= 4 { inside[y * width + x] = true }
+            }
+        }
+        func isCloud(_ x: Int, _ y: Int) -> Bool {
+            guard x >= 0, y >= 0, x < width, y < height else { return y < 0 }
+            return inside[y * width + x]
+        }
+        let outline = RGB(132, 140, 182), shadow = RGB(190, 198, 226), fill = RGB(232, 236, 248)
+        let light = RGB(250, 251, 255), dim = RGB(214, 220, 240)
+        var pixels = [UInt8](repeating: 0, count: width * height * 4)
+        for y in 0..<height {
+            for x in 0..<width where inside[y * width + x] {
+                let color: RGB
+                if !isCloud(x, y + 1) || !isCloud(x - 1, y) || !isCloud(x + 1, y) {
+                    color = outline
+                } else if !isCloud(x, y + 2) || !isCloud(x, y + 3) {
+                    color = shadow
+                } else {
+                    let n = noise(x, y, scale: 4, seed: seed + 2)
+                    color = n > 0.66 ? light : (n < 0.3 ? dim : fill)
+                }
+                let i = (y * width + x) * 4
+                pixels[i] = color.r; pixels[i + 1] = color.g; pixels[i + 2] = color.b; pixels[i + 3] = 255
+            }
+        }
+        return Overlay(width: width, height: height, pixels: pixels, frame: CGRect(x: 0, y: top, width: MapLayout.size.width, height: CGFloat(height) * scale))
     }
 
     /// Obrazek z RGBA bajtu (premultiplied alpha).
@@ -410,16 +521,16 @@ enum MapTerrain {
     }
 }
 
-/// Hotove obrazky mapy (teren a mlha).
+/// Hotove obrazky mapy (teren, zavoj a mraky).
 /// Teren: kdyz je ulozeny v Caches z minula, nacte se hned. Jinak se nejdriv za zlomek sekundy
 /// spocita hruby nahled (1 px = 16 bodu) a ukaze se, pak se na pozadi dopocita plna mapa a ulozi se.
 @MainActor
 enum MapTerrainCache {
     static var terrain: CGImage?
-    private static var fogImages: [String: CGImage] = [:]
+    private static var overlays: [String: (image: CGImage, frame: CGRect)] = [:]
 
     /// Pri zmene vzhledu terenu zvysit verzi, aby se stara mapa z Caches nepouzila.
-    private static let fileName = "map-terrain-v2.rgba"
+    private static let fileName = "map-terrain-v3.rgba"
 
     private static var fileURL: URL? {
         FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first?.appendingPathComponent(fileName)
@@ -449,12 +560,21 @@ enum MapTerrainCache {
         return image
     }
 
-    static func fog(for world: BossWorld, frontier: Bool) -> CGImage? {
-        let key = world.rawValue + (frontier ? "-edge" : "")
-        if let cached = fogImages[key] { return cached }
-        let fog = MapTerrain.fog(for: world, frontier: frontier)
-        let image = MapTerrain.makeImage(width: fog.width, height: fog.height, pixels: fog.pixels)
-        fogImages[key] = image
-        return image
+    /// Zavoj prvniho zamceneho sveta.
+    static func veil(for world: BossWorld) -> (image: CGImage, frame: CGRect)? {
+        overlay(key: "veil-" + world.rawValue) { MapTerrain.veil(for: world) }
+    }
+
+    /// Plne mraky nad svetem dal nez jeden za poslednim odemcenym.
+    static func clouds(for world: BossWorld) -> (image: CGImage, frame: CGRect)? {
+        overlay(key: "clouds-" + world.rawValue) { MapTerrain.clouds(for: world) }
+    }
+
+    private static func overlay(key: String, make: () -> MapTerrain.Overlay) -> (image: CGImage, frame: CGRect)? {
+        if let cached = overlays[key] { return cached }
+        let overlay = make()
+        guard let image = MapTerrain.makeImage(width: overlay.width, height: overlay.height, pixels: overlay.pixels) else { return nil }
+        overlays[key] = (image, overlay.frame)
+        return (image, overlay.frame)
     }
 }

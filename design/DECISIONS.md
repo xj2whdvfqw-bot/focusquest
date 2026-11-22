@@ -3,7 +3,7 @@
 Doplňuje `design/CHANGES.md` (zadání sekcí 0–15) a `design/progress.html` (stav, buildy, co otestovat).
 Tady je to, co v nich není: rozhodnutí, která padla během práce, otevřené body a známé pasti.
 
-Stav k 22. 11. 2026: větev `phase3-duolingo`, poslední zelený build #62; dříve #61 (D1: opravy z testu po C1); E1 (opravy z testu po D1) prošel jako build #62. Všechny sekce z CHANGES.md
+Stav k 22. 11. 2026: větev `phase3-duolingo`, poslední zelený build #62; dříve #61 (D1: opravy z testu po C1); E1 (opravy z testu po D1) prošel jako build #62; F1 (Habits, TipKit, mapa, easter eggy) viz progress.html. Všechny sekce z CHANGES.md
 a všechny opravy z auditu jsou hotové.
 
 ## 1. Rozhodnutí
@@ -28,7 +28,7 @@ a všechny opravy z auditu jsou hotové.
   - zálohy nečitelných dat (`.unreadable-backup`),
   - výběr appek a naplánované notifikace.
 
-  Pak se znovu ukáže onboarding.
+  Pak appka začne na Home s novým výchozím hrdinou (onboarding od F1 není).
 - **Rate this app je skryté**, dokud nebude App Store ID. Pak se vrátí jako přímý odkaz
   `https://apps.apple.com/app/id<ID>?action=write-review`, protože `requestReview()` často nic neukáže.
 - **Contact the developer** otevírá Mail jen s předmětem. Adresa zatím chybí (viz Otevřené body).
@@ -65,21 +65,41 @@ a všechny opravy z auditu jsou hotové.
   - `UIScrollView` v `ZoomableMapView` (posun, setrvačnost, pinch-zoom 0,5–1,6×, nikdy celá mapa najednou), obsah je SwiftUI v `UIHostingController`,
   - mapa 2400 × 3600 bodů; terén včetně cesty, dekorací a staveb je pixelová bitmapa 600 × 900 px (1 px = 4 body, asi 2 MB) generovaná v kódu
     na pozadí (`MapTerrain`), zobrazená bez vyhlazování; nejdřív se ukáže hrubý náhled (1 px = 16 bodů), plná mapa se uloží
-    do Caches (`map-terrain-v2.rgba`, při změně vzhledu zvýšit verzi) a další otevření je okamžité;
-    nad ní vrstvy: mlha, zastávky a hrdina (stejné vrstvy jako Shop a Hero Profile); názvy světů jsou nad mapou v souřadnicích obrazovky,
+    do Caches (`map-terrain-v3.rgba`, při změně vzhledu zvýšit verzi) a další otevření je okamžité;
+    nad ní vrstvy: závoj, zastávky, hrdina, easter eggy a mraky (stejné vrstvy jako Shop a Hero Profile); názvy světů jsou nad mapou v souřadnicích obrazovky,
   - mapa respektuje hlavičku a tab bar: `contentInset` scroll view = výška hlavičky nahoře a safe area s rezervou tab baru dole,
     takže se dá odrolovat tak, aby nic nebylo pod lištou, a kamera centruje do středu viditelné části;
     cesta začíná výš (`MapLayout.bottomMargin` = 420), aby šli první bossové posunout do středu,
   - názvy světů (`WorldLabelsOverlay`) se vodorovně drží v obrazovce (nikdy nejsou useknuté) a schovají se pod hlavičkou i nad tab barem,
-  - mlha zamčených světů je jen jemný tmavý závoj přes svět a u prvního zamčeného světa měkký pás mraků přes hranici
-    (160 bodů nahoru, 96 dolů, vyhlazený obrázek, ne pixelové dlaždice); dřív zakrývala celý svět,
+  - **viditelný je jen jeden zamčený svět dopředu** (od F1): první zamčený svět (`frontier` v `MapContent`) je ztmavený
+    závojem (`MapTerrain.veil`, 50 % tmavá, vyhlazený okraj po organické hranici). Všechny další světy zakrývají **plné
+    pixelové mraky** (`MapTerrain.clouds`, 1 px = 8 bodů, bez vyhlazování): neprůhledné, s obrysem, stínem u spodku
+    a světlými skvrnami, spodní okraj z oblých chomáčků (půlkruhy 3–7 px) pod hranicí světa, ne vodorovný pruh.
+    Bossové, hrdina, easter eggy ani názvy světů pod mraky se nekreslí. Při odemčení se závoj nového světa a mraky
+    nad dalším světem jednou animovaně rozplynou (zprůhlednění, rozmazání, posun nahoru) a zapamatuje se to (`revealedWorlds`),
+  - **přechody mezi světy** (od F1): hranice je organická (`MapLayout.boundaryShift`: dlouhá vlna + šum, vybočení až ~140 bodů)
+    a pixely na ní se náhodně promíchají, takže nikde není rovný šev přes celou šířku. Kolem Coral Deep je pobřeží
+    (písek na souši, mělčina ve vodě). Cesta jde přes hranici bez přerušení. Hlavička mapy má rozmazané tmavé pozadí
+    se scroll edge přechodem (`MapHeaderBackground`), pod ní neprosvítají bossové ani názvy,
+  - **okraj mapy jako pixelový pergamen** (od F1, `MapLayout.parchmentDepth`): zubatý okraj z pixelů, 2 px tmavě hnědý
+    a 2 px světlý lem, šikmo otrhané rohy, mimo mapu průhledno a tmavé pozadí obrazovky. Vlastní kresba v kódu,
   - horní tlačítka mapy mají neinteraktivní sklo a mapa je `UIViewControllerRepresentable` s hosting controllerem jako potomkem:
     interaktivní Liquid Glass nad UIKit mapou pohlcoval klepnutí a zůstával rozsvícený (test po C1),
   - cesta se v každém světě jednou přehoupne z jedné strany na druhou, zastávky jsou rovnoměrně po její délce (`MapLayout`),
   - zastávky: poražený má vlajku, aktuální pulzuje a stojí u něj hrdina, zamčený je šedý se zámkem,
   - kamera po otevření mapy najede z oddálení na aktuálního bosse; tlačítko s terčíkem vrátí kameru zpět,
   - klepnutí na zastávku otevře skleněnou kartu (hláška, délka „⏱ 15 min“ i u zamčeného bosse, Fight nebo důvod zámku); zavře se klepnutím do mapy nebo tahem dolů,
-  - mlha nad nově odemčeným světem se jednou rozplyne a zapamatuje se,
+  - **easter eggy** (od F1, `MapEasterEgg`, `MapEasterEggs.swift`): každý jen jednou za celou hru (`UserProfile.foundEasterEggs`,
+    smaže je i Reset progress), žádné tipy ani nápovědy:
+
+    | Svět | Co udělat | Odměna |
+    |---|---|---|
+    | Whisperwood | 3× klepnout na rybník (kola na vodě) → vynoří se truhla → klepnout na truhlu | +150 mincí |
+    | Orbit | 4× klepnout na oranžovou planetu (zachvění) → mince vyletí | +200 mincí |
+    | Farm | křížek (X) vlevo dole: 3 klepnutí truhlu postupně vykopou → klepnout na truhlu | +100 mincí |
+
+    Odměna: zvuk mincí (Reward sounds), haptika úspěchu a nahoře počítadlo mincí, které se dopočítá. Klepnutí jsou tap gesta
+    v obsahu `UIScrollView` (tah je zruší, plocha roste se zoomem). Debug: „Reset easter eggs“,
   - přístupnost: zastávky mají VoiceOver popisky („Jelly Later, Coral Deep, boss 3 of 7, 20 min, current boss“),
     tlačítko seznamu otevře list se světy a bossy (stav, délka bitvy); výběr bosse list zavře a otevře Fight sheet.
 
@@ -174,8 +194,10 @@ a všechny opravy z auditu jsou hotové.
   (u pozadí zůstal text „In use“ místo tlačítka).
 - **Výchozí pozadí nových hráčů je Daybreak** (od E1, `UserProfile.fresh`, i po Reset progress). Stávající profily bez
   uloženého pozadí dál mají World scenes.
-- **Stats › Habits je kalendář** (od E1): řádek = týden (Po–Ne zleva doprava), nejstarší týden nahoře, dnešek na konci;
-  dny jdou chronologicky jako text. Dřív byl týden sloupec a při čtení po řádcích dny přeskakovaly.
+- **Stats › Habits** (od F1): mřížka na šířku jako dřív (sloupec = 7 dní, řádek = den v týdnu), ale od nejnovějšího:
+  dnešek je první čtvereček vlevo nahoře, dolů a doprava jdou starší dny. Každý sloupec má 7 po sobě jdoucích dní,
+  takže řádek je vždy tentýž den v týdnu (písmena vlevo začínají dnešním dnem, `HabitGrid.rowLetters`). Svislá verze
+  z E1 je zrušená. Škála je zelená od tmavé po světlou (bez tyrkysové a mint).
 - **Daily focus target v Hero Profile**: splněná část kruhu má barvu pásku zvolené třídy (`AvatarSprite.classAccent`, stejný
   token jako pásek hrdiny: Warrior červená, Mage fialová, Archer zelená, Rogue modrá), nesplněná tlumeně šedá. Dřív byl
   kruh v bílém `accent`, takže nebylo vidět, kolik je splněno.
@@ -254,11 +276,27 @@ a všechny opravy z auditu jsou hotové.
   | Break is over | `focusquest.break.over` | 5 min po Collect Loot (ruší se odchodem z přestávky) | „Fresh head. Time for the next boss.“ |
   | Daily reminder | `focusquest.reminder.0…7` | 17:00 místního času na 7 dní dopředu, když je zapnutý; dnes ne, pokud už se bojovalo | „Your boss is waiting“ / „No battle yet today. Put your phone down for a few minutes.“ |
 
-  - každé plánování se nejdřív zeptá na povolení (jen když se iOS ještě neptal), chyby jdou do logu (`Logger`, kategorie notifications),
+  - plánování se na povolení neptá (od F1, viz kontextová žádost výš); bez povolení nic nenaplánuje, chyby jdou do logu (`Logger`, kategorie notifications),
   - Settings ukazují skutečný stav (Allowed, Not allowed yet + Allow, Banners off nebo Off + Open Settings),
   - Debug: „Test notifications“ naplánuje každý typ za 5, 7 a 9 s, „Show pending“ vypíše naplánované s časem.
-- **Onboarding** má 4 stránky (pravidla, předměty, hrdina, povolení) ve stránkovaném pageru se swipem a tečkami;
-  krok hrdiny používá `FQChip` a `HeroLookEditor` jako záložka Hero. Doporučení 5min bitvy na konci je pryč.
+- **Onboarding je pryč, místo něj TipKit** (od F1, `Views/DesignSystem/FQTips.swift`). Nový hráč skončí rovnou na Home
+  s výchozím hrdinou (Warrior, základní vzhled), výchozími předměty a pozadím Daybreak; mění je ve Fight sheetu a na záložce Hero.
+  `Tips.configure` při startu (`displayFrequency(.immediate)`), popover tipy přímo u prvků, každý jen jednou, po zavření
+  nebo provedení akce (`invalidate(.actionPerformed)`) se nevrací:
+
+  | # | Kde | Tip |
+  |---|---|---|
+  | 1 | Home, tlačítko Fight | Beat the boss by focusing |
+  | 2 | Fight sheet, „Focusing“ | předmět a hudba |
+  | 3 | bitva před položením telefonu | 2 pauzy, zvednutí = útěk bosse |
+  | 4 | okno výhry, dlaždice Coins | mince do Shopu |
+  | 5 | Path, název světa (až po první výhře) | mapa světů |
+  | 6 | Hero, štětec (až po první výhře) | úprava hrdiny |
+
+  Tipy 5 a 6 čekají na událost `battleWon` (první výhra), aby tutoriál šel popořadě. CI screenshoty (`-initialTab`)
+  tipy skrývají. Debug „Reset tips“: datastore jde smazat jen před `Tips.configure`, proto se provede při dalším spuštění.
+- **Oprávnění k notifikacím se žádá kontextově** (od F1): až po první dokončené (vyhrané) bitvě. Plánování notifikací
+  se už neptá (bez povolení nic nenaplánuje); ptá se jen kontextová žádost a Debug „Test notifications“.
 - **Návrat v Settings tahem od levého okraje**: podstránka Sounds & notifications nemá NavigationStack, proto vlastní gesto
   (začátek do 32 pt od okraje, stránka jde s prstem, zpět po ~100 pt nebo švihu). Tlačítko ‹ Settings zůstává.
 - Home: volné místo nad a pod bossem v poměru 1 : 2, boss je blíž středu a nad Fight je vzduch.

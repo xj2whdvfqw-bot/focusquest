@@ -3,7 +3,8 @@ import TipKit
 
 /// Zalozka Path: velka pixelova mapa svetu, kterou hrac prochazi tazenim a pinch-zoomem.
 /// Kamera po otevreni najede na aktualniho bosse, klepnuti na zastavku otevre sklenenou kartu
-/// bosse s bitvou. Zamcene svety maji jemny zavoj a mekky okraj mraku u hranice.
+/// bosse s bitvou. Videt je jen jeden zamceny svet dopredu (ztmaveny), dalsi zakryvaji plne pixelove mraky.
+/// Mapa ma okraj jako pixelovy pergamen a skryva tri easter eggy (MapEasterEggs.swift).
 /// Tlacitko seznamu otevre list se svety a bossy (pro VoiceOver a pro ty, kdo mapu posouvat nechteji).
 struct PathTabView: View {
     @ObservedObject var model: ArenaViewModel
@@ -23,6 +24,9 @@ struct PathTabView: View {
     @State private var viewport = MapViewport()
     /// Tutorial 5: mapa svetu (az po prvni vyhre).
     private let pathTip = PathTip()
+    /// Pocitadlo minci po nalezeni easter eggu (stav pred a po).
+    @State private var eggReward: (from: Int, to: Int, id: Int)?
+    @State private var eggRewardSerial = 0
 
     /// Vyska hlavicky pod stavovym radkem (tlacitka 44 + odsazeni); mapa pod ni jde odrolovat.
     private static let headerHeight: CGFloat = 60
@@ -50,8 +54,8 @@ struct PathTabView: View {
             // Nahore hlavicka, dole tab bar (safe area uz obsahuje rezervu pod plovouci listou).
             let insets = UIEdgeInsets(top: proxy.safeAreaInsets.top + Self.headerHeight, left: 0, bottom: proxy.safeAreaInsets.bottom + FQSpace.sm, right: 0)
             ZStack(alignment: .top) {
-                // Barva hlubokeho pozadi, nez se teren vygeneruje (jinak cerna plocha).
-                Color(red: 22 / 255, green: 30 / 255, blue: 40 / 255).ignoresSafeArea()
+                // Tmave pozadi mimo pergamen mapy (a nez se teren vygeneruje).
+                Color(red: 11 / 255, green: 10 / 255, blue: 20 / 255).ignoresSafeArea()
                 ZoomableMapView(contentSize: MapLayout.size, insets: insets, camera: camera, viewport: viewport) { mapContent }
                     .ignoresSafeArea()
                 // Nazvy svetu v souradnicich obrazovky: nikdy nejsou useknute u okraje
@@ -81,6 +85,15 @@ struct PathTabView: View {
                 .transition(reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity))
             }
         }
+        .overlay(alignment: .top) {
+            if let eggReward {
+                CoinRewardToast(from: eggReward.from, to: eggReward.to)
+                    .id(eggReward.id)
+                    .padding(.top, Self.headerHeight + FQSpace.xl)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
+        .animation(.spring(response: 0.4, dampingFraction: 0.75), value: eggReward?.id)
         .animation(FQMotion.spring(reduceMotion: reduceMotion), value: selected?.id)
         .task {
             if terrain == nil { terrain = await MapTerrainCache.loadTerrain { preview in terrain = preview } }
@@ -101,6 +114,8 @@ struct PathTabView: View {
             revealing: revealing,
             hero: profileModel.profile.avatar,
             heroClass: profileModel.profile.heroClass,
+            foundEggs: Set(MapEasterEgg.allCases.filter { profileModel.hasFound($0) }),
+            onEggReward: { egg in rewardEasterEgg(egg) },
             onSelect: { boss in
                 FQFeedback.shared.haptic(.selection)
                 selected = boss
@@ -136,11 +151,9 @@ struct PathTabView: View {
         .padding(.horizontal, FQSpace.lg)
         .padding(.top, FQSpace.sm)
         .padding(.bottom, FQSpace.xl)
-        .background {
-            LinearGradient(colors: [Color(red: 6 / 255, green: 5 / 255, blue: 16 / 255).opacity(0.85), .clear], startPoint: .top, endPoint: .bottom)
-                .ignoresSafeArea(edges: .top)
-                .allowsHitTesting(false)
-        }
+        // Scroll edge efekt: rozmazane tmave sklo az pod stavovy radek, dole plynule do pruhledna,
+        // aby pod hlavickou neprosvitali bossove ani nazvy svetu.
+        .background { MapHeaderBackground() }
         .modifier(BrightTextShadow())
     }
 
@@ -196,6 +209,21 @@ struct PathTabView: View {
         }
     }
 
+    // MARK: - Easter eggy
+
+    /// Nalezeny easter egg: mince se pripisou jen poprve a nahore se dopocita pocitadlo.
+    private func rewardEasterEgg(_ egg: MapEasterEgg) {
+        let before = profileModel.profile.coins
+        guard profileModel.claimEasterEgg(egg) else { return }
+        eggRewardSerial += 1
+        let serial = eggRewardSerial
+        eggReward = (before, profileModel.profile.coins, serial)
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(2.8))
+            if eggReward?.id == serial { eggReward = nil }
+        }
+    }
+
     // MARK: - Stav zastavek
 
     private func state(of boss: Boss) -> MapStopState {
@@ -222,6 +250,30 @@ struct PathTabView: View {
     private func close() {
         guard selected != nil else { return }
         selected = nil
+    }
+}
+
+/// Pozadi hlavicky mapy (scroll edge efekt): rozmazane tmave sklo az pod stavovy radek,
+/// ve spodnich 32 bodech plynule do pruhledna.
+private struct MapHeaderBackground: View {
+    var body: some View {
+        GeometryReader { proxy in
+            let total = proxy.size.height + proxy.safeAreaInsets.top
+            let solid = max(0, (total - 32) / max(1, total))
+            ZStack {
+                Rectangle().fill(.ultraThinMaterial)
+                Color(red: 9 / 255, green: 8 / 255, blue: 24 / 255).opacity(0.6)
+            }
+            .mask {
+                LinearGradient(
+                    stops: [.init(color: .black, location: 0), .init(color: .black, location: solid), .init(color: .clear, location: 1)],
+                    startPoint: .top, endPoint: .bottom
+                )
+            }
+            .ignoresSafeArea(edges: .top)
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
     }
 }
 
@@ -287,17 +339,31 @@ private struct MapContent: View {
     let revealing: Set<BossWorld>
     let hero: AvatarAppearance
     let heroClass: HeroClass
+    let foundEggs: Set<MapEasterEgg>
+    let onEggReward: (MapEasterEgg) -> Void
     let onSelect: (Boss) -> Void
     let onBackground: () -> Void
+
+    private static let worlds = BossWorld.allCases
+
+    /// Prvni svet, ktery jeste neni (videt) odemceny: ten je ztmaveny, vsechny za nim jsou pod mraky.
+    private var frontier: Int {
+        Self.worlds.firstIndex { !model.isUnlocked($0) || model.needsReveal($0) } ?? Self.worlds.count
+    }
+
+    /// Svet je videt (odemceny nebo prvni zamceny), nebo se nad nim prave rozplyvaji mraky.
+    private func isVisible(_ world: BossWorld) -> Bool {
+        let index = Self.worlds.firstIndex(of: world) ?? 0
+        if index <= frontier { return true }
+        return index == frontier + 1 && revealing.contains(Self.worlds[frontier])
+    }
 
     var body: some View {
         ZStack(alignment: .topLeading) {
             terrainLayer
-            ForEach(BossWorld.allCases) { world in
-                fogLayer(world)
-            }
+            veilLayer
             ForEach(Boss.roster) { boss in
-                if let point = MapLayout.stops[boss.id] {
+                if isVisible(boss.world), let point = MapLayout.stops[boss.id] {
                     MapStopView(
                         boss: boss,
                         state: MapStopState.of(boss, model: model, wins: wins, current: current),
@@ -315,6 +381,13 @@ private struct MapContent: View {
                     .allowsHitTesting(false)
                     .accessibilityHidden(true)
             }
+            // Easter eggy: jen v odemcenych svetech a jen dokud nejsou nalezene.
+            ForEach(MapEasterEgg.allCases) { egg in
+                if !foundEggs.contains(egg), model.isUnlocked(egg.world), isVisible(egg.world) {
+                    MapEasterEggView(egg: egg) { onEggReward(egg) }
+                }
+            }
+            cloudLayer
         }
         .frame(width: MapLayout.size.width, height: MapLayout.size.height, alignment: .topLeading)
     }
@@ -338,27 +411,45 @@ private struct MapContent: View {
         .animation(.easeOut(duration: 0.3), value: terrain != nil)
     }
 
-    /// Mlha nad zamcenym svetem: jemny zavoj pres cely svet a u prvniho zamceneho sveta mekky
-    /// okraj mraku pres hranici s odemcenou krajinou. Pri odemceni se rozplyne (zpruhledni a odplyne nahoru).
-    @ViewBuilder private func fogLayer(_ world: BossWorld) -> some View {
-        let locked = !model.isUnlocked(world)
-        let pending = model.needsReveal(world)
-        let frontier = world.previous.map { model.isUnlocked($0) } ?? true
-        if locked || pending, let fog = MapTerrainCache.fog(for: world, frontier: frontier) {
-            let band = MapLayout.band(of: world)
-            let height = band.height + MapTerrain.fogOverhang
-            let dissolving = revealing.contains(world)
-            Image(decorative: fog, scale: 1)
-                .resizable()
-                // Vyhlazeni (ne pixely): mrak plynule prechazi do krajiny.
-                .interpolation(.medium)
-                .frame(width: MapLayout.size.width, height: height)
-                .scaleEffect(dissolving ? 1.15 : 1)
-                .offset(y: dissolving ? -60 : 0)
-                .opacity(dissolving ? 0 : 1)
-                .position(x: MapLayout.size.width / 2, y: band.minY + height / 2)
-                .allowsHitTesting(false)
-                .accessibilityHidden(true)
+    /// Ztmaveni prvniho zamceneho sveta (a pri rozplyvani mraku i toho za nim). Pri odemceni zmizi.
+    @ViewBuilder private var veilLayer: some View {
+        ForEach(Self.worlds.indices, id: \.self) { index in
+            let world = Self.worlds[index]
+            let isFrontier = index == frontier
+            let isNext = index == frontier + 1 && frontier < Self.worlds.count && revealing.contains(Self.worlds[frontier])
+            if isFrontier || isNext, let veil = MapTerrainCache.veil(for: world) {
+                Image(decorative: veil.image, scale: 1)
+                    .resizable()
+                    // Vyhlazeni: zavoj ma mekky okraj po organicke hranici sveta.
+                    .interpolation(.medium)
+                    .frame(width: veil.frame.width, height: veil.frame.height)
+                    .opacity(isFrontier && revealing.contains(world) ? 0 : 1)
+                    .position(x: veil.frame.midX, y: veil.frame.midY)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+            }
+        }
+    }
+
+    /// Plne pixelove mraky nad vsemi svety dal nez jeden za poslednim odemcenym. Kdyz se svet odemkne,
+    /// mraky nad nasledujicim svetem se rozplynou (zpruhledni, rozmazou a odplynou nahoru).
+    @ViewBuilder private var cloudLayer: some View {
+        ForEach(Self.worlds.indices.reversed(), id: \.self) { index in
+            if index > frontier, let clouds = MapTerrainCache.clouds(for: Self.worlds[index]) {
+                let dissolving = index == frontier + 1 && revealing.contains(Self.worlds[frontier])
+                Image(decorative: clouds.image, scale: 1)
+                    .resizable()
+                    .interpolation(.none)
+                    .frame(width: clouds.frame.width, height: clouds.frame.height)
+                    .scaleEffect(dissolving ? 1.08 : 1)
+                    .blur(radius: dissolving ? 24 : 0)
+                    .offset(y: dissolving ? -50 : 0)
+                    .opacity(dissolving ? 0 : 1)
+                    .position(x: clouds.frame.midX, y: clouds.frame.midY)
+                    // Bossove pod mraky se nekresli, klepnuti projde na teren (zavre kartu bosse).
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+            }
         }
     }
 }
@@ -376,7 +467,7 @@ private struct WorldLabelsOverlay: View {
         GeometryReader { proxy in
             let size = proxy.size
             ZStack(alignment: .topLeading) {
-                ForEach(BossWorld.allCases) { world in
+                ForEach(BossWorld.allCases.filter(isVisible)) { world in
                     let point = viewport.screenPoint(of: MapLayout.labelAnchor(of: world))
                     let unlocked = model.isUnlocked(world)
                     let halfWidth = Self.estimatedWidth(world, unlocked: unlocked) / 2
@@ -393,6 +484,13 @@ private struct WorldLabelsOverlay: View {
             }
             .frame(width: size.width, height: size.height, alignment: .topLeading)
         }
+    }
+
+    /// Nazev je videt jen u odemcenych svetu a u prvniho zamceneho (dalsi jsou pod mraky).
+    private func isVisible(_ world: BossWorld) -> Bool {
+        let worlds = BossWorld.allCases
+        let frontier = worlds.firstIndex { !model.isUnlocked($0) || model.needsReveal($0) } ?? worlds.count
+        return (worlds.firstIndex(of: world) ?? 0) <= frontier
     }
 
     /// Odhad sirky stitku pro drzeni v obrazovce (17 pt tucne, odsazeni 14, zamek).

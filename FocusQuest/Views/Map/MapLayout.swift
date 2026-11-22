@@ -96,10 +96,48 @@ enum MapLayout {
         return CGPoint(x: size.width / 2, y: bottom - 56)
     }
 
-    /// Index sveta pro bod terenu (y v bodech), s vlnitou hranici mezi svety.
-    static func worldIndex(x: CGFloat, y: CGFloat) -> Int {
+    /// Posun hranice mezi svety v bodech pro pixel terenu (cx, cy): dlouha vlna pres mapu a organicky sum,
+    /// takze hranice neni nikde rovna cara pres celou sirku (pobrezi, okraj lesa). Bez nahodneho jitteru:
+    /// ten pridava jen teren (rozmichani pixelu na hranici), aby mlha a mraky sedely na stejnou hranici.
+    static func boundaryShift(cellX: Int, cellY: Int) -> Double {
+        let x = (Double(cellX) + 0.5) * Double(cell)
         let wave = 40 * sin(x / 92) + 24 * sin(x / 36 + 1.3)
-        let t = progress(y: y + wave)
-        return min(worldCount - 1, max(0, Int(floor(t * CGFloat(worldCount)))))
+        let warp = (MapTerrain.noise(cellX, cellY, scale: 26, seed: 61) - 0.5) * 110
+            + (MapTerrain.noise(cellX, cellY, scale: 7, seed: 62) - 0.5) * 44
+        return wave + warp
+    }
+
+    /// Index sveta pro pixel terenu (cx, cy) s organickou hranici; `jitter` v bodech rozmicha pixely na hranici.
+    static func worldIndex(cellX: Int, cellY: Int, jitter: Double = 0) -> Int {
+        let y = (Double(cellY) + 0.5) * Double(cell)
+        let t = Double(progress(y: CGFloat(y + boundaryShift(cellX: cellX, cellY: cellY) + jitter)))
+        return min(worldCount - 1, max(0, Int((t * Double(worldCount)).rounded(.down))))
+    }
+
+    /// Index sveta pro bod mapy (v bodech).
+    static func worldIndex(x: CGFloat, y: CGFloat) -> Int {
+        worldIndex(cellX: Int(x / cell), cellY: Int(y / cell))
+    }
+
+    /// Jak daleko muze organicka hranice sveta vybocit z rovneho pasu (body). Mlha a mraky se kresli s rezervou.
+    static let boundaryReach: CGFloat = 160
+
+    // MARK: - Pixelovy pergamen (okraj mapy)
+
+    /// Hloubka pixelu terenu (cx, cy) od zubateho okraje mapy: < 0 = mimo mapu (pruhledne),
+    /// 0–1 tmave hnedy lem, 2–3 svetly lem, dal teren. Rohy jsou mirne otrhane (sikme useknuti se sumem).
+    static func parchmentDepth(cellX x: Int, cellY y: Int) -> Int {
+        let left = x, right = columns - 1 - x, top = y, bottom = rows - 1 - y
+        let distance = min(left, right, top, bottom)
+        let edge: Int, along: Int
+        if distance == left { edge = 0; along = y } else if distance == right { edge = 1; along = y } else if distance == top { edge = 2; along = x } else { edge = 3; along = x }
+        let jag = 2 + Int(MapTerrain.noise(along, edge * 97, scale: 5, seed: 71) * 4) + (MapTerrain.hash(along / 2, edge, 72) > 0.82 ? 1 : 0)
+        var depth = distance - jag
+        // Otrhane rohy: sikme useknuti (manhattanska vzdalenost od rohu) s nepravidelnym okrajem.
+        let cx = min(left, right), cy = min(top, bottom)
+        let corner = (left < right ? 0 : 1) + (top < bottom ? 0 : 2)
+        let tear = 15 + Int(MapTerrain.hash(corner, 0, 73) * 9) + Int(MapTerrain.noise(cx - cy, corner * 31, scale: 3, seed: 74) * 5)
+        depth = min(depth, cx + cy - tear)
+        return depth
     }
 }
