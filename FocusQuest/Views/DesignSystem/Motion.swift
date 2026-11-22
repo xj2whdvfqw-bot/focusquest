@@ -111,6 +111,8 @@ extension EnvironmentValues {
 @MainActor
 enum TabSwipeLock {
     static var isLocked = false
+    /// Na zalozce Path je mapa: vodorovny tah ji posouva, ne prepina zalozky.
+    static var isMapVisible = false
 }
 
 /// Obsah nove zalozky vyjede ve smeru poradi zalozek (o 48 bodu) a prolne se, 0,3 s s pruzinou.

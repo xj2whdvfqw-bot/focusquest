@@ -30,6 +30,43 @@ a všechny opravy z auditu jsou hotové.
   - Privacy a Support jsou na GitHub Pages,
   - Terms = standardní Apple EULA.
 
+### Světy, bossové a mapa (od testu #56)
+- **Tři parodické světy jsou úplně pryč** (bossové, sprity, texty, ID, testy i `design/`). Všechny postavy jsou vlastní.
+  Staré commity je ještě obsahují (viz Otevřené body).
+- **7 světů v pořadí mapy** (zdola nahoru), délka bitvy 10 + 5 × pořadí minut, obtížnost Novice → Mythic po dvou bossech:
+
+  | Svět | Bossové (od nejslabšího) |
+  |---|---|
+  | Farm | Snooze Bunny, Procrasti-Hen, Baa-ck in Five, Moo-ve It Later, Couch Hog, Hee-Haw Hold-On, Neigh-ver Mind |
+  | Whisperwood (lesní skřítci) | Puffcap, Lazy Sprig, Petal Pause, Mossy Snoozer, Acorn Afterwhile, Twiggy Tomorrow, Old Oakdrowse |
+  | Coral Deep (podmořský svět) | Driftwell the Seahorse, Clownin' Around, Jelly Later, Spiky Maybe, Octo-Tasker, Snack-Break Shark, The Kraken of Later |
+  | Dojo | Kara-Tea Break, Master Someday, Monk Mañana, Rope-a-Dope Ray, Tap-Out Tyler, Ju-Don't, Ken-Doze, Muay Thai-red, Sumo More Snacks |
+  | Snoozeville High (střední škola) | Theo Theorem, Raven Rainclouds, Pep Rally Penny, Brody Bulk, Dribble Dex, Hail Mary Max, Principal Postpone |
+  | History Hall | Nap-oleon, Cleo Queen of De-Nile, Veni Vidi Scrolli, Will Do It Tomorrow, Leonardo da Wi-Fi, Amadeus Pause, Isaac Inertia, Karel IV-get It, Komenský's Homework |
+  | Orbit | Retro Mercury, Meme Venus, Day-Off Earth, Binge Mars, Jupi-Later, Ring-Ring Saturn, Tilted Uranus, Sea-Ya Neptune |
+
+  - Každý boss má jednu hlášku o prokrastinaci (`Boss.quip`, ukazuje ji karta bosse na mapě).
+  - Sprity nových světů jsou v `Shared/OriginalWorldBossSprites.swift` (barvy `M` mech a `H` tmavá hnědá přidány do palety).
+- **Odemykání:** ve světě jde bojovat s poraženými bossy (znovu) a s bossem na řadě, další jsou zamčení.
+  Další svět se odemkne až po porážce finálního bosse předchozího (`AppPreferences.isUnlocked/canFight/currentBoss`).
+  Arena („Continue your path“), NEXT BOSS v přestávce i „Keep going“ po rozcvičce ukazují aktuálního bosse mapy.
+- **Migrace uložených dat** (appka nesmí spadnout):
+  - postup ve třech odstraněných světech přejde podle pořadí na Coral Deep, Whisperwood a Snoozeville High (strop 7, platí vyšší hodnota),
+  - staré klíče Dojo a Farm se převedou na `dojo` a `farm` (`BossWorld.legacyWorldKeys`),
+  - svět, kde hráč už má postup, je odemčený vždy; při prvním spuštění se uloží `revealedWorlds`, aby se nad nimi nepřehrávala mlha,
+  - boss, který už neexistuje: ve statistikách „Retired boss“ (minuty, XP a předměty zůstanou, řádky Bestiáře se sloučí), naposledy vybraný se nahradí aktuálním bossem mapy.
+- **Mapa (záložka Path)**:
+  - `UIScrollView` v `ZoomableMapView` (posun, setrvačnost, pinch-zoom 0,5–1,6×, nikdy celá mapa najednou), obsah je SwiftUI v `UIHostingController`,
+  - mapa 2400 × 3600 bodů; terén včetně cesty, dekorací a staveb je pixelová bitmapa 600 × 900 px (1 px = 4 body, asi 2 MB) generovaná v kódu
+    na pozadí (`MapTerrain`), zobrazená bez vyhlazování; nad ní vrstvy: názvy světů, zastávky, hrdina a mlha (bitmapa 1 px = 16 bodů),
+  - cesta se v každém světě jednou přehoupne z jedné strany na druhou, zastávky jsou rovnoměrně po její délce (`MapLayout`),
+  - zastávky: poražený má vlajku, aktuální pulzuje a stojí u něj hrdina, zamčený je šedý se zámkem,
+  - kamera po otevření mapy najede z oddálení na aktuálního bosse; tlačítko s terčíkem vrátí kameru zpět,
+  - klepnutí na zastávku otevře skleněnou kartu (hláška, délka, Fight nebo důvod zámku); zavře se klepnutím do mapy nebo tahem dolů,
+  - mlha nad nově odemčeným světem se jednou rozplyne a zapamatuje se,
+  - na mapě vodorovný tah posouvá mapu, ne záložky (`TabSwipeLock.isMapVisible`),
+  - přístupnost: zastávky mají VoiceOver popisky („Jelly Later, Coral Deep, boss 3 of 7, 20 min, current boss“), tlačítko List přepne na seznam světů (volba se pamatuje).
+
 ### Bitva
 - **Hovor během bitvy** (`CXCallObserver`, stav `callPaused`):
   - bitva se automaticky pozastaví, bez časového limitu a mimo jedinou pauzu „Pause once“,
@@ -171,7 +208,7 @@ a všechny opravy z auditu jsou hotové.
 - e-mail pro Contact,
 - vrácení Rate this app,
 - finální ikona,
-- autorská práva postav a hudby.
+- licence hudby a vyčištění git historie (staré commity s parodiemi).
 
 ### Podklady pro App Store Connect
 - App Privacy: Data Not Collected, Tracking: No.
@@ -184,9 +221,10 @@ a všechny opravy z auditu jsou hotové.
 - **E-mail pro Contact the developer.** Samostatná adresa pro podporu. Doplnit i na stránku Support.
 - **Placený Apple Developer Program** (99 USD/rok). Bez něj nejde odeslat build ani TestFlight.
   Podepisování pak přes GitHub Actions (App Store Connect API klíč v Secrets).
-- **Náhrada parodií postav**: světy Hero Heights, Villain Vault a Swamp Kingdom (bossové volně inspirovaní
-  známými postavami). **Ověřit licence hudby**: `calm-currents.mp3`, `peaceful-drift.mp3`, `tokyo-sunset.mp3`
-  (viz `CREDITS.md`).
+- **Ověřit licence hudby**: `calm-currents.mp3`, `peaceful-drift.mp3`, `tokyo-sunset.mp3` (viz `CREDITS.md`).
+- **Před vydáním vyčistit git historii.** Tři odstraněné parodické světy jsou v kódu i v `design/` pryč, ale ve
+  starých commitech veřejného repa zůstávají. Před vydáním založit nové čisté repo (nebo přepsat historii
+  a force-push; nevratné, jen na výslovný pokyn).
 - **Finální ikona** (navrhne autor aplikace). Nahradit `AppIcon-1024.png`, případně doplnit tmavou a tónovanou variantu.
 - **Vrátit Rate this app**, až bude App Store ID.
 

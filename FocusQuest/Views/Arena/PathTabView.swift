@@ -1,31 +1,528 @@
 import SwiftUI
 
-/// Zalozka Path: "Choose a world". Vsechny svety jsou na zacatku sbalene; klepnuti na kartu
-/// ji rozbali na miste a ukaze vsechny bosse sveta v mrizce 3 sloupcu. Nic neni zamcene,
-/// hrac si vybere, s kym bude bojovat. Zadny "dalsi" boss se nezvyraznuje.
+/// Zalozka Path: velka pixelova mapa svetu, kterou hrac prochazi tazenim a pinch-zoomem.
+/// Kamera po otevreni najede na aktualniho bosse, klepnuti na zastavku otevre sklenenou kartu
+/// bosse s bitvou. Zamcene svety zakryva mlha. Tlacitko List prepne na seznam svetu
+/// (pro VoiceOver a pro ty, kdo mapu posouvat nechteji).
 struct PathTabView: View {
     @ObservedObject var model: ArenaViewModel
     @ObservedObject var profileModel: ProfileViewModel
     @Environment(BattlePresenter.self) private var battle
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    /// Rozbaleny svet (vzdy nejvys jeden), nil = vse sbalene.
-    @State private var openWorld: BossWorld? = PathTabView.initialOpenWorld
+    /// Hrac si muze mapu nahradit seznamem; volba se pamatuje.
+    @AppStorage("pathShowsList") private var showsList = false
+    @State private var terrain: CGImage? = MapTerrainCache.terrain
+    @State private var selected: Boss?
+    @State private var camera: MapCameraRequest?
+    @State private var cameraToken = 0
+    /// Svety, nad kterymi se prave rozplyva mlha.
+    @State private var revealing: Set<BossWorld> = []
 
-    /// Vyhry nad kazdym bossem cest (id -> pocet) z Bestiare; rychle bitvy (rozcvicka) se nepocitaji.
+    private var wins: [String: Int] { profileModel.stats.pathWins }
+    private var current: Boss? { model.currentMapBoss }
+
+    var body: some View {
+        Group {
+            if showsList {
+                WorldListView(model: model, profileModel: profileModel) { switchMode(toList: false) }
+            } else {
+                mapScreen
+            }
+        }
+        .onAppear { TabSwipeLock.isMapVisible = !showsList }
+        .onDisappear { TabSwipeLock.isMapVisible = false }
+    }
+
+    private func switchMode(toList: Bool) {
+        selected = nil
+        showsList = toList
+        TabSwipeLock.isMapVisible = !toList
+        if !toList { focusCurrent(intro: false) }
+    }
+
+    // MARK: - Mapa
+
+    private var mapScreen: some View {
+        ZStack(alignment: .top) {
+            // Barva hlubokeho pozadi, nez se teren vygeneruje (jinak cerna plocha).
+            Color(red: 22 / 255, green: 30 / 255, blue: 40 / 255).ignoresSafeArea()
+            ZoomableMapView(contentSize: MapLayout.size, camera: camera) { mapContent }
+                .ignoresSafeArea()
+            header
+        }
+        .overlay(alignment: .bottom) {
+            if let selected {
+                MapBossCard(
+                    boss: selected,
+                    state: state(of: selected),
+                    wins: wins[selected.id] ?? 0,
+                    lockedReason: lockedReason(for: selected),
+                    canStart: model.isBetweenBattles,
+                    onFight: { fight(selected) },
+                    onClose: { close() }
+                )
+                .id(selected.id)
+                .padding(.horizontal, FQSpace.md)
+                .padding(.bottom, FQSpace.sm)
+                .transition(reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .animation(FQMotion.spring(reduceMotion: reduceMotion), value: selected?.id)
+        .task {
+            if terrain == nil { terrain = await MapTerrainCache.loadTerrain() }
+        }
+        .onAppear {
+            focusCurrent(intro: true)
+            revealUnlockedWorlds()
+        }
+    }
+
+    private var mapContent: some View {
+        MapContent(
+            terrain: terrain,
+            model: model,
+            wins: wins,
+            current: current,
+            selectedID: selected?.id,
+            revealing: revealing,
+            hero: profileModel.profile.avatar,
+            heroClass: profileModel.profile.heroClass,
+            onSelect: { boss in
+                FQFeedback.shared.haptic(.selection)
+                selected = boss
+            },
+            onBackground: { close() }
+        )
+    }
+
+    /// Kompaktni hlavicka nad mapou: kde hrac je, prepnuti na seznam, navrat na aktualniho bosse, Nastaveni.
+    private var header: some View {
+        HStack(spacing: FQSpace.sm) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Path").font(.fqLabel).foregroundStyle(FQColor.textSecondary)
+                Text(current?.world.title ?? "Every world conquered")
+                    .fqFont(size: 20, weight: .semibold, design: .rounded)
+                    .foregroundStyle(FQColor.textPrimary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityAddTraits(.isHeader)
+            Spacer(minLength: FQSpace.sm)
+            headerButton("scope", label: "Go to the current boss") { focusCurrent(intro: false) }
+            headerButton("list.bullet", label: "Show the worlds as a list") { switchMode(toList: true) }
+            SettingsGearButton()
+        }
+        .padding(.horizontal, FQSpace.lg)
+        .padding(.top, FQSpace.sm)
+        .padding(.bottom, FQSpace.xl)
+        .background {
+            LinearGradient(colors: [Color(red: 6 / 255, green: 5 / 255, blue: 16 / 255).opacity(0.85), .clear], startPoint: .top, endPoint: .bottom)
+                .ignoresSafeArea(edges: .top)
+                .allowsHitTesting(false)
+        }
+        .modifier(BrightTextShadow())
+    }
+
+    private func headerButton(_ symbol: String, label: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.system(size: 17, weight: .semibold, design: .rounded))
+                .foregroundStyle(FQColor.textPrimary)
+                .frame(width: 44, height: 44)
+                .glassControl(in: Circle(), interactive: true)
+        }
+        .buttonStyle(.fqPress)
+        .accessibilityLabel(label)
+    }
+
+    // MARK: - Kamera a mlha
+
+    /// Najede na aktualniho bosse. Pri otevreni mapy z oddaleni (pruzkum), jinak primo.
+    private func focusCurrent(intro: Bool) {
+        let target = current ?? BossWorld.allCases.last?.bosses.last
+        guard let target, let point = MapLayout.stops[target.id] else { return }
+        cameraToken += 1
+        camera = MapCameraRequest(point: point, zoom: 1.0, startZoom: intro ? 0.55 : nil, animated: !reduceMotion, token: cameraToken)
+    }
+
+    /// Nove odemcene svety: mlha se po najezdu kamery jednou rozplyne, pak se to zapamatuje.
+    private func revealUnlockedWorlds() {
+        let pending = BossWorld.allCases.filter { model.needsReveal($0) && !revealing.contains($0) }
+        guard !pending.isEmpty else { return }
+        Task { @MainActor in
+            if !reduceMotion { try? await Task.sleep(for: .milliseconds(1_000)) }
+            withAnimation(reduceMotion ? .easeOut(duration: 0.3) : .easeInOut(duration: 1.4)) {
+                revealing.formUnion(pending)
+            }
+            if !pending.isEmpty { FQFeedback.shared.play(.levelUp) }
+            try? await Task.sleep(for: .milliseconds(reduceMotion ? 350 : 1_500))
+            for world in pending { model.markRevealed(world) }
+            revealing.subtract(pending)
+        }
+    }
+
+    // MARK: - Stav zastavek
+
+    private func state(of boss: Boss) -> MapStopState {
+        let wins = wins[boss.id] ?? 0
+        guard model.canFight(boss, wins: wins) else { return .locked }
+        if boss.id == current?.id { return .current }
+        return boss.nodeIndex < model.clearedNodes(in: boss.world) || wins > 0 ? .defeated : .open
+    }
+
+    private func lockedReason(for boss: Boss) -> String {
+        let world = boss.world
+        if !model.isUnlocked(world), let previous = world.previous, let final = previous.bosses.last {
+            return "Beat \(final.name) in \(previous.title) to unlock \(world.title)."
+        }
+        let before = world.bosses[max(0, boss.nodeIndex - 1)]
+        return "Beat \(before.name) first."
+    }
+
+    private func fight(_ boss: Boss) {
+        model.selectBoss(boss)
+        battle.openFightSheet()
+        selected = nil
+    }
+
+    private func close() {
+        guard selected != nil else { return }
+        selected = nil
+    }
+}
+
+/// Stav zastavky na mape.
+enum MapStopState {
+    /// Porazeny boss (vlajka); da se s nim bojovat znovu.
+    case defeated
+    /// Boss na rade: pulzuje a stoji u nej hrdina.
+    case current
+    /// Odemceny, ale neni na rade (napr. aktualni boss jineho sveta).
+    case open
+    /// Zamceny: nejdriv je potreba porazit predchoziho bosse nebo svet.
+    case locked
+
+    var accessibilityText: String {
+        switch self {
+        case .defeated: "defeated"
+        case .current: "current boss"
+        case .open: "open"
+        case .locked: "locked"
+        }
+    }
+}
+
+// MARK: - Obsah mapy (vrstvy)
+
+/// Vrstvy mapy: pixelovy teren (s cestou), nazvy svetu, zastavky, hrdina a mlha nad zamcenymi svety.
+private struct MapContent: View {
+    let terrain: CGImage?
+    @ObservedObject var model: ArenaViewModel
+    let wins: [String: Int]
+    let current: Boss?
+    let selectedID: String?
+    let revealing: Set<BossWorld>
+    let hero: AvatarAppearance
+    let heroClass: HeroClass
+    let onSelect: (Boss) -> Void
+    let onBackground: () -> Void
+
+    var body: some View {
+        ZStack(alignment: .topLeading) {
+            terrainLayer
+            ForEach(BossWorld.allCases) { world in
+                worldLabel(world)
+            }
+            ForEach(Boss.roster) { boss in
+                if let point = MapLayout.stops[boss.id] {
+                    MapStopView(
+                        boss: boss,
+                        state: state(of: boss),
+                        isSelected: boss.id == selectedID,
+                        action: { onSelect(boss) }
+                    )
+                    .position(point)
+                }
+            }
+            if let current, let point = MapLayout.stops[current.id] {
+                HeroAvatarView(appearance: hero, heroClass: heroClass, size: 44)
+                    .shadow(color: .black.opacity(0.5), radius: 3, y: 2)
+                    .position(x: point.x - 52, y: point.y - 6)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+            }
+            ForEach(BossWorld.allCases) { world in
+                fogLayer(world)
+            }
+        }
+        .frame(width: MapLayout.size.width, height: MapLayout.size.height, alignment: .topLeading)
+    }
+
+    @ViewBuilder private var terrainLayer: some View {
+        Group {
+            if let terrain {
+                Image(decorative: terrain, scale: 1)
+                    .resizable()
+                    .interpolation(.none)
+                    .transition(.opacity)
+            } else {
+                // Nez se teren vygeneruje: jen zaklad s jemnym leskem (skeleton, ne kolecko).
+                Color(red: 40 / 255, green: 70 / 255, blue: 56 / 255)
+            }
+        }
+        .frame(width: MapLayout.size.width, height: MapLayout.size.height)
+        .contentShape(Rectangle())
+        .onTapGesture(perform: onBackground)
+        .accessibilityHidden(true)
+        .animation(.easeOut(duration: 0.3), value: terrain != nil)
+    }
+
+    private func state(of boss: Boss) -> MapStopState {
+        let count = wins[boss.id] ?? 0
+        guard model.canFight(boss, wins: count) else { return .locked }
+        if boss.id == current?.id { return .current }
+        return boss.nodeIndex < model.clearedNodes(in: boss.world) || count > 0 ? .defeated : .open
+    }
+
+    /// Stitek s nazvem sveta u vstupu cesty do nej.
+    private func worldLabel(_ world: BossWorld) -> some View {
+        let entrance = MapLayout.entrance(of: world)
+        let towardCenter: CGFloat = entrance.x > MapLayout.size.width / 2 ? -150 : 150
+        let unlocked = model.isUnlocked(world)
+        return HStack(spacing: 6) {
+            if !unlocked { Image(systemName: "lock.fill").font(.system(size: 13, weight: .bold)) }
+            Text(world.title).fqFont(size: 17, weight: .bold, design: .rounded)
+        }
+        .foregroundStyle(FQColor.textPrimary)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+        .background(Color(red: 13 / 255, green: 11 / 255, blue: 28 / 255).opacity(0.72), in: Capsule())
+        .overlay { Capsule().strokeBorder(world.accent.opacity(0.8), lineWidth: 2) }
+        .position(x: entrance.x + towardCenter, y: entrance.y - 70)
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+
+    /// Mlha nad zamcenym svetem; pri odemceni se rozplyne (zprusvitni, zvetsi a odplyne nahoru).
+    @ViewBuilder private func fogLayer(_ world: BossWorld) -> some View {
+        let locked = !model.isUnlocked(world)
+        let pending = model.needsReveal(world)
+        if locked || pending, let fog = MapTerrainCache.fog(for: world) {
+            let band = MapLayout.band(of: world)
+            let dissolving = revealing.contains(world)
+            Image(decorative: fog, scale: 1)
+                .resizable()
+                .interpolation(.none)
+                .frame(width: MapLayout.size.width, height: band.height + 120)
+                .scaleEffect(dissolving ? 1.25 : 1)
+                .offset(y: dissolving ? -60 : 0)
+                .opacity(dissolving ? 0 : 1)
+                .position(x: MapLayout.size.width / 2, y: band.midY)
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+        }
+    }
+}
+
+/// Zastavka na ceste: kruh se spritem bosse. Porazeny ma vlajku, aktualni pulzuje, zamceny je sedy se zamkem.
+private struct MapStopView: View {
+    let boss: Boss
+    let state: MapStopState
+    let isSelected: Bool
+    let action: () -> Void
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var pulse = false
+
+    private var ring: Color {
+        switch state {
+        case .current: FQColor.cta
+        case .locked: Color.white.opacity(0.35)
+        default: Color.white.opacity(0.85)
+        }
+    }
+
+    var body: some View {
+        Button(action: action) {
+            ZStack {
+                if state == .current {
+                    Circle()
+                        .stroke(FQColor.cta, lineWidth: 3)
+                        .frame(width: 60, height: 60)
+                        .scaleEffect(pulse ? 1.45 : 1)
+                        .opacity(pulse ? 0 : 0.9)
+                }
+                Circle().fill(Color(red: 13 / 255, green: 11 / 255, blue: 28 / 255).opacity(0.78))
+                    .frame(width: 60, height: 60)
+                Circle().strokeBorder(ring, lineWidth: state == .current ? 3 : 2)
+                    .frame(width: 60, height: 60)
+                StaticPixelSprite(sprite: .boss(boss.pixelSpriteConfig), size: 40)
+                    .saturation(state == .locked ? 0 : 1)
+                    .opacity(state == .locked ? 0.5 : 1)
+            }
+            .overlay(alignment: .topTrailing) { badge.offset(x: 4, y: -4) }
+            .overlay(alignment: .bottom) {
+                Text("\(boss.nodeIndex + 1)")
+                    .font(.system(size: 12, weight: .bold, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundStyle(FQColor.textPrimary)
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 1)
+                    .background(Color.black.opacity(0.7), in: Capsule())
+                    .offset(y: 10)
+            }
+            .frame(width: 76, height: 76)
+            .scaleEffect(isSelected ? 1.15 : 1)
+            .contentShape(Circle())
+        }
+        .buttonStyle(.fqPress)
+        .animation(FQMotion.quick, value: isSelected)
+        .onAppear { startPulse() }
+        .onChange(of: state) { startPulse() }
+        .accessibilityLabel("\(boss.name), \(boss.world.title), boss \(boss.nodeIndex + 1) of \(boss.world.bosses.count), \(ArenaView.durationText(minutes: boss.maxHP)), \(state.accessibilityText)")
+        .accessibilityHint("Shows the boss card")
+    }
+
+    @ViewBuilder private var badge: some View {
+        switch state {
+        case .defeated:
+            Image(systemName: "flag.fill")
+                .font(.system(size: 11, weight: .bold))
+                .foregroundStyle(FQColor.onAccent)
+                .frame(width: 22, height: 22)
+                .background(FQColor.accent, in: Circle())
+        case .locked:
+            Image(systemName: "lock.fill")
+                .font(.system(size: 10, weight: .bold))
+                .foregroundStyle(FQColor.textPrimary)
+                .frame(width: 22, height: 22)
+                .background(Color.black.opacity(0.75), in: Circle())
+        default:
+            EmptyView()
+        }
+    }
+
+    private func startPulse() {
+        guard state == .current, !reduceMotion else { pulse = false; return }
+        pulse = false
+        withAnimation(.easeOut(duration: 1.4).repeatForever(autoreverses: false)) { pulse = true }
+    }
+}
+
+/// Sklenena karta bosse nad mapou: sprite, jmeno, svet a poradi, hlaska, delka a tlacitko bitvy.
+/// Zavira se klepnutim do mapy nebo tahem dolu.
+private struct MapBossCard: View {
+    let boss: Boss
+    let state: MapStopState
+    let wins: Int
+    let lockedReason: String
+    let canStart: Bool
+    let onFight: () -> Void
+    let onClose: () -> Void
+    @GestureState private var drag: CGFloat = 0
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: FQSpace.md) {
+            HStack(alignment: .top, spacing: FQSpace.md) {
+                PixelArtAvatarView(sprite: .boss(boss.pixelSpriteConfig), size: 64)
+                    .frame(width: 72, height: 72)
+                    .background(boss.world.accent.opacity(0.18), in: Circle())
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("\(boss.world.title) · Boss \(boss.nodeIndex + 1) of \(boss.world.bosses.count)")
+                        .font(.fqMeta)
+                        .foregroundStyle(FQColor.textSecondary)
+                    Text(boss.name)
+                        .font(.fqHeadline)
+                        .foregroundStyle(FQColor.textPrimary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text("“\(boss.quip)”")
+                        .font(.fqSecondary.italic())
+                        .foregroundStyle(FQColor.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if wins > 0 {
+                        Label("Beaten \(wins)×", systemImage: "flag.fill")
+                            .font(.fqMeta)
+                            .foregroundStyle(FQColor.textSecondary)
+                    }
+                }
+                Spacer(minLength: 0)
+            }
+            if state == .locked {
+                Label(lockedReason, systemImage: "lock.fill")
+                    .font(.fqLabel)
+                    .foregroundStyle(FQColor.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            } else {
+                Button(action: onFight) {
+                    Label("Fight · \(ArenaView.durationText(minutes: boss.maxHP))", systemImage: "play.fill")
+                        .fqFont(size: 18, weight: .heavy, design: .rounded)
+                        .foregroundStyle(FQColor.onCta)
+                        .frame(maxWidth: .infinity)
+                        .frame(minHeight: 50)
+                        .background(FQColor.cta, in: FQRadius.shape(FQRadius.inCard))
+                        .compositingGroup()
+                }
+                .buttonStyle(.fqPress)
+                .disabled(!canStart)
+            }
+        }
+        .padding(FQSpace.lg)
+        .frame(maxWidth: 520)
+        .glassCard()
+        .offset(y: max(0, drag))
+        .gesture(
+            DragGesture(minimumDistance: 12)
+                .updating($drag) { value, state, _ in state = value.translation.height }
+                .onEnded { value in if value.translation.height > 60 || value.predictedEndTranslation.height > 160 { onClose() } }
+        )
+        .accessibilityElement(children: .contain)
+        .accessibilityAction(named: "Close") { onClose() }
+    }
+}
+
+// MARK: - Seznam svetu (alternativa k mape)
+
+/// Seznam svetu pro ty, kdo mapu posouvat nechteji (a pro VoiceOver). Svety se rozbaluji
+/// na miste; zamceny svet a zamceni bossove jsou sedi a neda se s nimi bojovat.
+struct WorldListView: View {
+    @ObservedObject var model: ArenaViewModel
+    @ObservedObject var profileModel: ProfileViewModel
+    let onShowMap: () -> Void
+    @Environment(BattlePresenter.self) private var battle
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// Rozbaleny svet (vzdy nejvys jeden), nil = vse sbalene.
+    @State private var openWorld: BossWorld? = WorldListView.initialOpenWorld
+
     private var winsByBoss: [String: Int] { profileModel.stats.pathWins }
 
     var body: some View {
         let wins = winsByBoss
         ScreenScaffold(scene: .enchantedForest) {
-            ScreenHeader(eyebrow: "Path", title: "Choose a world")
+            HStack(alignment: .top, spacing: FQSpace.sm) {
+                ScreenTitle(eyebrow: "Path", title: "Choose a world")
+                Spacer(minLength: FQSpace.sm)
+                Button(action: onShowMap) {
+                    Image(systemName: "map.fill")
+                        .font(.system(size: 17, weight: .semibold, design: .rounded))
+                        .foregroundStyle(FQColor.textPrimary)
+                        .frame(width: 44, height: 44)
+                        .glassControl(in: Circle(), interactive: true)
+                }
+                .buttonStyle(.fqPress)
+                .accessibilityLabel("Show the map")
+                SettingsGearButton()
+            }
             VStack(spacing: FQSpace.lg) {
                 ForEach(BossWorld.allCases) { world in
                     WorldCard(
                         world: world,
                         cleared: model.clearedNodes(in: world),
+                        isUnlocked: model.isUnlocked(world),
                         wins: wins,
                         isOpen: openWorld == world,
                         canFight: model.isBetweenBattles,
+                        canFightBoss: { model.canFight($0, wins: wins[$0.id] ?? 0) },
                         onToggle: { toggle(world) },
                         onPick: pick
                     )
@@ -47,23 +544,25 @@ struct PathTabView: View {
         battle.openFightSheet()
     }
 
-    /// V debug buildu `-initialTab path` rozbali prvni svet (CI screenshoty).
+    /// V debug buildu `-initialTab path` rozbali prvni svet (CI screenshoty seznamu).
     static var initialOpenWorld: BossWorld? {
         #if DEBUG
-        return UserDefaults.standard.string(forKey: "initialTab") == "path" ? .farm : nil
+        return UserDefaults.standard.string(forKey: "initialTab") == "path" ? BossWorld.allCases.first : nil
         #else
         return nil
         #endif
     }
 }
 
-/// Karta sveta: nazev, podtitul, "2 / 4 cleared" a lista postupu v barve sveta. Bez ikony.
+/// Karta sveta: nazev, podtitul, "2 / 7 cleared" a lista postupu v barve sveta. Bez ikony.
 private struct WorldCard: View {
     let world: BossWorld
     let cleared: Int
+    let isUnlocked: Bool
     let wins: [String: Int]
     let isOpen: Bool
     let canFight: Bool
+    let canFightBoss: (Boss) -> Bool
     let onToggle: () -> Void
     let onPick: (Boss) -> Void
 
@@ -99,14 +598,17 @@ private struct WorldCard: View {
             ForEach(rows, id: \.first) { row in
                 HStack(alignment: .top, spacing: FQSpace.sm) {
                     ForEach(row, id: \.self) { index in
+                        let boss = bosses[index]
+                        let fightable = canFightBoss(boss)
                         BossTile(
-                            boss: bosses[index],
+                            boss: boss,
                             number: index + 1,
                             accent: world.accent,
-                            wins: max(index < cleared ? 1 : 0, wins[bosses[index].id] ?? 0),
-                            action: { onPick(bosses[index]) }
+                            wins: max(index < cleared ? 1 : 0, wins[boss.id] ?? 0),
+                            isLocked: !fightable,
+                            action: { onPick(boss) }
                         )
-                        .disabled(!canFight)
+                        .disabled(!canFight || !fightable)
                     }
                     // Neuplny posledni radek drzi sirku sloupcu.
                     ForEach(0..<(Self.columnCount - row.count), id: \.self) { _ in
@@ -121,10 +623,15 @@ private struct WorldCard: View {
         VStack(alignment: .leading, spacing: FQSpace.md) {
             HStack(alignment: .top, spacing: FQSpace.md) {
                 VStack(alignment: .leading, spacing: FQSpace.xs) {
-                    Text(world.title)
-                        .fqFont(size: 17, weight: .semibold, design: .rounded)
-                        .foregroundStyle(FQColor.textPrimary)
-                    Text(world.tagline)
+                    HStack(spacing: 6) {
+                        if !isUnlocked {
+                            Image(systemName: "lock.fill").font(.system(size: 13, weight: .bold)).accessibilityLabel("Locked")
+                        }
+                        Text(world.title)
+                            .fqFont(size: 17, weight: .semibold, design: .rounded)
+                    }
+                    .foregroundStyle(FQColor.textPrimary)
+                    Text(isUnlocked ? world.tagline : unlockHint)
                         .fqFont(size: 13, design: .rounded)
                         .foregroundStyle(FQColor.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -156,6 +663,11 @@ private struct WorldCard: View {
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
     }
+
+    private var unlockHint: String {
+        guard let previous = world.previous, let final = previous.bosses.last else { return world.tagline }
+        return "Beat \(final.name) in \(previous.title) to unlock."
+    }
 }
 
 /// Lista postupu sveta: 4 pt vysoka, svetla stopa, vypln v barve sveta.
@@ -176,12 +688,13 @@ private struct ProgressBar: View {
 }
 
 /// Dlazdice bosse: cislo, sprite, jmeno (max 2 radky) a delka "20 min".
-/// Porazeny boss ma na spritu zelenou pilulku "✓ 3×" s poctem vyher.
+/// Porazeny boss ma na spritu pilulku "✓ 3×" s poctem vyher, zamceny je sedy se zamkem.
 private struct BossTile: View {
     let boss: Boss
     let number: Int
     let accent: Color
     let wins: Int
+    let isLocked: Bool
     let action: () -> Void
 
     var body: some View {
@@ -206,15 +719,22 @@ private struct BossTile: View {
             .frame(maxWidth: .infinity)
             .background(Color.white.opacity(0.05), in: FQRadius.shape(FQRadius.inCard))
             .contentShape(FQRadius.shape(FQRadius.inCard))
+            .opacity(isLocked ? 0.55 : 1)
         }
         .buttonStyle(TileButtonStyle())
-        .accessibilityLabel(wins > 0 ? "\(boss.name), defeated \(wins) times. Fight again, \(boss.maxHP) minutes" : "Fight \(boss.name), \(boss.maxHP) minutes")
+        .accessibilityLabel(label)
+    }
+
+    private var label: String {
+        if isLocked { return "\(boss.name), locked, \(boss.maxHP) minutes" }
+        return wins > 0 ? "\(boss.name), defeated \(wins) times. Fight again, \(boss.maxHP) minutes" : "Fight \(boss.name), \(boss.maxHP) minutes"
     }
 
     private var art: some View {
         ZStack {
             Circle().fill(accent.opacity(0.18))
             PixelArtAvatarView(sprite: .boss(boss.pixelSpriteConfig), size: 52)
+                .saturation(isLocked ? 0 : 1)
         }
         .frame(width: 64, height: 64)
         .overlay(alignment: .topLeading) {
@@ -228,13 +748,22 @@ private struct BossTile: View {
                 .offset(x: -2, y: -2)
         }
         .overlay(alignment: .bottomTrailing) {
-            if wins > 0 { WinsPill(count: wins).offset(x: 4, y: 2) }
+            if isLocked {
+                Image(systemName: "lock.fill")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(FQColor.textPrimary)
+                    .frame(width: 22, height: 22)
+                    .background(Color.black.opacity(0.75), in: Circle())
+                    .offset(x: 4, y: 2)
+            } else if wins > 0 {
+                WinsPill(count: wins).offset(x: 4, y: 2)
+            }
         }
         .accessibilityHidden(true)
     }
 }
 
-/// Zelena pilulka "✓ 3×" na spritu porazeneho bosse.
+/// Pilulka "✓ 3×" na spritu porazeneho bosse (neutralni, bez tyrkysove).
 private struct WinsPill: View {
     let count: Int
 
@@ -251,7 +780,7 @@ private struct WinsPill: View {
         .padding(.leading, 5)
         .padding(.trailing, 7)
         .padding(.vertical, 2)
-        .background(Color(red: 29 / 255, green: 43 / 255, blue: 38 / 255), in: Capsule())
+        .background(Color(red: 34 / 255, green: 32 / 255, blue: 48 / 255), in: Capsule())
         .overlay { Capsule().strokeBorder(Color(red: 13 / 255, green: 11 / 255, blue: 28 / 255).opacity(0.9), lineWidth: 2).padding(-2) }
     }
 }

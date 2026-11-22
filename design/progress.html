@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-22T14:31:22+01:00",
-  "current": "B1+B2 hotové v kódu, další B3 mapa.",
-  "nextStep": "B3: interaktivní mapa místo seznamu; build až na konci.",
+  "updated": "2026-11-22T14:41:51+01:00",
+  "current": "B1–B3 hotové v kódu, push a build se spouští.",
+  "nextStep": "Počkat na build; při chybě opravit a spustit znovu.",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -126,7 +126,7 @@
         { "text": "Nadpis „Ready to focus?“ bez malého štítku nad ním", "done": true },
         { "text": "Vlevo nahoře pilulka série: plamínek + číslo + „days streak“", "done": true },
         { "text": "Úplně odstranit Hero HP (lišta i z celé aplikace)", "done": true },
-        { "text": "Uprostřed „Continue your path“, velký sprite bosse 128 pt bez karty a kruhu, jméno bosse a pod ním „Boss 3 of 4 · Villain Vault“ (nikdy „Node 3“)", "done": true },
+        { "text": "Uprostřed „Continue your path“, velký sprite bosse 128 pt bez karty a kruhu, jméno bosse a pod ním „Boss 3 of 7 · Coral Deep“ (nikdy „Node 3“)", "done": true },
         { "text": "Dole v dosahu palce žluté tlačítko „▶ Fight · 20 min“ (zaoblené písmo, velké jen první písmeno) a pod ním odkaz „Not feeling it? Just 5 minutes“", "done": true },
         { "text": "Odstranit kartu Custom Focus a „See all worlds“", "done": true },
         { "text": "2a: ťuknutí na bosse ukáže na ~2,2 s bublinu s náhodnou hláškou (8 hlášek, nikdy dvakrát stejná po sobě, {m} = minuty bosse) a boss poskočí", "done": true },
@@ -151,8 +151,8 @@
         { "text": "Poražený boss: zelená pilulka na spritu s ✓ a počtem výher, např. „✓ 3×“ (z battle logu, minimálně 1)", "done": true },
         { "text": "Pevná délka bosse: minuty = 10 + 5 × pořadí (od 0)", "done": true },
         { "text": "Obrazovka vítězství ukazuje bosse, kterého jsi opravdu porazil (uložit lastBeaten před posunem cesty)", "done": true },
-        { "text": "Pořadí a barvy světů: Hero Heights, Villain Vault, Dojo, Swamp Kingdom, Farm, History Hall, Orbit (názvy, podtituly a barvy podle tabulky)", "done": true },
-        { "text": "Dojo místo želvích ninja parodií (ty úplně pryč): 9 bossů od Kara-Tea Break po Sumo More Snacks", "done": true },
+        { "text": "Pořadí a barvy světů podle tabulky (od B2 platí nové pořadí Farm → Orbit)", "done": true },
+        { "text": "Dojo místo dřívějších parodií (ty úplně pryč): 9 bossů od Kara-Tea Break po Sumo More Snacks", "done": true },
         { "text": "Farm místo Brainrot Badlands (všechna brainrot jména pryč): 7 bossů od Snooze Bunny po Neigh-ver Mind", "done": true },
         { "text": "Nový svět History Hall: 9 bossů od Nap-oleon po Komenský's Homework", "done": true },
         { "text": "Nový svět Orbit (planety s hlavou na těle astronauta): 8 bossů od Retro Mercury po Sea-Ya Neptune", "done": true },
@@ -160,7 +160,7 @@
       ],
       "commit": "d275c80",
       "build": { "number": 24, "runId": 44063295574, "result": "prošel" },
-      "note": "Část 2: Dojo a Farm nahrazeny, přidány History Hall a Orbit, 33 spritů z přílohy. Stará id Dojo a Farm se převádějí na nové bosse (rawValue světů beze změny, uložený postup platí). Farm má jen 7 bossů, starší postup nad 7 se ořízne. Před vydáním nahradit parodie v Hero Heights, Villain Vault a Swamp Kingdom vlastními postavami (autorská práva). Na iPhonu otestovat: 7 světů na Path, sprity nových bossů, starý postup ve Farm a Dojo."
+      "note": "Část 2: Dojo a Farm nahrazeny, přidány History Hall a Orbit, 33 spritů z přílohy. Stará id Dojo a Farm se převádějí na nové bosse (rawValue světů beze změny, uložený postup platí). Farm má jen 7 bossů, starší postup nad 7 se ořízne. Tři světy s parodiemi byly později úplně odstraněné (sekce B1). Na iPhonu otestovat: 7 světů na Path, sprity nových bossů, starý postup ve Farm a Dojo."
     },
     {
       "id": 4,
@@ -644,13 +644,13 @@
       "id": "B1",
       "title": "Odstranění tří parodických světů",
       "status": "pracuje",
-      "commit": "",
+      "commit": "91752e5",
       "build": { "number": null, "runId": null, "result": "" },
       "items": [
         { "text": "Tři světy s parodiemi chráněných postav pryč včetně bossů, spritů, textů, ID a testů", "done": true },
         { "text": "Migrace: postup ve třech odstraněných světech přejde na Coral Deep, Whisperwood a Snoozeville High (strop 7), staré klíče Dojo a Farm na nové", "done": true },
         { "text": "Statistiky: boss, který už neexistuje, se jmenuje „Retired boss“ (minuty, XP a předměty zůstanou), starý vybraný boss se nahradí aktuálním", "done": true },
-        { "text": "Jména odstraněna i z design/ (CHANGES.md, DECISIONS.md, progress.html, prototyp)", "done": false }
+        { "text": "Jména odstraněna i z design/ (CHANGES.md, DECISIONS.md, progress.html, prototyp)", "done": true }
       ],
       "note": ""
     },
@@ -658,7 +658,7 @@
       "id": "B2",
       "title": "Tři nové světy po 7 bossech",
       "status": "pracuje",
-      "commit": "",
+      "commit": "91752e5",
       "build": { "number": null, "runId": null, "result": "" },
       "items": [
         { "text": "Whisperwood (lesní skřítci): Puffcap … Old Oakdrowse", "done": true },
@@ -672,16 +672,16 @@
     {
       "id": "B3",
       "title": "Interaktivní mapa",
-      "status": "cekam",
+      "status": "pracuje",
       "commit": "",
       "build": { "number": null, "runId": null, "result": "" },
       "items": [
-        { "text": "Velká pixelová mapa, posun tažením a pinch-zoom, nikdy celá najednou", "done": false },
-        { "text": "7 regionů ve vlastním prostředí, klikatá cesta, zastávky (poražený s vlajkou, aktuální pulzuje s hrdinou, zamčený)", "done": false },
-        { "text": "Mlha nad zamčenými regiony, po odemčení se jednou rozplyne", "done": false },
-        { "text": "Kamera najede na aktuálního bosse, klepnutí na zastávku = skleněná karta s bitvou", "done": false },
-        { "text": "Výkon: terén jako malá bitmapa (1 px = 4 body) ve vrstvách, žádný obří obrázek", "done": false },
-        { "text": "VoiceOver popisky zastávek a alternativní seznam", "done": false }
+        { "text": "Velká pixelová mapa, posun tažením a pinch-zoom, nikdy celá najednou", "done": true },
+        { "text": "7 regionů ve vlastním prostředí, klikatá cesta, zastávky (poražený s vlajkou, aktuální pulzuje s hrdinou, zamčený)", "done": true },
+        { "text": "Mlha nad zamčenými regiony, po odemčení se jednou rozplyne", "done": true },
+        { "text": "Kamera najede na aktuálního bosse, klepnutí na zastávku = skleněná karta s bitvou", "done": true },
+        { "text": "Výkon: terén jako malá bitmapa (1 px = 4 body) ve vrstvách, žádný obří obrázek", "done": true },
+        { "text": "VoiceOver popisky zastávek a alternativní seznam", "done": true }
       ],
       "note": ""
     }

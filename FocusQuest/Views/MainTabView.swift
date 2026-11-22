@@ -151,12 +151,12 @@ struct MainTabView: View {
 
     /// Swipe mezi zalozkami: obsah jde s prstem (na krajich jen kousek, jako guma),
     /// po ~70 bodech nebo rychlem svihu prepne na sousedni zalozku. Svisle rolovani ma prednost
-    /// (tah musi byt vyrazne vodorovny) a posuvnik si swipe zamkne (TabSwipeLock).
+    /// (tah musi byt vyrazne vodorovny), posuvnik si swipe zamkne a na mape Path tah posouva mapu (TabSwipeLock).
     /// S Reduce Motion obsah s prstem nejde, zalozka se jen prolne.
     private var tabSwipe: some Gesture {
         DragGesture(minimumDistance: 24)
             .onChanged { value in
-                guard !TabSwipeLock.isLocked else { return }
+                guard !TabSwipeLock.isLocked, !(selectedTab == .path && TabSwipeLock.isMapVisible) else { return }
                 let dx = value.translation.width
                 guard tabMotion.drag != 0 || abs(dx) > abs(value.translation.height) * 1.8 else { return }
                 guard !reduceMotion else { return }
@@ -165,7 +165,7 @@ struct MainTabView: View {
             }
             .onEnded { value in
                 defer { withAnimation(FQMotion.pop) { tabMotion.drag = 0 } }
-                guard !TabSwipeLock.isLocked else { return }
+                guard !TabSwipeLock.isLocked, !(selectedTab == .path && TabSwipeLock.isMapVisible) else { return }
                 let dx = value.translation.width
                 let predicted = value.predictedEndTranslation.width
                 guard abs(dx) > abs(value.translation.height) * 1.8, abs(dx) > 70 || abs(predicted) > 180 else { return }

@@ -1306,20 +1306,17 @@ const $ = (s, el = document) => el.querySelector(s);
 
 /* ================= Data from the Swift code ================= */
 const PAL = { O:[.95,.62,.24], Y:[1,.84,.38], B:[.26,.72,.82], C:[.46,.87,.83], P:[.68,.45,.85], R:[.9,.28,.4], W:[1,1,1,.92], S:[.24,.3,.43], G:[.36,.73,.46], D:[.13,.17,.27], T:[.62,.40,.20], E:[.98,.93,.80], K:[.09,.09,.12], F:[.97,.80,.64], N:[1,.60,.78], A:[.62,.67,.75], L:[.55,.86,1], U:[.17,.29,.70] };
-const turtle = (mask, weapon) => ["................",".....GGGGGG.....","....GGGGGGGG....","...MMMMMMMMMMM..","...MWKMMMWKMMMM.","....GGGGGGGG..M.","....GGKKKKGG....","..X..GGGGGG..X..","..XGTTYYYYTTGX..","..XGTYYYYYYTGX..","..GGTTTTTTTTGG..","....TYYYYYYT....",".....GG..GG.....",".....GG..GG.....","....GGG..GGG....","................"].map(r => r.replace(/M/g, mask).replace(/X/g, weapon));
 const SPRITES = {
-  "thunder-snooze": ["................","..W..AAAAAA..W..","..WWAAAAAAAAWW..","....YFFFFFFY....","....YFKKFKKY....","....YFFFFFFY....","....YYFNNFYY....","...RAAAAAAAAR...","..RRASSAASSARAAA","..RRAAAAAAAARAAA","..RR.UUUUUU.R.T.","..RR.UUUUUU...T.","..R..UU..UU.....",".....UU..UU.....","....TTT..TTT....","................"],
-  "green-gobbler": ["................",".....PPPPPP.....","....PGGGGGGP....","...PGGGGGGGGP...","...PGYYGGYYGP...","...PGGGGGGGGP...","....GKWKWKWG....",".....GGGGGG.....","...GGPPPPPPGG...","..GG.PPPPPP.GG..","..O..GGGGGG..O..",".....GGGGGG.....",".....GG..GG.....",".AAAAAAAAAAAAAA.","..AAKAAAAAAKAA..","................"],
-  "leo-napardo": turtle("U", "A"),
-  "swamp-ogre": ["................",".GG..GGGGGG..GG.","..GGGGGGGGGGGG..","....GGGGGGGG....","....GWKGGKWG....","....GGGGGGGG....","....GGKKKKGG....",".....GGGGGG.....","..TTEEEEEEEETT..",".GTTEEEEEEEETTG.",".GTTEEEEEEEETTG.","..TTTTTTTTTTTT..","....TTTTTTTT....",".....TT..TT.....","....KKK..KKK....","................"],
-  "captain-procrastination": ["................",".....UUUUUU.....","....UUUWWUUU....","....UFFFFFFU....","....UFKFFKFU....",".....FFFFFF.....",".....FFKKFF.....","...UUUUWWUUUU...",".RRR.UUWWUU.F...","RWWWR.RRRRRR.F..","RWUWR.WWWWWW....","RWWWR.RRRRRR....",".RRR..UU..UU....","......UU..UU....",".....RRR..RRR...","................"],
+  "reef-clownfish": ["................","................","................","......OOOO......","....OOWOOOWO..O.","...OOOWOOOWOOOO.","..OKOOWOOOWOOOO.","..OOOOWOOOWOOO..","...OOOWOOOWOOOO.","....OOWOOOWO..O.","......OOOO......","................","................","................","................","................"],
+  "forest-flower": ["................",".....NN..NN.....","....NNNNNNNN....","...NNNYYYYNNN...","..NNNYYYYYYNNN..","...NYKYYYYKYN...","..NNYYYYYYYYNN..","...NYYYKKYYYN...","....NNYYYYNN....",".....NN..NN.....",".......GG.......","....GG.GG.......",".....GGGG..GG...",".......GGGGG....",".......GG.......","................"],
+  "hs-nerd": ["................",".....DDDDDD.....","....DDDDDDDD....","....DFFFFFFD....","....KKKFFKKK....","....KWKFFKWK....","....FFFFFFFF....",".....FFKKFF.....","......FFFF......","....WBBBBBBW....","...FWBBWWBBWF...","...F.BBBBBB.F...",".....UUUUUU.....",".....UU..UU.....",".....KK..KK.....","................"],
   "lo-fi-cat": ["................","..AA........AA..",".AAA........AAA.",".AAAA......AAAA.","..AAAAAAAAAAAA..","..AAYYAAAAYYAA..","..AAAAAAAAAAAA..","...AAAAAAAAAA...","....AAAAAAAA....","....AAAAAAAA....",".....AAAAAA.....","....AA......AA..","...AA........AA.","................","................","................"]
 };
 const WORLDS = {
-  heroes:    { title: "Hero Heights",     accent: [.95,.35,.38], scene: "castleKeep",      boss: { id: "thunder-snooze", name: "Thunder Snooze", node: 1 }, next: { name: "Mr. Incredulous", node: 2 } },
-  villains:  { title: "Villain Vault",    accent: [.66,.47,.95], scene: "dungeonRuins",    boss: { id: "green-gobbler", name: "The Green Gobbler", node: 2 }, next: { name: "Sandbagman", node: 3 } },
+  reef:      { title: "Coral Deep",       accent: [.38,.62,1.0], scene: "dungeonRuins",    boss: { id: "reef-clownfish", name: "Clownin' Around", node: 1 }, next: { name: "Jelly Later", node: 2 } },
+  forest:    { title: "Whisperwood",      accent: [.55,.85,.40], scene: "enchantedForest", boss: { id: "forest-flower", name: "Petal Pause", node: 2 }, next: { name: "Mossy Snoozer", node: 3 } },
   sewerDojo: { title: "Dojo",       accent: [.38,.82,.48], scene: "lanternGrove",    boss: { id: "dojo-karate", name: "Kara-Tea Break", node: 0 }, next: { name: "Master Someday", node: 1 } },
-  fairyTale: { title: "Swamp Kingdom",    accent: [.98,.78,.36], scene: "enchantedForest", boss: { id: "swamp-ogre", name: "Grumbrek the Swamp Ogre", node: 0 }, next: { name: "Don Keyboard", node: 1 } },
+  highSchool: { title: "Snoozeville High", accent: [.98,.78,.36], scene: "castleKeep",     boss: { id: "hs-nerd", name: "Theo Theorem", node: 0 }, next: { name: "Raven Rainclouds", node: 1 } },
   brainrot:  { title: "Farm",            accent: [.96,.58,.70], scene: "enchantedForest", boss: { id: "farm-bunny", name: "Snooze Bunny", node: 0 }, next: { name: "Procrasti-Hen", node: 1 } },
   history:   { title: "History Hall",     accent: [.45,.72,.98], scene: "castleKeep",      boss: { id: "hist-napoleon", name: "Nap-oleon", node: 0 }, next: { name: "Cleo, Queen of De-Nile", node: 1 } },
   planets:   { title: "Orbit",            accent: [.98,.62,.30], scene: "starlitPeaks",    boss: { id: "planet-mercury", name: "Retro Mercury", node: 0 }, next: { name: "Meme Venus", node: 1 } }
@@ -1382,7 +1379,7 @@ Object.assign(I, {
   flameLit: `<svg viewBox="0 0 24 24"><defs><linearGradient id="flameGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffd60a"/><stop offset=".5" stop-color="#ff9f0a"/><stop offset="1" stop-color="#ff453a"/></linearGradient></defs><path fill="url(#flameGrad)" d="${FLAME_D}"/></svg>`
 });
 const subjIcon = () => "";
-const TAGLINES = { heroes: "Caped slackers who'd rather nap than save the day.", villains: "Masterminds of the endless scroll.", sewerDojo: "A whole dojo of fighters who skip every single training.", fairyTale: "Once upon a time, someone stopped studying.", brainrot: "Nobody on this farm has done a single chore.", history: "Great minds who'd rather do it tomorrow.", planets: "Eight planets, zero homework done." };
+const TAGLINES = { reef: "Where homework sinks without a trace.", forest: "Sprites who'll sprout tomorrow. Probably.", sewerDojo: "A whole dojo of fighters who skip every single training.", highSchool: "Everyone's busy. Nobody's studying.", brainrot: "Nobody on this farm has done a single chore.", history: "Great minds who'd rather do it tomorrow.", planets: "Eight planets, zero homework done." };
 const SCENE_FOR_TAB = { arena: "lanternGrove", path: "enchantedForest", shop: "lanternGrove", stats: "starlitPeaks", profile: "enchantedForest", camp: "starlitPeaks" };
 const ALL_TABS = [["arena", "Arena", '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10.5 12 4l8 6.5V19a1.5 1.5 0 0 1-1.5 1.5H15v-5a3 3 0 0 0-6 0v5H5.5A1.5 1.5 0 0 1 4 19z"/></svg>'], ["path", "Path", I.map], ["shop", "Shop", I.bag], ["stats", "Stats", I.chart], ["camp", "Hero", '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><circle cx="12" cy="10" r="3"/><path d="M6.6 18.4c1.3-2 3.1-3 5.4-3s4.1 1 5.4 3"/></svg>']];
 const battlesWon = () => (document.getElementById("newPlayer") && document.getElementById("newPlayer").checked ? 0 : C.log.length) + (S.wins || 0);
@@ -1624,8 +1621,8 @@ const DEF_C = {
   statsTitle: "Your progress", rank: "Adept", level: 7, xpInto: 340, xpFor: 600,
   metrics: [{ label: "Win rate", value: "82%" }, { label: "HP dealt", value: "1240" }, { label: "Longest streak", value: "12 days" }, { label: "Focus hours", value: "14.5" }],
   subjectStats: [{ name: "Math", minutes: 320, battles: 9 }, { name: "English", minutes: 210, battles: 6 }, { name: "Economics", minutes: 95, battles: 3 }],
-  bestiary: [{ subject: "Math", boss: "The Green Gobbler", count: 4 }, { subject: "Math", boss: "Thunder Snooze", count: 2 }, { subject: "English", boss: "Kara-Tea Break", count: 3 }],
-  log: [{ boss: "The Green Gobbler", date: "Nov 13, 2026", xp: 240, min: 20 }, { boss: "Thunder Snooze", date: "Nov 12, 2026", xp: 180, min: 15 }, { boss: "Kara-Tea Break", date: "Nov 11, 2026", xp: 120, min: 10 }],
+  bestiary: [{ subject: "Math", boss: "Petal Pause", count: 4 }, { subject: "Math", boss: "Clownin' Around", count: 2 }, { subject: "English", boss: "Kara-Tea Break", count: 3 }],
+  log: [{ boss: "Petal Pause", date: "Nov 13, 2026", xp: 240, min: 20 }, { boss: "Clownin' Around", date: "Nov 12, 2026", xp: 180, min: 15 }, { boss: "Kara-Tea Break", date: "Nov 11, 2026", xp: 120, min: 10 }],
   habitsTitle: "Habits", habits: habitSeed(),
   shopGearTitle: "Gear up", shopVillageTitle: "Build your village", coins: 320, bossesDefeated: 9,
   slotNames: { head: "Helmets & hats", body: "Armour", weapon: "Weapons", accessory: "Accessories", feet: "Boots", gadget: "Gadgets" },
@@ -1672,7 +1669,7 @@ const getPath = p => p.split(".").reduce((o, k) => o == null ? o : o[k], C);
 const setPath = (p, val) => { const ks = p.split("."), last = ks.pop(); const o = ks.reduce((o, k) => o[k], C); if (o) o[last] = val; };
 
 /* ================= App state (not exported) ================= */
-const S = { campTab: "profile", dial: false, dialMin: 0, rankInfo: false, potions: { health: 1, freeze: 0 }, tab: "arena", battle: false, view: "idle", worldKey: "villains", subject: "Math", custom: false, customMin: 25, elapsed: 0, warnSecs: 10, prevView: null,
+const S = { campTab: "profile", dial: false, dialMin: 0, rankInfo: false, potions: { health: 1, freeze: 0 }, tab: "arena", battle: false, view: "idle", worldKey: "forest", subject: "Math", custom: false, customMin: 25, elapsed: 0, warnSecs: 10, prevView: null,
   music: false, sheet: false, cfSheet: false, cfMin: 25, cfSubject: "Math", newTask: "", pick: false, edit: true, ptab: "screens", hl: null, shopSection: "gear", tryOn: null, lookSheet: false, pathOpen: null, ov: null, oddsPop: false };
 const bossSprite = () => { const k = S.worldKey, i = pickedBoss(), f = frontier(k), e = LINEUP[k][i != null ? i : Math.min(f, LINEUP[k].length - 1)]; return S.custom ? world().boss.id : e ? e[0] : world().boss.id; };
 const pickedBoss = () => S.ov && S.ov.k === S.worldKey && !S.custom ? S.ov.i : null;
@@ -2326,10 +2323,10 @@ Object.assign(I, {
 
 /* Full boss lineups, same order as BossWorld.lineup in Boss.swift */
 var LINEUP = {
-  heroes: [["web-slacker", "Web-Slacker"], ["thunder-snooze", "Thunder Snooze"], ["mr-incredulous", "Mr. Incredulous"], ["elasti-snooze", "Elasti-Snooze"], ["dash-distracted", "Dash Distracted"], ["vanishing-violet", "Vanishing Violet"], ["jack-jack-attack", "Jack-Jack Attack"]],
-  villains: [["the-jokester", "The Jokester"], ["venomeme", "Venomeme"], ["green-gobbler", "The Green Gobbler"], ["sandbagman", "Sandbagman"]],
+  reef: [["reef-seahorse", "Driftwell the Seahorse"], ["reef-clownfish", "Clownin' Around"], ["reef-jelly", "Jelly Later"], ["reef-urchin", "Spiky Maybe"], ["reef-octopus", "Octo-Tasker"], ["reef-shark", "Snack-Break Shark"], ["reef-kraken", "The Kraken of Later"]],
+  forest: [["forest-mushroom", "Puffcap"], ["forest-grass", "Lazy Sprig"], ["forest-flower", "Petal Pause"], ["forest-moss", "Mossy Snoozer"], ["forest-acorn", "Acorn Afterwhile"], ["forest-tree", "Twiggy Tomorrow"], ["forest-elder", "Old Oakdrowse"]],
   sewerDojo: [["dojo-karate", "Kara-Tea Break"], ["dojo-master", "Master Someday"], ["dojo-monk", "Monk Mañana"], ["dojo-boxer", "Rope-a-Dope Ray"], ["dojo-mma", "Tap-Out Tyler"], ["dojo-judo", "Ju-Don't"], ["dojo-kendo", "Ken-Doze"], ["dojo-muaythai", "Muay Thai-red"], ["dojo-sumo", "Sumo More Snacks"]],
-  fairyTale: [["swamp-ogre", "Grumbrek the Swamp Ogre"], ["don-keyboard", "Don Keyboard"], ["rapunzzzel", "Rapunzzzel"], ["puss-in-popups", "Puss in Pop-ups"]],
+  highSchool: [["hs-nerd", "Theo Theorem"], ["hs-emo", "Raven Rainclouds"], ["hs-cheer", "Pep Rally Penny"], ["hs-gymbro", "Brody Bulk"], ["hs-hoops", "Dribble Dex"], ["hs-quarterback", "Hail Mary Max"], ["hs-principal", "Principal Postpone"]],
   brainrot: [["farm-bunny", "Snooze Bunny"], ["farm-hen", "Procrasti-Hen"], ["farm-sheep", "Baa-ck in Five"], ["farm-cow", "Moo-ve It Later"], ["farm-pig", "Couch Hog"], ["farm-donkey", "Hee-Haw Hold-On"], ["farm-horse", "Neigh-ver Mind"]],
   history: [["hist-napoleon", "Nap-oleon"], ["hist-cleo", "Cleo, Queen of De-Nile"], ["hist-caesar", "Veni, Vidi, Scrolli"], ["hist-bard", "Will Do It Tomorrow"], ["hist-leonardo", "Leonardo da Wi-Fi"], ["hist-mozart", "Amadeus Pause"], ["hist-newton", "Isaac Inertia"], ["hist-karel", "Karel IV-get It"], ["hist-komensky", "Komenský's Homework"]],
   planets: [["planet-mercury", "Retro Mercury"], ["planet-venus", "Meme Venus"], ["planet-earth", "Day-Off Earth"], ["planet-mars", "Binge Mars"], ["planet-jupiter", "Jupi-Later"], ["planet-saturn", "Ring-Ring Saturn"], ["planet-uranus", "Tilted Uranus"], ["planet-neptune", "Sea-Ya Neptune"]]
@@ -2437,34 +2434,6 @@ const BODY = {
 };
 // [world body, colour roles, prop overlays as [row, col, pixels] where "_" keeps the pixel underneath]
 const BOSS_ART = {
-  "web-slacker": ["hero", { h: "R", m: "R", b: "R", a: "K", c: "U", g: "K", o: "U" }, [[1, 13, "W"], [2, 14, "W"], [3, 14, "W"], [4, 15, "W"], [5, 14, "WW"], [6, 13, "W"]]],
-  "mr-incredulous": ["hero", { h: "T", m: "K", b: "U", a: "O", c: "O", g: "K", o: "K" }, [[0, 12, ".YY"], [1, 14, "Y"], [2, 13, "Y"], [4, 13, "Y"]]],
-  "elasti-snooze": ["hero", { h: "T", m: "K", b: "O", a: "K", c: "T", g: "K", o: "K" }, [[9, 0, "ssc"], [10, 0, "s"], [1, 12, "..LL"], [2, 14, "L"], [3, 13, "LL"]]],
-  "dash-distracted": ["hero", { h: "Y", m: "R", b: "Y", a: "R", c: "R", g: "R", o: "R" }, [[8, 0, "W"], [10, 0, "WW"], [12, 0, "W"], [14, 1, "WW"]]],
-  "vanishing-violet": ["hero", { h: "K", m: "P", b: "V", a: "W", c: "V", g: "V", o: "V" }, [[0, 2, "V"], [6, 14, "V"], [12, 15, "V"], [3, 1, "V"]]],
-  "jack-jack-attack": ["hero", { h: "O", m: "R", b: "R", a: "Y", c: "Y", g: "K", o: "R" }, [[0, 5, "_Y_OY_"], [1, 4, "O"], [1, 11, "O"], [9, 14, "O"], [8, 15, "Y"]]],
-  "thunder-snooze": null,
-  "the-jokester": ["villain", { h: "G", s: "W", b: "P", a: "G", c: "Y", g: "K", o: "K" }, [[6, 3, "R"], [6, 12, "R"], [10, 14, "_N"], [9, 15, "N"]]],
-  "venomeme": ["villain", { h: "K", s: "K", b: "K", a: "D", c: "W", g: "W", o: "D" }, [[4, 5, "WWW"], [4, 8, "WWW"], [6, 4, "_WKWKWKW"], [7, 7, "NN"], [8, 7, "N"]]],
-  "green-gobbler": null,
-  "sandbagman": ["villain", { h: "Q", s: "Q", b: "T", a: "Q", c: "E", g: "E", o: "T" }, [[11, 14, "_TT"], [12, 13, "TQQT"], [13, 13, "TQQT"], [14, 13, ".TT"], [15, 0, "Q.Q"]]],
-  "leo-napardo": ["ninja", { b: "S", a: "B", s: "F", c: "S" }, [[8, 0, "A"], [7, 1, "A"], [6, 2, "A"], [9, 0, "T"]]],
-  "raph-scroll": ["ninja", { b: "D", a: "R", s: "F", c: "D" }, [[9, 14, "E"], [10, 14, "EE"], [11, 14, "EE"], [12, 14, "E"]]],
-  "do-not-tello": ["ninja", { b: "I", a: "P", s: "F", c: "I" }, [[2, 1, "T"], [4, 1, "T"], [6, 1, "T"], [8, 1, "T"], [10, 1, "T"], [12, 1, "T"]]],
-  "mikey-snackelangelo": ["ninja", { b: "H", a: "O", s: "F", c: "H" }, [[10, 14, "T"], [11, 13, "Y.Y"], [12, 13, "YYY"]]],
-  "swamp-ogre": null,
-  "don-keyboard": ["ogre", { s: "Z", b: "T", a: "Q", c: "K", o: "T" }, [[11, 0, "AAAA"], [12, 0, "AWAW"], [13, 0, "AAAA"]]],
-  "rapunzzzel": ["ogre", { s: "X", b: "I", a: "C", c: "C", o: "D" }, [[7, 4, "_AAAAAAAA"], [8, 5, "AAAAAA"], [9, 6, "AAAA"], [10, 7, "AA"], [0, 13, "LL"], [1, 14, "L"]]],
-  "puss-in-popups": ["ogre", { s: "N", b: "H", a: "G", c: "G", o: "H" }, [[0, 0, "RRR"], [1, 0, "RWR"], [0, 13, "RRR"], [1, 13, "RWR"]]],
-  "banana-bandit": ["mutant", { h: "K", s: "Z", e: "R", b: "R", a: "K", g: "S", o: "K" }, [[4, 3, "YYYYYYYYYY"], [8, 14, "Y"], [9, 13, "YY"], [10, 13, "Y"]]],
-  "tung-tung-sahur": ["mutant", { h: "T", s: "Q", e: "R", b: "T", a: "E", g: "T", o: "T" }, [[7, 14, "T"], [8, 14, "T"], [9, 13, "_T"], [6, 14, "TT"]]],
-  "goggle-grunt": ["mutant", { h: "S", s: "Z", e: "Y", b: "S", a: "O", g: "D", o: "D" }, [[3, 3, "AAAAAAAAAA"], [4, 4, "LLA"], [4, 9, "ALL"]]],
-  "ballerina-cappuccina": ["mutant", { h: "T", s: "E", e: "K", b: "N", a: "W", g: "N", o: "N" }, [[11, 1, "NNNNNNNNNNNNN"], [12, 2, "N"], [12, 13, "N"], [0, 5, "WTTTTW"]]],
-  "captain-procrastination": ["mutant", { h: "D", s: "Z", e: "R", b: "U", a: "Y", g: "D", o: "K" }, [[0, 4, "DDDDDDDD"], [1, 3, "DDYDDYDDDD"], [8, 1, "R"], [9, 0, "R"], [10, 0, "R.R"], [11, 1, "R"]]],
-  "purple-chomper": ["mutant", { h: "P", s: "P", e: "Y", b: "I", a: "P", g: "I", o: "P" }, [[6, 3, "WKWKWKWKWK"], [7, 4, "KWKWKWKW"]]],
-  "tralalero-tralala": ["mutant", { h: "L", s: "L", e: "K", b: "B", a: "W", g: "B", o: "B" }, [[0, 7, "B"], [1, 6, "BBB"], [9, 14, "B"], [10, 15, "B"]]],
-  "dark-doomscroller": ["mutant", { h: "D", s: "X", e: "C", b: "D", a: "I", g: "K", o: "K" }, [[2, 3, "D"], [3, 3, "D"], [2, 12, "D"], [3, 12, "D"], [8, 13, "KK"], [9, 13, "CC"], [10, 13, "CC"], [11, 13, "KK"]]],
-  "iron-distraction": ["mutant", { h: "A", s: "Z", e: "R", b: "A", a: "R", g: "S", o: "A" }, [[1, 4, "AAAAAAAA"], [2, 4, "A"], [9, 0, "AAA"], [10, 0, "A.A"], [8, 1, "Y"]]]
 };
 var BOSS_ROWS = {};
 Object.entries(BOSS_ART).forEach(([id, art]) => {
@@ -2474,10 +2443,6 @@ Object.entries(BOSS_ART).forEach(([id, art]) => {
   (props || []).forEach(([y, x, s]) => s.split("").forEach((ch, j) => { if (ch !== "_" && rows[y] && x + j < 16) rows[y][x + j] = ch; }));
   BOSS_ROWS[id] = rows.map(r => r.join(""));
 });
-// Swamp Kingdom is trolls and ogres now; the names follow the art
-const RENAME = { "don-keyboard": "Keyboard Troll", "rapunzzzel": "Mossbeard the Snorer", "puss-in-popups": "Pop-up Bog Goblin" };
-Object.values(LINEUP).forEach(list => list.forEach(b => { if (RENAME[b[0]]) b[1] = RENAME[b[0]]; }));
-if (WORLDS.fairyTale.next && WORLDS.fairyTale.next.name === "Don Keyboard") WORLDS.fairyTale.next.name = RENAME["don-keyboard"];
 
 /* ---------- 4. Sound: exactly one track at a time ---------- */
 const SOUNDS = [["off", "Off", "Silence"], ["lofi", "Lo-fi", "Soft keys and a lazy beat"], ["brown", "Brown noise", "Deep, like distant rain"], ["white", "White noise", "Bright, masks chatter"]];

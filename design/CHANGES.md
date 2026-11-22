@@ -43,7 +43,7 @@ Colours are given as hex or as `rgba(r,g,b,a)` with 0–255 channels. Sizes are 
 - Title "Ready to focus?" (no small label above it).
 - Streak pill (flame + number + "days streak") at the top left.
 - **No Hero HP bar.** Hero HP is removed from the whole app.
-- Centre: "Continue your path", large boss sprite (128 pt) without a card or circle behind it, boss name, and below it **"Boss 3 of 4 · Villain Vault"** (never "Node 3").
+- Centre: "Continue your path", large boss sprite (128 pt) without a card or circle behind it, boss name, and below it **"Boss 3 of 7 · Coral Deep"** (never "Node 3").
 - Bottom (thumb zone): yellow button **"▶ Fight · 20 min"**, rounded font, sentence case. Below it a text link **"Not feeling it? Just 5 minutes"**.
 - Remove: the Custom Focus card and "See all worlds".
 
@@ -79,23 +79,34 @@ Tapping the boss sprite shows a speech bubble above it for about 2.2 s, with a l
 - Boss length is fixed: `minutes = 10 + 5 × index` (index from 0).
 - The Victory screen must show the boss you **actually** beat, even though the path moves on (store `lastBeaten` before advancing).
 
-### Worlds (order on the Path)
+### Worlds (order on the map, bottom to top)
+
+The next world unlocks after the final boss of the previous one. All characters are original.
 
 | Key | Title | Tagline | Accent (0–1) |
 |---|---|---|---|
-| heroes | Hero Heights | Caped slackers who'd rather nap than save the day. | .95 .35 .38 |
-| villains | Villain Vault | Masterminds of the endless scroll. | .66 .47 .95 |
-| sewerDojo | **Dojo** | A whole dojo of fighters who skip every single training. | .38 .82 .48 |
-| fairyTale | Swamp Kingdom | Once upon a time, someone stopped studying. | .98 .78 .36 |
-| brainrot | **Farm** | Nobody on this farm has done a single chore. | .96 .58 .70 |
+| farm | **Farm** | Nobody on this farm has done a single chore. | .96 .58 .70 |
+| forest | **Whisperwood** | Sprites who'll sprout tomorrow. Probably. | .55 .85 .40 |
+| reef | **Coral Deep** | Where homework sinks without a trace. | .38 .62 1.0 |
+| dojo | **Dojo** | A whole dojo of fighters who skip every single training. | .38 .82 .48 |
+| highSchool | **Snoozeville High** | Everyone's busy. Nobody's studying. | .98 .78 .36 |
 | history | **History Hall** | Great minds who'd rather do it tomorrow. | .45 .72 .98 |
 | planets | **Orbit** | Eight planets, zero homework done. | .98 .62 .30 |
 
-**Dojo** (replaces the old turtle-ninja parodies, which must be removed completely):
+**Farm:**
+Snooze Bunny · Procrasti-Hen · Baa-ck in Five · Moo-ve It Later · Couch Hog · Hee-Haw Hold-On · Neigh-ver Mind
+
+**Whisperwood** (forest sprites):
+Puffcap · Lazy Sprig · Petal Pause · Mossy Snoozer · Acorn Afterwhile · Twiggy Tomorrow · Old Oakdrowse
+
+**Coral Deep** (under the sea):
+Driftwell the Seahorse · Clownin' Around · Jelly Later · Spiky Maybe · Octo-Tasker · Snack-Break Shark · The Kraken of Later
+
+**Dojo:**
 Kara-Tea Break · Master Someday · Monk Mañana · Rope-a-Dope Ray · Tap-Out Tyler · Ju-Don't · Ken-Doze · Muay Thai-red · Sumo More Snacks
 
-**Farm** (replaces Brainrot Badlands; remove all brainrot names):
-Snooze Bunny · Procrasti-Hen · Baa-ck in Five · Moo-ve It Later · Couch Hog · Hee-Haw Hold-On · Neigh-ver Mind
+**Snoozeville High** (an American high school, kind humour):
+Theo Theorem · Raven Rainclouds · Pep Rally Penny · Brody Bulk · Dribble Dex · Hail Mary Max · Principal Postpone
 
 **History Hall:**
 Nap-oleon · Cleo, Queen of De-Nile · Veni, Vidi, Scrolli · Will Do It Tomorrow · Leonardo da Wi-Fi · Amadeus Pause · Isaac Inertia · Karel IV-get It · Komenský's Homework
@@ -103,9 +114,10 @@ Nap-oleon · Cleo, Queen of De-Nile · Veni, Vidi, Scrolli · Will Do It Tomorro
 **Orbit** (planet heads on astronaut bodies):
 Retro Mercury · Meme Venus · Day-Off Earth · Binge Mars · Jupi-Later · Ring-Ring Saturn · Tilted Uranus · Sea-Ya Neptune
 
-Pixel art for all new characters is in the appendix at the end of this file.
+Every boss has one procrastination quip (see `Boss.swift`).
 
-> Copyright note: Hero Heights, Villain Vault and Swamp Kingdom still contain parodies of real franchises (The Incredibles, Spider-Man/Batman villains, Shrek). Replace them with original characters before release.
+Pixel art for Dojo, Farm, History Hall and Orbit is in the appendix at the end of this file; Whisperwood, Coral Deep and Snoozeville High are in `Shared/OriginalWorldBossSprites.swift`.
+
 
 ---
 
