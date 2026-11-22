@@ -119,9 +119,9 @@ struct MainTabView: View {
                 if phase == .active { Task { await maintainSubjects() } }
             }
             // Odchod z appky behem bitvy se netresta: hodiny bitvy bezi dal i na pozadi.
-            // Prvni spusteni: 3strankovy onboarding (pravidla, predmety, povoleni).
+            // Prvni spusteni: 4strankovy onboarding (pravidla, predmety, hrdina, povoleni), listuje se swipem.
             .fullScreenCover(isPresented: $showsHeroCreator) {
-                OnboardingView(arena: container.arenaViewModel) { startBattle in finishOnboarding(startBattle: startBattle) }
+                OnboardingView(arena: container.arenaViewModel, profile: container.profileViewModel) { finishOnboarding() }
             }
         }
         // Pixelova krajina je nocni, proto je appka vzdy v tmavem rezimu (text na skle vynikne).
@@ -211,24 +211,10 @@ struct MainTabView: View {
         container.arenaViewModel.refreshDailyReminder(focusedToday: container.profileViewModel.todayVerifiedMinutes > 0)
     }
 
-    /// Konec onboardingu. "Start a 5 min battle" spusti rozcvicku (Warm-up Wisp), az se onboarding zavre.
-    private func finishOnboarding(startBattle: Bool) {
+    /// Konec onboardingu: hrdina je vytvoreny, appka zacina na Arene (bez doporucene 5minutove bitvy).
+    private func finishOnboarding() {
         container.profileViewModel.completeHeroCreation()
         showsHeroCreator = false
-        guard startBattle else { return }
-        Task { @MainActor in
-            // Dva celoobrazovkove listy nejdou prepnout naraz; bitva se otevre po zavreni onboardingu.
-            try? await Task.sleep(for: .milliseconds(600))
-            let arena = container.arenaViewModel
-            arena.prepareQuickBattle()
-            if arena.selectedSubject != nil {
-                arena.startSession()
-                battlePresenter.isPresented = true
-            } else {
-                // Bez predmetu bitva nezacne; Fight sheet nabidne pridani predmetu.
-                battlePresenter.openFightSheet()
-            }
-        }
     }
 
     /// Reset progress z Nastaveni: po smazani se list zavre, appka se vrati na Arenu

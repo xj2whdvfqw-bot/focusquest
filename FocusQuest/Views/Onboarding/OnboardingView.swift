@@ -1,12 +1,14 @@
 import SwiftUI
 import UIKit
 
-/// Prvni spusteni: 3 stranky se "Skip".
-/// 1. pravidla hry, 2. predmety, 3. povoleni (pohyb, notifikace) a prvni 5minutova bitva.
+/// Prvni spusteni: 4 stranky, ktere jde listovat swipem doleva i doprava (strankovany pager).
+/// 1. pravidla hry, 2. predmety, 3. tvorba hrdiny (trida a vzhled), 4. povoleni.
+/// Volby se ukladaji hned do modelu, takze se pri navratu na predchozi stranku neztrati.
 struct OnboardingView: View {
     @ObservedObject var arena: ArenaViewModel
-    /// Konec onboardingu; `startBattle` = hrac chce hned 5minutovou bitvu.
-    let onFinish: (_ startBattle: Bool) -> Void
+    @ObservedObject var profile: ProfileViewModel
+    /// Konec onboardingu (posledni stranka nebo Skip).
+    let onFinish: () -> Void
 
     @State private var page = 1
     /// Skutecny stav povoleni notifikaci v iOS.
@@ -15,7 +17,7 @@ struct OnboardingView: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.openURL) private var openURL
 
-    private static let pageCount = 3
+    private static let pageCount = 4
 
     var body: some View {
         ZStack {
@@ -24,36 +26,50 @@ struct OnboardingView: View {
                 HStack {
                     Spacer()
                     if page < Self.pageCount {
-                        Button("Skip") { onFinish(false) }
+                        Button("Skip", action: onFinish)
                             .fqFont(size: 17, weight: .semibold, design: .rounded)
                             .foregroundStyle(FQColor.textSecondary)
                             .frame(minWidth: 44, minHeight: 44)
-                            .buttonStyle(.plain)
+                            .buttonStyle(.fqPress)
                     }
                 }
                 .frame(height: 44)
                 .padding(.horizontal, FQSpace.lg)
-                ScrollView {
-                    Group {
-                        switch page {
-                        case 1: rulesPage
-                        case 2: subjectsPage
-                        default: permissionsPage
-                        }
-                    }
-                    .frame(maxWidth: 520)
-                    .frame(maxWidth: .infinity)
-                    .padding(.horizontal, FQSpace.lg)
-                    .padding(.vertical, FQSpace.lg)
-                    .id(page)
-                    .transition(reduceMotion ? .opacity : .asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .move(edge: .leading).combined(with: .opacity)))
+                // Strankovany pager: swipe je hlavni ovladani, tlacitka jen pomahaji.
+                TabView(selection: $page) {
+                    pageContainer(rulesPage).tag(1)
+                    pageContainer(subjectsPage).tag(2)
+                    pageContainer(heroPage).tag(3)
+                    pageContainer(permissionsPage).tag(4)
                 }
-                .scrollIndicators(.hidden)
-                dots.padding(.bottom, FQSpace.md)
+                .tabViewStyle(.page(indexDisplayMode: .never))
+                dots.padding(.vertical, FQSpace.md)
             }
         }
-        .animation(.easeOut(duration: 0.25), value: page)
+        // Ikony v onboardingu jsou ciste bile.
+        .foregroundStyle(.white)
         .interactiveDismissDisabled()
+        .task { notifications = await NotificationPermission.current() }
+        // Navrat z Nastaveni iPhonu: prepinac ukaze, co hrac v iOS zmenil.
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { Task { notifications = await NotificationPermission.current() } }
+        }
+    }
+
+    /// Kazda stranka roluje sama (velke pismo, maly displej).
+    private func pageContainer<Content: View>(_ content: Content) -> some View {
+        ScrollView {
+            content
+                .frame(maxWidth: 520)
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal, FQSpace.lg)
+                .padding(.vertical, FQSpace.lg)
+        }
+        .scrollIndicators(.hidden)
+    }
+
+    private func go(to target: Int) {
+        withAnimation(reduceMotion ? nil : FQMotion.pop) { page = target }
     }
 
     // MARK: - 1. Pravidla
@@ -70,7 +86,7 @@ struct OnboardingView: View {
             }
             .padding(FQSpace.lg)
             .glassCard()
-            ctaButton("Got it", symbol: nil) { page = 2 }
+            ctaButton("Got it") { go(to: 2) }
         }
     }
 
@@ -78,7 +94,7 @@ struct OnboardingView: View {
         HStack(alignment: .top, spacing: FQSpace.md) {
             Image(systemName: symbol)
                 .font(.system(size: 20))
-                .foregroundStyle(FQColor.accent)
+                .foregroundStyle(.white)
                 .frame(width: 28)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
@@ -113,17 +129,49 @@ struct OnboardingView: View {
                     Button { withAnimation(.easeOut(duration: 0.15)) { arena.toggleOnboardingSubject(named: title) } } label: {
                         Text(title).fqChip(selected: isOn)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.fqPress)
                     .accessibilityAddTraits(isOn ? .isSelected : [])
                 }
                 AddSubjectChip(model: arena, taken: arena.visibleSubjects) { _ in }
             }
             .frame(maxWidth: .infinity)
-            ctaButton(selected.isEmpty ? "Skip for now" : "Continue", symbol: nil) { page = 3 }
+            ctaButton(selected.isEmpty ? "Skip for now" : "Continue") { go(to: 3) }
         }
     }
 
-    // MARK: - 3. Povoleni
+    // MARK: - 3. Hrdina
+
+    /// Stejna konfigurace jako na zalozce Hero: trida (cipy) a vzhled (HeroLookEditor). Uklada se hned.
+    private var heroPage: some View {
+        VStack(spacing: FQSpace.lg) {
+            heading("Create your hero")
+            HeroAvatarView(appearance: profile.profile.avatar, heroClass: profile.profile.heroClass, size: 112)
+                .animation(FQMotion.quick, value: profile.profile.avatar)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: FQSpace.md) {
+                Text("Class").font(.fqMeta).foregroundStyle(FQColor.textSecondary)
+                ChipFlow(spacing: FQSpace.sm) {
+                    ForEach(HeroClass.allCases) { heroClass in
+                        FQChip(title: heroClass.displayName, isSelected: heroClass == profile.profile.heroClass, compact: true) {
+                            profile.updateHeroClass(heroClass)
+                        }
+                        .accessibilityLabel("Class \(heroClass.displayName)")
+                    }
+                }
+                HairlineDivider()
+                HeroLookEditor(appearance: profile.profile.avatar) { profile.updateAvatar($0) }
+            }
+            .padding(FQSpace.lg)
+            .glassCard()
+            Text("You can change all of this later on the Hero tab.")
+                .font(.fqMeta)
+                .foregroundStyle(FQColor.textSecondary)
+                .multilineTextAlignment(.center)
+            ctaButton("Continue") { go(to: 4) }
+        }
+    }
+
+    // MARK: - 4. Povoleni
 
     private var permissionsPage: some View {
         VStack(spacing: FQSpace.lg) {
@@ -143,17 +191,7 @@ struct OnboardingView: View {
             .padding(.horizontal, FQSpace.lg)
             .padding(.vertical, FQSpace.xs)
             .glassCard()
-            ctaButton("Start a 5 min battle", symbol: "play.fill") { onFinish(true) }
-            Button("Look around first") { onFinish(false) }
-                .fqFont(size: 15, weight: .semibold, design: .rounded)
-                .foregroundStyle(FQColor.textSecondary)
-                .frame(minHeight: 44)
-                .buttonStyle(.plain)
-        }
-        .task { notifications = await NotificationPermission.current() }
-        // Navrat z Nastaveni iPhonu: prepinac ukaze, co hrac v iOS zmenil.
-        .onChange(of: scenePhase) { _, phase in
-            if phase == .active { Task { notifications = await NotificationPermission.current() } }
+            ctaButton("Start my quest", action: onFinish)
         }
     }
 
@@ -169,7 +207,7 @@ struct OnboardingView: View {
             Spacer(minLength: FQSpace.sm)
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: 22))
-                .foregroundStyle(FQColor.accent)
+                .foregroundStyle(.white)
                 .accessibilityHidden(true)
         }
         .padding(.vertical, FQSpace.sm)
@@ -187,7 +225,7 @@ struct OnboardingView: View {
                 Spacer(minLength: FQSpace.sm)
                 // Vzhled systemoveho prepinace; zapnuti spusti systemovy dotaz.
                 Capsule()
-                    .fill(isOn ? FQColor.accent : Color.white.opacity(0.2))
+                    .fill(isOn ? FQColor.toggleOn : Color.white.opacity(0.2))
                     .frame(width: 51, height: 31)
                     .overlay(alignment: isOn ? .trailing : .leading) {
                         Circle().fill(.white).padding(2).shadow(color: .black.opacity(0.2), radius: 2, y: 1)
@@ -198,7 +236,7 @@ struct OnboardingView: View {
             .frame(minHeight: 44)
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.fqPress)
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(isOn ? [.isButton, .isSelected] : .isButton)
     }
@@ -223,29 +261,39 @@ struct OnboardingView: View {
     }
 
     /// Zlute hlavni tlacitko (stejne jako Fight v Arene).
-    private func ctaButton(_ title: String, symbol: String?, action: @escaping () -> Void) -> some View {
+    private func ctaButton(_ title: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Group {
-                if let symbol { Label(title, systemImage: symbol) } else { Text(title) }
-            }
-            .fqFont(size: 20, weight: .heavy, design: .rounded)
-            .foregroundStyle(FQColor.onCta)
-            .frame(maxWidth: .infinity)
-            .frame(minHeight: 52)
-            .background(FQColor.cta, in: RoundedRectangle(cornerRadius: FQRadius.pill, style: .continuous))
+            Text(title)
+                .fqFont(size: 20, weight: .heavy, design: .rounded)
+                .foregroundStyle(FQColor.onCta)
+                .frame(maxWidth: .infinity)
+                .frame(minHeight: 52)
+                .background(FQColor.cta, in: RoundedRectangle(cornerRadius: FQRadius.pill, style: .continuous))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.fqPress)
     }
 
+    /// Tecky stranek; klepnuti na tecku na ni prejde (swipe je hlavni ovladani).
     private var dots: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 10) {
             ForEach(1...Self.pageCount, id: \.self) { index in
                 Circle()
                     .fill(index == page ? FQColor.textPrimary : FQColor.textTertiary)
                     .frame(width: 7, height: 7)
+                    .frame(width: 16, height: 24)
+                    .contentShape(Rectangle())
+                    .onTapGesture { go(to: index) }
             }
         }
+        .animation(FQMotion.quick, value: page)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Page \(page) of \(Self.pageCount)")
+        .accessibilityAdjustableAction { direction in
+            switch direction {
+            case .increment: go(to: min(Self.pageCount, page + 1))
+            case .decrement: go(to: max(1, page - 1))
+            @unknown default: break
+            }
+        }
     }
 }

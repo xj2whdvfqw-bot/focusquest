@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-22T13:04:03+01:00",
-  "current": "A1 paleta bez tyrkysové hotová v kódu, další A2 onboarding.",
-  "nextStep": "A2: onboarding se swipem, krok hrdiny, bez 5min bitvy; build až po A6.",
+  "updated": "2026-11-22T13:05:22+01:00",
+  "current": "A2 onboarding hotový v kódu, další A3 návrat swipem v Nastavení.",
+  "nextStep": "A3: tah od levého okraje zavře podstránku Nastavení; build až po A6.",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -565,7 +565,7 @@
       "id": "A1",
       "title": "Paleta bez tyrkysové",
       "status": "pracuje",
-      "commit": "",
+      "commit": "8a0a5e3",
       "build": { "number": null, "runId": null, "result": "" },
       "items": [
         { "text": "Token `accent` je bílý (text na něm téměř černý), Live Activity bílá místo mint; vše centrálně v Shared/FQColor.swift", "done": true },
@@ -578,16 +578,16 @@
     {
       "id": "A2",
       "title": "Onboarding: swipe, hrdina, bílé ikony",
-      "status": "cekam",
+      "status": "pracuje",
       "commit": "",
       "build": { "number": null, "runId": null, "result": "" },
       "items": [
-        { "text": "Stránky jde listovat swipem doleva/doprava, tečky dole, volby se při návratu neztratí", "done": false },
-        { "text": "Všechny ikony v onboardingu bílé", "done": false },
-        { "text": "Krok „Almost ready“ bez doporučení 5min bitvy", "done": false },
-        { "text": "Nový krok „Create your hero“ (třída, vzhled) ze stejných komponent jako Hero", "done": false }
+        { "text": "Stránky jde listovat swipem doleva/doprava, tečky dole, volby se při návratu neztratí", "done": true },
+        { "text": "Všechny ikony v onboardingu bílé", "done": true },
+        { "text": "Krok „Almost ready“ bez doporučení 5min bitvy", "done": true },
+        { "text": "Nový krok „Create your hero“ (třída, vzhled) ze stejných komponent jako Hero", "done": true }
       ],
-      "note": ""
+      "note": "Zbývá build. Na iPhonu otestovat (Reset progress v Nastavení ukáže onboarding znovu): swipe doleva/doprava mezi 4 stránkami, tečky dole (ťuknutí na tečku taky přepne), vybrané předměty a vzhled hrdiny zůstanou po návratu zpět, ikony bílé, na Almost ready už není 5min bitva, jen „Start my quest“."
     },
     {
       "id": "A3",
