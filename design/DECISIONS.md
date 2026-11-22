@@ -3,7 +3,7 @@
 Doplňuje `design/CHANGES.md` (zadání sekcí 0–15) a `design/progress.html` (stav, buildy, co otestovat).
 Tady je to, co v nich není: rozhodnutí, která padla během práce, otevřené body a známé pasti.
 
-Stav k 22. 11. 2026: větev `phase3-duolingo`, opravy po testu #55 (A1–A6) hotové, build viz progress.html. Všechny sekce z CHANGES.md
+Stav k 22. 11. 2026: větev `phase3-duolingo`, opravy po testu #55 (A1–A6) hotové, poslední zelený build #56. Všechny sekce z CHANGES.md
 a všechny opravy z auditu jsou hotové.
 
 ## 1. Rozhodnutí

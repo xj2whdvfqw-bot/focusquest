@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-22T13:15:03+01:00",
-  "current": "Build #56 běží (A1–A6).",
-  "nextStep": "Počkat na výsledek buildu #56; při chybě opravit a spustit znovu.",
+  "updated": "2026-11-22T13:47:42+01:00",
+  "current": "A1–A6 hotové: build #56 prošel.",
+  "nextStep": "Otestovat build #56 na iPhonu podle poznámek v kartách A1–A6 (notifikace: Settings › Debug notifications › Test notifications).",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -564,81 +564,81 @@
     {
       "id": "A1",
       "title": "Paleta bez tyrkysové",
-      "status": "build",
+      "status": "hotovo",
       "commit": "8a0a5e3",
-      "build": { "number": 56, "runId": 45021268302, "result": "" },
+      "build": { "number": 56, "runId": 45021268302, "result": "úspěch" },
       "items": [
         { "text": "Token `accent` je bílý (text na něm téměř černý), Live Activity bílá místo mint; vše centrálně v Shared/FQColor.swift", "done": true },
         { "text": "Mince se zlatou ikonou (`FQColor.coin`, komponenta CoinLabel), XP ikona bílá", "done": true },
         { "text": "Přepínače: šedá stopa (`toggleOn`), aby bílá kulička nezmizela", "done": true },
         { "text": "Kontrast WCAG AA: sklo na světlých scénách .78 (dřív .64), terciární text 62 % (dřív 50 %), červená světlejší rgb(255,120,135)", "done": true }
       ],
-      "note": "Zbývá build. Na iPhonu otestovat: nikde žádná tyrkysová (Back ve výsledku, Path ✓, Stats, Profil, Shop In use, Live Activity), mince zlaté, texty čitelné na světlých pozadích (Daybreak, Sunset, Farm)."
+      "note": "Hotovo, build #56 prošel. Na iPhonu otestovat: nikde žádná tyrkysová (Back ve výsledku, Path ✓, Stats, Profil, Shop In use, Live Activity), mince zlaté, texty čitelné na světlých pozadích (Daybreak, Sunset, Farm)."
     },
     {
       "id": "A2",
       "title": "Onboarding: swipe, hrdina, bílé ikony",
-      "status": "build",
+      "status": "hotovo",
       "commit": "4f68c9d",
-      "build": { "number": 56, "runId": 45021268302, "result": "" },
+      "build": { "number": 56, "runId": 45021268302, "result": "úspěch" },
       "items": [
         { "text": "Stránky jde listovat swipem doleva/doprava, tečky dole, volby se při návratu neztratí", "done": true },
         { "text": "Všechny ikony v onboardingu bílé", "done": true },
         { "text": "Krok „Almost ready“ bez doporučení 5min bitvy", "done": true },
         { "text": "Nový krok „Create your hero“ (třída, vzhled) ze stejných komponent jako Hero", "done": true }
       ],
-      "note": "Zbývá build. Na iPhonu otestovat (Reset progress v Nastavení ukáže onboarding znovu): swipe doleva/doprava mezi 4 stránkami, tečky dole (ťuknutí na tečku taky přepne), vybrané předměty a vzhled hrdiny zůstanou po návratu zpět, ikony bílé, na Almost ready už není 5min bitva, jen „Start my quest“."
+      "note": "Hotovo, build #56 prošel. Na iPhonu otestovat (Reset progress v Nastavení ukáže onboarding znovu): swipe doleva/doprava mezi 4 stránkami, tečky dole (ťuknutí na tečku taky přepne), vybrané předměty a vzhled hrdiny zůstanou po návratu zpět, ikony bílé, na Almost ready už není 5min bitva, jen „Start my quest“."
     },
     {
       "id": "A3",
       "title": "Nastavení: návrat swipem",
-      "status": "build",
+      "status": "hotovo",
       "commit": "9071dad",
-      "build": { "number": 56, "runId": 45021268302, "result": "" },
+      "build": { "number": 56, "runId": 45021268302, "result": "úspěch" },
       "items": [
         { "text": "Podstránka Sounds & notifications se zavře tahem od levého okraje doprava (sleduje prst), tlačítko ‹ Settings zůstává", "done": true }
       ],
-      "note": "Zbývá build. Podstránka nemá NavigationStack (list má vlastní krajinu a zavírání tahem dolů), proto vlastní gesto od levého okraje (32 pt). Na iPhonu otestovat: v Sounds & notifications táhnout od levého okraje doprava, stránka jde s prstem; krátký tah zajede zpět, delší (asi 100 pt) nebo rychlý švih vrátí na Settings; svislé rolování a tah dolů na zavření dál fungují; tlačítko ‹ Settings zůstává."
+      "note": "Hotovo, build #56 prošel. Podstránka nemá NavigationStack (list má vlastní krajinu a zavírání tahem dolů), proto vlastní gesto od levého okraje (32 pt). Na iPhonu otestovat: v Sounds & notifications táhnout od levého okraje doprava, stránka jde s prstem; krátký tah zajede zpět, delší (asi 100 pt) nebo rychlý švih vrátí na Settings; svislé rolování a tah dolů na zavření dál fungují; tlačítko ‹ Settings zůstává."
     },
     {
       "id": "A4",
       "title": "Zvuky a haptika",
-      "status": "build",
+      "status": "hotovo",
       "commit": "f354ff1",
-      "build": { "number": 56, "runId": 45021268302, "result": "" },
+      "build": { "number": 56, "runId": 45021268302, "result": "úspěch" },
       "items": [
         { "text": "Samostatné přepínače: Tap sounds, Haptics, Battle sounds, Reward sounds (+ Alarm sound) a hlasitost efektů", "done": true },
         { "text": "Jeden centrální FQFeedback (zvuk + haptika), tlačítka přes společný ButtonStyle", "done": true },
         { "text": "Zvuky generované v kódu, ambient audio session (tichý režim, nepřeruší cizí hudbu)", "done": true },
         { "text": "Zkušební karta pod každým zapnutým přepínačem (animovaně se rozbalí)", "done": true }
       ],
-      "note": "Zbývá build. Zvuky jsou generované v kódu (žádné soubory, žádná licence). Na iPhonu otestovat: Settings › Sounds & notifications: každý přepínač po zapnutí rozbalí kartu Try it a tlačítka v ní hrají; po vypnutí se karta sbalí a zvuk v appce opravdu zmizí (Tap sounds: klik na tlačítka a záložky; Battle sounds: start bitvy, výhra, útěk bosse; Reward sounds: Collect Loot, XP, nákup v Shopu, level up; Haptics: vibrace všude včetně alarmu); posuvník hlasitosti; s přepínačem ticha na boku iPhonu efekty mimo bitvu nehrají a hudba z jiné appky se nepřeruší."
+      "note": "Hotovo, build #56 prošel. Zvuky jsou generované v kódu (žádné soubory, žádná licence). Na iPhonu otestovat: Settings › Sounds & notifications: každý přepínač po zapnutí rozbalí kartu Try it a tlačítka v ní hrají; po vypnutí se karta sbalí a zvuk v appce opravdu zmizí (Tap sounds: klik na tlačítka a záložky; Battle sounds: start bitvy, výhra, útěk bosse; Reward sounds: Collect Loot, XP, nákup v Shopu, level up; Haptics: vibrace všude včetně alarmu); posuvník hlasitosti; s přepínačem ticha na boku iPhonu efekty mimo bitvu nehrají a hudba z jiné appky se nepřeruší."
     },
     {
       "id": "A5",
       "title": "Notifikace",
-      "status": "build",
+      "status": "hotovo",
       "commit": "2fc1066",
-      "build": { "number": 56, "runId": 45021268302, "result": "" },
+      "build": { "number": 56, "runId": 45021268302, "result": "úspěch" },
       "items": [
         { "text": "Příčina a oprava plánování lokálních notifikací", "done": true },
         { "text": "Debug: tlačítko Test notifications (každý typ za 5 s)", "done": true },
         { "text": "Nastavení: stav oprávnění a tlačítko do systémového nastavení", "done": true }
       ],
-      "note": "Zbývá build. Jen lokální notifikace, aps-environment v appce není. Příčiny: povolení se ptalo jen v onboardingu (dalo se přeskočit) nebo až při startu bitvy, přepínače v Nastavení svítily jako zapnuté i bez povolení, chyby plánování se zahazovaly a zrušení bitvy mohlo proběhnout během plánování (Victory! pak přišlo i po ústupu). Teď se každé plánování nejdřív zeptá, služba je actor, chyby jdou do logu, Nastavení ukazuje skutečný stav (Allowed / Not allowed yet + Allow / Banners off / Off + Open Settings). Na iPhonu: Settings › Debug notifications › Test notifications, zamknout telefon, během 5–9 s přijdou 3 notifikace; Show pending ukáže naplánované s časem."
+      "note": "Hotovo, build #56 prošel. Jen lokální notifikace, aps-environment v appce není. Příčiny: povolení se ptalo jen v onboardingu (dalo se přeskočit) nebo až při startu bitvy, přepínače v Nastavení svítily jako zapnuté i bez povolení, chyby plánování se zahazovaly a zrušení bitvy mohlo proběhnout během plánování (Victory! pak přišlo i po ústupu). Teď se každé plánování nejdřív zeptá, služba je actor, chyby jdou do logu, Nastavení ukazuje skutečný stav (Allowed / Not allowed yet + Allow / Banners off / Off + Open Settings). Na iPhonu: Settings › Debug notifications › Test notifications, zamknout telefon, během 5–9 s přijdou 3 notifikace; Show pending ukáže naplánované s časem."
     },
     {
       "id": "A6",
       "title": "Tab bar: squash a swipe mezi taby",
-      "status": "build",
+      "status": "hotovo",
       "commit": "8458225",
-      "build": { "number": 56, "runId": 45021268302, "result": "" },
+      "build": { "number": 56, "runId": 45021268302, "result": "úspěch" },
       "items": [
         { "text": "Bublina výběru se zmáčkne, přeletí a pružně roztáhne (~0,35 s)", "done": true },
         { "text": "Obsah tabů jde přepínat horizontálním swipem, vnitřní gesta mají přednost", "done": true },
         { "text": "Reduce Motion: jen prolnutí, bez squashe", "done": true }
       ],
-      "note": "Zbývá build. Systémový stránkovaný TabView se nepoužil (nepouští krajinu pod stavový řádek), swipe je vlastní gesto. Na iPhonu otestovat: ťuknutí na záložku = bublina se zmáčkne, přeletí a pružně roztáhne; swipe doleva/doprava po obrazovce přepne na sousední záložku a obsah vyjede ze strany; svislé rolování a posuvník denního cíle v Hero swipe nespustí; se zapnutým Reduce Motion jen prolnutí."
+      "note": "Hotovo, build #56 prošel. Systémový stránkovaný TabView se nepoužil (nepouští krajinu pod stavový řádek), swipe je vlastní gesto. Na iPhonu otestovat: ťuknutí na záložku = bublina se zmáčkne, přeletí a pružně roztáhne; swipe doleva/doprava po obrazovce přepne na sousední záložku a obsah vyjede ze strany; svislé rolování a posuvník denního cíle v Hero swipe nespustí; se zapnutým Reduce Motion jen prolnutí."
     }
   ]
 }
