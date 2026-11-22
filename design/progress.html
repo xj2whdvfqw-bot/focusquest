@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-22T23:29:42+01:00",
-  "current": "F1: build #64 běží (všechny body B0–B5 hotové).",
-  "nextStep": "Počkat na výsledek buildu #64.",
+  "updated": "2026-11-22T23:32:17+01:00",
+  "current": "F1: build #64 spadl (Animatable v MapEasterEggs), opraveno, běží znovu.",
+  "nextStep": "Počkat na výsledek opraveného buildu.",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -751,7 +751,7 @@
     {
       "id": "F1",
       "title": "Test po E1: Habits, TipKit, mapa, easter eggy",
-      "status": "build",
+      "status": "spadl",
       "items": [
         { "text": "B0 Habits: zpět na šířku (sloupce = týdny), dnešek vlevo nahoře, starší doprava a dolů; zelená škála", "done": true },
         { "text": "B1 Onboarding pryč, TipKit tutoriál (6 tipů u prvků, každý jednou), notifikace až po první výhře, Debug Reset tips", "done": true },
@@ -761,8 +761,8 @@
         { "text": "B5 Easter eggy: rybník (+150), oranžová planeta (+200), křížek na Farm (+100); Debug Reset easter eggs", "done": true }
       ],
       "commit": "f2f6911",
-      "build": { "number": 64, "runId": 45077994625, "result": "běží" },
-      "note": "Kontrolní build #63 (B0+B1) prošel. Finální build #64 s mapou a easter eggy běží."
+      "build": { "number": 64, "runId": 45077994625, "result": "spadl" },
+      "note": "Build #64 spadl na kompilaci: CoinCount (počítadlo mincí) porušoval Swift 6 izolaci u Animatable. Opraveno (nonisolated animatableData), build se spouští znovu."
     }
   ]
 }

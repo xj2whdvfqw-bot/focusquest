@@ -263,7 +263,7 @@ struct CoinRewardToast: View {
 
 private struct CoinCount: View, Animatable {
     var value: Double
-    var animatableData: Double {
+    nonisolated var animatableData: Double {
         get { value }
         set { value = newValue }
     }
