@@ -32,6 +32,11 @@ final class AudioAtmosphereService: NSObject, AudioAtmosphereServiceProtocol, AV
     private var isSessionActive = false
     private var interruptionObserver: (any NSObjectProtocol)?
     private var noiseCache: [Soundscape: Data] = [:]
+    /// Dlouhe skladby (Fireplace piano, Study flow) hraji ve smycce: konec se prolne do noveho zacatku.
+    private var loopTask: Task<Void, Never>?
+    /// Dohravajici konec skladby behem prolnuti.
+    private var fadingPlayer: AVAudioPlayer?
+    private static let loopCrossfade: TimeInterval = 6
 
     /// Behem varovani se hudba ztlumi, aby vynikl odpocet.
     private var targetVolume: Float {
@@ -43,7 +48,7 @@ final class AudioAtmosphereService: NSObject, AudioAtmosphereServiceProtocol, AV
         self.preferences = preferences
         guard isSessionActive else { return }
         guard preferences.isMusicEnabled else { stopAmbient(); return }
-        let sourceChanged = previous.soundscape != preferences.soundscape
+        let sourceChanged = previous.soundscape != preferences.soundscape || previous.isMusicEnabled != preferences.isMusicEnabled
             || (preferences.soundscape == .lofi && currentTrack != preferences.selectedTrack)
         if ambientPlayer == nil || sourceChanged {
             startAmbient()
@@ -116,6 +121,7 @@ final class AudioAtmosphereService: NSObject, AudioAtmosphereServiceProtocol, AV
             player.play()
             player.setVolume(targetVolume, fadeDuration: 1.5)
             ambientPlayer = player
+            if let resource = preferences.soundscape.loopResource { startLoopWatch(resource: resource) }
         } catch {
             ambientPlayer = nil
             currentTrack = nil
@@ -130,6 +136,12 @@ final class AudioAtmosphereService: NSObject, AudioAtmosphereServiceProtocol, AV
             let player = try AVAudioPlayer(contentsOf: url)
             player.numberOfLoops = 0
             currentTrack = track
+            return player
+        case .fireplacePiano, .studyFlow:
+            guard let resource = preferences.soundscape.loopResource, let url = Self.loopURL(resource) else { return nil }
+            let player = try AVAudioPlayer(contentsOf: url)
+            player.numberOfLoops = 0
+            currentTrack = nil
             return player
         case .whiteNoise, .brownNoise:
             let player = try AVAudioPlayer(data: noiseData(for: preferences.soundscape))
@@ -156,9 +168,53 @@ final class AudioAtmosphereService: NSObject, AudioAtmosphereServiceProtocol, AV
     }
 
     private func stopAmbient() {
+        loopTask?.cancel()
+        loopTask = nil
+        fadingPlayer?.stop()
+        fadingPlayer = nil
         ambientPlayer?.stop()
         ambientPlayer = nil
         currentTrack = nil
+    }
+
+    /// Skladba v bundlu: .m4a (AAC z CI), pro jistotu i puvodni .mp3.
+    private static func loopURL(_ resource: String) -> URL? {
+        Bundle.main.url(forResource: resource, withExtension: "m4a") ?? Bundle.main.url(forResource: resource, withExtension: "mp3")
+    }
+
+    /// Hlida konec dlouhe skladby. Kdyz zbyva `loopCrossfade` sekund, spusti tutez skladbu od zacatku
+    /// potichu a obe prolne (nova nahoru, stara dolu), takze smycka nema slysitelny strih.
+    /// Kontrola jednou za sekundu; behem pauzy nebo varovani se nic nepocita navic.
+    private func startLoopWatch(resource: String) {
+        loopTask?.cancel()
+        loopTask = Task { @MainActor [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(1))
+                guard let self else { return }
+                guard !Task.isCancelled, let player = self.ambientPlayer, player.isPlaying else { continue }
+                guard player.duration > Self.loopCrossfade * 3, player.duration - player.currentTime <= Self.loopCrossfade else { continue }
+                self.crossfadeLoop(from: player, resource: resource)
+            }
+        }
+    }
+
+    private func crossfadeLoop(from old: AVAudioPlayer, resource: String) {
+        guard let url = Self.loopURL(resource), let next = try? AVAudioPlayer(contentsOf: url) else { return }
+        next.numberOfLoops = 0
+        next.volume = 0
+        next.prepareToPlay()
+        next.play()
+        next.setVolume(targetVolume, fadeDuration: Self.loopCrossfade)
+        old.setVolume(0, fadeDuration: Self.loopCrossfade)
+        fadingPlayer?.stop()
+        fadingPlayer = old
+        ambientPlayer = next
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(Self.loopCrossfade + 0.5))
+            guard let self, self.fadingPlayer === old else { return }
+            old.stop()
+            self.fadingPlayer = nil
+        }
     }
 
     private func playNextTrack() {

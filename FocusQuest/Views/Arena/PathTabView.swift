@@ -2,53 +2,64 @@ import SwiftUI
 
 /// Zalozka Path: velka pixelova mapa svetu, kterou hrac prochazi tazenim a pinch-zoomem.
 /// Kamera po otevreni najede na aktualniho bosse, klepnuti na zastavku otevre sklenenou kartu
-/// bosse s bitvou. Zamcene svety zakryva mlha. Tlacitko List prepne na seznam svetu
-/// (pro VoiceOver a pro ty, kdo mapu posouvat nechteji).
+/// bosse s bitvou. Zamcene svety maji jemny zavoj a mekky okraj mraku u hranice.
+/// Tlacitko seznamu otevre list se svety a bossy (pro VoiceOver a pro ty, kdo mapu posouvat nechteji).
 struct PathTabView: View {
     @ObservedObject var model: ArenaViewModel
     @ObservedObject var profileModel: ProfileViewModel
     @Environment(BattlePresenter.self) private var battle
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    /// Hrac si muze mapu nahradit seznamem; volba se pamatuje.
-    @AppStorage("pathShowsList") private var showsList = false
     @State private var terrain: CGImage? = MapTerrainCache.terrain
     @State private var selected: Boss?
     @State private var camera: MapCameraRequest?
     @State private var cameraToken = 0
     /// Svety, nad kterymi se prave rozplyva mlha.
     @State private var revealing: Set<BossWorld> = []
+    /// List se seznamem svetu a bossu.
+    @State private var showsWorldList = false
+    /// Boss vybrany v seznamu: Fight sheet se otevre az po zavreni seznamu (dva listy naraz nejdou).
+    @State private var pendingFight: Boss?
+    @State private var viewport = MapViewport()
+
+    /// Vyska hlavicky pod stavovym radkem (tlacitka 44 + odsazeni); mapa pod ni jde odrolovat.
+    private static let headerHeight: CGFloat = 60
 
     private var wins: [String: Int] { profileModel.stats.pathWins }
     private var current: Boss? { model.currentMapBoss }
 
     var body: some View {
-        Group {
-            if showsList {
-                WorldListView(model: model, profileModel: profileModel) { switchMode(toList: false) }
-            } else {
-                mapScreen
+        mapScreen
+            .sheet(isPresented: $showsWorldList, onDismiss: openPendingFight) {
+                WorldListView(model: model, profileModel: profileModel) {
+                    showsWorldList = false
+                } onPick: { boss in
+                    pendingFight = boss
+                    showsWorldList = false
+                }
+                .presentationDragIndicator(.visible)
             }
-        }
-        .onAppear { TabSwipeLock.isMapVisible = !showsList }
-        .onDisappear { TabSwipeLock.isMapVisible = false }
-    }
-
-    private func switchMode(toList: Bool) {
-        selected = nil
-        showsList = toList
-        TabSwipeLock.isMapVisible = !toList
-        if !toList { focusCurrent(intro: false) }
     }
 
     // MARK: - Mapa
 
     private var mapScreen: some View {
-        ZStack(alignment: .top) {
-            // Barva hlubokeho pozadi, nez se teren vygeneruje (jinak cerna plocha).
-            Color(red: 22 / 255, green: 30 / 255, blue: 40 / 255).ignoresSafeArea()
-            ZoomableMapView(contentSize: MapLayout.size, camera: camera) { mapContent }
-                .ignoresSafeArea()
-            header
+        GeometryReader { proxy in
+            // Nahore hlavicka, dole tab bar (safe area uz obsahuje rezervu pod plovouci listou).
+            let insets = UIEdgeInsets(top: proxy.safeAreaInsets.top + Self.headerHeight, left: 0, bottom: proxy.safeAreaInsets.bottom + FQSpace.sm, right: 0)
+            ZStack(alignment: .top) {
+                // Barva hlubokeho pozadi, nez se teren vygeneruje (jinak cerna plocha).
+                Color(red: 22 / 255, green: 30 / 255, blue: 40 / 255).ignoresSafeArea()
+                ZoomableMapView(contentSize: MapLayout.size, insets: insets, camera: camera, viewport: viewport) { mapContent }
+                    .ignoresSafeArea()
+                // Nazvy svetu v souradnicich obrazovky: nikdy nejsou useknute u okraje
+                // a mizi pod hlavickou a nad tab barem.
+                WorldLabelsOverlay(model: model, viewport: viewport, topInset: insets.top, bottomInset: insets.bottom)
+                    .ignoresSafeArea()
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+                header
+                    .zIndex(1)
+            }
         }
         .overlay(alignment: .bottom) {
             if let selected {
@@ -95,7 +106,9 @@ struct PathTabView: View {
         )
     }
 
-    /// Kompaktni hlavicka nad mapou: kde hrac je, prepnuti na seznam, navrat na aktualniho bosse, Nastaveni.
+    /// Kompaktni hlavicka nad mapou: kde hrac je, navrat na aktualniho bosse, seznam svetu, Nastaveni.
+    /// Tlacitka maji neinteraktivni sklo: interaktivni Liquid Glass nad UIKit mapou pohlcoval klepnuti
+    /// a zustaval rozsviceny. Stisk ukazuje styl .fqPress (zmenseni a ztmaveni).
     private var header: some View {
         HStack(spacing: FQSpace.sm) {
             VStack(alignment: .leading, spacing: 2) {
@@ -110,8 +123,11 @@ struct PathTabView: View {
             .accessibilityAddTraits(.isHeader)
             Spacer(minLength: FQSpace.sm)
             headerButton("scope", label: "Go to the current boss") { focusCurrent(intro: false) }
-            headerButton("list.bullet", label: "Show the worlds as a list") { switchMode(toList: true) }
-            SettingsGearButton()
+            headerButton("list.bullet", label: "Show worlds and bosses as a list") {
+                selected = nil
+                showsWorldList = true
+            }
+            SettingsGearButton(interactiveGlass: false)
         }
         .padding(.horizontal, FQSpace.lg)
         .padding(.top, FQSpace.sm)
@@ -130,7 +146,8 @@ struct PathTabView: View {
                 .font(.system(size: 17, weight: .semibold, design: .rounded))
                 .foregroundStyle(FQColor.textPrimary)
                 .frame(width: 44, height: 44)
-                .glassControl(in: Circle(), interactive: true)
+                .glassControl(in: Circle())
+                .contentShape(Circle())
         }
         .buttonStyle(.fqPress)
         .accessibilityLabel(label)
@@ -138,7 +155,7 @@ struct PathTabView: View {
 
     // MARK: - Kamera a mlha
 
-    /// Najede na aktualniho bosse. Pri otevreni mapy z oddaleni (pruzkum), jinak primo.
+    /// Najede na aktualniho bosse (do stredu viditelne casti). Pri otevreni mapy z oddaleni (pruzkum), jinak primo.
     private func focusCurrent(intro: Bool) {
         let target = current ?? BossWorld.allCases.last?.bosses.last
         guard let target, let point = MapLayout.stops[target.id] else { return }
@@ -178,25 +195,24 @@ struct PathTabView: View {
     // MARK: - Stav zastavek
 
     private func state(of boss: Boss) -> MapStopState {
-        let wins = wins[boss.id] ?? 0
-        guard model.canFight(boss, wins: wins) else { return .locked }
-        if boss.id == current?.id { return .current }
-        return boss.nodeIndex < model.clearedNodes(in: boss.world) || wins > 0 ? .defeated : .open
+        MapStopState.of(boss, model: model, wins: wins, current: current)
     }
 
     private func lockedReason(for boss: Boss) -> String {
-        let world = boss.world
-        if !model.isUnlocked(world), let previous = world.previous, let final = previous.bosses.last {
-            return "Beat \(final.name) in \(previous.title) to unlock \(world.title)."
-        }
-        let before = world.bosses[max(0, boss.nodeIndex - 1)]
-        return "Beat \(before.name) first."
+        MapStopState.lockedReason(for: boss, model: model)
     }
 
     private func fight(_ boss: Boss) {
         model.selectBoss(boss)
         battle.openFightSheet()
         selected = nil
+    }
+
+    /// Boss ze seznamu: seznam se zavrel, ted se otevre Fight sheet.
+    private func openPendingFight() {
+        guard let boss = pendingFight else { return }
+        pendingFight = nil
+        fight(boss)
     }
 
     private func close() {
@@ -224,11 +240,40 @@ enum MapStopState {
         case .locked: "locked"
         }
     }
+
+    /// Kratky popisek stavu do seznamu bossu.
+    var title: String {
+        switch self {
+        case .defeated: "Defeated"
+        case .current: "Up next"
+        case .open: "Open"
+        case .locked: "Locked"
+        }
+    }
+
+    @MainActor
+    static func of(_ boss: Boss, model: ArenaViewModel, wins: [String: Int], current: Boss?) -> MapStopState {
+        let count = wins[boss.id] ?? 0
+        guard model.canFight(boss, wins: count) else { return .locked }
+        if boss.id == current?.id { return .current }
+        return boss.nodeIndex < model.clearedNodes(in: boss.world) || count > 0 ? .defeated : .open
+    }
+
+    @MainActor
+    static func lockedReason(for boss: Boss, model: ArenaViewModel) -> String {
+        let world = boss.world
+        if !model.isUnlocked(world), let previous = world.previous, let final = previous.bosses.last {
+            return "Beat \(final.name) in \(previous.title) to unlock \(world.title)."
+        }
+        let before = world.bosses[max(0, boss.nodeIndex - 1)]
+        return "Beat \(before.name) first."
+    }
 }
 
 // MARK: - Obsah mapy (vrstvy)
 
-/// Vrstvy mapy: pixelovy teren (s cestou), nazvy svetu, zastavky, hrdina a mlha nad zamcenymi svety.
+/// Vrstvy mapy: pixelovy teren (s cestou), zastavky, hrdina a mlha nad zamcenymi svety.
+/// Nazvy svetu jsou nad mapou v souradnicich obrazovky (WorldLabelsOverlay).
 private struct MapContent: View {
     let terrain: CGImage?
     @ObservedObject var model: ArenaViewModel
@@ -244,30 +289,27 @@ private struct MapContent: View {
     var body: some View {
         ZStack(alignment: .topLeading) {
             terrainLayer
+            ForEach(BossWorld.allCases) { world in
+                fogLayer(world)
+            }
             ForEach(Boss.roster) { boss in
                 if let point = MapLayout.stops[boss.id] {
                     MapStopView(
                         boss: boss,
-                        state: state(of: boss),
+                        state: MapStopState.of(boss, model: model, wins: wins, current: current),
                         isSelected: boss.id == selectedID,
                         action: { onSelect(boss) }
                     )
                     .position(point)
                 }
             }
+            // Hrdina ma stejne vrstvy jako v Shopu a Hero Profile (aktualni trida a vybaveni).
             if let current, let point = MapLayout.stops[current.id] {
                 HeroAvatarView(appearance: hero, heroClass: heroClass, size: 44)
                     .shadow(color: .black.opacity(0.5), radius: 3, y: 2)
                     .position(x: point.x - 52, y: point.y - 6)
                     .allowsHitTesting(false)
                     .accessibilityHidden(true)
-            }
-            ForEach(BossWorld.allCases) { world in
-                fogLayer(world)
-            }
-            // Nazvy svetu jsou nad mlhou, aby byl videt i nazev zamceneho sveta.
-            ForEach(BossWorld.allCases) { world in
-                worldLabel(world)
             }
         }
         .frame(width: MapLayout.size.width, height: MapLayout.size.height, alignment: .topLeading)
@@ -292,50 +334,84 @@ private struct MapContent: View {
         .animation(.easeOut(duration: 0.3), value: terrain != nil)
     }
 
-    private func state(of boss: Boss) -> MapStopState {
-        let count = wins[boss.id] ?? 0
-        guard model.canFight(boss, wins: count) else { return .locked }
-        if boss.id == current?.id { return .current }
-        return boss.nodeIndex < model.clearedNodes(in: boss.world) || count > 0 ? .defeated : .open
+    /// Mlha nad zamcenym svetem: jemny zavoj pres cely svet a u prvniho zamceneho sveta mekky
+    /// okraj mraku pres hranici s odemcenou krajinou. Pri odemceni se rozplyne (zpruhledni a odplyne nahoru).
+    @ViewBuilder private func fogLayer(_ world: BossWorld) -> some View {
+        let locked = !model.isUnlocked(world)
+        let pending = model.needsReveal(world)
+        let frontier = world.previous.map { model.isUnlocked($0) } ?? true
+        if locked || pending, let fog = MapTerrainCache.fog(for: world, frontier: frontier) {
+            let band = MapLayout.band(of: world)
+            let height = band.height + MapTerrain.fogOverhang
+            let dissolving = revealing.contains(world)
+            Image(decorative: fog, scale: 1)
+                .resizable()
+                // Vyhlazeni (ne pixely): mrak plynule prechazi do krajiny.
+                .interpolation(.medium)
+                .frame(width: MapLayout.size.width, height: height)
+                .scaleEffect(dissolving ? 1.15 : 1)
+                .offset(y: dissolving ? -60 : 0)
+                .opacity(dissolving ? 0 : 1)
+                .position(x: MapLayout.size.width / 2, y: band.minY + height / 2)
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+        }
+    }
+}
+
+/// Nazvy svetu nad mapou. Kazdy stitek je u spodni hrany sveta (kde cesta do sveta vstupuje),
+/// vodorovne se drzi v obrazovce (nikdy neni useknuty u okraje) a schova se, kdyz by byl
+/// pod hlavickou nebo pod tab barem.
+private struct WorldLabelsOverlay: View {
+    @ObservedObject var model: ArenaViewModel
+    let viewport: MapViewport
+    let topInset: CGFloat
+    let bottomInset: CGFloat
+
+    var body: some View {
+        GeometryReader { proxy in
+            let size = proxy.size
+            ZStack(alignment: .topLeading) {
+                ForEach(BossWorld.allCases) { world in
+                    let point = viewport.screenPoint(of: MapLayout.labelAnchor(of: world))
+                    let unlocked = model.isUnlocked(world)
+                    let halfWidth = Self.estimatedWidth(world, unlocked: unlocked) / 2
+                    let margin: CGFloat = 12
+                    if point.y > topInset + 24, point.y < size.height - bottomInset - 24 {
+                        WorldNameLabel(world: world, unlocked: unlocked)
+                            .fixedSize()
+                            .position(
+                                x: min(size.width - halfWidth - margin, max(halfWidth + margin, point.x)),
+                                y: point.y
+                            )
+                    }
+                }
+            }
+            .frame(width: size.width, height: size.height, alignment: .topLeading)
+        }
     }
 
-    /// Stitek s nazvem sveta uprostred spodni hrany jeho pasu. Cesta tam nevede (u spodni hrany
-    /// je na kraji mapy), takze stitek nikdy nezakryje zastavku ani hrdinu.
-    private func worldLabel(_ world: BossWorld) -> some View {
-        let band = MapLayout.band(of: world)
-        let unlocked = model.isUnlocked(world)
-        return HStack(spacing: 6) {
+    /// Odhad sirky stitku pro drzeni v obrazovce (17 pt tucne, odsazeni 14, zamek).
+    static func estimatedWidth(_ world: BossWorld, unlocked: Bool) -> CGFloat {
+        CGFloat(world.title.count) * 10.5 + 28 + (unlocked ? 0 : 19) + 4
+    }
+}
+
+/// Stitek s nazvem sveta (sklenena kapsle v barve sveta, u zamceneho sveta zamek).
+private struct WorldNameLabel: View {
+    let world: BossWorld
+    let unlocked: Bool
+
+    var body: some View {
+        HStack(spacing: 6) {
             if !unlocked { Image(systemName: "lock.fill").font(.system(size: 13, weight: .bold)) }
-            Text(world.title).fqFont(size: 17, weight: .bold, design: .rounded)
+            Text(world.title).fqFont(size: 17, weight: .bold, design: .rounded).lineLimit(1)
         }
         .foregroundStyle(FQColor.textPrimary)
         .padding(.horizontal, 14)
         .padding(.vertical, 8)
         .background(Color(red: 13 / 255, green: 11 / 255, blue: 28 / 255).opacity(0.72), in: Capsule())
         .overlay { Capsule().strokeBorder(world.accent.opacity(0.8), lineWidth: 2) }
-        .position(x: MapLayout.size.width / 2, y: band.maxY - 56)
-        .allowsHitTesting(false)
-        .accessibilityHidden(true)
-    }
-
-    /// Mlha nad zamcenym svetem; pri odemceni se rozplyne (zprusvitni, zvetsi a odplyne nahoru).
-    @ViewBuilder private func fogLayer(_ world: BossWorld) -> some View {
-        let locked = !model.isUnlocked(world)
-        let pending = model.needsReveal(world)
-        if locked || pending, let fog = MapTerrainCache.fog(for: world) {
-            let band = MapLayout.band(of: world)
-            let dissolving = revealing.contains(world)
-            Image(decorative: fog, scale: 1)
-                .resizable()
-                .interpolation(.none)
-                .frame(width: MapLayout.size.width, height: band.height + 32)
-                .scaleEffect(dissolving ? 1.25 : 1)
-                .offset(y: dissolving ? -60 : 0)
-                .opacity(dissolving ? 0 : 1)
-                .position(x: MapLayout.size.width / 2, y: band.midY)
-                .allowsHitTesting(false)
-                .accessibilityHidden(true)
-        }
     }
 }
 
@@ -450,6 +526,12 @@ private struct MapBossCard: View {
                         .font(.fqHeadline)
                         .foregroundStyle(FQColor.textPrimary)
                         .fixedSize(horizontal: false, vertical: true)
+                    // Delka bitvy i u zamceneho bosse, at je videt, co hrace ceka.
+                    Label(ArenaView.durationText(minutes: boss.maxHP), systemImage: "timer")
+                        .font(.fqLabel.weight(.semibold))
+                        .monospacedDigit()
+                        .foregroundStyle(FQColor.textPrimary)
+                        .accessibilityLabel("Battle length \(boss.maxHP) minutes")
                     Text("“\(boss.quip)”")
                         .font(.fqSecondary.italic())
                         .foregroundStyle(FQColor.textSecondary)
@@ -495,15 +577,16 @@ private struct MapBossCard: View {
     }
 }
 
-// MARK: - Seznam svetu (alternativa k mape)
+// MARK: - Seznam svetu (list z hlavicky mapy)
 
-/// Seznam svetu pro ty, kdo mapu posouvat nechteji (a pro VoiceOver). Svety se rozbaluji
-/// na miste; zamceny svet a zamceni bossove jsou sedi a neda se s nimi bojovat.
+/// Seznam svetu a bossu v listu z hlavicky mapy (pro VoiceOver a pro ty, kdo mapu posouvat nechteji).
+/// Svety se rozbaluji na miste, kazdy boss ukazuje stav a delku bitvy; zamceny svet a zamceni
+/// bossove jsou sedi a neda se s nimi bojovat. Vyber bosse list zavre a otevre Fight sheet.
 struct WorldListView: View {
     @ObservedObject var model: ArenaViewModel
     @ObservedObject var profileModel: ProfileViewModel
-    let onShowMap: () -> Void
-    @Environment(BattlePresenter.self) private var battle
+    let onClose: () -> Void
+    let onPick: (Boss) -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// Rozbaleny svet (vzdy nejvys jeden), nil = vse sbalene.
     @State private var openWorld: BossWorld? = WorldListView.initialOpenWorld
@@ -514,18 +597,18 @@ struct WorldListView: View {
         let wins = winsByBoss
         ScreenScaffold(scene: .enchantedForest) {
             HStack(alignment: .top, spacing: FQSpace.sm) {
-                ScreenTitle(eyebrow: "Path", title: "Choose a world")
+                ScreenTitle(eyebrow: "Path", title: "Worlds and bosses")
                 Spacer(minLength: FQSpace.sm)
-                Button(action: onShowMap) {
-                    Image(systemName: "map.fill")
-                        .font(.system(size: 17, weight: .semibold, design: .rounded))
+                Button(action: onClose) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
                         .foregroundStyle(FQColor.textPrimary)
                         .frame(width: 44, height: 44)
-                        .glassControl(in: Circle(), interactive: true)
+                        .glassControl(in: Circle())
+                        .contentShape(Circle())
                 }
                 .buttonStyle(.fqPress)
-                .accessibilityLabel("Show the map")
-                SettingsGearButton()
+                .accessibilityLabel("Close the list")
             }
             VStack(spacing: FQSpace.lg) {
                 ForEach(BossWorld.allCases) { world in
@@ -538,11 +621,13 @@ struct WorldListView: View {
                         canFight: model.isBetweenBattles,
                         canFightBoss: { model.canFight($0, wins: wins[$0.id] ?? 0) },
                         onToggle: { toggle(world) },
-                        onPick: pick
+                        onPick: onPick
                     )
                 }
             }
         }
+        // Svet, ve kterem hrac prave je, je rovnou rozbaleny.
+        .onAppear { if openWorld == nil { openWorld = model.currentMapBoss?.world } }
     }
 
     /// Karta se plynule zvetsi a mrizka se na miste odkryje (fade + vyska, 0,25 s).
@@ -551,11 +636,6 @@ struct WorldListView: View {
         withAnimation(reduceMotion ? nil : .easeOut(duration: 0.25)) {
             openWorld = openWorld == world ? nil : world
         }
-    }
-
-    private func pick(_ boss: Boss) {
-        model.selectBoss(boss)
-        battle.openFightSheet()
     }
 
     /// V debug buildu `-initialTab path` rozbali prvni svet (CI screenshoty seznamu).

@@ -72,17 +72,28 @@ final class FQFeedback {
         EffectSounds.shared.play(sound.effect, volume: Float(preferences.effectsVolume))
     }
 
-    /// Vibrace, kdyz je zapnuta Haptics.
+    /// Nasobek sily vibraci podle Nastaveni › Haptics (Light / Medium / Strong).
+    var hapticScale: Double { preferences.hapticStrength.scale }
+
+    /// Vibrace, kdyz je zapnuta Haptics. Sila se ridi volbou Light / Medium / Strong.
     func haptic(_ kind: Haptic) {
         guard preferences.isHapticsEnabled else { return }
+        let scale = CGFloat(hapticScale)
+        let strength = preferences.hapticStrength
         switch kind {
-        case .selection: selectionGenerator.selectionChanged()
-        case .light: lightGenerator.impactOccurred(intensity: 0.6)
-        case .medium: mediumGenerator.impactOccurred()
-        case .heavy: heavyGenerator.impactOccurred()
-        case .success: notificationGenerator.notificationOccurred(.success)
-        case .warning: notificationGenerator.notificationOccurred(.warning)
-        case .error: notificationGenerator.notificationOccurred(.error)
+        case .selection:
+            // Systemovy "selection" tik nema silu; u Strong je to jemny naraz.
+            if strength == .strong { lightGenerator.impactOccurred(intensity: 0.55) } else { selectionGenerator.selectionChanged() }
+        case .light: lightGenerator.impactOccurred(intensity: 0.75 * scale)
+        case .medium: mediumGenerator.impactOccurred(intensity: scale)
+        case .heavy: heavyGenerator.impactOccurred(intensity: scale)
+        case .success, .warning, .error:
+            // Notifikacni vibrace silu nemaji; u Light je nahradi slabsi naraz.
+            if strength == .light {
+                mediumGenerator.impactOccurred(intensity: 0.5)
+            } else {
+                notificationGenerator.notificationOccurred(kind == .success ? .success : (kind == .warning ? .warning : .error))
+            }
         }
     }
 

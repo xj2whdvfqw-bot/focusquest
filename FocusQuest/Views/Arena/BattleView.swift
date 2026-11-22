@@ -118,7 +118,9 @@ struct BattleView: View {
             StatusBarFade()
             if showsRetreatConfirm { retreatDialog.transition(.opacity) }
             if case let .warningCountdown(seconds, _, forgiven) = model.state {
-                PhoneLiftedAlarm(seconds: seconds, forgiven: forgiven, graceUsed: model.hasUsedSlipGrace, bossName: boss.name)
+                PhoneLiftedAlarm(seconds: seconds, forgiven: forgiven, graceUsed: model.hasUsedSlipGrace, bossName: boss.name) {
+                    model.retreat()
+                }
             }
             if case .callPaused(_, true) = model.state, !showsRetreatConfirm { callEndedOverlay.transition(.opacity) }
             if case let .penalized(reason) = model.state {
@@ -381,10 +383,18 @@ struct BattleView: View {
             HStack(spacing: Layout.actionGap) {
                 if isPaused {
                     BattleActionButton(symbol: "play.fill", caption: "Resume", tone: .accent) { model.resumeBattle() }
-                } else if !model.hasUsedPause {
-                    BattleActionButton(symbol: "pause.fill", caption: "Pause once", tone: .neutral) { model.pauseBattle() }
+                } else {
+                    // 2 pauzy za bitvu; po vycerpani zustane tlacitko videt, ale neaktivni.
+                    BattleActionButton(symbol: "pause.fill", caption: "Pauses \(model.pausesLeft)/\(ArenaViewModel.pausesPerBattle)", tone: .neutral) { model.pauseBattle() }
+                        .disabled(model.hasUsedPause)
+                        .opacity(model.hasUsedPause ? 0.45 : 1)
+                        .accessibilityHint(model.hasUsedPause ? "No pauses left in this battle" : "Pause for up to 2 minutes")
                 }
                 BattleActionButton(symbol: "flag.fill", caption: "Retreat", tone: .danger) { showsRetreatConfirm = true }
+                #if DEBUG
+                // Jen Debug build: bitva hned skonci vyhrou vcetne odmen.
+                BattleActionButton(symbol: "bolt.fill", caption: "Win now", tone: .accent) { model.debugWinNow() }
+                #endif
             }
         }
     }
@@ -778,12 +788,15 @@ struct BattleActionButton: View {
 // MARK: - Zvednuty telefon
 
 /// Alarm zvednuteho telefonu: staticka tmave cervena bez blikani, pomalu pulzuje jen cislo.
-/// Tlacitko neni: alarm skonci sam, az senzor hlasi, ze telefon lezi v klidu.
+/// Alarm skonci sam, az senzor hlasi, ze telefon lezi v klidu. Dole je vedlejsi tlacitko Retreat
+/// s potvrzenim primo u tlacitka (action sheet, v iOS 26 vyrusta z tlacitka).
 private struct PhoneLiftedAlarm: View {
     let seconds: Double
     let forgiven: Bool
     let graceUsed: Bool
     let bossName: String
+    let onRetreat: () -> Void
+    @State private var confirmsRetreat = false
 
     private var title: String { forgiven ? "Slip forgiven" : "Put it back on the desk" }
     private var detail: String {
@@ -815,12 +828,34 @@ private struct PhoneLiftedAlarm: View {
                     .font(.fqSecondary)
                     .multilineTextAlignment(.center)
                     .foregroundStyle(.white.opacity(0.7))
+                retreatButton.padding(.top, FQSpace.md)
             }
             .padding(.horizontal, FQSpace.xl)
         }
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .contain)
         .accessibilityAddTraits(.isModal)
         .environment(\.colorScheme, .dark)
+    }
+
+    /// Vedlejsi tlacitko (obrys, bez vyplne), aby nesoutezilo s hlavnim pokynem "polozit telefon".
+    private var retreatButton: some View {
+        Button { confirmsRetreat = true } label: {
+            Label("Retreat", systemImage: "flag.fill")
+                .font(.fqLabel.weight(.semibold))
+                .foregroundStyle(.white)
+                .padding(.horizontal, FQSpace.xl)
+                .frame(minHeight: 44)
+                .overlay { Capsule().strokeBorder(Color.white.opacity(0.45), lineWidth: 1) }
+                .contentShape(Capsule())
+        }
+        .buttonStyle(.fqPress)
+        .accessibilityHint("Give up this battle. The boss escapes.")
+        .confirmationDialog("Retreat from the battle?", isPresented: $confirmsRetreat, titleVisibility: .visible) {
+            Button("Retreat", role: .destructive) { onRetreat() }
+            Button("Keep fighting", role: .cancel) { }
+        } message: {
+            Text("\(bossName) escapes and this battle gives no loot.")
+        }
     }
 }
 

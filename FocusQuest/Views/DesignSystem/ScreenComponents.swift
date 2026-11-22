@@ -113,6 +113,8 @@ final class SettingsPresenter {
 
 /// Male ozubene kolo vpravo nahore, ktere otevre Nastaveni.
 struct SettingsGearButton: View {
+    /// Interaktivni Liquid Glass (iOS 26). Nad mapou je vypnuty: pohlcoval tam klepnuti.
+    var interactiveGlass = true
     @Environment(SettingsPresenter.self) private var presenter: SettingsPresenter?
 
     var body: some View {
@@ -122,7 +124,8 @@ struct SettingsGearButton: View {
                     .font(.system(size: 17, weight: .semibold, design: .rounded))
                     .foregroundStyle(FQColor.textPrimary)
                     .frame(width: 44, height: 44)
-                    .glassControl(in: Circle(), interactive: true)
+                    .glassControl(in: Circle(), interactive: interactiveGlass)
+                    .contentShape(Circle())
             }
             .buttonStyle(.fqPress)
             .accessibilityLabel("Settings")

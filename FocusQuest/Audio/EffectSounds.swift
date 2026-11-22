@@ -1,9 +1,10 @@
 import AVFoundation
 import Foundation
 
-/// Kratke 8-bit efekty: klepnuti, utok, zasah, vitezstvi, utek bosse, mince, XP, level up a pipnuti alarmu.
-/// Vsechny tony se generuji primo v appce (ctverec, pila, sinus s obalkou), zadne zvukove soubory,
-/// takze nejsou zadne licencni otazky. Co a kdy hraje, rozhoduje FQFeedback (podle prepinacu v Nastaveni).
+/// Kratke efekty: klepnuti, utok, zasah, vitezstvi, utek bosse, mince, XP, level up a pipnuti alarmu.
+/// Klepnuti (tap-click.mp3) a mince s XP (reward-chime.mp3) jsou nahravky z Pixabay (Pixabay Content License,
+/// viz design/DECISIONS.md); ostatni 8-bit tony se generuji primo v appce (ctverec, pila, sinus s obalkou).
+/// Co a kdy hraje, rozhoduje FQFeedback (podle prepinacu v Nastaveni).
 @MainActor
 final class EffectSounds {
     static let shared = EffectSounds()
@@ -27,6 +28,15 @@ final class EffectSounds {
         case jingle
         /// Sinus 660 Hz, 0,14 s (pipnuti alarmu pri zvednuti telefonu).
         case beep
+
+        /// Nahravka v bundlu misto syntezy (nil = generovany ton).
+        var fileName: String? {
+            switch self {
+            case .click: "tap-click"
+            case .coin, .xp: "reward-chime"
+            default: nil
+            }
+        }
     }
 
     private var cache: [Effect: Data] = [:]
@@ -41,7 +51,7 @@ final class EffectSounds {
     func play(_ effect: Effect, volume: Float) {
         guard volume > 0 else { return }
         prepareAmbientSessionIfNeeded()
-        let data = cache[effect] ?? Self.render(effect)
+        let data = cache[effect] ?? Self.recording(effect) ?? Self.render(effect)
         cache[effect] = data
         players.removeAll { !$0.isPlaying }
         guard players.count < 6, let player = try? AVAudioPlayer(data: data) else { return }
@@ -57,6 +67,12 @@ final class EffectSounds {
             try? session.setCategory(.ambient, mode: .default, options: [.mixWithOthers])
         }
         try? session.setActive(true)
+    }
+
+    /// Nahravka efektu z bundlu; kdyz chybi, pouzije se generovany ton.
+    private static func recording(_ effect: Effect) -> Data? {
+        guard let name = effect.fileName, let url = Bundle.main.url(forResource: name, withExtension: "mp3") else { return nil }
+        return try? Data(contentsOf: url)
     }
 
     // MARK: - Synteza

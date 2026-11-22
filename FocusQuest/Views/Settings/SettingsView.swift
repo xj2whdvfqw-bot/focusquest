@@ -1,9 +1,11 @@
 import SwiftUI
 import UIKit
 
-/// Nastaveni (list z ozubeneho kola): Sounds & notifications, Background, Feedback a paticka.
-/// Zavira se jen tahem dolu (tlacitko Done je pryc), VoiceOver gestem escape.
-/// Zvuky a notifikace jsou na samostatne strance se zpetnym "‹ Settings".
+/// Nastaveni (list z ozubeneho kola) ve stylu systemoveho Nastaveni iOS 26:
+/// inset grouped seznam, velky nadpis vlevo, radky s ikonou v barevnem ctverecku, seda hodnota
+/// a sipka u podstranek, nativni prepinace se systemovou zelenou. NavigationStack dava Liquid Glass
+/// listu, mekky scroll edge efekt a navrat chevronem i tahem od leveho okraje.
+/// List se zavira tahem dolu (VoiceOver gestem escape).
 struct SettingsView: View {
     @ObservedObject var model: SettingsViewModel
     @ObservedObject var profile: ProfileViewModel
@@ -13,43 +15,101 @@ struct SettingsView: View {
     /// Reset progress po potvrzeni; vraci false, kdyz se nepovedl.
     var onResetProgress: (() async -> Bool)? = nil
 
-    @State private var showsSounds = false
     @State private var showsResetConfirmation = false
     @State private var isResetting = false
     /// Skutecny stav povoleni notifikaci v iOS.
     @State private var notifications = NotificationPermission.notDetermined
-    /// Jak daleko hrac tahne podstranku od leveho okraje doprava (navrat zpet jako v iOS).
-    @State private var backDrag: CGFloat = 0
-    /// Debug: vysledek "Test notifications" a seznam naplanovanych notifikaci.
-    @State private var debugNotificationStatus: String?
-    @State private var debugPending: [String]?
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.openURL) private var openURL
 
-    /// Tah musi zacit tesne u leveho okraje (jako systemovy navrat zpet).
-    private static let edgeWidth: CGFloat = 32
-
     var body: some View {
-        ScreenScaffold {
-            if showsSounds {
-                soundsPage
-                    .offset(x: backDrag)
-                    .transition(.move(edge: .trailing).combined(with: .opacity))
-            } else {
-                mainPage.transition(.move(edge: .leading).combined(with: .opacity))
+        NavigationStack {
+            List {
+                Section {
+                    NavigationLink {
+                        SoundsSettingsPage(model: model)
+                    } label: {
+                        SettingsRow(title: "Sounds & haptics", symbol: "speaker.wave.2.fill", color: .pink, value: "\(model.preferences.soundEffectsOnCount) of 4 on")
+                    }
+                    NavigationLink {
+                        MusicSettingsPage(model: model)
+                    } label: {
+                        SettingsRow(title: "Music", symbol: "music.note", color: .orange, value: model.preferences.battleSound.title)
+                    }
+                    NavigationLink {
+                        NotificationSettingsPage(model: model, notifications: $notifications)
+                    } label: {
+                        SettingsRow(title: "Notifications", symbol: "bell.badge.fill", color: .red, value: notificationSummary)
+                    }
+                } footer: {
+                    Text("Music plays during battles. Sounds and haptics apply to the whole app.")
+                }
+
+                Section {
+                    Button { onOpenBackgrounds?() } label: {
+                        SettingsRow(title: "Background", symbol: "photo.fill", color: .indigo, value: profile.selectedBackground?.name ?? ShopBackground.worldName, showsChevron: true)
+                    }
+                } header: {
+                    Text("Appearance")
+                } footer: {
+                    Text("Backgrounds are in Shop › Backgrounds.")
+                }
+
+                Section {
+                    Button { contactDeveloper() } label: {
+                        SettingsRow(title: "Contact the developer", symbol: "envelope.fill", color: .blue, showsChevron: true)
+                    }
+                    // "Rate this app" je skryte, dokud appka nema App Store ID. Pak se vrati s primym odkazem
+                    // https://apps.apple.com/app/id<ID>?action=write-review (requestReview() casto nic neukaze).
+                } header: {
+                    Text("Feedback")
+                } footer: {
+                    Text("Report a bug or suggest an idea.")
+                }
+
+                Section {
+                    Button(role: .destructive) { showsResetConfirmation = true } label: {
+                        HStack {
+                            Text("Reset progress")
+                            Spacer()
+                            if isResetting { ProgressView() }
+                        }
+                    }
+                    .disabled(isResetting)
+                    .confirmationDialog("Reset all progress?", isPresented: $showsResetConfirmation, titleVisibility: .visible) {
+                        Button("Reset progress", role: .destructive) { resetProgress() }
+                        Button("Keep my progress", role: .cancel) { }
+                    } message: {
+                        Text("Your hero, level, coins, stats, subjects and settings will be deleted from this iPhone. This can't be undone.")
+                    }
+                } header: {
+                    Text("Your data")
+                } footer: {
+                    if let message = model.statusMessage {
+                        Text(message).foregroundStyle(FQColor.danger)
+                    } else {
+                        Text("Everything is stored only on this iPhone. Reset starts over with a new hero.")
+                    }
+                }
+
+                #if DEBUG
+                DebugSettingsSections(model: model, profile: profile, notifications: $notifications)
+                #endif
+
+                Section {
+                } footer: {
+                    footer
+                }
             }
+            .listStyle(.insetGrouped)
+            .navigationTitle("Settings")
+            .navigationBarTitleDisplayMode(.large)
+            .settingsScrollEdges()
         }
-        .animation(.easeOut(duration: 0.25), value: showsSounds)
-        // Podstranka nema NavigationStack (list ma vlastni krajinu a tah dolu), proto navrat
-        // tahem od leveho okraje resi vlastni gesto: stranka jde s prstem, po ~100 pt nebo
-        // rychlem svihu se vrati na Nastaveni, jinak pruzne zajede zpet. Svisle rolovani neblokuje.
-        .simultaneousGesture(edgeBackGesture, including: showsSounds ? .all : .subviews)
+        // Systemovy modry tint jako v Nastaveni iPhonu (appka ma jinak tyrkysovy); prepinace jsou zelene (settingsToggleTint).
+        .tint(Color(uiColor: .systemBlue))
         // Zavreni tahem dolu; ne behem potvrzeni "Reset progress" a ne behem mazani.
-        // VoiceOver escape: ze stranky zvuku zpet na Nastaveni, z hlavni stranky zavrit.
-        .fqSheetDismissal(blocked: showsResetConfirmation || isResetting) {
-            if showsSounds { showsSounds = false } else { onClose?() }
-        }
+        .fqSheetDismissal(blocked: showsResetConfirmation || isResetting) { onClose?() }
         .task { notifications = await NotificationPermission.current() }
         // Navrat z Nastaveni iPhonu: prepinace ukazi skutecny stav.
         .onChange(of: scenePhase) { _, phase in
@@ -57,187 +117,17 @@ struct SettingsView: View {
         }
     }
 
-    private var edgeBackGesture: some Gesture {
-        DragGesture(minimumDistance: 10, coordinateSpace: .global)
-            .onChanged { value in
-                guard showsSounds, value.startLocation.x < Self.edgeWidth else { return }
-                // Jen vodorovny tah doprava; svisly tah dal roluje stranku.
-                guard backDrag > 0 || value.translation.width > abs(value.translation.height) else { return }
-                backDrag = max(0, value.translation.width)
-            }
-            .onEnded { value in
-                guard backDrag > 0 else { return }
-                // Asi ctvrtina sirky telefonu, nebo rychly svih.
-                if value.translation.width > 100 || value.predictedEndTranslation.width > 220 {
-                    withAnimation(.easeOut(duration: 0.25)) {
-                        showsSounds = false
-                        backDrag = 0
-                    }
-                } else {
-                    withAnimation(FQMotion.pop) { backDrag = 0 }
-                }
-            }
-    }
-
-    // MARK: - Hlavni stranka
-
-    @ViewBuilder private var mainPage: some View {
-        ScreenTitle(title: "Settings")
-            .padding(.top, FQSpace.md)
-        card {
-            Button { showsSounds = true } label: {
-                linkRow(icon: "bell", title: "Sounds & notifications", detail: soundsSummary)
-            }
-            .buttonStyle(.fqPress)
+    private var notificationSummary: String {
+        switch notifications {
+        case .denied: "Off"
+        case .notDetermined: "Not set"
+        case .allowed, .silent: model.preferences.isDailyReminderEnabled ? "Reminder on" : "On"
         }
-        ScreenSection(title: "Background") {
-            card {
-                Button { onOpenBackgrounds?() } label: {
-                    linkRow(icon: nil, title: profile.selectedBackground?.name ?? ShopBackground.worldName, detail: "Change it in Shop › Backgrounds")
-                }
-                .buttonStyle(.fqPress)
-            }
-        }
-        ScreenSection(title: "Feedback") {
-            card {
-                Button { contactDeveloper() } label: {
-                    linkRow(icon: "envelope", title: "Contact the developer", detail: "Report a bug or suggest an idea")
-                }
-                .buttonStyle(.fqPress)
-                // "Rate this app" je skryte, dokud appka nema App Store ID. Pak se vrati s primym odkazem
-                // https://apps.apple.com/app/id<ID>?action=write-review (requestReview() casto nic neukaze).
-            }
-        }
-        ScreenSection(title: "Your data", detail: "Stored only on this iPhone") {
-            card {
-                Button { showsResetConfirmation = true } label: {
-                    HStack(spacing: FQSpace.md) {
-                        Image(systemName: "arrow.counterclockwise")
-                            .font(.system(size: 20, weight: .regular))
-                            .frame(width: 24, height: 24)
-                            .accessibilityHidden(true)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Reset progress").font(.fqBody)
-                            Text("Start over with a new hero").font(.fqMeta).foregroundStyle(FQColor.textSecondary)
-                        }
-                        Spacer(minLength: FQSpace.sm)
-                        if isResetting { ProgressView() }
-                    }
-                    .foregroundStyle(FQColor.danger)
-                    .padding(.vertical, FQSpace.sm)
-                    .frame(minHeight: 44)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.fqPress)
-                .disabled(isResetting)
-            }
-            if let message = model.statusMessage {
-                Text(message).font(.fqMeta).foregroundStyle(FQColor.danger)
-            }
-        }
-        .confirmationDialog("Reset all progress?", isPresented: $showsResetConfirmation, titleVisibility: .visible) {
-            Button("Reset progress", role: .destructive) { resetProgress() }
-            Button("Keep my progress", role: .cancel) { }
-        } message: {
-            Text("Your hero, level, coins, stats, subjects and settings will be deleted from this iPhone. This can't be undone.")
-        }
-        #if DEBUG
-        ScreenSection(title: "Debug", detail: "Not in the release build") { debugCard }
-        ScreenSection(title: "Debug notifications") { debugNotificationsCard }
-        #endif
-        footer
-    }
-
-    #if DEBUG
-    /// Jen v Debug buildu: mince a level pro testovani obchodu a odznaku levelu.
-    private var debugCard: some View {
-        card {
-            VStack(alignment: .leading, spacing: FQSpace.sm) {
-                Text("Coins: \(profile.profile.coins)")
-                    .font(.fqLabel).monospacedDigit().foregroundStyle(FQColor.textSecondary)
-                ChipFlow(spacing: FQSpace.sm) {
-                    debugButton("+1 000") { profile.debugAddCoins(1_000) }
-                    debugButton("+10 000") { profile.debugAddCoins(10_000) }
-                    debugButton("Reset coins") { profile.debugResetCoins() }
-                }
-            }
-            .padding(.vertical, FQSpace.md)
-            HairlineDivider()
-            VStack(alignment: .leading, spacing: FQSpace.sm) {
-                Text("Level: \(profile.level)")
-                    .font(.fqLabel).monospacedDigit().foregroundStyle(FQColor.textSecondary)
-                ChipFlow(spacing: FQSpace.sm) {
-                    debugButton("Level −1") { profile.debugSetLevel(profile.level - 1) }
-                    debugButton("Level +1") { profile.debugSetLevel(profile.level + 1) }
-                    ForEach(Self.tierLevels, id: \.level) { tier in
-                        debugButton("\(tier.name) \(tier.level)") { profile.debugSetLevel(tier.level) }
-                    }
-                }
-            }
-            .padding(.vertical, FQSpace.md)
-        }
-    }
-
-    /// Jen v Debug buildu: kazdy typ notifikace za 5, 7 a 9 s (appku pak zamknout nebo dat na pozadi)
-    /// a seznam naplanovanych notifikaci s casem, kdy prijdou.
-    private var debugNotificationsCard: some View {
-        card {
-            VStack(alignment: .leading, spacing: FQSpace.sm) {
-                Text("Victory, Break is over and Daily reminder in 5, 7 and 9 s. Lock the phone to see the banners.")
-                    .font(.fqMeta)
-                    .foregroundStyle(FQColor.textSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
-                ChipFlow(spacing: FQSpace.sm) {
-                    debugButton("Test notifications") {
-                        Task {
-                            let scheduled = await BattleNotificationService().scheduleTestNotifications()
-                            notifications = await NotificationPermission.current()
-                            debugNotificationStatus = scheduled ? "Scheduled 3 test notifications." : "Not allowed in iOS: nothing scheduled."
-                            debugPending = await BattleNotificationService().pendingSummary()
-                        }
-                    }
-                    debugButton("Show pending") {
-                        Task { debugPending = await BattleNotificationService().pendingSummary() }
-                    }
-                }
-                if let debugNotificationStatus {
-                    Text(debugNotificationStatus).font(.fqMeta).foregroundStyle(FQColor.textPrimary)
-                }
-                if let debugPending {
-                    Text(debugPending.isEmpty ? "No pending notifications" : debugPending.joined(separator: "\n"))
-                        .font(.fqMeta)
-                        .monospacedDigit()
-                        .foregroundStyle(FQColor.textSecondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
-            .padding(.vertical, FQSpace.md)
-        }
-    }
-
-    private static let tierLevels: [(name: String, level: Int)] = [
-        ("Bronze", 1), ("Silver", 5), ("Gold", 10), ("Sapphire", 15), ("Rainbow", 20),
-    ]
-
-    private func debugButton(_ title: String, action: @escaping () -> Void) -> some View {
-        Button(title, action: action)
-            .buttonStyle(ShopButtonStyle())
-            .monospacedDigit()
-    }
-    #endif
-
-    /// "Lo-fi · 3 of 4 sounds on · reminder off"
-    private var soundsSummary: String {
-        let prefs = model.preferences
-        let reminder = notifications == .denied ? "notifications off" : "reminder \(prefs.isDailyReminderEnabled ? "on" : "off")"
-        return "\(prefs.battleSound.title) · \(prefs.soundEffectsOnCount) of 4 sounds on · \(reminder)"
     }
 
     private var footer: some View {
         VStack(spacing: FQSpace.xs) {
             Text("FocusQuest version \(Self.appVersion)")
-                .font(.fqMeta)
-                .foregroundStyle(FQColor.textSecondary)
             HStack(spacing: FQSpace.sm) {
                 Button("Privacy Policy") { openURL(LegalLinks.privacy) }
                 Text("·").accessibilityHidden(true)
@@ -245,14 +135,11 @@ struct SettingsView: View {
                 Text("·").accessibilityHidden(true)
                 Button("Support") { openURL(LegalLinks.support) }
             }
-            .font(.fqMeta.weight(.semibold))
-            .foregroundStyle(FQColor.textSecondary)
-            .buttonStyle(.fqPress)
+            .fontWeight(.semibold)
+            .buttonStyle(.borderless)
         }
         .frame(maxWidth: .infinity)
         .padding(.top, FQSpace.sm)
-        // Paticka nesedi na spodnim okraji listu (Done pod ni uz neni).
-        .padding(.bottom, FQSpace.xl)
     }
 
     static var appVersion: String {
@@ -275,244 +162,266 @@ struct SettingsView: View {
         components.queryItems = [URLQueryItem(name: "subject", value: "FocusQuest \(Self.appVersion) feedback")]
         if let url = components.url { openURL(url) }
     }
+}
 
-    // MARK: - Sounds & notifications
+// MARK: - Sounds & haptics
 
-    @ViewBuilder private var soundsPage: some View {
-        VStack(alignment: .leading, spacing: FQSpace.xs) {
-            Button { showsSounds = false } label: {
-                HStack(spacing: 2) {
-                    Image(systemName: "chevron.left").font(.system(size: 17, weight: .semibold))
-                    Text("Settings").font(.system(size: 17, weight: .medium, design: .rounded))
+/// Zvukove efekty a haptika. Kazdy prepinac ma pod sebou radek "Try it", ktery se pri zapnuti
+/// rozbali a pri vypnuti schova. Haptika ma navic silu Light / Medium / Strong pro celou appku.
+private struct SoundsSettingsPage: View {
+    @ObservedObject var model: SettingsViewModel
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private var prefs: AppPreferences { model.preferences }
+
+    var body: some View {
+        List {
+            Section {
+                toggle("Tap sounds", symbol: "hand.tap.fill", color: .blue, isOn: binding(\.isSFXEnabled))
+                if prefs.isSFXEnabled {
+                    TryItRow {
+                        demo("Tap") { FQFeedback.shared.play(.tap) }
+                    }
                 }
-                .foregroundStyle(FQColor.textPrimary)
-                .frame(minHeight: 44)
-                .contentShape(Rectangle())
+                toggle("Battle sounds", symbol: "bolt.fill", color: .orange, isOn: battleSoundBinding)
+                if prefs.isBattleSoundEnabled {
+                    TryItRow {
+                        demo("Attack") { FQFeedback.shared.play(.attack) }
+                        demo("Hit") { FQFeedback.shared.play(.hit) }
+                        demo("Victory") { FQFeedback.shared.play(.victory) }
+                        demo("Escape") { FQFeedback.shared.play(.escape) }
+                    }
+                }
+                toggle("Reward sounds", symbol: "star.fill", color: .yellow, isOn: binding(\.isAchievementSoundEnabled))
+                if prefs.isAchievementSoundEnabled {
+                    TryItRow {
+                        demo("Coins") { FQFeedback.shared.play(.coin) }
+                        demo("XP") { FQFeedback.shared.play(.xp) }
+                        demo("Level up") { FQFeedback.shared.play(.levelUp) }
+                    }
+                }
+                toggle("Alarm sound", symbol: "alarm.fill", color: .red, isOn: binding(\.isAlarmSoundEnabled))
+                if prefs.isAlarmSoundEnabled {
+                    TryItRow {
+                        demo("Beep") { FQFeedback.shared.play(.alarm) }
+                    }
+                }
+            } header: {
+                Text("Sound effects")
+            } footer: {
+                Text("Tap sounds click on buttons. Battle sounds play on attacks, hits, victory and when the boss escapes. Alarm sound beeps when the phone is lifted.")
             }
-            .buttonStyle(.fqPress)
-            .accessibilityLabel("Back to Settings")
-            Text("Sounds & notifications")
-                .fqFont(size: 22, weight: .semibold, design: .rounded)
-                .foregroundStyle(FQColor.textPrimary)
-                .accessibilityAddTraits(.isHeader)
-        }
-        .padding(.top, FQSpace.sm)
-        ScreenSection(title: "Battle sound") {
-            card {
-                ForEach(Array(BattleSound.allCases.enumerated()), id: \.element) { index, sound in
-                    if index > 0 { HairlineDivider() }
-                    radioRow(sound)
+
+            Section {
+                VStack(alignment: .leading, spacing: FQSpace.xs) {
+                    HStack {
+                        Text("Effects volume")
+                        Spacer()
+                        Text("\(Int((prefs.effectsVolume * 100).rounded())) %")
+                            .monospacedDigit()
+                            .foregroundStyle(.secondary)
+                    }
+                    HStack(spacing: FQSpace.sm) {
+                        Image(systemName: "speaker.fill").foregroundStyle(.secondary).accessibilityHidden(true)
+                        Slider(
+                            value: Binding(get: { prefs.effectsVolume }, set: { value in model.update { $0.effectsVolume = value } }),
+                            in: 0...1,
+                            onEditingChanged: { editing in if !editing { FQFeedback.shared.preview(.coin) } }
+                        )
+                        .accessibilityLabel("Effects volume")
+                        .accessibilityValue("\(Int((prefs.effectsVolume * 100).rounded())) percent")
+                        Image(systemName: "speaker.wave.3.fill").foregroundStyle(.secondary).accessibilityHidden(true)
+                    }
                 }
+                .padding(.vertical, 4)
+            } footer: {
+                Text("A sample plays when you let go of the slider.")
+            }
+
+            Section {
+                toggle("Haptics", symbol: "iphone.radiowaves.left.and.right", color: .purple, isOn: binding(\.isHapticsEnabled))
+                if prefs.isHapticsEnabled {
+                    Picker("Strength", selection: Binding(get: { prefs.hapticStrength }, set: { value in
+                        model.update { $0.hapticStrength = value }
+                        // Nova sila se hned ukaze (FQFeedback ma predvolby po update).
+                        FQFeedback.shared.haptic(.medium)
+                    })) {
+                        ForEach(HapticStrength.allCases) { strength in
+                            Text(strength.title).tag(strength)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .listRowSeparator(.hidden, edges: .bottom)
+                    TryItRow {
+                        demo("Light") { FQFeedback.shared.haptic(.light) }
+                        demo("Strong") { FQFeedback.shared.haptic(.heavy) }
+                        demo("Success") { FQFeedback.shared.haptic(.success) }
+                    }
+                }
+            } header: {
+                Text("Haptics")
+            } footer: {
+                Text("Vibrations on taps, wins and the phone-lifted alarm. The strength applies to the whole app.")
             }
         }
-        ScreenSection(title: "Sound effects") {
-            card {
-                // Kazdy prepinac ma pod sebou zkusebni kartu, ktera se pri zapnuti rozbali.
-                feedbackToggle("Tap sounds", detail: "A soft click on buttons and controls", isOn: binding(\.isSFXEnabled)) {
-                    demoButton("Try tapping") { FQFeedback.shared.play(.tap) }
-                }
-                HairlineDivider()
-                feedbackToggle("Haptics", detail: "Vibrations on taps, wins and the phone-lifted alarm", isOn: binding(\.isHapticsEnabled)) {
-                    demoButton("Light") { FQFeedback.shared.haptic(.light) }
-                    demoButton("Strong") { FQFeedback.shared.haptic(.heavy) }
-                    demoButton("Success") { FQFeedback.shared.haptic(.success) }
-                }
-                HairlineDivider()
-                feedbackToggle("Battle sounds", detail: "Attack, hit, victory and the boss escaping", isOn: binding(\.isBattleSoundEnabled)) {
-                    demoButton("Attack") { FQFeedback.shared.play(.attack) }
-                    demoButton("Hit") { FQFeedback.shared.play(.hit) }
-                    demoButton("Victory") { FQFeedback.shared.play(.victory) }
-                    demoButton("Escape") { FQFeedback.shared.play(.escape) }
-                }
-                HairlineDivider()
-                feedbackToggle("Reward sounds", detail: "Coins, XP and level up", isOn: binding(\.isAchievementSoundEnabled)) {
-                    demoButton("Coins") { FQFeedback.shared.play(.coin) }
-                    demoButton("XP") { FQFeedback.shared.play(.xp) }
-                    demoButton("Level up") { FQFeedback.shared.play(.levelUp) }
-                }
-                HairlineDivider()
-                feedbackToggle("Alarm sound", detail: "Beeps when the phone is lifted", isOn: binding(\.isAlarmSoundEnabled)) {
-                    demoButton("Play beep") { FQFeedback.shared.play(.alarm) }
-                }
-                HairlineDivider()
-                effectsVolumeRow
-            }
-        }
-        ScreenSection(title: "Notifications") {
-            card {
-                // Skutecny stav povoleni v iOS a cesta, jak ho zmenit.
-                notificationStatusRow
-                HairlineDivider()
-                Group {
-                    toggleRow("Daily reminder", detail: "A nudge at 17:00 if you haven't focused", isOn: notificationBinding(\.isDailyReminderEnabled))
-                    HairlineDivider()
-                    toggleRow("Battle finished", detail: "When the countdown ends", isOn: notificationBinding(\.isBattleDoneNotificationEnabled))
-                    HairlineDivider()
-                    toggleRow("Break is over", detail: "When your 5 minute break ends", isOn: notificationBinding(\.isBreakOverNotificationEnabled))
-                }
-                .disabled(notifications == .denied)
-            }
-        }
+        .listStyle(.insetGrouped)
+        .navigationTitle("Sounds & haptics")
+        .navigationBarTitleDisplayMode(.large)
+        .settingsScrollEdges()
+        .animation(reduceMotion ? nil : .default, value: prefs)
     }
 
-    private func radioRow(_ sound: BattleSound) -> some View {
-        let selected = model.preferences.battleSound == sound
-        return Button {
-            model.update { $0.battleSound = sound }
-        } label: {
-            HStack(spacing: FQSpace.md) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(sound.title).font(.fqBody).foregroundStyle(FQColor.textPrimary)
-                    Text(sound.detail).font(.fqMeta).foregroundStyle(FQColor.textSecondary)
-                }
-                Spacer(minLength: FQSpace.sm)
-                Image(systemName: selected ? "checkmark.circle.fill" : "circle")
-                    .font(.system(size: 22))
-                    .foregroundStyle(selected ? FQColor.accent : FQColor.textTertiary)
-            }
-            .padding(.vertical, FQSpace.sm)
-            .frame(minHeight: 44)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.fqPress)
-        .accessibilityAddTraits(selected ? [.isSelected] : [])
-    }
-
-    // MARK: - Stavebni prvky
-
-    private func card<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
-        VStack(spacing: 0) { content() }
-            .padding(.horizontal, FQSpace.lg)
-            .padding(.vertical, FQSpace.xs)
-            .glassCard()
-    }
-
-    /// Radek s odkazem: obrysova ikona 24 pt bez podkladu, nazev, popisek a sipka.
-    private func linkRow(icon: String?, title: String, detail: String) -> some View {
-        HStack(spacing: FQSpace.md) {
-            if let icon {
-                Image(systemName: icon)
-                    .font(.system(size: 20, weight: .regular))
-                    .foregroundStyle(FQColor.textPrimary)
-                    .frame(width: 24, height: 24)
-                    .accessibilityHidden(true)
-            }
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(.fqBody).foregroundStyle(FQColor.textPrimary)
-                Text(detail).font(.fqMeta).foregroundStyle(FQColor.textSecondary)
-            }
-            Spacer(minLength: FQSpace.sm)
-            Image(systemName: "chevron.right").font(.fqMeta.weight(.semibold)).foregroundStyle(FQColor.textTertiary)
-        }
-        .padding(.vertical, FQSpace.sm)
-        .frame(minHeight: 44)
-        .contentShape(Rectangle())
-    }
-
-    private func toggleRow(_ title: String, detail: String, isOn: Binding<Bool>) -> some View {
+    private func toggle(_ title: String, symbol: String, color: Color, isOn: Binding<Bool>) -> some View {
         Toggle(isOn: isOn) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(.fqBody).foregroundStyle(FQColor.textPrimary)
-                Text(detail).font(.fqMeta).foregroundStyle(FQColor.textSecondary)
-            }
+            SettingsRow(title: title, symbol: symbol, color: color)
         }
-        .tint(FQColor.toggleOn)
-        .padding(.vertical, FQSpace.sm)
+        .settingsToggleTint()
         // Prepinac je ovladaci prvek: klik a vibrace stejne jako tlacitka.
         .onChange(of: isOn.wrappedValue) { FQFeedback.shared.tap() }
     }
 
-    /// Prepinac zvuku nebo haptiky; kdyz je zapnuty, pod nim se animovane rozbali zkusebni karta.
-    private func feedbackToggle<Demo: View>(_ title: String, detail: String, isOn: Binding<Bool>, @ViewBuilder demo: () -> Demo) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            toggleRow(title, detail: detail, isOn: Binding(
-                get: { isOn.wrappedValue },
-                set: { value in withAnimation(FQMotion.spring(reduceMotion: reduceMotion)) { isOn.wrappedValue = value } }
-            ))
-            if isOn.wrappedValue {
-                VStack(alignment: .leading, spacing: FQSpace.sm) {
-                    Text("Try it").font(.fqMeta).foregroundStyle(FQColor.textSecondary)
-                    ChipFlow(spacing: FQSpace.sm) { demo() }
-                }
-                .padding(FQSpace.md)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(FQColor.fill, in: FQRadius.shape(FQRadius.inSmallCard))
-                .padding(.bottom, FQSpace.md)
-                .transition(reduceMotion ? .opacity : .opacity.combined(with: .move(edge: .top)))
-            }
-        }
-        .clipped()
-    }
-
-    private func demoButton(_ title: String, action: @escaping () -> Void) -> some View {
+    private func demo(_ title: String, action: @escaping () -> Void) -> some View {
         Button(title, action: action)
-            .buttonStyle(ShopButtonStyle(outlined: true))
+            .buttonStyle(.bordered)
+            .buttonBorderShape(.capsule)
+            .controlSize(.small)
     }
 
-    /// Hlasitost efektu (klepnuti, bitva, odmeny, alarm). Po pusteni posuvniku zazni ukazka.
-    private var effectsVolumeRow: some View {
-        VStack(alignment: .leading, spacing: FQSpace.xs) {
-            HStack {
-                Text("Effects volume").font(.fqBody).foregroundStyle(FQColor.textPrimary)
-                Spacer(minLength: FQSpace.sm)
-                Text("\(Int((model.preferences.effectsVolume * 100).rounded())) %")
-                    .font(.fqMeta)
-                    .monospacedDigit()
-                    .foregroundStyle(FQColor.textSecondary)
+    /// Battle sounds: zapamatuje se, ze je hrac prepnul sam (jinak zustavaji vychozi vypnute).
+    private var battleSoundBinding: Binding<Bool> {
+        Binding(get: { prefs.isBattleSoundEnabled }, set: { value in
+            model.update {
+                $0.isBattleSoundEnabled = value
+                $0.isBattleSoundUserSet = true
             }
-            HStack(spacing: FQSpace.sm) {
-                Image(systemName: "speaker.fill").font(.fqMeta).foregroundStyle(FQColor.textSecondary).accessibilityHidden(true)
-                Slider(
-                    value: Binding(get: { model.preferences.effectsVolume }, set: { value in model.update { $0.effectsVolume = value } }),
-                    in: 0...1,
-                    onEditingChanged: { editing in if !editing { FQFeedback.shared.preview(.coin) } }
-                )
-                .tint(FQColor.accent)
-                .accessibilityLabel("Effects volume")
-                .accessibilityValue("\(Int((model.preferences.effectsVolume * 100).rounded())) percent")
-                Image(systemName: "speaker.wave.3.fill").font(.fqMeta).foregroundStyle(FQColor.textSecondary).accessibilityHidden(true)
-            }
-        }
-        .padding(.vertical, FQSpace.sm)
+        })
     }
 
-    /// Notifikace vypnute v iOS: vysvetleni a odkaz do Nastaveni iPhonu.
-    /// Stav povoleni notifikaci v iOS: povoleno / jeste se neptal (Allow) / tiche (bannery vypnute)
-    /// nebo vypnute (Open Settings otevre nastaveni notifikaci teto appky).
-    private var notificationStatusRow: some View {
-        let (icon, title, detail): (String, String, String) = switch notifications {
-        case .allowed: ("bell", "Notifications allowed", "Battle results, breaks and the reminder can reach you")
-        case .notDetermined: ("bell", "Not allowed yet", "iOS will ask once")
-        case .silent: ("bell.badge", "Banners are off", "They only land quietly in Notification Center")
-        case .denied: ("bell.slash", "Notifications are off", "Turn them on in iPhone Settings")
+    private func binding(_ keyPath: WritableKeyPath<AppPreferences, Bool>) -> Binding<Bool> {
+        Binding(get: { model.preferences[keyPath: keyPath] }, set: { value in model.update { $0[keyPath: keyPath] = value } })
+    }
+}
+
+/// Radek "Try it" pod zapnutym prepinacem: male tlacitka s ukazkou.
+private struct TryItRow<Buttons: View>: View {
+    @ViewBuilder let buttons: () -> Buttons
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: FQSpace.sm) {
+            Text("Try it").font(.footnote).foregroundStyle(.secondary)
+            ChipFlow(spacing: FQSpace.sm) { buttons() }
         }
-        return HStack(spacing: FQSpace.md) {
-            Image(systemName: icon)
-                .font(.system(size: 20, weight: .regular))
-                .foregroundStyle(FQColor.textPrimary)
-                .frame(width: 24, height: 24)
-                .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(.fqBody).foregroundStyle(FQColor.textPrimary)
-                Text(detail).font(.fqMeta).foregroundStyle(FQColor.textSecondary).fixedSize(horizontal: false, vertical: true)
-            }
-            Spacer(minLength: FQSpace.sm)
-            switch notifications {
-            case .allowed:
-                Image(systemName: "checkmark.circle.fill").font(.system(size: 22)).foregroundStyle(FQColor.accent).accessibilityHidden(true)
-            case .notDetermined:
-                Button("Allow") { Task { notifications = await NotificationPermission.request() } }
-                    .buttonStyle(ShopButtonStyle())
-            case .silent, .denied:
-                Button("Open Settings") {
-                    if let url = URL(string: UIApplication.openNotificationSettingsURLString) { openURL(url) }
+        .padding(.vertical, 4)
+        // Odsazeni pod text prepinace (ikona 29 + mezera), jako podrizeny radek.
+        .padding(.leading, 41)
+        .transition(.opacity)
+    }
+}
+
+// MARK: - Music
+
+/// Hudba bitvy: jedna volba (zatrzitko vpravo jako v systemovem Nastaveni).
+private struct MusicSettingsPage: View {
+    @ObservedObject var model: SettingsViewModel
+
+    var body: some View {
+        List {
+            Section {
+                ForEach(BattleSound.allCases) { sound in
+                    Button {
+                        model.update { $0.battleSound = sound }
+                    } label: {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(sound.title).foregroundStyle(.primary)
+                                Text(sound.detail).font(.footnote).foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            if model.preferences.battleSound == sound {
+                                Image(systemName: "checkmark")
+                                    .fontWeight(.semibold)
+                                    .foregroundStyle(.tint)
+                            }
+                        }
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityAddTraits(model.preferences.battleSound == sound ? [.isSelected] : [])
                 }
-                .buttonStyle(ShopButtonStyle())
+            } header: {
+                Text("During battles")
+            } footer: {
+                Text("Fireplace piano and Study flow loop with a soft crossfade. Music keeps playing when the phone is locked.")
             }
         }
-        .padding(.vertical, FQSpace.sm)
-        .frame(minHeight: 44)
-        .accessibilityElement(children: .contain)
+        .listStyle(.insetGrouped)
+        .navigationTitle("Music")
+        .navigationBarTitleDisplayMode(.large)
+        .settingsScrollEdges()
+    }
+}
+
+// MARK: - Notifications
+
+private struct NotificationSettingsPage: View {
+    @ObservedObject var model: SettingsViewModel
+    @Binding var notifications: NotificationPermission
+    @Environment(\.openURL) private var openURL
+
+    var body: some View {
+        List {
+            Section {
+                statusRow
+            } footer: {
+                Text(statusFooter)
+            }
+            Section {
+                toggle("Daily reminder", symbol: "calendar", color: .green, isOn: notificationBinding(\.isDailyReminderEnabled))
+                toggle("Battle finished", symbol: "flag.checkered", color: .orange, isOn: notificationBinding(\.isBattleDoneNotificationEnabled))
+                toggle("Break is over", symbol: "cup.and.saucer.fill", color: .brown, isOn: notificationBinding(\.isBreakOverNotificationEnabled))
+            } footer: {
+                Text("The daily reminder comes at 17:00 if you haven't focused yet. Battle finished arrives when the countdown ends, Break is over when your 5 minute break ends.")
+            }
+            .disabled(notifications == .denied)
+        }
+        .listStyle(.insetGrouped)
+        .navigationTitle("Notifications")
+        .navigationBarTitleDisplayMode(.large)
+        .settingsScrollEdges()
+    }
+
+    private var statusFooter: String {
+        switch notifications {
+        case .allowed: "Battle results, breaks and the reminder can reach you."
+        case .notDetermined: "iOS will ask once."
+        case .silent: "Banners are off: notifications land quietly in Notification Center."
+        case .denied: "Notifications are off for FocusQuest. Turn them on in iPhone Settings."
+        }
+    }
+
+    @ViewBuilder private var statusRow: some View {
+        switch notifications {
+        case .allowed:
+            SettingsRow(title: "Notifications", symbol: "bell.fill", color: .red, value: "Allowed")
+        case .notDetermined:
+            Button { Task { notifications = await NotificationPermission.request() } } label: {
+                SettingsRow(title: "Allow notifications", symbol: "bell.fill", color: .red, showsChevron: true)
+            }
+        case .silent, .denied:
+            Button {
+                if let url = URL(string: UIApplication.openNotificationSettingsURLString) { openURL(url) }
+            } label: {
+                SettingsRow(title: "Open iPhone Settings", symbol: "bell.slash.fill", color: .gray, value: notifications == .denied ? "Off" : "Quiet", showsChevron: true)
+            }
+        }
+    }
+
+    private func toggle(_ title: String, symbol: String, color: Color, isOn: Binding<Bool>) -> some View {
+        Toggle(isOn: isOn) {
+            SettingsRow(title: title, symbol: symbol, color: color)
+        }
+        .settingsToggleTint()
+        .onChange(of: isOn.wrappedValue) { FQFeedback.shared.tap() }
     }
 
     /// Prepinac notifikace ukazuje skutecny stav: kdyz iOS notifikace blokuje, je vypnuty.
@@ -527,8 +436,160 @@ struct SettingsView: View {
             }
         )
     }
+}
 
-    private func binding(_ keyPath: WritableKeyPath<AppPreferences, Bool>) -> Binding<Bool> {
-        Binding(get: { model.preferences[keyPath: keyPath] }, set: { value in model.update { $0[keyPath: keyPath] = value } })
+// MARK: - Debug
+
+#if DEBUG
+/// Jen v Debug buildu: mince, level, odemceni svetu a test notifikaci.
+private struct DebugSettingsSections: View {
+    @ObservedObject var model: SettingsViewModel
+    @ObservedObject var profile: ProfileViewModel
+    @Binding var notifications: NotificationPermission
+    @State private var debugNotificationStatus: String?
+    @State private var debugPending: [String]?
+
+    private static let tierLevels: [(name: String, level: Int)] = [
+        ("Bronze", 1), ("Silver", 5), ("Gold", 10), ("Sapphire", 15), ("Rainbow", 20),
+    ]
+
+    var body: some View {
+        Section {
+            HStack {
+                SettingsRow(title: "Worlds", symbol: "map.fill", color: .teal, value: model.preferences.debugUnlockAllWorlds ? "All unlocked" : "Normal")
+            }
+            ChipFlow(spacing: FQSpace.sm) {
+                debugButton("Unlock all worlds") { model.update { $0.debugUnlockAllWorlds = true } }
+                debugButton("Lock them back") { model.update { $0.debugUnlockAllWorlds = false } }
+            }
+            VStack(alignment: .leading, spacing: FQSpace.sm) {
+                Text("Coins: \(profile.profile.coins)").monospacedDigit().foregroundStyle(.secondary)
+                ChipFlow(spacing: FQSpace.sm) {
+                    debugButton("+1 000") { profile.debugAddCoins(1_000) }
+                    debugButton("+10 000") { profile.debugAddCoins(10_000) }
+                    debugButton("Reset coins") { profile.debugResetCoins() }
+                }
+            }
+            VStack(alignment: .leading, spacing: FQSpace.sm) {
+                Text("Level: \(profile.level)").monospacedDigit().foregroundStyle(.secondary)
+                ChipFlow(spacing: FQSpace.sm) {
+                    debugButton("Level −1") { profile.debugSetLevel(profile.level - 1) }
+                    debugButton("Level +1") { profile.debugSetLevel(profile.level + 1) }
+                    ForEach(Self.tierLevels, id: \.level) { tier in
+                        debugButton("\(tier.name) \(tier.level)") { profile.debugSetLevel(tier.level) }
+                    }
+                }
+            }
+        } header: {
+            Text("Debug")
+        } footer: {
+            Text("Not in the release build. \"Win now\" in a running battle wins it at once, with rewards.")
+        }
+
+        Section {
+            ChipFlow(spacing: FQSpace.sm) {
+                debugButton("Test notifications") {
+                    Task {
+                        let scheduled = await BattleNotificationService().scheduleTestNotifications()
+                        notifications = await NotificationPermission.current()
+                        debugNotificationStatus = scheduled ? "Scheduled 3 test notifications." : "Not allowed in iOS: nothing scheduled."
+                        debugPending = await BattleNotificationService().pendingSummary()
+                    }
+                }
+                debugButton("Show pending") {
+                    Task { debugPending = await BattleNotificationService().pendingSummary() }
+                }
+            }
+            if let debugNotificationStatus {
+                Text(debugNotificationStatus).font(.footnote)
+            }
+            if let debugPending {
+                Text(debugPending.isEmpty ? "No pending notifications" : debugPending.joined(separator: "\n"))
+                    .font(.footnote)
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
+            }
+        } header: {
+            Text("Debug notifications")
+        } footer: {
+            Text("Victory, Break is over and Daily reminder in 5, 7 and 9 s. Lock the phone to see the banners.")
+        }
+    }
+
+    private func debugButton(_ title: String, action: @escaping () -> Void) -> some View {
+        Button(title, action: action)
+            .buttonStyle(.bordered)
+            .buttonBorderShape(.capsule)
+            .controlSize(.small)
+            .monospacedDigit()
+    }
+}
+#endif
+
+// MARK: - Stavebni prvky
+
+/// Radek jako v systemovem Nastaveni: ikona v malem zaoblenem barevnem ctverci, nazev,
+/// seda hodnota vpravo a u tlacitek, ktera nekam vedou, sipka.
+struct SettingsRow: View {
+    let title: String
+    var symbol: String? = nil
+    var color: Color = .gray
+    var value: String? = nil
+    /// Sipka u tlacitek (NavigationLink ma vlastni).
+    var showsChevron = false
+
+    var body: some View {
+        HStack(spacing: 12) {
+            if let symbol {
+                SettingsIcon(symbol: symbol, color: color)
+            }
+            Text(title)
+                .foregroundStyle(.primary)
+                .lineLimit(1)
+                .layoutPriority(1)
+            Spacer(minLength: FQSpace.sm)
+            if let value {
+                Text(value)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            if showsChevron {
+                Image(systemName: "chevron.right")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+                    .accessibilityHidden(true)
+            }
+        }
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// Bila SF Symbol ikona v barevnem ctverci se zaoblenymi rohy (29 bodu jako v Nastaveni iOS).
+struct SettingsIcon: View {
+    let symbol: String
+    let color: Color
+
+    var body: some View {
+        Image(systemName: symbol)
+            .font(.system(size: 15, weight: .semibold))
+            .foregroundStyle(.white)
+            .frame(width: 29, height: 29)
+            .background(color.gradient, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+            .accessibilityHidden(true)
+    }
+}
+
+private extension View {
+    /// Nativni prepinac se systemovou zelenou, jako v Nastaveni iPhonu.
+    func settingsToggleTint() -> some View { tint(Color(uiColor: .systemGreen)) }
+
+    /// Mekky scroll edge efekt nahore i dole (iOS 26); starsi iOS maji standardni listu.
+    @ViewBuilder func settingsScrollEdges() -> some View {
+        if #available(iOS 26.0, *) {
+            scrollEdgeEffectStyle(.soft, for: .all)
+        } else {
+            self
+        }
     }
 }

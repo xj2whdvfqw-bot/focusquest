@@ -44,18 +44,24 @@ final class ArenaAntiCheatTests: XCTestCase {
         XCTAssertEqual(violationCount, 1)
     }
 
-    func testPauseOnlyOncePerBattleAndRunsOut() async {
+    func testTwoPausesPerBattleAndRunsOut() async {
         let rig = makeRig(hapticsEnabled: false)
         rig.model.pauseLimitSeconds = 1
         rig.model.startSession()
         await waitForSession(rig.model)
         await rig.model.handlePosture(.lyingStill)
+        XCTAssertEqual(rig.model.pausesLeft, 2)
         rig.model.pauseBattle()
         XCTAssertTrue(isPaused(rig.model.state))
         rig.model.resumeBattle()
         XCTAssertTrue(isFocusing(rig.model.state))
+        XCTAssertEqual(rig.model.pausesLeft, 1)
         rig.model.pauseBattle()
-        XCTAssertTrue(isFocusing(rig.model.state), "Second pause must be refused")
+        XCTAssertTrue(isPaused(rig.model.state), "Two pauses per battle")
+        rig.model.resumeBattle()
+        XCTAssertTrue(rig.model.hasUsedPause)
+        rig.model.pauseBattle()
+        XCTAssertTrue(isFocusing(rig.model.state), "Third pause must be refused")
 
         let other = makeRig(hapticsEnabled: false)
         other.model.pauseLimitSeconds = 1

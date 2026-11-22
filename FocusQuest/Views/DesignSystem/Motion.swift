@@ -91,8 +91,6 @@ struct TabMotion: Equatable {
     var switches = 0
     /// +1 = nova zalozka je vpravo (obsah prijede zprava), -1 = vlevo.
     var direction: CGFloat = 1
-    /// Jak daleko hrac prave tahne obsah prstem (vodorovny swipe mezi zalozkami).
-    var drag: CGFloat = 0
 }
 
 private struct TabMotionKey: EnvironmentKey {
@@ -106,17 +104,8 @@ extension EnvironmentValues {
     }
 }
 
-/// Swipe mezi zalozkami nesmi prebit vnitrni vodorovna gesta (posuvnik denniho cile).
-/// Ovladaci prvek si ho behem tazeni zamkne.
-@MainActor
-enum TabSwipeLock {
-    static var isLocked = false
-    /// Na zalozce Path je mapa: vodorovny tah ji posouva, ne prepina zalozky.
-    static var isMapVisible = false
-}
-
 /// Obsah nove zalozky vyjede ve smeru poradi zalozek (o 48 bodu) a prolne se, 0,3 s s pruzinou.
-/// Behem tazeni prstem jde obsah s prstem. Pozadi (krajina) stoji, hybe se jen obsah.
+/// Pozadi (krajina) stoji, hybe se jen obsah.
 /// S Reduce Motion jen prolnuti, zadny posun.
 struct TabSwitchEntrance: ViewModifier {
     @Environment(\.fqTabMotion) private var motion
@@ -125,7 +114,6 @@ struct TabSwitchEntrance: ViewModifier {
     func body(content: Content) -> some View {
         let travel: CGFloat = reduceMotion ? 0 : 48 * motion.direction
         content
-            .offset(x: reduceMotion ? 0 : motion.drag)
             .keyframeAnimator(initialValue: 1.0, trigger: motion.switches) { view, progress in
                 view
                     .opacity(0.25 + 0.75 * progress)

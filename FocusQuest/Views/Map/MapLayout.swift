@@ -11,8 +11,16 @@ enum MapLayout {
     static let cell: CGFloat = 4
     static let columns = 600
     static let rows = 900
-    /// Volny okraj nad cilem a pod startem cesty.
+    /// Volny okraj nad cilem cesty.
     static let margin: CGFloat = 140
+    /// Volny okraj pod startem cesty. Je vetsi, aby sli prvni bossove posunout kamerou do stredu
+    /// viditelne casti (nad tab bar), a ne aby lezeli u spodni hrany mapy pod listou.
+    static let bottomMargin: CGFloat = 420
+
+    /// Svisly postup cesty pro bod mapy (0 = start dole, 1 = cil nahore).
+    static func progress(y: CGFloat) -> CGFloat {
+        (size.height - bottomMargin - y) / (size.height - margin - bottomMargin)
+    }
     /// Jak daleko od stredu se cesta houpe do stran.
     static let amplitude: CGFloat = 780
 
@@ -20,7 +28,7 @@ enum MapLayout {
 
     /// Bod cesty pro s v 0...1 (0 = start dole, 1 = cil nahore). Kazdy svet = jedna pulvlna.
     static func roadPoint(_ s: CGFloat) -> CGPoint {
-        let y = size.height - margin - s * (size.height - 2 * margin)
+        let y = size.height - bottomMargin - s * (size.height - margin - bottomMargin)
         let x = size.width / 2 + amplitude * cos(.pi * CGFloat(worldCount) * s)
         return CGPoint(x: x, y: y)
     }
@@ -80,10 +88,18 @@ enum MapLayout {
         return roadPoint(index / CGFloat(worldCount))
     }
 
+    /// Kde stoji stitek s nazvem sveta: uprostred sirky mapy, kousek nad spodni hranou sveta
+    /// (u prvniho sveta tesne pod startem cesty). Vodorovne ho WorldLabelsOverlay drzi v obrazovce.
+    static func labelAnchor(of world: BossWorld) -> CGPoint {
+        let band = band(of: world)
+        let bottom = min(band.maxY, entrance(of: world).y + 110)
+        return CGPoint(x: size.width / 2, y: bottom - 56)
+    }
+
     /// Index sveta pro bod terenu (y v bodech), s vlnitou hranici mezi svety.
     static func worldIndex(x: CGFloat, y: CGFloat) -> Int {
         let wave = 40 * sin(x / 92) + 24 * sin(x / 36 + 1.3)
-        let t = (size.height - margin - (y + wave)) / (size.height - 2 * margin)
+        let t = progress(y: y + wave)
         return min(worldCount - 1, max(0, Int(floor(t * CGFloat(worldCount)))))
     }
 }

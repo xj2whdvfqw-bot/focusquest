@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-22T17:45:39+01:00",
-  "current": "C1 Hrdina v bitvě hotový: build #60 prošel.",
-  "nextStep": "Otestovat build #60 na iPhonu podle poznámky v kartě C1.",
+  "updated": "2026-11-22T19:39:44+01:00",
+  "current": "D1 Opravy z testu po C1: kód hotový, commit a build běží.",
+  "nextStep": "Počkat na výsledek buildu D1, pak otestovat na iPhonu podle poznámky v kartě D1.",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -701,6 +701,31 @@
         { "text": "Reduce Motion: statická scéna, mění se jen HP bar", "done": true }
       ],
       "note": "Hotovo, build #60 prošel. Na iPhonu otestovat: hrdina v bitvě má stejné vybavení jako v Shopu, útok každých 5 s podle zbraně (meč, Magic Staff) nebo třídy, číslo poškození a otřes bosse, výhra = finální úder a K.O. před oknem výhry, ústup = sklopená zbraň a boss uteče, zvuk podle Battle sounds, vibrace jen při finále a útěku, s Reduce Motion statická scéna."
+    },
+    {
+      "id": "D1",
+      "title": "Test po C1: mapa, nastavení, zvuky, bitva",
+      "status": "pracuje",
+      "items": [
+        { "text": "Zvuky z Pixabay v targetu: tap-click, reward-chime; Fireplace piano a Study flow převádí CI do AAC 128 kb/s (.m4a); licence v DECISIONS.md", "done": true },
+        { "text": "Path: délka bitvy „⏱ 15 min“ na kartě bosse (i zamčeného)", "done": true },
+        { "text": "Path: mapa respektuje hlavičku a tab bar (contentInset), první bossové výš ve středu viditelné části", "done": true },
+        { "text": "Path: mraky jen jako jemný závoj a měkký pás mraků u hranice zamčeného světa", "done": true },
+        { "text": "Path: názvy světů se drží v obrazovce, nejsou useknuté ani pod tab barem", "done": true },
+        { "text": "Path: horní tlačítka bez interaktivního skla, mapa jako child view controller; Seznam otevře sheet se světy a bossy, Nastavení otevře Nastavení", "done": true },
+        { "text": "Path: hrdina na mapě má třídu a vybavení z Hero Profile (stejné vrstvy jako Shop)", "done": true },
+        { "text": "Nastavení ve stylu iOS 26: inset grouped, velký nadpis, barevné ikony, šedé hodnoty, zelené nativní přepínače, scroll edge efekt, zpět chevronem i swipem", "done": true },
+        { "text": "Tap sound a mince/XP z nových souborů; Battle sounds výchozí OFF (i u stávajících, kteří je nikdy nezapnuli); Try it se schová/rozbalí", "done": true },
+        { "text": "Haptika: síla Light / Medium / Strong pro celou appku, Try it přehraje zvolenou sílu", "done": true },
+        { "text": "Hudba: Fireplace piano a Study flow ve smyčce s prolnutím konce", "done": true },
+        { "text": "Bitva: Retreat na červené obrazovce s potvrzením u tlačítka; 2 pauzy „Pauses 2/2“, pak neaktivní", "done": true },
+        { "text": "Live Activity: odpočet „left“ a HP bar z data konce bitvy (běží i zamčené), po konci výsledek", "done": true },
+        { "text": "Tab bar: swipe mezi taby úplně pryč, jen klepnutí s bublinou", "done": true },
+        { "text": "Debug: Unlock all worlds / Lock them back, Win now v bitvě", "done": true }
+      ],
+      "commit": "",
+      "build": { "number": null, "runId": null, "result": "" },
+      "note": "Kód hotový, čeká se na build. Na iPhonu otestuj: tlačítka na mapě (seznam, nastavení), popisky a mraky, Live Activity se zamčeným telefonem (HP a čas ubývají), 2 pauzy, Retreat na červené obrazovce, nové Nastavení a obě nové písničky."
     }
   ]
 }

@@ -39,15 +39,18 @@ enum AmbientTrack: String, Codable, CaseIterable, Sendable, Identifiable {
     }
 }
 
-/// Zanr zvuku pri soustredeni. Lo-fi jsou nahravky z bundlu, sumy se generuji primo v appce.
+/// Zanr zvuku pri soustredeni. Lo-fi a dve dlouhe skladby (Pixabay) jsou nahravky z bundlu,
+/// sumy se generuji primo v appce.
 enum Soundscape: String, Codable, CaseIterable, Sendable, Identifiable {
-    case lofi, whiteNoise, brownNoise
+    case lofi, fireplacePiano, studyFlow, whiteNoise, brownNoise
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
         case .lofi: "Lo-fi beats"
+        case .fireplacePiano: "Fireplace piano"
+        case .studyFlow: "Study flow"
         case .whiteNoise: "White noise"
         case .brownNoise: "Brown noise"
         }
@@ -56,15 +59,50 @@ enum Soundscape: String, Codable, CaseIterable, Sendable, Identifiable {
     var shortTitle: String {
         switch self {
         case .lofi: "Lo-fi"
+        case .fireplacePiano: "Fireplace"
+        case .studyFlow: "Study flow"
         case .whiteNoise: "White"
         case .brownNoise: "Brown"
         }
     }
+
+    /// Jedna dlouha skladba ve smycce s prolnutim konce do zacatku (nazev .m4a v bundlu). Nil = playlist nebo sum.
+    var loopResource: String? {
+        switch self {
+        case .fireplacePiano: "fireplace-piano"
+        case .studyFlow: "study-flow"
+        default: nil
+        }
+    }
 }
 
-/// Zvuk bitvy v Nastaveni (Off / Lo-fi / Brown noise / White noise).
+/// Sila vibraci v cele appce (Nastaveni › Haptics).
+enum HapticStrength: String, Codable, CaseIterable, Sendable, Identifiable {
+    case light, medium, strong
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .light: "Light"
+        case .medium: "Medium"
+        case .strong: "Strong"
+        }
+    }
+
+    /// Nasobek intenzity vibraci.
+    var scale: Double {
+        switch self {
+        case .light: 0.5
+        case .medium: 0.8
+        case .strong: 1
+        }
+    }
+}
+
+/// Hudba bitvy v Nastaveni (Off / Lo-fi / Fireplace piano / Study flow / Brown noise / White noise).
 enum BattleSound: String, CaseIterable, Identifiable, Sendable {
-    case off, lofi, brownNoise, whiteNoise
+    case off, lofi, fireplacePiano, studyFlow, brownNoise, whiteNoise
 
     var id: String { rawValue }
 
@@ -72,6 +110,8 @@ enum BattleSound: String, CaseIterable, Identifiable, Sendable {
         switch self {
         case .off: "Off"
         case .lofi: "Lo-fi"
+        case .fireplacePiano: "Fireplace piano"
+        case .studyFlow: "Study flow"
         case .brownNoise: "Brown noise"
         case .whiteNoise: "White noise"
         }
@@ -81,8 +121,32 @@ enum BattleSound: String, CaseIterable, Identifiable, Sendable {
         switch self {
         case .off: "Silence"
         case .lofi: "Soft keys and a lazy beat"
+        case .fireplacePiano: "Crackling fire and calm piano"
+        case .studyFlow: "Calm music for studying"
         case .brownNoise: "Deep, like distant rain"
         case .whiteNoise: "Bright, masks chatter"
+        }
+    }
+
+    /// Zanr pro prehravac; nil = hudba vypnuta.
+    var soundscape: Soundscape? {
+        switch self {
+        case .off: nil
+        case .lofi: .lofi
+        case .fireplacePiano: .fireplacePiano
+        case .studyFlow: .studyFlow
+        case .brownNoise: .brownNoise
+        case .whiteNoise: .whiteNoise
+        }
+    }
+
+    init(soundscape: Soundscape) {
+        switch soundscape {
+        case .lofi: self = .lofi
+        case .fireplacePiano: self = .fireplacePiano
+        case .studyFlow: self = .studyFlow
+        case .brownNoise: self = .brownNoise
+        case .whiteNoise: self = .whiteNoise
         }
     }
 }
@@ -114,8 +178,14 @@ struct AppPreferences: Codable, Equatable, Sendable {
     var lastBossID: String?
     /// Predmety hrace v pevnem poradi (poradi cipu ve Fight sheetu), vcetne skrytych a smazanych.
     var subjects: [SubjectEntry] = StudySubject.defaults.map { SubjectEntry(subject: $0) }
-    /// Battle sounds: utok, zasah, vitezstvi, utek bosse a konec prestavky.
-    var isBattleSoundEnabled = true
+    /// Battle sounds: utok, zasah, vitezstvi, utek bosse a konec prestavky. Vychozi stav je vypnuto.
+    var isBattleSoundEnabled = false
+    /// Hrac Battle sounds sam prepnul. Dokud ne, zustavaji vypnute i u starsich instalaci.
+    var isBattleSoundUserSet = false
+    /// Sila vibraci v cele appce.
+    var hapticStrength: HapticStrength = .medium
+    /// Debug: vsechny svety odemcene (prepinac jen v Debug buildu, v Release se ignoruje).
+    var debugUnlockAllWorlds = false
     /// Hlasitost zvukovych efektu 0...1 (hudba bitvy ma vlastni ambientVolume).
     var effectsVolume = 0.8
     /// Svety, nad kterymi uz se na mape rozplynula mlha (animace se prehraje jen jednou).
@@ -126,24 +196,18 @@ struct AppPreferences: Codable, Equatable, Sendable {
         case isHapticsEnabled, isMusicEnabled, isSFXEnabled, ambientVolume, selectedTrack, soundscape, clearedNodesByWorld, lastSubject, lastBossID, subjects
         case isAchievementSoundEnabled, isAlarmSoundEnabled, isDailyReminderEnabled, isBattleDoneNotificationEnabled, isBreakOverNotificationEnabled
         case isBattleSoundEnabled, effectsVolume, revealedWorlds
+        case isBattleSoundUserSet, hapticStrength, debugUnlockAllWorlds
     }
 
     /// Zvuk bitvy jako jedna volba: Off vypne hudbu, ostatni zapnou a vyberou zanr.
     var battleSound: BattleSound {
-        get {
-            guard isMusicEnabled else { return .off }
-            switch soundscape {
-            case .lofi: return .lofi
-            case .brownNoise: return .brownNoise
-            case .whiteNoise: return .whiteNoise
-            }
-        }
+        get { isMusicEnabled ? BattleSound(soundscape: soundscape) : .off }
         set {
-            switch newValue {
-            case .off: isMusicEnabled = false
-            case .lofi: isMusicEnabled = true; soundscape = .lofi
-            case .brownNoise: isMusicEnabled = true; soundscape = .brownNoise
-            case .whiteNoise: isMusicEnabled = true; soundscape = .whiteNoise
+            if let value = newValue.soundscape {
+                isMusicEnabled = true
+                soundscape = value
+            } else {
+                isMusicEnabled = false
             }
         }
     }
@@ -178,6 +242,9 @@ struct AppPreferences: Codable, Equatable, Sendable {
     /// Svet je odemceny, kdyz je prvni na mape, kdyz je predchozi svet cely dobyty (porazeny
     /// finalni boss), nebo kdyz v nem hrac uz ma postup (starsi verze nic nezamykaly).
     func isUnlocked(_ world: BossWorld) -> Bool {
+        #if DEBUG
+        if debugUnlockAllWorlds { return true }
+        #endif
         guard let previous = world.previous else { return true }
         if clearedNodes(in: world) > 0 { return true }
         return clearedNodes(in: previous) >= previous.bosses.count
@@ -230,8 +297,12 @@ extension AppPreferences {
         isDailyReminderEnabled = (try? container.decodeIfPresent(Bool.self, forKey: .isDailyReminderEnabled)) ?? fallback.isDailyReminderEnabled
         isBattleDoneNotificationEnabled = (try? container.decodeIfPresent(Bool.self, forKey: .isBattleDoneNotificationEnabled)) ?? fallback.isBattleDoneNotificationEnabled
         isBreakOverNotificationEnabled = (try? container.decodeIfPresent(Bool.self, forKey: .isBreakOverNotificationEnabled)) ?? fallback.isBreakOverNotificationEnabled
-        // Starsi verze mely jeden prepinac "Tap and battle sounds"; bitevni zvuky prevezmou jeho hodnotu.
-        isBattleSoundEnabled = (try? container.decodeIfPresent(Bool.self, forKey: .isBattleSoundEnabled)) ?? isSFXEnabled
+        // Battle sounds jsou vychozi vypnute. Ulozena hodnota plati jen tehdy, kdyz je hrac sam prepnul;
+        // starsi instalace (drive vychozi zapnuto, nebo prevzato z "Tap and battle sounds") zacnou vypnute.
+        isBattleSoundUserSet = (try? container.decodeIfPresent(Bool.self, forKey: .isBattleSoundUserSet)) ?? false
+        isBattleSoundEnabled = isBattleSoundUserSet && ((try? container.decodeIfPresent(Bool.self, forKey: .isBattleSoundEnabled)) ?? false)
+        hapticStrength = (try? container.decodeIfPresent(HapticStrength.self, forKey: .hapticStrength)) ?? fallback.hapticStrength
+        debugUnlockAllWorlds = (try? container.decodeIfPresent(Bool.self, forKey: .debugUnlockAllWorlds)) ?? false
         effectsVolume = min(1, max(0, (try? container.decodeIfPresent(Double.self, forKey: .effectsVolume)) ?? fallback.effectsVolume))
         // Starsi verze mely vlastni delku bitvy (bossMinutes, bossMinutesByID); ta se zamerne zahodi.
         clearedNodesByWorld = Self.migratedProgress((try? container.decodeIfPresent([String: Int].self, forKey: .clearedNodesByWorld)) ?? [:])

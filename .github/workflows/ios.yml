@@ -28,6 +28,26 @@ jobs:
       - name: Instalace XcodeGen
         run: brew install xcodegen
 
+      # Dlouhe skladby (audio-src/*.mp3, Pixabay) se kvuli velikosti appky prevedou do AAC 128 kb/s.
+      # afconvert je jen na macOS; hotove .m4a jdou do targetu (FocusQuest/Resources/Audio).
+      # Kdyz uz .m4a v repu je, prevod se preskoci.
+      - name: Prevod hudby do AAC (.m4a)
+        run: |
+          for src in audio-src/*.mp3; do
+            out="FocusQuest/Resources/Audio/$(basename "${src%.mp3}").m4a"
+            if [ ! -f "$out" ]; then
+              afconvert -f m4af -d aac -b 128000 "$src" "$out"
+            fi
+            ls -l "$src" "$out"
+          done
+
+      - name: Nahrani prevedene hudby
+        uses: actions/upload-artifact@v4
+        with:
+          name: hudba-m4a
+          path: FocusQuest/Resources/Audio/*.m4a
+          retention-days: 14
+
       - name: Vygenerovani Xcode projektu z project.yml
         run: xcodegen generate
 

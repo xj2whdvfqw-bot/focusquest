@@ -90,7 +90,6 @@ enum MapTerrain {
         }
 
         // 1. Zakladni teren kazdeho sveta (vlnita hranice jako MapLayout.worldIndex).
-        let height = Double(MapLayout.size.height), margin = Double(MapLayout.margin)
         let worldCount = Double(worlds.count)
         var wave = [Double](repeating: 0, count: cols)
         for x in 0..<cols {
@@ -102,7 +101,7 @@ enum MapTerrain {
         for y in 0..<rows {
             let yp = (Double(y) + 0.5) * cell
             for x in 0..<cols {
-                let t = (height - margin - (yp + wave[x])) / (height - 2 * margin)
+                let t = Double(MapLayout.progress(y: CGFloat(yp + wave[x])))
                 let world = min(worlds.count - 1, max(0, Int((t * worldCount).rounded(.down))))
                 worldOf[y * cols + x] = UInt8(world)
                 set(x, y, ground(worlds[world], x: x * step, y: y * step, sky: sky))
@@ -348,28 +347,52 @@ enum MapTerrain {
 
     // MARK: - Mlha nad zamcenym svetem
 
-    /// Pixelove mraky pres pas sveta: 1 pixel = 16 bodu, okraje se rozpadaji do ztracena.
+    /// O kolik bodu mlha presahuje spodni hranici sveta do odemcene krajiny (mekky prechod).
+    static let fogOverhang: CGFloat = 96
+
+    /// Mlha nad zamcenym svetem (1 pixel = 16 bodu, kresli se s vyhlazovanim, takze je mekka):
+    ///  - jemny tmavy zavoj pres cely svet (krajina je videt, jen ztlumena),
+    ///  - u prvniho zamceneho sveta (`frontier`) pas mraku pres hranici s odemcenou krajinou:
+    ///    nejhustsi primo na hranici, do 160 bodu nahoru a 96 bodu dolu plynule ridne.
     /// Vraci (sirka, vyska, premultiplied RGBA).
-    static func fog(for world: BossWorld) -> (width: Int, height: Int, pixels: [UInt8]) {
+    static func fog(for world: BossWorld, frontier: Bool) -> (width: Int, height: Int, pixels: [UInt8]) {
         let band = MapLayout.band(of: world)
         let scale: CGFloat = 16
         let width = Int(MapLayout.size.width / scale)
-        let height = Int((band.height + 32) / scale)
-        var pixels = [UInt8](repeating: 0, count: width * height * 4)
+        let height = Int(((band.height + fogOverhang) / scale).rounded(.up))
+        // Radek, kde je hranice sveta (spodni okraj pasu).
+        let border = Double(band.height / scale)
+        let above = 10.0, below = Double(fogOverhang / scale)
         let seed = (BossWorld.allCases.firstIndex(of: world) ?? 0) * 17 + 40
+        var pixels = [UInt8](repeating: 0, count: width * height * 4)
         for y in 0..<height {
-            let edge = min(y, height - 1 - y)
+            // Kladne = nad hranici (v zamcenem svete), zaporne = pod ni (v odemcene krajine).
+            let distance = border - (Double(y) + 0.5)
+            let veilBase = 0.34
+            let veil: Double = distance >= 0 ? veilBase : (frontier ? veilBase * max(0, 1 + distance / below) : 0)
             for x in 0..<width {
-                let n = noise(x, y, scale: 6, seed: seed)
-                // U horniho a dolniho okraje mraky ridnou (dithering), uprostred zakryji vse.
-                if edge < 4, hash(x, y, seed + 1) > Double(edge) / 4 * 0.9 + 0.05 { continue }
-                let color: (UInt8, UInt8, UInt8) = n > 0.62 ? (238, 238, 246) : (n > 0.45 ? (206, 208, 224) : (172, 174, 196))
-                let alpha: UInt8 = 246
+                var cloud = 0.0
+                if frontier {
+                    let reach = distance >= 0 ? above : below
+                    let falloff = max(0, 1 - abs(distance) / reach)
+                    let n = noise(x, y, scale: 5, seed: seed)
+                    cloud = min(1, max(0, (n * 0.9 + falloff - 0.78) * 2.4))
+                }
+                let cloudAlpha = cloud * 0.9
+                let alpha = max(veil, cloudAlpha)
+                guard alpha > 0.01 else { continue }
+                // Barva: tmave modry zavoj, svetle mraky (s jemnym stinovanim podle sumu).
+                let mix = alpha > 0 ? cloudAlpha / alpha : 0
+                let shade = 214 + 30 * noise(x, y, scale: 3, seed: seed + 7)
+                let r = 22 + (shade - 22) * mix
+                let g = 24 + (shade - 22) * mix
+                let b = 44 + (shade + 12 - 44) * mix
+                let a = min(1, alpha)
                 let i = (y * width + x) * 4
-                pixels[i] = UInt8(Int(color.0) * Int(alpha) / 255)
-                pixels[i + 1] = UInt8(Int(color.1) * Int(alpha) / 255)
-                pixels[i + 2] = UInt8(Int(color.2) * Int(alpha) / 255)
-                pixels[i + 3] = alpha
+                pixels[i] = UInt8(min(255, r * a))
+                pixels[i + 1] = UInt8(min(255, g * a))
+                pixels[i + 2] = UInt8(min(255, b * a))
+                pixels[i + 3] = UInt8(a * 255)
             }
         }
         return (width, height, pixels)
@@ -393,10 +416,10 @@ enum MapTerrain {
 @MainActor
 enum MapTerrainCache {
     static var terrain: CGImage?
-    private static var fogImages: [BossWorld: CGImage] = [:]
+    private static var fogImages: [String: CGImage] = [:]
 
     /// Pri zmene vzhledu terenu zvysit verzi, aby se stara mapa z Caches nepouzila.
-    private static let fileName = "map-terrain-v1.rgba"
+    private static let fileName = "map-terrain-v2.rgba"
 
     private static var fileURL: URL? {
         FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first?.appendingPathComponent(fileName)
@@ -426,11 +449,12 @@ enum MapTerrainCache {
         return image
     }
 
-    static func fog(for world: BossWorld) -> CGImage? {
-        if let cached = fogImages[world] { return cached }
-        let fog = MapTerrain.fog(for: world)
+    static func fog(for world: BossWorld, frontier: Bool) -> CGImage? {
+        let key = world.rawValue + (frontier ? "-edge" : "")
+        if let cached = fogImages[key] { return cached }
+        let fog = MapTerrain.fog(for: world, frontier: frontier)
         let image = MapTerrain.makeImage(width: fog.width, height: fog.height, pixels: fog.pixels)
-        fogImages[world] = image
+        fogImages[key] = image
         return image
     }
 }

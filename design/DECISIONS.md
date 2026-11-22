@@ -3,7 +3,7 @@
 Doplňuje `design/CHANGES.md` (zadání sekcí 0–15) a `design/progress.html` (stav, buildy, co otestovat).
 Tady je to, co v nich není: rozhodnutí, která padla během práce, otevřené body a známé pasti.
 
-Stav k 22. 11. 2026: větev `phase3-duolingo`, poslední zelený build #60 (C1: hrdina v bitvě). Všechny sekce z CHANGES.md
+Stav k 22. 11. 2026: větev `phase3-duolingo`, poslední zelený build #60 (C1: hrdina v bitvě); build D1 (test na iPhonu po C1) běží. Všechny sekce z CHANGES.md
 a všechny opravy z auditu jsou hotové.
 
 ## 1. Rozhodnutí
@@ -17,6 +17,11 @@ a všechny opravy z auditu jsou hotové.
 - Server znovu nezavádět bez nového rozhodnutí. Přinesl by povinné Sign in with Apple, smazání účtu, GDPR a jiný štítek.
 
 ### Settings
+- **Styl systémového Nastavení iOS 26** (od D1): `NavigationStack` + `List(.insetGrouped)`, velký nadpis vlevo, sekce s nadpisem
+  a footer textem, řádky s ikonou v barevném zaobleném čtverečku (`SettingsRow`, `SettingsIcon`), šedá hodnota vpravo
+  a šipka u podstránek (Sounds & haptics, Music, Notifications). Nativní `Toggle` se systémovou zelenou, list má systémový modrý tint.
+  Liquid Glass lišta a měkký scroll edge efekt nahoře i dole (`scrollEdgeEffectStyle(.soft)` na iOS 26, jinak standard).
+  Zpět chevronem i tahem od levého okraje dává `NavigationStack` (vlastní gesto zpět je pryč). Zavření tahem dolů jako dřív.
 - **Reset progress** je v sekci „Your data“ s potvrzovacím dialogem. Smaže:
   - hrdinu, level, mince, statistiky, předměty a nastavení,
   - zálohy nečitelných dat (`.unreadable-backup`),
@@ -59,19 +64,27 @@ a všechny opravy z auditu jsou hotové.
   - `UIScrollView` v `ZoomableMapView` (posun, setrvačnost, pinch-zoom 0,5–1,6×, nikdy celá mapa najednou), obsah je SwiftUI v `UIHostingController`,
   - mapa 2400 × 3600 bodů; terén včetně cesty, dekorací a staveb je pixelová bitmapa 600 × 900 px (1 px = 4 body, asi 2 MB) generovaná v kódu
     na pozadí (`MapTerrain`), zobrazená bez vyhlazování; nejdřív se ukáže hrubý náhled (1 px = 16 bodů), plná mapa se uloží
-    do Caches (`map-terrain-v1.rgba`, při změně vzhledu zvýšit verzi) a další otevření je okamžité;
-    nad ní vrstvy: zastávky, hrdina, mlha (bitmapa 1 px = 16 bodů) a názvy světů,
+    do Caches (`map-terrain-v2.rgba`, při změně vzhledu zvýšit verzi) a další otevření je okamžité;
+    nad ní vrstvy: mlha, zastávky a hrdina (stejné vrstvy jako Shop a Hero Profile); názvy světů jsou nad mapou v souřadnicích obrazovky,
+  - mapa respektuje hlavičku a tab bar: `contentInset` scroll view = výška hlavičky nahoře a safe area s rezervou tab baru dole,
+    takže se dá odrolovat tak, aby nic nebylo pod lištou, a kamera centruje do středu viditelné části;
+    cesta začíná výš (`MapLayout.bottomMargin` = 420), aby šli první bossové posunout do středu,
+  - názvy světů (`WorldLabelsOverlay`) se vodorovně drží v obrazovce (nikdy nejsou useknuté) a schovají se pod hlavičkou i nad tab barem,
+  - mlha zamčených světů je jen jemný tmavý závoj přes svět a u prvního zamčeného světa měkký pás mraků přes hranici
+    (160 bodů nahoru, 96 dolů, vyhlazený obrázek, ne pixelové dlaždice); dřív zakrývala celý svět,
+  - horní tlačítka mapy mají neinteraktivní sklo a mapa je `UIViewControllerRepresentable` s hosting controllerem jako potomkem:
+    interaktivní Liquid Glass nad UIKit mapou pohlcoval klepnutí a zůstával rozsvícený (test po C1),
   - cesta se v každém světě jednou přehoupne z jedné strany na druhou, zastávky jsou rovnoměrně po její délce (`MapLayout`),
   - zastávky: poražený má vlajku, aktuální pulzuje a stojí u něj hrdina, zamčený je šedý se zámkem,
   - kamera po otevření mapy najede z oddálení na aktuálního bosse; tlačítko s terčíkem vrátí kameru zpět,
-  - klepnutí na zastávku otevře skleněnou kartu (hláška, délka, Fight nebo důvod zámku); zavře se klepnutím do mapy nebo tahem dolů,
+  - klepnutí na zastávku otevře skleněnou kartu (hláška, délka „⏱ 15 min“ i u zamčeného bosse, Fight nebo důvod zámku); zavře se klepnutím do mapy nebo tahem dolů,
   - mlha nad nově odemčeným světem se jednou rozplyne a zapamatuje se,
-  - na mapě vodorovný tah posouvá mapu, ne záložky (`TabSwipeLock.isMapVisible`),
-  - přístupnost: zastávky mají VoiceOver popisky („Jelly Later, Coral Deep, boss 3 of 7, 20 min, current boss“), tlačítko List přepne na seznam světů (volba se pamatuje).
+  - přístupnost: zastávky mají VoiceOver popisky („Jelly Later, Coral Deep, boss 3 of 7, 20 min, current boss“),
+    tlačítko seznamu otevře list se světy a bossy (stav, délka bitvy); výběr bosse list zavře a otevře Fight sheet.
 
 ### Bitva
 - **Hovor během bitvy** (`CXCallObserver`, stav `callPaused`):
-  - bitva se automaticky pozastaví, bez časového limitu a mimo jedinou pauzu „Pause once“,
+  - bitva se automaticky pozastaví, bez časového limitu a nepočítá se do pauz bitvy,
   - zvednutí telefonu se během hovoru netrestá,
   - po hovoru se ukáže „Call ended – continue the battle?“ a bitva pokračuje, až telefon zase leží displejem dolů,
   - bez senzoru („Start without sensor“) je tam tlačítko „Continue battle“.
@@ -81,6 +94,16 @@ a všechny opravy z auditu jsou hotové.
 - **Kontrola integrity (jailbreak, debugger) je úplně odstraněná.** Zůstala jen kontrola posunu hodin v bitvě
   (`AntiCheatRules.clockIsTampered`).
 - Zabití aplikace během bitvy: bitva se ztratí. Při dalším spuštění se zruší notifikace „Victory!“ a ukončí Live Activity.
+- **Pauzy** (od D1): **2 pauzy za bitvu** (`ArenaViewModel.pausesPerBattle`), každá nejdéle 2 minuty. Tlačítko ukazuje
+  „Pauses 2/2“, po vyčerpání zůstane vidět, ale je neaktivní. Hovor se do pauz nepočítá.
+- **Červená obrazovka zvednutého telefonu** má dole vedlejší tlačítko „Retreat“ (obrys, bez výplně) s potvrzením přímo
+  u tlačítka (`confirmationDialog`, v iOS 26 vyrůstá z tlačítka). Potvrzení = boss uteče jako při běžném ústupu.
+- **Live Activity počítá čas a HP sama** (od D1): appka na pozadí neběží, takže `ContentState` nese začátek a konec bitvy
+  (`focusStartedAt`, `focusEndsAt`) a widget kreslí odpočet `Text(timerInterval:)` s popiskem „left“ a HP bar
+  `ProgressView(timerInterval:countsDown:)`, který ubývá i se zamčeným telefonem. Při pauze, hovoru a zvednutí telefonu
+  hodiny stojí (`frozenRemainingSeconds`). `staleDate` = konec bitvy: když appka spí, widget po konci ukáže
+  „Time’s up! Open FocusQuest to claim your win“. Konec bitvy aktivitu ukončí s výsledkem (`outcome`: Victory / escaped),
+  který zůstane 15 minut na zamčené obrazovce; zrušení bitvy nebo chyba ji ukončí hned.
 - **Hrdina v bitvě (C1, `BattleStage`)**: v hlavičce karty bitvy stojí vlevo hrdina z profilu, vpravo boss.
   - Hrdina se skládá ze stejných vrstev jako v Shopu a profilu (`AvatarSprite.layers`), jen rozdělených na tělo a zbraň
     (`AvatarSprite.battleLayers`), aby se zbraň dala natočit a sklopit.
@@ -155,21 +178,38 @@ a všechny opravy z auditu jsou hotové.
 - **Tab bar a přechody záložek** (od testu #55):
   - bublina výběru je jeden tvar pod ikonami: zmáčkne se (0,8 × 0,86), přeletí pružinou s malým překmitem a roztáhne se (1,12 → 1), asi 0,35 s,
   - obsah nové záložky vyjede ve směru pořadí záložek (48 pt) a prolne se, krajina stojí,
-  - vodorovný swipe po obrazovce přepíná na sousední záložku (obsah jde s prstem, na krajích jen kousek; přepne po ~70 pt nebo švihu),
-  - swipe nesmí přebít vnitřní gesta: musí být výrazně vodorovný (|dx| > 1,8 × |dy|) a posuvník si ho zamkne (`TabSwipeLock`).
-    Systémový TabView se stránkováním se nepoužil, protože nepouští pozadí obrazovek pod stavový řádek.
+  - **swipe mezi záložkami je úplně pryč** (od D1): přepíná se jen klepnutím v liště; swipe se pletl s mapou, posuvníky
+    a tlačítky. `TabSwipeLock` je odstraněný.
   - každá změna záložky jde přes `switchTab(to:)` (směr a spuštění přechodu ve stejném překreslení).
-- **Zvuky a haptika: jeden centrální `FQFeedback`** (`Audio/FQFeedback.swift`), samostatné přepínače v Settings › Sounds:
+- **Zvuky a haptika: jeden centrální `FQFeedback`** (`Audio/FQFeedback.swift`), samostatné přepínače v Settings › Sounds & haptics:
   - Tap sounds (klik na tlačítka a ovládací prvky), Haptics (všechny vibrace včetně alarmu), Battle sounds (útok, zásah,
     vítězství, útěk bosse, konec přestávky), Reward sounds (mince, XP, level up, série v plamenech), Alarm sound, hlasitost efektů,
   - u každého zapnutého přepínače se rozbalí karta „Try it“ s ukázkou,
   - tlačítka dostávají klik a vibraci přes společný styl (`FQPressStyle` / `TapFeedback`, i `ShopButtonStyle`, dlaždice Path,
     skleněná tlačítka a přepínače), nové tlačítko má proto používat `.buttonStyle(.fqPress)`, ne `.plain`,
-  - zvuky jsou syntetické tóny generované v kódu (`EffectSounds`), žádné soubory, tedy žádná licence,
+  - **Battle sounds jsou výchozí vypnuté** (od D1), u nových i stávajících uživatelů: uložená hodnota platí jen s `isBattleSoundUserSet`
+    (hráč přepínač sám přepnul); karta „Try it“ se při OFF schová a při ON rozbalí jako u ostatních,
+  - **síla haptiky** Light / Medium / Strong (segmented control pod přepínačem Haptics, `hapticStrength`) platí pro celou appku
+    (`FQFeedback` i `HapticEngineService`, násobek 0,5 / 0,8 / 1); „Try it“ přehraje zvolenou sílu,
+  - tap = nahrávka `tap-click.mp3`, mince a XP = `reward-chime.mp3` (viz Zvuky a licence níž); ostatní efekty jsou syntetické tóny (`EffectSounds`),
   - efekty mimo bitvu hrají přes audio session `.ambient`: respektují přepínač ticha a nepřeruší hudbu z jiných appek;
     hudba bitvy zůstává `.playback` s `mixWithOthers` a po bitvě se session vrací na `.ambient`,
   - v uložených datech zůstávají klíče `isSFXEnabled` (= Tap sounds) a `isAchievementSoundEnabled` (= Reward sounds);
-    nový `isBattleSoundEnabled` převezme hodnotu starého společného přepínače.
+    `isBattleSoundEnabled` platí jen s `isBattleSoundUserSet`.
+- **Zvuky a licence** (od D1): nahrávky z Pixabay pod **Pixabay Content License** (komerční použití v appce povoleno,
+  bez uvedení autora, nesmí se prodávat samostatně jako zvuky ani hudba). Zdroj pixabay.com:
+  | Soubor v appce | Původní soubor (Pixabay) | Použití |
+  |---|---|---|
+  | `tap-click.mp3` | `denielcz-immersivecontrol-button-click-sound-463065` | Tap sounds |
+  | `reward-chime.mp3` | `lolo_s-start-474092` | mince a XP |
+  | `fireplace-piano.m4a` | `juliush-crackling-fireplace-and-soft-piano-music-10454` | hudba „Fireplace piano“ |
+  | `study-flow.m4a` | `luceris-study-music-602504` | hudba „Study flow“ |
+
+  Písničky jsou v repu jako `audio-src/*.mp3` (mimo target); CI je na macOS převede `afconvert` do AAC 128 kb/s (`.m4a`)
+  a ty jdou do appky (krok „Prevod hudby do AAC“, artefakt `hudba-m4a`). Když `.m4a` v repu je, převod se přeskočí.
+  Lo-fi playlist (Calm Currents, Tokyo Sunset, Peaceful Drift) zůstává od HoliznaCC0 pod CC0.
+- **Hudba bitvy**: Off, Lo-fi, Fireplace piano, Study flow, Brown noise, White noise (Settings › Music i Fight sheet).
+  Fireplace piano a Study flow hrají ve smyčce; 6 s před koncem se skladba spustí znovu potichu a obě se prolnou, takže není slyšet střih.
 - **Notifikace jsou jen lokální** (`UNUserNotificationCenter`), žádný push/APNs: appka je sideloadovaná s bezplatným Apple ID
   a entitlement `aps-environment` nemá. Typy (`BattleNotificationService`, actor):
 
@@ -282,7 +322,9 @@ a všechny opravy z auditu jsou hotové.
 - **GitHub Pages po sloučení do main:** v repu přepnout Settings › Pages na větev `main` (složka `/docs`). Adresy zůstanou stejné.
 - **Debug a Release:**
   - CI staví pro Sideloadly konfiguraci Debug, takže v IPA je karta Debug v Settings,
-  - v Release je za `#if DEBUG` skrytá.
+  - v Release je za `#if DEBUG` skrytá,
+  - Debug obsahuje „Unlock all worlds“ / „Lock them back“ (`debugUnlockAllWorlds`, v Release se ignoruje)
+    a v běžící bitvě tlačítko „Win now“ (`debugWinNow`): bitva hned skončí výhrou včetně odměn a posunu cesty.
 - **`containerShape` na iOS 17:**
   - iOS 26 přetížení se nesmí volat mimo `#available(iOS 26.0, *)`, proto `fqContainer` vrací na starších iOS jen `self`,
   - `AnyShape` neumí `strokeBorder`, použít `stroke` + `padding(lineWidth / 2)`.

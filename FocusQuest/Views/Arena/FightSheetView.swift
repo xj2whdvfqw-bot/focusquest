@@ -187,48 +187,21 @@ struct FightSheetView: View {
 
     // MARK: - Zvuk
 
-    private enum SoundChoice: CaseIterable, Identifiable {
-        case off, lofi, brownNoise, whiteNoise
-        var id: Self { self }
-        var title: String {
-            switch self {
-            case .off: "Off"
-            case .lofi: "Lo-fi"
-            case .brownNoise: "Brown noise"
-            case .whiteNoise: "White noise"
-            }
-        }
-        var soundscape: Soundscape? {
-            switch self {
-            case .off: nil
-            case .lofi: .lofi
-            case .brownNoise: .brownNoise
-            case .whiteNoise: .whiteNoise
-            }
-        }
-    }
-
-    private var currentSound: SoundChoice {
-        guard model.preferences.isMusicEnabled else { return .off }
-        switch model.preferences.soundscape {
-        case .lofi: return .lofi
-        case .brownNoise: return .brownNoise
-        case .whiteNoise: return .whiteNoise
-        }
-    }
+    /// Volby jsou tytez jako v Nastaveni › Music (BattleSound), vcetne dvou dlouhych skladeb.
+    private var currentSound: BattleSound { model.preferences.battleSound }
 
     private var soundSection: some View {
         VStack(alignment: .leading, spacing: Layout.labelGap) {
             sectionLabel("Sound")
             ChipFlow(spacing: Layout.chipGap, rowSpacing: Layout.chipGap) {
-                ForEach(SoundChoice.allCases) { choice in
+                ForEach(BattleSound.allCases) { choice in
                     FQChip(title: choice.title, isSelected: currentSound == choice, compact: true) { select(choice) }
                 }
             }
         }
     }
 
-    private func select(_ choice: SoundChoice) {
+    private func select(_ choice: BattleSound) {
         if let soundscape = choice.soundscape {
             model.setSoundscape(soundscape)
             model.setMusicEnabled(true)

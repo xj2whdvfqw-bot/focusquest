@@ -25,9 +25,12 @@ final class HapticEngineService: HapticEngineServiceProtocol {
         rigid.prepare()
     }
 
+    /// Sila podle Nastaveni › Haptics (Light / Medium / Strong), plati pro celou appku.
+    private var scale: CGFloat { CGFloat(FQFeedback.shared.hapticScale) }
+
     func triggerPickupWarningInitial(enabled: Bool) { if enabled { warning.notificationOccurred(.warning); warning.prepare() } }
-    func triggerCountdownPulse(enabled: Bool) { if enabled { heavy.impactOccurred(intensity: 1); heavy.prepare() } }
-    func triggerRecovery(enabled: Bool) { if enabled { light.impactOccurred(intensity: 0.45); light.prepare() } }
+    func triggerCountdownPulse(enabled: Bool) { if enabled { heavy.impactOccurred(intensity: scale); heavy.prepare() } }
+    func triggerRecovery(enabled: Bool) { if enabled { light.impactOccurred(intensity: 0.55 * scale); light.prepare() } }
     func triggerPenaltyFailure(enabled: Bool) { if enabled { warning.notificationOccurred(.error); warning.prepare() } }
-    func triggerBossDamageHit(enabled: Bool) { if enabled { rigid.impactOccurred(intensity: 0.85); rigid.prepare() } }
+    func triggerBossDamageHit(enabled: Bool) { if enabled { rigid.impactOccurred(intensity: scale); rigid.prepare() } }
 }

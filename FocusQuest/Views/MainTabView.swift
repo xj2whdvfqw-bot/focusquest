@@ -44,7 +44,7 @@ enum FQTabBarMetrics {
 struct MainTabView: View {
     let container: AppDIContainer
     @State private var selectedTab = FocusQuestTab.initial
-    /// Prepinani zalozek (pocet, smer, tazeni prstem): spousti prechod obsahu (TabSwitchEntrance).
+    /// Prepinani zalozek (pocet, smer): spousti prechod obsahu (TabSwitchEntrance).
     @State private var tabMotion = TabMotion()
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var showsHeroCreator = false
@@ -62,10 +62,10 @@ struct MainTabView: View {
                 // Obsah musi koncit 24 pt nad listou; bezpecna zona dole uz cast teto vysky pokryva.
                 let reserve = max(0, FQTabBarMetrics.bottom + FQTabBarMetrics.height + FQTabBarMetrics.contentGap - proxy.safeAreaInsets.bottom)
                 ZStack {
+                    // Zalozky se prepinaji jen klepnutim v liste. Swipe mezi zalozkami je pryc:
+                    // pletl se s mapou, posuvniky a tlacitky.
                     tabs(reserve: reserve)
                         .environment(\.fqTabMotion, tabMotion)
-                        // Vodorovny swipe prepina zalozky v poradi Arena ↔ Path ↔ Shop ↔ Stats ↔ Hero.
-                        .simultaneousGesture(tabSwipe)
                     tabChrome
                 }
             }
@@ -149,32 +149,6 @@ struct MainTabView: View {
     }
 
     private func index(of tab: FocusQuestTab) -> Int { FocusQuestTab.allCases.firstIndex(of: tab) ?? 0 }
-
-    /// Swipe mezi zalozkami: obsah jde s prstem (na krajich jen kousek, jako guma),
-    /// po ~70 bodech nebo rychlem svihu prepne na sousedni zalozku. Svisle rolovani ma prednost
-    /// (tah musi byt vyrazne vodorovny), posuvnik si swipe zamkne a na mape Path tah posouva mapu (TabSwipeLock).
-    /// S Reduce Motion obsah s prstem nejde, zalozka se jen prolne.
-    private var tabSwipe: some Gesture {
-        DragGesture(minimumDistance: 24)
-            .onChanged { value in
-                guard !TabSwipeLock.isLocked, !(selectedTab == .path && TabSwipeLock.isMapVisible) else { return }
-                let dx = value.translation.width
-                guard tabMotion.drag != 0 || abs(dx) > abs(value.translation.height) * 1.8 else { return }
-                guard !reduceMotion else { return }
-                let atEdge = (dx > 0 && selectedTab == FocusQuestTab.allCases.first) || (dx < 0 && selectedTab == FocusQuestTab.allCases.last)
-                tabMotion.drag = atEdge ? dx * 0.2 : dx * 0.6
-            }
-            .onEnded { value in
-                defer { withAnimation(FQMotion.pop) { tabMotion.drag = 0 } }
-                guard !TabSwipeLock.isLocked, !(selectedTab == .path && TabSwipeLock.isMapVisible) else { return }
-                let dx = value.translation.width
-                let predicted = value.predictedEndTranslation.width
-                guard abs(dx) > abs(value.translation.height) * 1.8, abs(dx) > 70 || abs(predicted) > 180 else { return }
-                let target = index(of: selectedTab) + (dx < 0 ? 1 : -1)
-                guard FocusQuestTab.allCases.indices.contains(target) else { return }
-                switchTab(to: FocusQuestTab.allCases[target])
-            }
-    }
 
     /// Systemovy TabView drzi stav kazde zalozky; jeho vlastni lista je skryta, kreslime FocusQuestTabBar.
     private func tabs(reserve: CGFloat) -> some View {
