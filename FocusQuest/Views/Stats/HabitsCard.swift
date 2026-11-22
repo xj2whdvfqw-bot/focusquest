@@ -1,8 +1,9 @@
 import SwiftUI
 
-/// Habits ve Stats: kalendar dni v chronologickem poradi. Radek = tyden (pondeli az nedele zleva doprava),
-/// nejstarsi tyden nahore, aktualni dole, takze dny jdou za sebou jako text: prvni vlevo nahore, dnesek na konci.
-/// Barva podle minut soustredeni. Cislo tydne stoji vlevo od radku (kazde liche a aktualni).
+/// Habits ve Stats: mrizka dni na sirku (sloupec = 7 dni, radek = den v tydnu), barva podle minut soustredeni.
+/// Poradi je od nejnovejsiho: dnesek je prvni ctverecek vlevo nahore, dolu a doprava jdou starsi dny
+/// (sloupec 1 = poslednich 7 dni). Pismena dni vlevo sedi na kazdy sloupec, protoze sloupce maji po 7 dnech.
+/// Cisla tydnu 1, 3, 5 … stoji kazde vycentrovane nad svym sloupcem (stejna sirka jako bunka).
 /// Klepnuti na den ukaze malou bublinu s datem a minutami; dalsi klepnuti ji schova.
 struct HabitsCard: View {
     let grid: HabitGrid
@@ -12,27 +13,23 @@ struct HabitsCard: View {
     private enum Layout {
         static let cell: CGFloat = 16
         static let gap: CGFloat = 4
-        static let weekColumnGap: CGFloat = 6
-        static let weekColumnWidth: CGFloat = 18
-        static let dayRowHeight: CGFloat = 14
-        static let dayRowGap: CGFloat = 4
+        static let dayColumnGap: CGFloat = 6
+        static let weekRowHeight: CGFloat = 14
+        static let weekRowGap: CGFloat = 4
         static let padding: CGFloat = 16
-        /// Jak daleko smi bublina presahnout mrizku do stran (mrizka je v karte vycentrovana).
-        static let bubbleOverhang: CGFloat = 70
         static let labelFont = Font.system(size: 10, weight: .regular, design: .rounded)
-        static let dayLetters = ["M", "T", "W", "T", "F", "S", "S"]
     }
 
     private var weekCount: Int { grid.weeks.count }
-    private var gridWidth: CGFloat { 7 * Layout.cell + 6 * Layout.gap }
+    private var gridWidth: CGFloat { CGFloat(weekCount) * Layout.cell + CGFloat(max(0, weekCount - 1)) * Layout.gap }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .top, spacing: Layout.weekColumnGap) {
-                weekNumbers
-                    .padding(.top, Layout.dayRowHeight + Layout.dayRowGap)
-                VStack(alignment: .leading, spacing: Layout.dayRowGap) {
-                    dayLetters
+            HStack(alignment: .top, spacing: Layout.dayColumnGap) {
+                dayLabels
+                    .padding(.top, Layout.weekRowHeight + Layout.weekRowGap)
+                VStack(alignment: .leading, spacing: Layout.weekRowGap) {
+                    weekNumbers
                     cells
                 }
             }
@@ -48,30 +45,29 @@ struct HabitsCard: View {
 
     // MARK: - Popisky
 
-    /// Pismena dni nad sloupci (pondeli az nedele).
-    private var dayLetters: some View {
-        HStack(spacing: Layout.gap) {
-            ForEach(Layout.dayLetters.indices, id: \.self) { index in
-                Text(Layout.dayLetters[index])
+    private var dayLabels: some View {
+        VStack(spacing: Layout.gap) {
+            ForEach(grid.rowLetters.indices, id: \.self) { index in
+                Text(grid.rowLetters[index])
                     .font(Layout.labelFont)
                     .foregroundStyle(FQColor.textTertiary)
-                    .frame(width: Layout.cell, height: Layout.dayRowHeight)
+                    .frame(height: Layout.cell)
             }
         }
         .accessibilityHidden(true)
     }
 
-    /// Cislo tydne vlevo od kazdeho licheho radku a od posledniho (aktualniho), ktery je zvyrazneny.
+    /// Cislo nad kazdym lichym tydnem; prvni (aktualni, vlevo) je zvyrazneny.
     private var weekNumbers: some View {
-        VStack(alignment: .trailing, spacing: Layout.gap) {
+        HStack(spacing: Layout.gap) {
             ForEach(0..<weekCount, id: \.self) { index in
-                let isCurrent = index == weekCount - 1
-                Text(index % 2 == 0 || isCurrent ? "\(index + 1)" : "")
+                let isCurrent = index == 0
+                Text(index % 2 == 0 ? "\(index + 1)" : "")
                     .font(Layout.labelFont.weight(isCurrent ? .bold : .regular))
                     .monospacedDigit()
                     .foregroundStyle(isCurrent ? FQColor.accent : FQColor.textTertiary)
                     .fixedSize()
-                    .frame(width: Layout.weekColumnWidth, height: Layout.cell, alignment: .trailing)
+                    .frame(width: Layout.cell, height: Layout.weekRowHeight)
             }
         }
         .accessibilityHidden(true)
@@ -80,9 +76,9 @@ struct HabitsCard: View {
     // MARK: - Mrizka
 
     private var cells: some View {
-        VStack(alignment: .leading, spacing: Layout.gap) {
+        HStack(alignment: .top, spacing: Layout.gap) {
             ForEach(grid.weeks.indices, id: \.self) { week in
-                HStack(spacing: Layout.gap) {
+                VStack(spacing: Layout.gap) {
                     ForEach(grid.weeks[week]) { day in cell(day) }
                 }
             }
@@ -115,19 +111,19 @@ struct HabitsCard: View {
         }
     }
 
-    /// Bublina nad vybranym dnem; vodorovne se drzi blizko mrizky, aby nevyjela z karty.
+    /// Bublina nad vybranym dnem; vodorovne se drzi u mrizky, aby nevyjela z karty.
     @ViewBuilder private var bubbleOverlay: some View {
         if let day = selected, let position = position(of: day) {
             let step = Layout.cell + Layout.gap
             let half = bubbleSize.width / 2
-            let anchorX = CGFloat(position.day) * step + Layout.cell / 2
-            let minX = half - Layout.bubbleOverhang
-            let maxX = gridWidth - half + Layout.bubbleOverhang
+            let anchorX = CGFloat(position.week) * step + Layout.cell / 2
+            let minX = half - Layout.dayColumnGap - 10
+            let maxX = gridWidth - half + Layout.padding / 2
             let centerX = maxX >= minX ? min(max(anchorX, minX), maxX) : gridWidth / 2
             HabitBubble(text: "\(Self.dateText(day)) · \(Self.minutesText(day.minutes, spoken: false))")
                 .fixedSize()
                 .onGeometryChange(for: CGSize.self) { $0.size } action: { bubbleSize = $0 }
-                .offset(x: centerX - half, y: CGFloat(position.week) * step - bubbleSize.height - 4)
+                .offset(x: centerX - half, y: CGFloat(position.day) * step - bubbleSize.height - 4)
                 .transition(.opacity)
                 .allowsHitTesting(false)
                 .accessibilityHidden(true)
@@ -160,7 +156,7 @@ struct HabitsCard: View {
     }
 
     private var legendText: some View {
-        Text("Weeks 1–\(weekCount), oldest at the top, today last · filled by your focus time")
+        Text("Today is top left, older days go down and to the right · filled by your focus time")
             .fixedSize(horizontal: false, vertical: true)
     }
 
@@ -176,23 +172,23 @@ struct HabitsCard: View {
         }
         .fixedSize()
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Lighter squares mean less focus, brighter mean 90 minutes or more")
+        .accessibilityLabel("Darker green means less focus, lighter green means 90 minutes or more")
     }
 
     // MARK: - Barvy a texty
 
-    /// Svetle zelena (malo) az syta tyrkysova (hodne), jako v prototypu.
+    /// Odstiny zelene od tmave (malo) po svetlou (hodne), bez tyrkysove.
     static func color(level: Int) -> Color {
         switch level {
-        case 1: Color(red: 0x3D / 255, green: 0x6B / 255, blue: 0x4C / 255)
-        case 2: Color(red: 0x5F / 255, green: 0xBF / 255, blue: 0x7A / 255)
-        case 3: Color(red: 0x3F / 255, green: 0xD6 / 255, blue: 0xB0 / 255)
-        case 4: Color(red: 0x14 / 255, green: 0xE0 / 255, blue: 0xD0 / 255)
+        case 1: Color(red: 0x22 / 255, green: 0x4A / 255, blue: 0x2C / 255)
+        case 2: Color(red: 0x2F / 255, green: 0x7A / 255, blue: 0x3E / 255)
+        case 3: Color(red: 0x4E / 255, green: 0xAE / 255, blue: 0x55 / 255)
+        case 4: Color(red: 0x8E / 255, green: 0xE0 / 255, blue: 0x7C / 255)
         default: Color.white.opacity(0.08)
         }
     }
 
-    private static let glow = Color(red: 20 / 255, green: 224 / 255, blue: 208 / 255).opacity(0.45)
+    private static let glow = Color(red: 0x8E / 255, green: 0xE0 / 255, blue: 0x7C / 255).opacity(0.45)
 
     static func dateText(_ day: HabitDay) -> String {
         if day.isToday { return "Today" }

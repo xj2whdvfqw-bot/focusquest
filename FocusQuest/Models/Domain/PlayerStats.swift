@@ -279,8 +279,12 @@ struct HabitDay: Identifiable, Equatable, Sendable {
 
 /// Habits mrizka ve Stats: `weeks` sloupcu (tydny, nejstarsi vlevo), v kazdem 7 dni pondeli az nedele.
 /// Dny po dnesku v poslednim sloupci jsou prazdne (`isFuture`).
+/// Mrizka Habits od nejnovejsiho dne: `weeks[0][0]` je dnesek, dal dolu (v ramci sloupce) a pak doprava
+/// starsi dny. Kazdy sloupec ma 7 po sobe jdoucich dni, takze kazdy radek je vzdy tentyz den v tydnu.
 struct HabitGrid: Equatable, Sendable {
     let weeks: [[HabitDay]]
+    /// Pismeno dne v tydnu pro kazdy radek (radek 0 = dnesni den v tydnu).
+    var rowLetters: [String] = []
 
     /// Kolik dni ma aspon minutu soustredeni.
     var focusDays: Int { weeks.joined().filter { $0.minutes > 0 }.count }
@@ -295,28 +299,25 @@ struct HabitGrid: Equatable, Sendable {
         }
     }
 
-    static func make(history: [SessionSummary], weeks count: Int = 15, now: Date = Date(), calendar base: Calendar = .current) -> HabitGrid {
-        var calendar = base
-        calendar.firstWeekday = 2 // pondeli
+    static func make(history: [SessionSummary], weeks count: Int = 15, now: Date = Date(), calendar: Calendar = .current) -> HabitGrid {
         let today = calendar.startOfDay(for: now)
-        let weekday = calendar.component(.weekday, from: today)
-        let daysFromMonday = (weekday - calendar.firstWeekday + 7) % 7
-        guard let thisMonday = calendar.date(byAdding: .day, value: -daysFromMonday, to: today),
-              let firstMonday = calendar.date(byAdding: .day, value: -7 * (max(1, count) - 1), to: thisMonday) else {
-            return HabitGrid(weeks: [])
-        }
         var minutesByDay: [Date: Int] = [:]
         for session in history {
             minutesByDay[calendar.startOfDay(for: session.completedAt), default: 0] += max(0, session.verifiedMinutes)
         }
         let weeks = (0..<max(1, count)).map { week in
             (0..<7).compactMap { offset -> HabitDay? in
-                guard let date = calendar.date(byAdding: .day, value: week * 7 + offset, to: firstMonday) else { return nil }
+                guard let date = calendar.date(byAdding: .day, value: -(week * 7 + offset), to: today) else { return nil }
                 let day = calendar.startOfDay(for: date)
-                return HabitDay(date: day, minutes: minutesByDay[day] ?? 0, isToday: day == today, isFuture: day > today)
+                return HabitDay(date: day, minutes: minutesByDay[day] ?? 0, isToday: day == today, isFuture: false)
             }
         }
-        return HabitGrid(weeks: weeks)
+        // Jednopismenne zkratky dni (M, T, W …) v anglictine jako zbytek appky.
+        var english = calendar
+        english.locale = Locale(identifier: "en_US_POSIX")
+        let letters = english.veryShortStandaloneWeekdaySymbols
+        let rowLetters = (weeks.first ?? []).map { letters[calendar.component(.weekday, from: $0.date) - 1] }
+        return HabitGrid(weeks: weeks, rowLetters: rowLetters)
     }
 }
 

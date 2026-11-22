@@ -797,27 +797,29 @@ final class ProgressionModelTests: XCTestCase {
         SessionSummary(id: UUID(), bossName: "A", verifiedMinutes: minutes, xpEarned: 0, completedAt: date, flawless: true, subject: .math)
     }
 
-    func testHabitGridHasMondayToSundayWeeksEndingThisWeek() {
-        // Patek 20. 11. 2026: posledni sloupec je tyden od pondeli 16. 11., sobota a nedele jsou budoucnost.
+    func testHabitGridStartsWithTodayTopLeft() {
+        // Patek 20. 11. 2026: dnesek je prvni ctverecek vlevo nahore, dolu a doprava jdou starsi dny.
         let now = day(2026, 11, 20)
         let history = [session(on: day(2026, 11, 20, hour: 9), minutes: 20), session(on: day(2026, 11, 20, hour: 15), minutes: 10), session(on: day(2026, 11, 16), minutes: 95), session(on: day(2026, 1, 1), minutes: 30)]
         let grid = HabitGrid.make(history: history, weeks: 15, now: now, calendar: utcCalendar)
         XCTAssertEqual(grid.weeks.count, 15)
         XCTAssertTrue(grid.weeks.allSatisfy { $0.count == 7 })
-        XCTAssertEqual(grid.weeks[0][0].date, day(2026, 8, 10, hour: 0), "First column starts on a Monday 14 weeks back")
-        let thisWeek = grid.weeks[14]
-        XCTAssertEqual(thisWeek[0].date, day(2026, 11, 16, hour: 0))
-        XCTAssertEqual(thisWeek[0].minutes, 95)
-        XCTAssertEqual(thisWeek[0].level, 4)
-        XCTAssertEqual(thisWeek[4].minutes, 30)
-        XCTAssertEqual(thisWeek[4].level, 2)
-        XCTAssertTrue(thisWeek[4].isToday)
-        XCTAssertEqual(thisWeek.map(\.isFuture), [false, false, false, false, false, true, true])
-        XCTAssertEqual(grid.focusDays, 2, "Sessions outside the grid do not count")
-        // Habits se ctou po radcich (tyden = radek): dny jdou chronologicky, nejstarsi prvni, dnesek na konci minulych dni.
+        let first = grid.weeks[0]
+        XCTAssertTrue(first[0].isToday)
+        XCTAssertEqual(first[0].date, day(2026, 11, 20, hour: 0))
+        XCTAssertEqual(first[0].minutes, 30)
+        XCTAssertEqual(first[0].level, 2)
+        XCTAssertEqual(first[4].date, day(2026, 11, 16, hour: 0))
+        XCTAssertEqual(first[4].minutes, 95)
+        XCTAssertEqual(first[4].level, 4)
+        XCTAssertEqual(grid.weeks[1][0].date, day(2026, 11, 13, hour: 0), "Second column continues 7 days back")
+        XCTAssertFalse(grid.weeks.joined().contains { $0.isFuture })
+        // Ctene po sloupcich jdou dny od nejnovejsiho k nejstarsimu.
         let days = grid.weeks.flatMap { $0 }.map(\.date)
-        XCTAssertEqual(days, days.sorted())
-        XCTAssertEqual(grid.weeks.flatMap { $0 }.last(where: { !$0.isFuture })?.isToday, true)
+        XCTAssertEqual(days, days.sorted(by: >))
+        XCTAssertEqual(grid.rowLetters.count, 7)
+        XCTAssertEqual(grid.rowLetters.first, "F")
+        XCTAssertEqual(grid.focusDays, 2, "Sessions outside the grid do not count")
     }
 
     func testHabitLevelsFollowFocusMinutes() {
