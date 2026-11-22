@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-22T23:32:38+01:00",
-  "current": "F1: build #65 běží (oprava po #64).",
-  "nextStep": "Počkat na výsledek buildu #65.",
+  "updated": "2026-11-23T00:06:22+01:00",
+  "current": "F1 hotovo, build #65 prošel.",
+  "nextStep": "Otestovat na iPhonu podle poznámky v kartě F1 a poslat další připomínky.",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -751,7 +751,7 @@
     {
       "id": "F1",
       "title": "Test po E1: Habits, TipKit, mapa, easter eggy",
-      "status": "build",
+      "status": "hotovo",
       "items": [
         { "text": "B0 Habits: zpět na šířku (sloupce = týdny), dnešek vlevo nahoře, starší doprava a dolů; zelená škála", "done": true },
         { "text": "B1 Onboarding pryč, TipKit tutoriál (6 tipů u prvků, každý jednou), notifikace až po první výhře, Debug Reset tips", "done": true },
@@ -761,8 +761,8 @@
         { "text": "B5 Easter eggy: rybník (+150), oranžová planeta (+200), křížek na Farm (+100); Debug Reset easter eggs", "done": true }
       ],
       "commit": "af0b112",
-      "build": { "number": 65, "runId": 45078276847, "result": "běží" },
-      "note": "Build #64 spadl na kompilaci: CoinCount (počítadlo mincí) porušoval Swift 6 izolaci u Animatable. Opraveno (nonisolated animatableData), build se spouští znovu."
+      "build": { "number": 65, "runId": 45078276847, "result": "úspěch" },
+      "note": "Build #65 prošel (IPA, Release kompilace, unit testy); #64 spadl na izolaci Animatable v počítadle mincí, opraveno. Na iPhonu otestuj: Habits (dnešek vlevo nahoře, zelená škála), nový hráč bez onboardingu (Debug Reset progress), 6 tipů v pořadí (Path a Hero až po první výhře), žádost o notifikace po první výhře, Reset tips po restartu, mapa: jeden ztmavený zamčený svět, další pod pixelovými mraky, rozplynutí při odemčení, plynulé hranice světů a pobřeží, rozmazaná hlavička, pergamenový okraj, easter eggy (rybník, planeta, křížek na Farm) i se zoomem, Reset easter eggs."
     }
   ]
 }
