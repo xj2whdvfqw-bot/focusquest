@@ -1,9 +1,12 @@
 import SwiftUI
+import TipKit
 
 struct ProfileView: View {
     @ObservedObject var model: ProfileViewModel
     @State private var usernameDraft = ""
     @State private var showsAppearanceEditor = false
+    /// Tutorial 6: uprava hrdiny (az po prvni vyhre).
+    private let heroTip = HeroTip()
     /// Cil behem tazeni posuvniku: kruh a texty se meni zive, ulozi se az po pusteni.
     @State private var goalDraft: Int?
 
@@ -40,7 +43,10 @@ struct ProfileView: View {
             VStack(spacing: 6) {
                 HeroAvatarView(appearance: model.profile.avatar, heroClass: model.profile.heroClass, size: 76)
                     .accessibilityHidden(true)
-                Button { showsAppearanceEditor = true } label: {
+                Button {
+                    heroTip.invalidate(reason: .actionPerformed)
+                    showsAppearanceEditor = true
+                } label: {
                     Image(systemName: "paintbrush.fill")
                         .font(.system(size: 15, weight: .semibold))
                         .foregroundStyle(FQColor.textPrimary)
@@ -54,6 +60,7 @@ struct ProfileView: View {
                 .buttonStyle(.fqPress)
                 .padding(.vertical, -5)
                 .accessibilityLabel("Edit appearance")
+                .popoverTip(heroTip, arrowEdge: .top)
             }
             VStack(alignment: .leading, spacing: 4) {
                 Text(model.profile.username)

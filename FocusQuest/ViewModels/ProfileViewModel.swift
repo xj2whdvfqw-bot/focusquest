@@ -60,8 +60,28 @@ final class ProfileViewModel: ObservableObject {
         save()
     }
 
+    // MARK: - Easter eggy
+
+    /// Easter egg na mape: jen poprve pripise mince a ulozi, ze je nalezeny. Vraci false, kdyz uz byl nalezeny.
+    @discardableResult
+    func claimEasterEgg(_ egg: MapEasterEgg) -> Bool {
+        guard !hasFound(egg) else { return false }
+        profile.foundEasterEggs.append(egg.rawValue)
+        profile.coins += egg.coins
+        save()
+        return true
+    }
+
+    func hasFound(_ egg: MapEasterEgg) -> Bool { profile.foundEasterEggs.contains(egg.rawValue) }
+
     #if DEBUG
     // MARK: - Ladeni (jen v Debug buildu, ne ve vydani)
+
+    /// Debug: easter eggy jdou najit znovu (mince zustavaji).
+    func debugResetEasterEggs() {
+        profile.foundEasterEggs = []
+        save()
+    }
 
     func debugAddCoins(_ amount: Int) {
         profile.coins += amount

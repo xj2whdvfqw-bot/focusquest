@@ -502,6 +502,7 @@ private struct DebugSettingsSections: View {
     @Binding var notifications: NotificationPermission
     @State private var debugNotificationStatus: String?
     @State private var debugPending: [String]?
+    @State private var debugTipsStatus: String?
 
     private static let tierLevels: [(name: String, level: Int)] = [
         ("Bronze", 1), ("Silver", 5), ("Gold", 10), ("Sapphire", 15), ("Rainbow", 20),
@@ -533,6 +534,18 @@ private struct DebugSettingsSections: View {
                         debugButton("\(tier.name) \(tier.level)") { profile.debugSetLevel(tier.level) }
                     }
                 }
+            }
+            VStack(alignment: .leading, spacing: FQSpace.sm) {
+                Text("Easter eggs found: \(profile.profile.foundEasterEggs.count) of \(MapEasterEgg.allCases.count)").monospacedDigit().foregroundStyle(.secondary)
+                ChipFlow(spacing: FQSpace.sm) {
+                    debugButton("Reset easter eggs") { profile.debugResetEasterEggs() }
+                    debugButton("Reset tips") {
+                        // Datastore TipKitu jde smazat jen pred Tips.configure: provede se pri dalsim spusteni.
+                        FQTips.resetOnNextLaunch()
+                        debugTipsStatus = "Tips reset. Quit and reopen the app to see them again."
+                    }
+                }
+                if let debugTipsStatus { Text(debugTipsStatus).font(.footnote) }
             }
         } header: {
             Text("Debug")

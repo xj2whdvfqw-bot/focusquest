@@ -1,4 +1,5 @@
 import SwiftUI
+import TipKit
 
 /// List pred bitvou (Fight na Arene nebo dlazdice bosse na Path): predmet, zvuk a velke tlacitko Start.
 /// Delka bitvy je dana bossem, proto tu zadny vyber delky neni.
@@ -9,6 +10,8 @@ struct FightSheetView: View {
     let onClose: () -> Void
 
     @State private var showsAllSubjects = false
+    /// Tutorial 2: predmet a hudba.
+    private let setupTip = FightSetupTip()
     @State private var isEditing = false
     @State private var pendingDelete: StudySubject?
     @State private var showsManager = false
@@ -102,6 +105,7 @@ struct FightSheetView: View {
         VStack(alignment: .leading, spacing: Layout.labelGap) {
             HStack {
                 sectionLabel("Focusing")
+                    .popoverTip(setupTip, arrowEdge: .top)
                 Spacer(minLength: 0)
                 if !subjects.isEmpty {
                     Button(isEditing ? "Done" : "Edit") {
@@ -214,7 +218,10 @@ struct FightSheetView: View {
 
     private var startButton: some View {
         let canStart = model.selectedSubject != nil && model.isBetweenBattles
-        return Button(action: onStart) {
+        return Button {
+            setupTip.invalidate(reason: .actionPerformed)
+            onStart()
+        } label: {
             Label("Start \(boss.maxHP) min Battle", systemImage: "play.fill")
                 .font(.system(size: Layout.startFont, weight: .bold, design: .rounded))
                 .foregroundStyle(FQColor.onCta)

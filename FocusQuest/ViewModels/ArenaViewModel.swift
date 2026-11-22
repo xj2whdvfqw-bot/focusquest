@@ -163,7 +163,6 @@ final class ArenaViewModel: ObservableObject {
         state = .awaitingFlatPlacement
         activeSession = nil
         isFinishing = false
-        Task { await notifications?.requestAuthorizationIfNeeded() }
         postureTask?.cancel()
         postureTask = Task { [weak self] in
             guard let self else { return }
@@ -737,9 +736,15 @@ final class ArenaViewModel: ObservableObject {
             state = .victory(victory)
             activeSession = nil
             onVictory?(victory)
+            requestNotificationsAfterVictory()
         } catch {
             await penalize(reason: "Could not finalize the verified battle.")
         }
+    }
+
+    /// Povoleni notifikaci se zada kontextove az po dokoncene bitve (iOS se zepta jen jednou).
+    private func requestNotificationsAfterVictory() {
+        Task { await notifications?.requestAuthorizationIfNeeded() }
     }
 
     #if DEBUG
@@ -770,6 +775,7 @@ final class ArenaViewModel: ObservableObject {
         state = .victory(victory)
         activeSession = nil
         onVictory?(victory)
+        requestNotificationsAfterVictory()
     }
     #endif
 

@@ -1,4 +1,5 @@
 import SwiftUI
+import TipKit
 
 /// Otevira bitvu pres celou obrazovku (bez spodni listy) odkudkoli: z Areny, z cesty sveta
 /// nebo z Custom Focus. MainTabView ho vlozi do prostredi a sam bitvu prezentuje.
@@ -33,6 +34,8 @@ struct ArenaView: View {
     @Environment(BattlePresenter.self) private var battle
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.shopBackground) private var shopBackground
+    /// Tutorial 1: Fight.
+    private let fightTip = FightTip()
 
     // 2a: klepani na bosse.
     @State private var poke: Poke?
@@ -226,6 +229,7 @@ struct ArenaView: View {
 
     private func fightButton(_ node: Boss) -> some View {
         Button {
+            fightTip.invalidate(reason: .actionPerformed)
             model.selectBoss(node)
             battle.openFightSheet()
         } label: {
@@ -233,6 +237,7 @@ struct ArenaView: View {
         }
         .buttonStyle(.fqPress)
         .disabled(!model.isBetweenBattles)
+        .popoverTip(fightTip, arrowEdge: .bottom)
     }
 
     /// Zlute hlavni tlacitko: zaoblene pismo, velke jen prvni pismeno.

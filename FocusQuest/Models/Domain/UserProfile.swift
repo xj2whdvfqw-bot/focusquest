@@ -21,11 +21,13 @@ struct UserProfile: Codable, Sendable {
     var ownedBackgroundIDs: [String] = []
     /// Zvolene pozadi; nil = World scenes (kazdy svet ma svou scenu).
     var backgroundID: String? = nil
+    /// Nalezene easter eggy na mape (MapEasterEgg.rawValue); kazdy jde najit jednou za celou hru.
+    var foundEasterEggs: [String] = []
 
     enum CodingKeys: String, CodingKey {
         case userID, username, title, heroClass, avatarMatrix, dailyFocusGoalMinutes
         case avatar, coins, bossesDefeated, hasCreatedHero, ownedEquipmentIDs, focusGoals
-        case ownedBackgroundIDs, backgroundID
+        case ownedBackgroundIDs, backgroundID, foundEasterEggs
     }
 
     /// Novy hrac (i po Reset progress) zacina s pozadim Daybreak; World scenes si muze vybrat v Shopu.
@@ -60,6 +62,7 @@ extension UserProfile {
         focusGoals = storedGoals.compactMap(FocusGoal.init(rawValue:))
         ownedBackgroundIDs = (try? container.decodeIfPresent([String].self, forKey: .ownedBackgroundIDs)) ?? []
         backgroundID = try? container.decodeIfPresent(String.self, forKey: .backgroundID)
+        foundEasterEggs = (try? container.decodeIfPresent([String].self, forKey: .foundEasterEggs)) ?? []
     }
 }
 

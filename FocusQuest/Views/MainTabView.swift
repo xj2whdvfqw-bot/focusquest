@@ -6,7 +6,7 @@ private enum FocusQuestTab: String, CaseIterable, Identifiable {
     var title: String { self == .profile ? "Hero" : rawValue.capitalized }
 
     /// V debug buildu jde appku spustit s argumentem `-initialTab stats` (vychozi zalozka)
-    /// nebo `-initialTab creator` (uvodni tvorba hrdiny) ci `-initialTab settings`
+    /// nebo `-initialTab settings`
     /// (Profil s otevrenym Nastavenim). `battle` obrazovku
     /// bitvy pres Arenu. Pouziva to CI pro screenshoty.
     static var launchArgument: String? {
@@ -47,7 +47,6 @@ struct MainTabView: View {
     /// Prepinani zalozek (pocet, smer): spousti prechod obsahu (TabSwitchEntrance).
     @State private var tabMotion = TabMotion()
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var showsHeroCreator = false
     /// Zalozka obchodu; Nastaveni ji umi prepnout na Backgrounds.
     @State private var shopSection: ShopView.ShopSection = .gear
     /// Ozubene kolo na kazde zalozce otevira tentyz list Nastaveni.
@@ -116,17 +115,14 @@ struct MainTabView: View {
                 if FocusQuestTab.launchArgument == "settings" { settingsPresenter.isPresented = true }
                 if FocusQuestTab.launchArgument?.hasPrefix("battle") == true { battlePresenter.isPresented = true }
                 if FocusQuestTab.launchArgument == "fight" { battlePresenter.openFightSheet() }
-                await presentHeroCreatorIfNeeded()
+                await prepareOnLaunch()
             }
             // Po navratu do appky: smazane predmety starsi nez 24 h zmizi i se statistikami.
             .onChange(of: scenePhase) { _, phase in
                 if phase == .active { Task { await maintainSubjects() } }
             }
             // Odchod z appky behem bitvy se netresta: hodiny bitvy bezi dal i na pozadi.
-            // Prvni spusteni: 4strankovy onboarding (pravidla, predmety, hrdina, povoleni), listuje se swipem.
-            .fullScreenCover(isPresented: $showsHeroCreator) {
-                OnboardingView(arena: container.arenaViewModel, profile: container.profileViewModel) { finishOnboarding() }
-            }
+            // Onboarding neni (od F1): novy hrac skonci rovnou na Home a provede ho TipKit (FQTips).
         }
         // Pixelova krajina je nocni, proto je appka vzdy v tmavem rezimu (text na skle vynikne).
         .preferredColorScheme(.dark)
@@ -219,33 +215,23 @@ struct MainTabView: View {
         container.arenaViewModel.refreshDailyReminder(focusedToday: container.profileViewModel.todayVerifiedMinutes > 0)
     }
 
-    /// Konec onboardingu: hrdina je vytvoreny, appka zacina na Arene (bez doporucene 5minutove bitvy).
-    private func finishOnboarding() {
-        container.profileViewModel.completeHeroCreation()
-        showsHeroCreator = false
-    }
-
-    /// Reset progress z Nastaveni: po smazani se list zavre, appka se vrati na Arenu
-    /// a znovu se ukaze onboarding (novy hrdina).
+    /// Reset progress z Nastaveni: po smazani se list zavre a appka se vrati na Arenu s novym vychozim hrdinou.
     private func resetProgress() async -> Bool {
         guard await container.resetProgress() else { return false }
         settingsPresenter.isPresented = false
         shopSection = .gear
         switchTab(to: .arena)
-        // List Nastaveni a onboarding nejdou prepnout naraz.
-        try? await Task.sleep(for: .milliseconds(600))
-        showsHeroCreator = true
+        container.profileViewModel.completeHeroCreation()
         return true
     }
 
-    /// Pri prvnim spusteni se ukaze onboarding. Screenshoty zalozek v CI tuhle obrazovku preskakuji.
-    private func presentHeroCreatorIfNeeded() async {
+    /// Start appky: nacte profil a statistiky. Novy hrac dostane vychozi hrdinu (Warrior, zakladni vzhled)
+    /// a vychozi predmety; zmeni je ve Fight sheetu a na zalozce Hero.
+    private func prepareOnLaunch() async {
         await container.profileViewModel.refresh()
         await container.profileViewModel.refreshProgress()
         await maintainSubjects()
-        let argument = FocusQuestTab.launchArgument
-        guard argument == nil || argument == "creator" else { return }
-        if !container.profileViewModel.profile.hasCreatedHero { showsHeroCreator = true }
+        container.profileViewModel.completeHeroCreation()
     }
 }
 

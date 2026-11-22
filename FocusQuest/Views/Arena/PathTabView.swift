@@ -1,4 +1,5 @@
 import SwiftUI
+import TipKit
 
 /// Zalozka Path: velka pixelova mapa svetu, kterou hrac prochazi tazenim a pinch-zoomem.
 /// Kamera po otevreni najede na aktualniho bosse, klepnuti na zastavku otevre sklenenou kartu
@@ -20,6 +21,8 @@ struct PathTabView: View {
     /// Boss vybrany v seznamu: Fight sheet se otevre az po zavreni seznamu (dva listy naraz nejdou).
     @State private var pendingFight: Boss?
     @State private var viewport = MapViewport()
+    /// Tutorial 5: mapa svetu (az po prvni vyhre).
+    private let pathTip = PathTip()
 
     /// Vyska hlavicky pod stavovym radkem (tlacitka 44 + odsazeni); mapa pod ni jde odrolovat.
     private static let headerHeight: CGFloat = 60
@@ -121,6 +124,7 @@ struct PathTabView: View {
             }
             .accessibilityElement(children: .combine)
             .accessibilityAddTraits(.isHeader)
+            .popoverTip(pathTip, arrowEdge: .top)
             Spacer(minLength: FQSpace.sm)
             headerButton("scope", label: "Go to the current boss") { focusCurrent(intro: false) }
             headerButton("list.bullet", label: "Show worlds and bosses as a list") {

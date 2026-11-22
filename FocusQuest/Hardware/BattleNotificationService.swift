@@ -36,16 +36,18 @@ actor BattleNotificationService: BattleNotificationServiceProtocol {
     /// Zvysi se pri kazdem zruseni vitezstvi; planovani, ktere mezitim dobehlo, se pak samo smaze.
     private var victoryGeneration = 0
 
-    /// Bez povoleni by se notifikace naplanovala, ale nikdy neukazala. Proto se kazde planovani
-    /// nejdriv zepta (jen kdyz se iOS jeste neptal) a pri zakazu nic neplanuje.
+    /// Kontextova zadost o povoleni (od F1): appka se zepta az po prvni dokoncene bitve, ne pri startu
+    /// ani pri planovani. Kdyz se iOS uz ptal, nic se nestane.
     func requestAuthorizationIfNeeded() async {
-        _ = await isAuthorized()
+        _ = await isAuthorized(prompt: true)
     }
 
-    private func isAuthorized() async -> Bool {
+    /// Bez povoleni by se notifikace naplanovala, ale nikdy neukazala; planovani proto bez povoleni nic neudela.
+    /// `prompt` = kdyz se iOS jeste neptal, zeptat se (jen kontextova zadost a Debug test).
+    private func isAuthorized(prompt: Bool = false) async -> Bool {
         let center = UNUserNotificationCenter.current()
         var status = await center.notificationSettings().authorizationStatus
-        if status == .notDetermined {
+        if status == .notDetermined, prompt {
             do {
                 _ = try await center.requestAuthorization(options: [.alert, .sound])
             } catch {
@@ -145,7 +147,7 @@ actor BattleNotificationService: BattleNotificationServiceProtocol {
     /// ale s vlastnimi identifikatory, aby se nedotkly naplanovanych bitev a pripominek.
     /// Vraci false, kdyz iOS notifikace nepovoluje.
     func scheduleTestNotifications() async -> Bool {
-        guard await isAuthorized() else { return false }
+        guard await isAuthorized(prompt: true) else { return false }
         let tests: [(String, String, String)] = [
             ("focusquest.test.victory", "Victory!", Self.victoryBody(BossWorld.allCases[0].bosses[0].name)),
             ("focusquest.test.break", Self.breakTitle, Self.breakBody),
