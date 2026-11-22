@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-21T21:37:08+01:00",
-  "current": "Home: Fight posunutý výš od lišty, build #55 prošel.",
-  "nextStep": "Otestovat build #55 na iPhonu (karty Opravy po testu #53 a Home: Fight výš od lišty).",
+  "updated": "2026-11-22T13:04:03+01:00",
+  "current": "A1 paleta bez tyrkysové hotová v kódu, další A2 onboarding.",
+  "nextStep": "A2: onboarding se swipem, krok hrdiny, bez 5min bitvy; build až po A6.",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -560,6 +560,85 @@
         { "text": "Tlačítko Fight a „Just 5 minutes“ posunuté o 24 pt výš, aby neseděly nalepené na liště záložek (na iPhonu SE o 8 pt)", "done": true }
       ],
       "note": "Hotovo, build #55 prošel na druhý pokus (první zrušil GitHub během screenshotů; IPA, Release i testy prošly hned). Na iPhonu otestovat: mezera mezi „Just 5 minutes“ a lištou záložek, na menším iPhonu se Fight pořád vejde."
+    },
+    {
+      "id": "A1",
+      "title": "Paleta bez tyrkysové",
+      "status": "pracuje",
+      "commit": "",
+      "build": { "number": null, "runId": null, "result": "" },
+      "items": [
+        { "text": "Token `accent` je bílý (text na něm téměř černý), Live Activity bílá místo mint; vše centrálně v Shared/FQColor.swift", "done": true },
+        { "text": "Mince se zlatou ikonou (`FQColor.coin`, komponenta CoinLabel), XP ikona bílá", "done": true },
+        { "text": "Přepínače: šedá stopa (`toggleOn`), aby bílá kulička nezmizela", "done": true },
+        { "text": "Kontrast WCAG AA: sklo na světlých scénách .78 (dřív .64), terciární text 62 % (dřív 50 %), červená světlejší rgb(255,120,135)", "done": true }
+      ],
+      "note": "Zbývá build. Na iPhonu otestovat: nikde žádná tyrkysová (Back ve výsledku, Path ✓, Stats, Profil, Shop In use, Live Activity), mince zlaté, texty čitelné na světlých pozadích (Daybreak, Sunset, Farm)."
+    },
+    {
+      "id": "A2",
+      "title": "Onboarding: swipe, hrdina, bílé ikony",
+      "status": "cekam",
+      "commit": "",
+      "build": { "number": null, "runId": null, "result": "" },
+      "items": [
+        { "text": "Stránky jde listovat swipem doleva/doprava, tečky dole, volby se při návratu neztratí", "done": false },
+        { "text": "Všechny ikony v onboardingu bílé", "done": false },
+        { "text": "Krok „Almost ready“ bez doporučení 5min bitvy", "done": false },
+        { "text": "Nový krok „Create your hero“ (třída, vzhled) ze stejných komponent jako Hero", "done": false }
+      ],
+      "note": ""
+    },
+    {
+      "id": "A3",
+      "title": "Nastavení: návrat swipem",
+      "status": "cekam",
+      "commit": "",
+      "build": { "number": null, "runId": null, "result": "" },
+      "items": [
+        { "text": "Podstránka Sounds & notifications se zavře tahem od levého okraje doprava (sleduje prst), tlačítko ‹ Settings zůstává", "done": false }
+      ],
+      "note": ""
+    },
+    {
+      "id": "A4",
+      "title": "Zvuky a haptika",
+      "status": "cekam",
+      "commit": "",
+      "build": { "number": null, "runId": null, "result": "" },
+      "items": [
+        { "text": "Samostatné přepínače: Tap sounds, Haptics, Battle sounds, Reward sounds (+ Alarm sound) a hlasitost efektů", "done": false },
+        { "text": "Jeden centrální FQFeedback (zvuk + haptika), tlačítka přes společný ButtonStyle", "done": false },
+        { "text": "Zvuky generované v kódu, ambient audio session (tichý režim, nepřeruší cizí hudbu)", "done": false },
+        { "text": "Zkušební karta pod každým zapnutým přepínačem (animovaně se rozbalí)", "done": false }
+      ],
+      "note": ""
+    },
+    {
+      "id": "A5",
+      "title": "Notifikace",
+      "status": "cekam",
+      "commit": "",
+      "build": { "number": null, "runId": null, "result": "" },
+      "items": [
+        { "text": "Příčina a oprava plánování lokálních notifikací", "done": false },
+        { "text": "Debug: tlačítko Test notifications (každý typ za 5 s)", "done": false },
+        { "text": "Nastavení: stav oprávnění a tlačítko do systémového nastavení", "done": false }
+      ],
+      "note": ""
+    },
+    {
+      "id": "A6",
+      "title": "Tab bar: squash a swipe mezi taby",
+      "status": "cekam",
+      "commit": "",
+      "build": { "number": null, "runId": null, "result": "" },
+      "items": [
+        { "text": "Bublina výběru se zmáčkne, přeletí a pružně roztáhne (~0,35 s)", "done": false },
+        { "text": "Obsah tabů jde přepínat horizontálním swipem, vnitřní gesta mají přednost", "done": false },
+        { "text": "Reduce Motion: jen prolnutí, bez squashe", "done": false }
+      ],
+      "note": ""
     }
   ]
 }

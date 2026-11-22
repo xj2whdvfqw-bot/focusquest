@@ -128,10 +128,10 @@ struct ShopView: View {
     }
 
     private var coinsLabel: some View {
-        Label("\(model.profile.coins) coins", systemImage: "dollarsign.circle.fill")
+        CoinLabel("\(model.profile.coins) coins")
             .font(.fqLabel)
             .monospacedDigit()
-            .foregroundStyle(FQColor.accent)
+            .foregroundStyle(FQColor.textPrimary)
             .contentTransition(.numericText())
     }
 
@@ -178,7 +178,7 @@ struct ShopView: View {
         } else {
             let affordable = model.canAfford(item)
             Button { withAnimation(.easeOut(duration: 0.2)) { model.buy(item); tryOnID = nil } } label: {
-                Label("\(item.price)", systemImage: "dollarsign.circle.fill")
+                CoinLabel("\(item.price)")
                     .monospacedDigit()
                     .frame(maxWidth: .infinity)
             }
@@ -277,7 +277,7 @@ struct ShopView: View {
         } else if let background {
             let short = background.price - model.profile.coins
             if short > 0 {
-                Label("\(background.price) · need \(short) more", systemImage: "dollarsign.circle.fill")
+                CoinLabel("\(background.price) · need \(short) more")
                     .fqFont(size: 13, design: .rounded)
                     .monospacedDigit()
                     .foregroundStyle(FQColor.textSecondary)
@@ -287,7 +287,7 @@ struct ShopView: View {
                 Button {
                     withAnimation(.easeOut(duration: 0.3)) { model.buy(background) }
                 } label: {
-                    Label("Buy for \(background.price)", systemImage: "dollarsign.circle.fill").monospacedDigit()
+                    CoinLabel("Buy for \(background.price)").monospacedDigit()
                 }
                 .buttonStyle(ShopButtonStyle())
                 .accessibilityLabel("Buy \(background.name) for \(background.price) coins")
@@ -326,5 +326,22 @@ struct ShopButtonStyle: ButtonStyle {
             .opacity(isEnabled ? 1 : 0.6)
             .scaleEffect(configuration.isPressed && !reduceMotion ? 0.96 : 1)
             .animation(.easeOut(duration: 0.15), value: configuration.isPressed)
+    }
+}
+
+/// Castka v mincich: zlata ikona mince a text v barve okoli (mince nikdy nejsou tyrkysove).
+struct CoinLabel: View {
+    let text: String
+
+    init(_ text: String) { self.text = text }
+
+    var body: some View {
+        Label {
+            Text(text)
+        } icon: {
+            Image(systemName: "dollarsign.circle.fill")
+                .foregroundStyle(FQColor.coin)
+                .accessibilityHidden(true)
+        }
     }
 }

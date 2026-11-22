@@ -86,7 +86,7 @@ struct GlassCardModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
-        // Na svetlych pozadich je sklo tmavsi (.64) a stin vetsi (0 12 30 rgba(0,0,0,.32)).
+        // Na svetlych pozadich je sklo tmavsi (.78, kvuli kontrastu WCAG AA) a stin vetsi (0 12 30 rgba(0,0,0,.32)).
         let bright = shopBackground?.isBright == true
         // Tmave sklo: rozmazani + rgba(13,11,28,.60). Bez svetle hrany a odlesku, text na nem vynikne.
         return content

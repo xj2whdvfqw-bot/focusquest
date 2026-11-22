@@ -319,7 +319,7 @@ struct SettingsView: View {
                 Text(detail).font(.fqMeta).foregroundStyle(FQColor.textSecondary)
             }
         }
-        .tint(FQColor.accent)
+        .tint(FQColor.toggleOn)
         .padding(.vertical, FQSpace.sm)
     }
 

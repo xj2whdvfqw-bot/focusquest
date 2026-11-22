@@ -483,7 +483,7 @@ struct BattleView: View {
     private func rewardTile(amount: Int, label: String, symbol: String) -> some View {
         let shape = RoundedRectangle(cornerRadius: FQRadius.control, style: .continuous)
         return VStack(spacing: FQSpace.xs) {
-            Image(systemName: symbol).font(.fqLabel).foregroundStyle(FQColor.accent).accessibilityHidden(true)
+            Image(systemName: symbol).font(.fqLabel).foregroundStyle(symbol.hasPrefix("dollarsign") ? FQColor.coin : FQColor.accent).accessibilityHidden(true)
             CountUpNumber(value: Double(amount) * rewardProgress)
                 .font(.fqTitle)
                 .monospacedDigit()
@@ -659,7 +659,7 @@ struct BattleActionButton: View {
         switch tone {
         case .neutral: Color(red: 13 / 255, green: 11 / 255, blue: 28 / 255).opacity(0.55)
         case .danger: Color(red: 60 / 255, green: 8 / 255, blue: 20 / 255).opacity(0.6)
-        case .accent: Color(red: 8 / 255, green: 40 / 255, blue: 34 / 255).opacity(0.6)
+        case .accent: Color(red: 13 / 255, green: 11 / 255, blue: 28 / 255).opacity(0.7)
         }
     }
 
@@ -667,7 +667,7 @@ struct BattleActionButton: View {
         switch tone {
         case .neutral: Color.white.opacity(0.18)
         case .danger: Color(red: 1, green: 84 / 255, blue: 102 / 255).opacity(0.45)
-        case .accent: Color(red: 107 / 255, green: 230 / 255, blue: 199 / 255).opacity(0.45)
+        case .accent: Color.white.opacity(0.45)
         }
     }
 
