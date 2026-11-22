@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-22T13:05:22+01:00",
-  "current": "A2 onboarding hotový v kódu, další A3 návrat swipem v Nastavení.",
-  "nextStep": "A3: tah od levého okraje zavře podstránku Nastavení; build až po A6.",
+  "updated": "2026-11-22T13:05:55+01:00",
+  "current": "A3 návrat swipem v Nastavení hotový v kódu, další A4 zvuky a haptika.",
+  "nextStep": "A4: rozdělené přepínače, centrální FQFeedback, zkušební karty; build až po A6.",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -579,7 +579,7 @@
       "id": "A2",
       "title": "Onboarding: swipe, hrdina, bílé ikony",
       "status": "pracuje",
-      "commit": "",
+      "commit": "4f68c9d",
       "build": { "number": null, "runId": null, "result": "" },
       "items": [
         { "text": "Stránky jde listovat swipem doleva/doprava, tečky dole, volby se při návratu neztratí", "done": true },
@@ -592,13 +592,13 @@
     {
       "id": "A3",
       "title": "Nastavení: návrat swipem",
-      "status": "cekam",
+      "status": "pracuje",
       "commit": "",
       "build": { "number": null, "runId": null, "result": "" },
       "items": [
-        { "text": "Podstránka Sounds & notifications se zavře tahem od levého okraje doprava (sleduje prst), tlačítko ‹ Settings zůstává", "done": false }
+        { "text": "Podstránka Sounds & notifications se zavře tahem od levého okraje doprava (sleduje prst), tlačítko ‹ Settings zůstává", "done": true }
       ],
-      "note": ""
+      "note": "Zbývá build. Podstránka nemá NavigationStack (list má vlastní krajinu a zavírání tahem dolů), proto vlastní gesto od levého okraje (32 pt). Na iPhonu otestovat: v Sounds & notifications táhnout od levého okraje doprava, stránka jde s prstem; krátký tah zajede zpět, delší (asi 100 pt) nebo rychlý švih vrátí na Settings; svislé rolování a tah dolů na zavření dál fungují; tlačítko ‹ Settings zůstává."
     },
     {
       "id": "A4",

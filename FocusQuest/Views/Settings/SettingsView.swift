@@ -18,18 +18,29 @@ struct SettingsView: View {
     @State private var isResetting = false
     /// Skutecny stav povoleni notifikaci v iOS.
     @State private var notifications = NotificationPermission.notDetermined
+    /// Jak daleko hrac tahne podstranku od leveho okraje doprava (navrat zpet jako v iOS).
+    @State private var backDrag: CGFloat = 0
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.openURL) private var openURL
+
+    /// Tah musi zacit tesne u leveho okraje (jako systemovy navrat zpet).
+    private static let edgeWidth: CGFloat = 32
 
     var body: some View {
         ScreenScaffold {
             if showsSounds {
-                soundsPage.transition(.move(edge: .trailing).combined(with: .opacity))
+                soundsPage
+                    .offset(x: backDrag)
+                    .transition(.move(edge: .trailing).combined(with: .opacity))
             } else {
                 mainPage.transition(.move(edge: .leading).combined(with: .opacity))
             }
         }
         .animation(.easeOut(duration: 0.25), value: showsSounds)
+        // Podstranka nema NavigationStack (list ma vlastni krajinu a tah dolu), proto navrat
+        // tahem od leveho okraje resi vlastni gesto: stranka jde s prstem, po ~100 pt nebo
+        // rychlem svihu se vrati na Nastaveni, jinak pruzne zajede zpet. Svisle rolovani neblokuje.
+        .simultaneousGesture(edgeBackGesture, including: showsSounds ? .all : .subviews)
         // Zavreni tahem dolu; ne behem potvrzeni "Reset progress" a ne behem mazani.
         // VoiceOver escape: ze stranky zvuku zpet na Nastaveni, z hlavni stranky zavrit.
         .fqSheetDismissal(blocked: showsResetConfirmation || isResetting) {
@@ -39,7 +50,30 @@ struct SettingsView: View {
         // Navrat z Nastaveni iPhonu: prepinace ukazi skutecny stav.
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { Task { notifications = await NotificationPermission.current() } }
-        }    }
+        }
+    }
+
+    private var edgeBackGesture: some Gesture {
+        DragGesture(minimumDistance: 10, coordinateSpace: .global)
+            .onChanged { value in
+                guard showsSounds, value.startLocation.x < Self.edgeWidth else { return }
+                // Jen vodorovny tah doprava; svisly tah dal roluje stranku.
+                guard backDrag > 0 || value.translation.width > abs(value.translation.height) else { return }
+                backDrag = max(0, value.translation.width)
+            }
+            .onEnded { value in
+                guard backDrag > 0 else { return }
+                // Asi ctvrtina sirky telefonu, nebo rychly svih.
+                if value.translation.width > 100 || value.predictedEndTranslation.width > 220 {
+                    withAnimation(.easeOut(duration: 0.25)) {
+                        showsSounds = false
+                        backDrag = 0
+                    }
+                } else {
+                    withAnimation(FQMotion.pop) { backDrag = 0 }
+                }
+            }
+    }
 
     // MARK: - Hlavni stranka
 
