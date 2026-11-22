@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-22T16:32:11+01:00",
-  "current": "Build #59 prošel: v CI přibylo 6 screenshotů mapy s ukázkovým postupem (jen Debug), poslané ke kontrole.",
-  "nextStep": "Otestovat build #59 na iPhonu (mapa, světy, bossové) a poslat další připomínky.",
+  "updated": "2026-11-22T17:10:00+01:00",
+  "current": "C1 Hrdina v bitvě: implementováno, čeká na commit a build.",
+  "nextStep": "Commit, push a build; pak zkontrolovat screenshoty battle a battle-hit.",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -684,6 +684,23 @@
         { "text": "VoiceOver popisky zastávek a alternativní seznam", "done": true }
       ],
       "note": "Hotovo, build #58 prošel (první build #57 ukázal na screenshotu jen náhradní plochu, opraveno rychlejším generováním, náhledem a uložením do Caches). Na iPhonu otestovat: tažení a pinch-zoom, kamera najede na aktuálního bosse, ťuknutí na zastávku = karta s Fight, tah dolů kartu zavře, terčík vrátí kameru, List přepne na seznam se zámky, vodorovný tah na mapě nepřepíná záložky, první otevření mapy (generování) a druhé (okamžitě), VoiceOver popisky zastávek."
+    },
+    {
+      "id": "C1",
+      "title": "Hrdina v bitvě",
+      "status": "pracuje",
+      "commit": "",
+      "build": { "number": null, "runId": null, "result": "" },
+      "items": [
+        { "text": "Hrdina na scéně proti bossovi, stejné sprity a vybavení jako v Shopu a profilu", "done": true },
+        { "text": "Útok podle zbraně nebo povolání: meč = švih, hůl/Mage = kouzlo, Archer = šíp, Rogue = dýka, Warrior = štít", "done": true },
+        { "text": "Rytmus podle času bitvy: útok každých 5 s, boss se otřese, číslo poškození", "done": true },
+        { "text": "Finální úder a výhra; při útěku hrdina sklopí zbraň a boss uteče", "done": true },
+        { "text": "Zvuky přes Battle sounds, haptika přes Haptics", "done": true },
+        { "text": "Úspora baterie: stojí na pozadí, 2 snímky/s mezi útoky, 30 během útoku", "done": true },
+        { "text": "Reduce Motion: statická scéna, mění se jen HP bar", "done": true }
+      ],
+      "note": "Implementováno, čeká na build."
     }
   ]
 }

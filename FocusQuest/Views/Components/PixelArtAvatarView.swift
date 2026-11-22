@@ -7,10 +7,15 @@ struct PixelArtAvatarView: View {
     var hitFlash = false
     var isEnraged = false
     var size: CGFloat = 112
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
+
+    /// Dychani (~3 snimky/s) stoji s Reduce Motion a kdyz appka neni na obrazovce (setri baterii).
+    private var still: Bool { reduceMotion || scenePhase != .active }
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 0.35, paused: false)) { timeline in
-            let bob = startled ? 0 : sin(timeline.date.timeIntervalSinceReferenceDate * 2.4) * 2
+        TimelineView(.animation(minimumInterval: 0.35, paused: still)) { timeline in
+            let bob = startled || reduceMotion ? 0 : sin(timeline.date.timeIntervalSinceReferenceDate * 2.4) * 2
             Canvas(opaque: false, rendersAsynchronously: true) { context, canvasSize in
                 let rows = SpritePalette.rows(for: sprite, startled: startled)
                 guard let first = rows.first, !first.isEmpty else { return }

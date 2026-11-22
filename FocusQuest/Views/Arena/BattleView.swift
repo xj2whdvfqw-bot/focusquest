@@ -14,7 +14,10 @@ struct BattleView: View {
     @State private var showsBreak = false
     /// 0 -> 1 behem 0,9 s: XP a mince na obrazovce vitezstvi se nacitaji.
     @State private var rewardProgress = 0.0
+    /// Po konci bitvy chvili hraje zaverecna scena (financi uder / utek bosse), az pak prijde okno vysledku.
+    @State private var playsFinale = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
 
     /// Rozmery ladene v Battle Card Lab (webovy prototyp). Pill je tu vlastni, aby se nezmenily ostatni obrazovky.
     private enum Layout {
@@ -26,9 +29,8 @@ struct BattleView: View {
         static let cardPadBottom: CGFloat = 46
         static let cardSpacing: CGFloat = 29
         static let cardBorder: Double = 0.10
-        static let headerHeight: CGFloat = 121
-        static let glowSize: CGFloat = 124
-        static let glowOpacity: Double = 0.12
+        /// Scena hrdina vs. boss (BattleStage).
+        static let stageHeight: CGFloat = 150
         static let spriteSize: CGFloat = 120
         static let bossGap: CGFloat = 8
         static let healthBarWidth: CGFloat = 220
@@ -58,7 +60,17 @@ struct BattleView: View {
     /// Vysledek bitvy (vyhra, utek bosse, chyba): karta bitvy pod oknem uz neni videt.
     private var showsResult: Bool {
         switch model.state {
-        case .victory, .defeated, .penalized: true
+        case .victory, .defeated: !playsFinale
+        case .penalized: true
+        default: false
+        }
+    }
+    private var showsVictoryResult: Bool { isVictory && !playsFinale }
+
+    /// Bezela bitva (hrdina byl na scene videt)?
+    private static func wasFighting(_ state: ArenaState) -> Bool {
+        switch state {
+        case .focusing, .paused, .warningCountdown, .callPaused: true
         default: false
         }
     }
@@ -112,16 +124,17 @@ struct BattleView: View {
             if case let .penalized(reason) = model.state {
                 resultOverlay(icon: "exclamationmark.triangle.fill", title: "Battle stopped", detail: "\(reason) Nothing was taken from you.")
             }
-            if case let .defeated(defeat) = model.state { defeatOverlay(defeat) }
-            if case let .victory(victory) = model.state {
+            if case let .defeated(defeat) = model.state, !playsFinale { defeatOverlay(defeat) }
+            if case let .victory(victory) = model.state, !playsFinale {
                 if showsBreak { breakPanel(victory) } else { victoryOverlay(victory) }
             }
         }
         .preferredColorScheme(.dark)
         .animation(.easeOut(duration: 0.25), value: showsResult)
         // Zvuky a haptika pres FQFeedback: vyhra = fanfara a uspech, utek bosse = sestup a varovani.
-        .fqHaptic(.success, trigger: isVictory) { _, now in now }
-        .fqSound(.victory, trigger: isVictory) { _, now in now }
+        // Fanfara az s oknem vyhry (po financim uderu na scene).
+        .fqHaptic(.success, trigger: showsVictoryResult) { _, now in now }
+        .fqSound(.victory, trigger: showsVictoryResult) { _, now in now }
         .fqHaptic(.warning, trigger: isDefeat) { _, now in now }
         .fqSound(.escape, trigger: isDefeat) { _, now in now }
         // Zacatek bitvy (i navrat z pauzy nebo po zvednuti telefonu): zvuk utoku.
@@ -130,17 +143,38 @@ struct BattleView: View {
         .fqSound(.levelUp, trigger: profileModel.level) { old, new in new > old }
         .animation(FQMotion.spring(reduceMotion: reduceMotion), value: showsBreak)
         .animation(.easeOut(duration: 0.2), value: showsRetreatConfirm)
-        .onChange(of: model.state) { _, value in
+        .onChange(of: model.state) { old, value in
             // Ustupovy dialog nema smysl, kdyz bitva mezitim skoncila.
             if !model.isBattleRunning { showsRetreatConfirm = false }
+            let ended: Bool = switch value {
+            case .victory, .defeated: true
+            default: false
+            }
+            // Konec bitvy na obrazovce: nejdriv zaverecna scena, pak okno vysledku.
+            // S Reduce Motion nebo kdyz se bitva dohrala na pozadi, prijde vysledek hned.
+            if ended, Self.wasFighting(old), !reduceMotion, scenePhase == .active {
+                playsFinale = true
+                Task { @MainActor in
+                    try? await Task.sleep(for: .seconds(BattleStage.finaleSeconds))
+                    finishFinale()
+                }
+            } else if !ended {
+                playsFinale = false
+            }
             // Odmenu uz pripsal model; obrazovka jen napocita XP a mince.
-            if case let .victory(victory) = value {
-                countUpRewards()
+            if case .victory = value {
+                if !playsFinale { countUpRewards() }
             } else {
                 showsBreak = false
                 rewardProgress = 0
             }
         }
+    }
+
+    private func finishFinale() {
+        guard playsFinale else { return }
+        playsFinale = false
+        if isVictory { countUpRewards() }
     }
 
     /// XP a mince se nacitaji od nuly 0,9 s se zpomalenim (s Reduce Motion hned cele).
@@ -219,30 +253,52 @@ struct BattleView: View {
 
     private var bossHeader: some View {
         VStack(spacing: Layout.bossGap) {
-            ZStack {
-                Circle()
-                    .fill(RadialGradient(colors: [boss.accent.opacity(Layout.glowOpacity), Color.clear], center: .center, startRadius: 0, endRadius: Layout.glowSize / 2))
-                    .frame(width: Layout.glowSize, height: Layout.glowSize)
-                PixelArtAvatarView(sprite: .boss(boss.pixelSpriteConfig), hitFlash: false, size: Layout.spriteSize)
-                    .bossBreathing()
-            }
-            .frame(height: Layout.headerHeight)
+            // Hrdina z profilu (vcetne vybaveni z obchodu) proti bossovi; viz BattleStage.
+            BattleStage(
+                boss: stageBoss,
+                appearance: profileModel.profile.avatar,
+                heroClass: profileModel.profile.heroClass,
+                phase: stagePhase,
+                elapsed: elapsed,
+                bossSize: Layout.spriteSize
+            )
+            .frame(height: Layout.stageHeight)
+            .accessibilityHidden(true)
             VStack(spacing: 2) {
-                Text(boss.name)
+                Text(stageBoss.name)
                     .font(.fqHeadline)
                     .foregroundStyle(FQColor.textPrimary)
                     .lineLimit(1)
-                Text("\(boss.tierTitle) · \(durationText)")
+                Text("\(stageBoss.tierTitle) · \(ArenaView.durationText(minutes: stageBoss.maxHP))")
                     .font(.fqMeta)
                     .foregroundStyle(FQColor.textSecondary)
             }
             // Tenky pruh zdravi bez cisla.
-            BossHealthBarView(fraction: bossHealthFraction, tint: boss.accent)
+            BossHealthBarView(fraction: bossHealthFraction, tint: stageBoss.accent)
                 .frame(maxWidth: Layout.healthBarWidth)
                 .padding(.top, FQSpace.xs)
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(boss.name), \(boss.tierTitle), \(durationText)")
+        .accessibilityLabel("\(stageBoss.name), \(stageBoss.tierTitle), \(ArenaView.durationText(minutes: stageBoss.maxHP))")
+    }
+
+    /// Boss na scene: po vyhre ten porazeny (model uz mohl vybrat dalsiho), po uteku ten, co utekl.
+    private var stageBoss: Boss {
+        switch model.state {
+        case let .victory(victory): model.lastBeaten ?? victory.boss
+        case let .defeated(defeat): defeat.boss
+        default: boss
+        }
+    }
+
+    private var stagePhase: BattleStage.Phase {
+        switch model.state {
+        case .focusing, .warningCountdown: .fighting
+        case .paused, .callPaused: .paused
+        case .victory: .won
+        case .defeated: .escaped
+        default: .waiting
+        }
     }
 
     /// Behem bitvy ubyva pruh po sekundach podle odpoctu; jinak ukazuje skutecne HP bosse.

@@ -3,7 +3,7 @@
 Doplňuje `design/CHANGES.md` (zadání sekcí 0–15) a `design/progress.html` (stav, buildy, co otestovat).
 Tady je to, co v nich není: rozhodnutí, která padla během práce, otevřené body a známé pasti.
 
-Stav k 22. 11. 2026: větev `phase3-duolingo`, poslední zelený build #58 (B1–B3: nové světy a mapa). Všechny sekce z CHANGES.md
+Stav k 22. 11. 2026: větev `phase3-duolingo`, poslední zelený build #59 (B1–B3: nové světy a mapa; C1 hrdina v bitvě čeká na build). Všechny sekce z CHANGES.md
 a všechny opravy z auditu jsou hotové.
 
 ## 1. Rozhodnutí
@@ -81,6 +81,32 @@ a všechny opravy z auditu jsou hotové.
 - **Kontrola integrity (jailbreak, debugger) je úplně odstraněná.** Zůstala jen kontrola posunu hodin v bitvě
   (`AntiCheatRules.clockIsTampered`).
 - Zabití aplikace během bitvy: bitva se ztratí. Při dalším spuštění se zruší notifikace „Victory!“ a ukončí Live Activity.
+- **Hrdina v bitvě (C1, `BattleStage`)**: v hlavičce karty bitvy stojí vlevo hrdina z profilu, vpravo boss.
+  - Hrdina se skládá ze stejných vrstev jako v Shopu a profilu (`AvatarSprite.layers`), jen rozdělených na tělo a zbraň
+    (`AvatarSprite.battleLayers`), aby se zbraň dala natočit a sklopit.
+  - Druh útoku (`HeroAttack`) určuje nasazená zbraň, jinak povolání:
+
+    | Zbraň / povolání | Útok |
+    |---|---|
+    | Wooden Sword, Excalibur | švih mečem, oblouk přes bosse |
+    | Magic Staff, Mage | zářící koule se stopou, záblesk |
+    | Archer | pixelový šíp |
+    | Rogue | dvě rychlá bodnutí dýkou |
+    | Warrior bez meče | výpad se štítem |
+
+  - Rytmus: útok každých 5 s času bitvy (`BattleStage.attackInterval`). Boss zabliká, otřese se a vyskočí číslo poškození
+    (~10 HP za sekundu bitvy, každý 7. útok kritický ×2). Číslo je jen efekt, pruh zdraví dál ubývá podle odpočtu.
+  - Výhra: finální úder, boss se skácí a zmizí, „K.O.!“ a hrdina vyskočí. Okno výhry (a fanfára) přijde až po 1,8 s.
+    Útěk bosse (ústup, zvednutý telefon, došlá pauza): hrdina sklopí zbraň, boss se otočí a odběhne, pak okno „escaped“.
+    Když bitva skončí na pozadí nebo je zapnuté Reduce Motion, okno výsledku přijde hned.
+  - Zvuky přes Battle sounds: běžný útok = krátký zvuk útoku, finální úder = zásah. Haptika (přepínač Haptics):
+    finální úder = silný ťuk, výhra = úspěch, útěk = varování. **Běžné útoky záměrně nevibrují:** telefon leží displejem
+    dolů na stole a vibrace každých 5 s by rušila soustředění.
+  - Baterie: scéna se počítá z hodin v jednom `TimelineView`, žádné opakované animace. Během útoku 30 snímků/s,
+    mezi útoky 2 snímky/s (hrdina přešlápne o pixel), na pozadí a se zamčeným telefonem stojí.
+    Dýchání pixelových spritů (`PixelArtAvatarView`, ~3 snímky/s) se nově zastaví na pozadí a s Reduce Motion v celé appce.
+  - Reduce Motion: statická scéna bez útoků a čísel, mění se jen pruh zdraví.
+  - CI screenshot `battle-hit` (jen Debug) ukazuje scénu zastavenou uprostřed kritického zásahu.
 
 ### Vzhled
 - **Koncentrické rohy:** vnitřní poloměr = vnější − odsazení.

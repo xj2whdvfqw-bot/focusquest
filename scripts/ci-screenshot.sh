@@ -90,9 +90,10 @@ shoot() {
 
 # Kazda polozka je "rezim:zalozka". Appka ma vynuceny tmavy rezim, svetle snimky by byly stejne.
 # "creator" neni zalozka, ale onboarding pri prvnim spusteni.
+# "battle-hit" = bitva se scenou zastavenou uprostred utoku (viz BattleStage.debugFrozenAt).
 # "map-…" = mapa Path s ukazkovym postupem (viz ArenaViewModel.debugMapProgress a PathTabView.debugMapMode).
 # Poradi = priorita: kdyz je simulator pomaly a krok narazi na limit, chybi az ty posledni.
-shoot "" "$MIN_BYTES" dark:arena dark:fight dark:battle dark:path dark:creator dark:profile dark:shop dark:stats dark:settings dark:map-forest dark:map-reef dark:map-card dark:map-school dark:map-orbit dark:map-overview
+shoot "" "$MIN_BYTES" dark:arena dark:fight dark:battle dark:battle-hit dark:path dark:creator dark:profile dark:shop dark:stats dark:settings dark:map-forest dark:map-reef dark:map-card dark:map-school dark:map-orbit dark:map-overview
 
 # Nejmensi podporovany displej (iPhone SE 3. gen., 375 x 667 bodu): stejne obrazovky na malem iPhonu.
 # Kdyz CI simulator SE nema, krok se jen preskoci.

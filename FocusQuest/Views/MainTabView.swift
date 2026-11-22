@@ -20,7 +20,7 @@ private enum FocusQuestTab: String, CaseIterable, Identifiable {
     static var initial: FocusQuestTab {
         switch launchArgument {
         case "settings": return .profile
-        case "battle", "fight": return .arena
+        case "battle", "battle-hit", "fight": return .arena
         case let value? where value.hasPrefix("map-"): return .path
         default: break
         }
@@ -114,7 +114,7 @@ struct MainTabView: View {
                 // Appka mohla byt ukoncena uprostred bitvy: stara notifikace "Victory!" a Live Activity pryc.
                 await container.cleanUpAfterTermination()
                 if FocusQuestTab.launchArgument == "settings" { settingsPresenter.isPresented = true }
-                if FocusQuestTab.launchArgument == "battle" { battlePresenter.isPresented = true }
+                if FocusQuestTab.launchArgument?.hasPrefix("battle") == true { battlePresenter.isPresented = true }
                 if FocusQuestTab.launchArgument == "fight" { battlePresenter.openFightSheet() }
                 await presentHeroCreatorIfNeeded()
             }
