@@ -20,6 +20,9 @@ struct SettingsView: View {
     @State private var notifications = NotificationPermission.notDetermined
     /// Jak daleko hrac tahne podstranku od leveho okraje doprava (navrat zpet jako v iOS).
     @State private var backDrag: CGFloat = 0
+    /// Debug: vysledek "Test notifications" a seznam naplanovanych notifikaci.
+    @State private var debugNotificationStatus: String?
+    @State private var debugPending: [String]?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.openURL) private var openURL
@@ -140,6 +143,7 @@ struct SettingsView: View {
         }
         #if DEBUG
         ScreenSection(title: "Debug", detail: "Not in the release build") { debugCard }
+        ScreenSection(title: "Debug notifications") { debugNotificationsCard }
         #endif
         footer
     }
@@ -168,6 +172,43 @@ struct SettingsView: View {
                     ForEach(Self.tierLevels, id: \.level) { tier in
                         debugButton("\(tier.name) \(tier.level)") { profile.debugSetLevel(tier.level) }
                     }
+                }
+            }
+            .padding(.vertical, FQSpace.md)
+        }
+    }
+
+    /// Jen v Debug buildu: kazdy typ notifikace za 5, 7 a 9 s (appku pak zamknout nebo dat na pozadi)
+    /// a seznam naplanovanych notifikaci s casem, kdy prijdou.
+    private var debugNotificationsCard: some View {
+        card {
+            VStack(alignment: .leading, spacing: FQSpace.sm) {
+                Text("Victory, Break is over and Daily reminder in 5, 7 and 9 s. Lock the phone to see the banners.")
+                    .font(.fqMeta)
+                    .foregroundStyle(FQColor.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                ChipFlow(spacing: FQSpace.sm) {
+                    debugButton("Test notifications") {
+                        Task {
+                            let scheduled = await BattleNotificationService().scheduleTestNotifications()
+                            notifications = await NotificationPermission.current()
+                            debugNotificationStatus = scheduled ? "Scheduled 3 test notifications." : "Not allowed in iOS: nothing scheduled."
+                            debugPending = await BattleNotificationService().pendingSummary()
+                        }
+                    }
+                    debugButton("Show pending") {
+                        Task { debugPending = await BattleNotificationService().pendingSummary() }
+                    }
+                }
+                if let debugNotificationStatus {
+                    Text(debugNotificationStatus).font(.fqMeta).foregroundStyle(FQColor.textPrimary)
+                }
+                if let debugPending {
+                    Text(debugPending.isEmpty ? "No pending notifications" : debugPending.joined(separator: "\n"))
+                        .font(.fqMeta)
+                        .monospacedDigit()
+                        .foregroundStyle(FQColor.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
             .padding(.vertical, FQSpace.md)
@@ -299,10 +340,9 @@ struct SettingsView: View {
         }
         ScreenSection(title: "Notifications") {
             card {
-                if notifications == .denied {
-                    notificationsOffRow
-                    HairlineDivider()
-                }
+                // Skutecny stav povoleni v iOS a cesta, jak ho zmenit.
+                notificationStatusRow
+                HairlineDivider()
                 Group {
                     toggleRow("Daily reminder", detail: "A nudge at 17:00 if you haven't focused", isOn: notificationBinding(\.isDailyReminderEnabled))
                     HairlineDivider()
@@ -437,25 +477,42 @@ struct SettingsView: View {
     }
 
     /// Notifikace vypnute v iOS: vysvetleni a odkaz do Nastaveni iPhonu.
-    private var notificationsOffRow: some View {
-        HStack(spacing: FQSpace.md) {
-            Image(systemName: "bell.slash")
+    /// Stav povoleni notifikaci v iOS: povoleno / jeste se neptal (Allow) / tiche (bannery vypnute)
+    /// nebo vypnute (Open Settings otevre nastaveni notifikaci teto appky).
+    private var notificationStatusRow: some View {
+        let (icon, title, detail): (String, String, String) = switch notifications {
+        case .allowed: ("bell", "Notifications allowed", "Battle results, breaks and the reminder can reach you")
+        case .notDetermined: ("bell", "Not allowed yet", "iOS will ask once")
+        case .silent: ("bell.badge", "Banners are off", "They only land quietly in Notification Center")
+        case .denied: ("bell.slash", "Notifications are off", "Turn them on in iPhone Settings")
+        }
+        return HStack(spacing: FQSpace.md) {
+            Image(systemName: icon)
                 .font(.system(size: 20, weight: .regular))
                 .foregroundStyle(FQColor.textPrimary)
                 .frame(width: 24, height: 24)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
-                Text("Notifications are off").font(.fqBody).foregroundStyle(FQColor.textPrimary)
-                Text("Turn them on in iPhone Settings").font(.fqMeta).foregroundStyle(FQColor.textSecondary)
+                Text(title).font(.fqBody).foregroundStyle(FQColor.textPrimary)
+                Text(detail).font(.fqMeta).foregroundStyle(FQColor.textSecondary).fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: FQSpace.sm)
-            Button("Open Settings") {
-                if let url = URL(string: UIApplication.openNotificationSettingsURLString) { openURL(url) }
+            switch notifications {
+            case .allowed:
+                Image(systemName: "checkmark.circle.fill").font(.system(size: 22)).foregroundStyle(FQColor.accent).accessibilityHidden(true)
+            case .notDetermined:
+                Button("Allow") { Task { notifications = await NotificationPermission.request() } }
+                    .buttonStyle(ShopButtonStyle())
+            case .silent, .denied:
+                Button("Open Settings") {
+                    if let url = URL(string: UIApplication.openNotificationSettingsURLString) { openURL(url) }
+                }
+                .buttonStyle(ShopButtonStyle())
             }
-            .buttonStyle(ShopButtonStyle())
         }
         .padding(.vertical, FQSpace.sm)
         .frame(minHeight: 44)
+        .accessibilityElement(children: .contain)
     }
 
     /// Prepinac notifikace ukazuje skutecny stav: kdyz iOS notifikace blokuje, je vypnuty.

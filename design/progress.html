@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-22T13:10:05+01:00",
-  "current": "A4 zvuky a haptika hotové v kódu, další A5 notifikace.",
-  "nextStep": "A5: oprava notifikací, stav oprávnění, Test notifications v Debug; build až po A6.",
+  "updated": "2026-11-22T13:11:48+01:00",
+  "current": "A5 notifikace hotové v kódu, další A6 tab bar a swipe mezi taby.",
+  "nextStep": "A6: squash bubliny, swipe mezi taby, Reduce Motion; pak push a build.",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -604,7 +604,7 @@
       "id": "A4",
       "title": "Zvuky a haptika",
       "status": "pracuje",
-      "commit": "",
+      "commit": "f354ff1",
       "build": { "number": null, "runId": null, "result": "" },
       "items": [
         { "text": "Samostatné přepínače: Tap sounds, Haptics, Battle sounds, Reward sounds (+ Alarm sound) a hlasitost efektů", "done": true },
@@ -617,15 +617,15 @@
     {
       "id": "A5",
       "title": "Notifikace",
-      "status": "cekam",
+      "status": "pracuje",
       "commit": "",
       "build": { "number": null, "runId": null, "result": "" },
       "items": [
-        { "text": "Příčina a oprava plánování lokálních notifikací", "done": false },
-        { "text": "Debug: tlačítko Test notifications (každý typ za 5 s)", "done": false },
-        { "text": "Nastavení: stav oprávnění a tlačítko do systémového nastavení", "done": false }
+        { "text": "Příčina a oprava plánování lokálních notifikací", "done": true },
+        { "text": "Debug: tlačítko Test notifications (každý typ za 5 s)", "done": true },
+        { "text": "Nastavení: stav oprávnění a tlačítko do systémového nastavení", "done": true }
       ],
-      "note": ""
+      "note": "Zbývá build. Jen lokální notifikace, aps-environment v appce není. Příčiny: povolení se ptalo jen v onboardingu (dalo se přeskočit) nebo až při startu bitvy, přepínače v Nastavení svítily jako zapnuté i bez povolení, chyby plánování se zahazovaly a zrušení bitvy mohlo proběhnout během plánování (Victory! pak přišlo i po ústupu). Teď se každé plánování nejdřív zeptá, služba je actor, chyby jdou do logu, Nastavení ukazuje skutečný stav (Allowed / Not allowed yet + Allow / Banners off / Off + Open Settings). Na iPhonu: Settings › Debug notifications › Test notifications, zamknout telefon, během 5–9 s přijdou 3 notifikace; Show pending ukáže naplánované s časem."
     },
     {
       "id": "A6",

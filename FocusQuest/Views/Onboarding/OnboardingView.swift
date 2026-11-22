@@ -183,7 +183,7 @@ struct OnboardingView: View {
                 // Senzor polohy (CoreMotion) systemove povoleni nepotrebuje, proto jen informace bez prepinace.
                 motionInfoRow
                 HairlineDivider()
-                permissionRow("Notifications", detail: notificationsDetail, isOn: notifications == .allowed) {
+                permissionRow("Notifications", detail: notificationsDetail, isOn: notifications == .allowed || notifications == .silent) {
                     if notifications == .denied { openNotificationSettings() }
                     else { Task { notifications = await NotificationPermission.request() } }
                 }
