@@ -28,8 +28,11 @@ struct UserProfile: Codable, Sendable {
         case ownedBackgroundIDs, backgroundID
     }
 
+    /// Novy hrac (i po Reset progress) zacina s pozadim Daybreak; World scenes si muze vybrat v Shopu.
     static func fresh(deviceID: String) -> UserProfile {
-        UserProfile(userID: deviceID, username: "NewFocuser", title: "Novice Focuser", heroClass: .warrior, avatarMatrix: [], dailyFocusGoalMinutes: 60)
+        var profile = UserProfile(userID: deviceID, username: "NewFocuser", title: "Novice Focuser", heroClass: .warrior, avatarMatrix: [], dailyFocusGoalMinutes: 60)
+        profile.backgroundID = ShopBackground.dawn.rawValue
+        return profile
     }
 }
 

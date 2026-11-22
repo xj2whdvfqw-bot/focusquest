@@ -13,7 +13,7 @@ final class BattlePresenter {
     /// Co otevrit, az se obrazovka bitvy zavre (z prestavky: "Same again" a "Change boss").
     var afterBattle: AfterBattle?
 
-    enum AfterBattle { case fightSheet, path }
+    enum AfterBattle { case fightSheet, path, home }
 
     /// Otevre Fight sheet pro uz vybraneho bosse.
     func openFightSheet() {

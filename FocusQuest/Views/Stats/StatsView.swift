@@ -57,7 +57,7 @@ struct StatsView: View {
             metric("Focus hours", value: focusHours)
         }
         .padding(Layout.metricsInset)
-        .glassCard()
+        .fqCard()
     }
 
     private func metric(_ title: String, value: String) -> some View {
@@ -122,7 +122,7 @@ struct StatsView: View {
                     }
                 }
                 .padding(Layout.cardPadding)
-                .glassCard()
+                .fqCard()
             }
         }
     }
@@ -150,6 +150,6 @@ struct StatsView: View {
             .buttonStyle(.fqPress)
         }
         .padding(Layout.cardPadding)
-        .glassCard()
+        .fqCard()
     }
 }

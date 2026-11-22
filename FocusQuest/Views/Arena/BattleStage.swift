@@ -136,12 +136,10 @@ struct BattleStage: View {
             if let impact {
                 try? await Task.sleep(for: .seconds(impact))
                 guard !Task.isCancelled else { return }
-                switch current.kind {
-                case .attack: FQFeedback.shared.play(.attack)
-                case .finalBlow:
+                // Bezny utok je bez zvuku (zvuk poskozeni byl odstranen); zni jen financi uder.
+                if current.kind == .finalBlow {
                     FQFeedback.shared.play(.hit)
                     FQFeedback.shared.haptic(.heavy)
-                case .escape: break
                 }
             }
             try? await Task.sleep(for: .seconds(current.duration - (impact ?? 0)))

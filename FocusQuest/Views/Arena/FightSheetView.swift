@@ -101,7 +101,7 @@ struct FightSheetView: View {
     private var studyingSection: some View {
         VStack(alignment: .leading, spacing: Layout.labelGap) {
             HStack {
-                sectionLabel("Studying")
+                sectionLabel("Focusing")
                 Spacer(minLength: 0)
                 if !subjects.isEmpty {
                     Button(isEditing ? "Done" : "Edit") {

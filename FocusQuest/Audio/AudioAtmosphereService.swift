@@ -178,7 +178,7 @@ final class AudioAtmosphereService: NSObject, AudioAtmosphereServiceProtocol, AV
     }
 
     /// Skladba v bundlu: .m4a (AAC z CI), pro jistotu i puvodni .mp3.
-    private static func loopURL(_ resource: String) -> URL? {
+    static func loopURL(_ resource: String) -> URL? {
         Bundle.main.url(forResource: resource, withExtension: "m4a") ?? Bundle.main.url(forResource: resource, withExtension: "mp3")
     }
 
@@ -277,7 +277,7 @@ final class AudioAtmosphereService: NSObject, AudioAtmosphereServiceProtocol, AV
         return wav(samples: samples, sampleRate: rate)
     }
 
-    private static func wav(samples: [Int16], sampleRate: Int) -> Data {
+    static func wav(samples: [Int16], sampleRate: Int) -> Data {
         let bytes = samples.withUnsafeBytes { Data($0) }
         var data = Data("RIFF".utf8)
         data.appendLE(UInt32(36 + bytes.count))

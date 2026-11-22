@@ -4,7 +4,7 @@ import UIKit
 /// Jedno misto pro zvukove efekty a haptiku v cele appce.
 /// Kazdy zvuk patri do jedne skupiny s vlastnim prepinacem v Nastaveni:
 ///  - Tap sounds: klepnuti na tlacitka a ovladaci prvky (FQPressStyle, ShopButtonStyle, prepinace),
-///  - Battle sounds: utok, zasah, vitezstvi, utek bosse, konec prestavky,
+///  - Battle sounds: financi uder, vitezstvi, utek bosse, konec prestavky,
 ///  - Reward sounds: mince, XP, level up, serie v plamenech,
 ///  - Alarm sound: pipani pri zvednuti telefonu (hraje AudioAtmosphereService),
 ///  - Haptics: vsechny vibrace (tlacitka, vysledky, alarm v bitve).
@@ -16,12 +16,12 @@ final class FQFeedback {
     enum Category { case tap, battle, reward, alarm }
 
     enum Sound: CaseIterable {
-        case tap, attack, hit, victory, escape, coin, xp, levelUp, alarm
+        case tap, hit, victory, escape, coin, xp, levelUp, alarm
 
         var category: Category {
             switch self {
             case .tap: .tap
-            case .attack, .hit, .victory, .escape: .battle
+            case .hit, .victory, .escape: .battle
             case .coin, .xp, .levelUp: .reward
             case .alarm: .alarm
             }
@@ -30,7 +30,6 @@ final class FQFeedback {
         fileprivate var effect: EffectSounds.Effect {
             switch self {
             case .tap: .click
-            case .attack: .attack
             case .hit: .hit
             case .victory: .victory
             case .escape: .escape

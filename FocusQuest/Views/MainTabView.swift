@@ -194,6 +194,7 @@ struct MainTabView: View {
         switch destination {
         case .fightSheet: battlePresenter.openFightSheet()
         case .path: switchTab(to: .path)
+        case .home: switchTab(to: .arena)
         }
     }
 

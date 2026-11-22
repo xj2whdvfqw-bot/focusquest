@@ -16,8 +16,12 @@ enum FQChipMetrics {
 extension View {
     /// Vzhled cipu pro libovolny popisek (text, ikona s textem). Sirka podle obsahu.
     func fqChip(selected: Bool, compact: Bool = false) -> some View {
-        self
-            .fqFont(size: compact ? 14 : 15, weight: selected ? .bold : .medium, design: .rounded)
+        // Sirka je vzdy podle tucneho popisku: vyber cip nerozsiri, takze se v ChipFlow nic nezalomi
+        // jinak a poradi polozek zustava pevne (vyber jen zvyrazni).
+        ZStack {
+            self.fqFont(size: compact ? 14 : 15, weight: .bold, design: .rounded).hidden()
+            self.fqFont(size: compact ? 14 : 15, weight: selected ? .bold : .medium, design: .rounded)
+        }
             .foregroundStyle(selected ? Color.white : FQColor.textPrimary)
             .lineLimit(1)
             .padding(.horizontal, compact ? FQChipMetrics.compactPadding : FQChipMetrics.padding)

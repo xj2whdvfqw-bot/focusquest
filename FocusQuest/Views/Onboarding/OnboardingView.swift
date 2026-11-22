@@ -81,11 +81,11 @@ struct OnboardingView: View {
             heading("Put your phone down.\nBeat the boss.")
             VStack(alignment: .leading, spacing: FQSpace.lg) {
                 rule("iphone", title: "Face-down on the desk", detail: "Every boss has a fixed time. Lie still, it loses HP.")
-                rule("flame", title: "Picked it up?", detail: "10 seconds to put it back. The first slip is forgiven.")
+                rule("flame", title: "Picked it up?", detail: "10 seconds to put it back, or the boss escapes.")
                 rule("trophy", title: "Win", detail: "XP, coins and the next boss on your path.")
             }
             .padding(FQSpace.lg)
-            .glassCard()
+            .fqCard()
             ctaButton("Got it") { go(to: 2) }
         }
     }
@@ -162,7 +162,7 @@ struct OnboardingView: View {
                 HeroLookEditor(appearance: profile.profile.avatar) { profile.updateAvatar($0) }
             }
             .padding(FQSpace.lg)
-            .glassCard()
+            .fqCard()
             Text("You can change all of this later on the Hero tab.")
                 .font(.fqMeta)
                 .foregroundStyle(FQColor.textSecondary)
@@ -190,7 +190,7 @@ struct OnboardingView: View {
             }
             .padding(.horizontal, FQSpace.lg)
             .padding(.vertical, FQSpace.xs)
-            .glassCard()
+            .fqCard()
             ctaButton("Start my quest", action: onFinish)
         }
     }

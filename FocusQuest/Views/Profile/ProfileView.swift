@@ -73,7 +73,7 @@ struct ProfileView: View {
         }
         .padding(FQSpace.lg)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .glassCard()
+        .fqCard()
     }
 
     private var identityCard: some View {
@@ -110,13 +110,15 @@ struct ProfileView: View {
         }
         .padding(.horizontal, FQSpace.lg)
         .padding(.vertical, FQSpace.xs)
-        .glassCard()
+        .fqCard()
     }
 
     private var dailyTargetCard: some View {
         VStack(spacing: FQSpace.lg) {
             HStack(spacing: FQSpace.lg) {
-                ProgressRing(progress: dailyProgress, lineWidth: 6, animationDuration: 0.15) {
+                // Splnena cast v barve pasku zvolene tridy (stejny token, ze ktereho se kresli pasek hrdiny),
+                // nesplnena tlumene seda.
+                ProgressRing(progress: dailyProgress, lineWidth: 6, animationDuration: 0.15, tint: Color(rgb: AvatarSprite.classAccent(model.profile.heroClass)), track: Color.white.opacity(0.14)) {
                     Text("\(model.todayVerifiedMinutes)").font(.fqLabel).monospacedDigit().foregroundStyle(FQColor.textPrimary)
                 }
                 .frame(width: 56, height: 56)
@@ -148,7 +150,7 @@ struct ProfileView: View {
             .accessibilityValue("\(dailyGoal) minutes")
         }
         .padding(FQSpace.lg)
-        .glassCard()
+        .fqCard()
     }
 }
 
@@ -162,7 +164,7 @@ struct AppearanceEditorSheet: View {
         ScreenScaffold(scene: .enchantedForest) {
             HeroLookEditor(appearance: model.profile.avatar) { model.updateAvatar($0) }
                 .padding(FQSpace.lg)
-                .glassCard()
+                .fqCard()
         }
         .pinnedTopHeader { header }
         // Zmeny se ukladaji hned, takze tah dolu muze okno zavrit vzdy.
@@ -186,6 +188,6 @@ struct AppearanceEditorSheet: View {
             Spacer(minLength: 0)
         }
         .padding(FQSpace.md)
-        .glassCard()
+        .fqCard()
     }
 }

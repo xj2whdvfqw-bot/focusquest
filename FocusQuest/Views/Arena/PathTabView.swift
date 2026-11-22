@@ -422,7 +422,6 @@ private struct MapStopView: View {
     let isSelected: Bool
     let action: () -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var pulse = false
 
     private var ring: Color {
         switch state {
@@ -435,12 +434,8 @@ private struct MapStopView: View {
     var body: some View {
         Button(action: action) {
             ZStack {
-                if state == .current {
-                    Circle()
-                        .stroke(FQColor.cta, lineWidth: 3)
-                        .frame(width: 60, height: 60)
-                        .scaleEffect(pulse ? 1.45 : 1)
-                        .opacity(pulse ? 0 : 0.9)
+                if state == .current, !reduceMotion {
+                    MapStopPulse()
                 }
                 Circle().fill(Color(red: 13 / 255, green: 11 / 255, blue: 28 / 255).opacity(0.78))
                     .frame(width: 60, height: 60)
@@ -467,8 +462,6 @@ private struct MapStopView: View {
         }
         .buttonStyle(.fqPress)
         .animation(FQMotion.quick, value: isSelected)
-        .onAppear { startPulse() }
-        .onChange(of: state) { startPulse() }
         .accessibilityLabel("\(boss.name), \(boss.world.title), boss \(boss.nodeIndex + 1) of \(boss.world.bosses.count), \(ArenaView.durationText(minutes: boss.maxHP)), \(state.accessibilityText)")
         .accessibilityHint("Shows the boss card")
     }
@@ -491,11 +484,25 @@ private struct MapStopView: View {
             EmptyView()
         }
     }
+}
 
-    private func startPulse() {
-        guard state == .current, !reduceMotion else { pulse = false; return }
-        pulse = false
-        withAnimation(.easeOut(duration: 1.4).repeatForever(autoreverses: false)) { pulse = true }
+/// Jemny pulz kolem aktualniho bosse. Pocita se z casu v TimelineView, takze se nezastavi,
+/// kdyz SwiftUI view prekresli nebo UIKit mapa recykluje hosting (repeatForever z onAppear se pak ztracel).
+private struct MapStopPulse: View {
+    private let period: Double = 1.8
+
+    var body: some View {
+        TimelineView(.animation(minimumInterval: 1.0 / 30)) { context in
+            let t = context.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: period) / period
+            let eased = 1 - pow(1 - t, 2)
+            Circle()
+                .stroke(FQColor.cta, lineWidth: 2)
+                .frame(width: 60, height: 60)
+                .scaleEffect(1 + 0.18 * eased)
+                .opacity(0.7 * (1 - eased))
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
     }
 }
 
@@ -680,7 +687,7 @@ private struct WorldCard: View {
         // Behem rozbalovani je mrizka videt jen v rostouci karte, takze se "rozbali" smerem dolu.
         .clipped()
         .padding(FQSpace.lg)
-        .glassCard(tint: world.accent.opacity(0.077))
+        .fqCard()
     }
 
     /// Mrizka 3 sloupcu z obycejnych radku. LazyVGrid tu nebyl: jeho dlazdice se pri animovanem

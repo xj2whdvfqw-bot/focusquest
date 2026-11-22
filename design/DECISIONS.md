@@ -3,7 +3,7 @@
 Doplňuje `design/CHANGES.md` (zadání sekcí 0–15) a `design/progress.html` (stav, buildy, co otestovat).
 Tady je to, co v nich není: rozhodnutí, která padla během práce, otevřené body a známé pasti.
 
-Stav k 22. 11. 2026: větev `phase3-duolingo`, poslední zelený build #61; dříve #60 (C1: hrdina v bitvě); build #61 (D1: opravy z testu po C1) prošel. Všechny sekce z CHANGES.md
+Stav k 22. 11. 2026: větev `phase3-duolingo`, poslední zelený build #61 (D1: opravy z testu po C1); E1 (opravy z testu po D1) čeká na build. Všechny sekce z CHANGES.md
 a všechny opravy z auditu jsou hotové.
 
 ## 1. Rozhodnutí
@@ -19,7 +19,8 @@ a všechny opravy z auditu jsou hotové.
 ### Settings
 - **Styl systémového Nastavení iOS 26** (od D1): `NavigationStack` + `List(.insetGrouped)`, velký nadpis vlevo, sekce s nadpisem
   a footer textem, řádky s ikonou v barevném zaobleném čtverečku (`SettingsRow`, `SettingsIcon`), šedá hodnota vpravo
-  a šipka u podstránek (Sounds & haptics, Music, Notifications). Nativní `Toggle` se systémovou zelenou, list má systémový modrý tint.
+  a šipka u podstránek (Sounds & haptics, Music, Notifications). Nativní `Toggle` se systémovou zelenou. **Systémová modrá v appce není** (od E1): tint Nastavení je bílý (chevron zpět, fajfky,
+  posuvníky), zelené zůstávají jen přepínače (`settingsToggleTint`).
   Liquid Glass lišta a měkký scroll edge efekt nahoře i dole (`scrollEdgeEffectStyle(.soft)` na iOS 26, jinak standard).
   Zpět chevronem i tahem od levého okraje dává `NavigationStack` (vlastní gesto zpět je pryč). Zavření tahem dolů jako dřív.
 - **Reset progress** je v sekci „Your data“ s potvrzovacím dialogem. Smaže:
@@ -96,6 +97,18 @@ a všechny opravy z auditu jsou hotové.
 - Zabití aplikace během bitvy: bitva se ztratí. Při dalším spuštění se zruší notifikace „Victory!“ a ukončí Live Activity.
 - **Pauzy** (od D1): **2 pauzy za bitvu** (`ArenaViewModel.pausesPerBattle`), každá nejdéle 2 minuty. Tlačítko ukazuje
   „Pauses 2/2“, po vyčerpání zůstane vidět, ale je neaktivní. Hovor se do pauz nepočítá.
+- **Zvednutý telefon: jediný odpočet, bez „slip one time“** (od E1). Dřív: první propadlý odpočet v bitvě se odpustil
+  (obrazovka „Slip forgiven“ na 2,2 s), odpočet běžel znovu a teprve druhý propadlý znamenal útěk bosse (`hasUsedSlipGrace`,
+  `slipForgivenSeconds`). Teď odpočet (10 s, `AntiCheatRules.warningSeconds`) proběhne jen jednou: kdo telefon do konce
+  nepoloží, tomu boss uteče (`EscapeReason.phoneStayedUp`). Položení telefonu během odpočtu bitvu obnoví jako dřív.
+  Stav `warningCountdown` už nemá parametr `forgiven`; text v onboardingu je „10 seconds to put it back, or the boss escapes.“
+- **Konec bitvy bez mezistavu** (od E1): karta bitvy mimo bitvu nemá žádné tlačítko (dřív „Begin Battle“, které problikávalo
+  během K.O. scény, po Retreat a při zavírání). Místo drží neviditelný zástupce, aby scéna neposkočila. Odchod z výsledku
+  (`leave(to:)` v `BattleView`) kartu schová hned (`isLeaving`). Každá nová bitva má čerstvou scénu (`battleSerial` + `.id`),
+  takže se před startem neukáže „K.O.!“ ani ležící boss z minulé bitvy.
+- **Přestávka**: „Next boss“ spustí dalšího bosse, „Same again“ otevře Fight sheet, „Change boss“ vede na Path,
+  **„Done for today“ vede domů na Arenu** (`AfterBattle.home`).
+- Ovládání v kartě bitvy: Pauses a Retreat vycentrované. Debug „Win now“ je malá kapsle v levém dolním rohu obrazovky.
 - **Červená obrazovka zvednutého telefonu** má dole vedlejší tlačítko „Retreat“ (obrys, bez výplně) s potvrzením přímo
   u tlačítka (`confirmationDialog`, v iOS 26 vyrůstá z tlačítka). Potvrzení = boss uteče jako při běžném ústupu.
 - **Live Activity počítá čas a HP sama** (od D1): appka na pozadí neběží, takže `ContentState` nese začátek a konec bitvy
@@ -122,7 +135,9 @@ a všechny opravy z auditu jsou hotové.
   - Výhra: finální úder, boss se skácí a zmizí, „K.O.!“ a hrdina vyskočí. Okno výhry (a fanfára) přijde až po 1,8 s.
     Útěk bosse (ústup, zvednutý telefon, došlá pauza): hrdina sklopí zbraň, boss se otočí a odběhne, pak okno „escaped“.
     Když bitva skončí na pozadí nebo je zapnuté Reduce Motion, okno výsledku přijde hned.
-  - Zvuky přes Battle sounds: běžný útok = krátký zvuk útoku, finální úder = zásah. Haptika (přepínač Haptics):
+  - Zvuky přes Battle sounds: **běžný útok je bez zvuku** (zvuk poškození je od E1 úplně odstraněný: efekt `attack`,
+    jeho syntéza, volání při zásahu i při startu bitvy a ukázka v Nastavení; byl to generovaný tón, soubor neexistoval),
+    finální úder = zásah (`hit`). Haptika (přepínač Haptics):
     finální úder = silný ťuk, výhra = úspěch, útěk = varování. **Běžné útoky záměrně nevibrují:** telefon leží displejem
     dolů na stole a vibrace každých 5 s by rušila soustředění.
   - Baterie: scéna se počítá z hodin v jednom `TimelineView`, žádné opakované animace. Během útoku 30 snímků/s,
@@ -151,6 +166,21 @@ a všechny opravy z auditu jsou hotové.
     - během Reset progress.
   - Rozepsaný nový předmět: tah se zeptá „Discard the new subject?“. Pokus o zavření se zachytí přes UIKit
     (`presentationControllerDidAttemptToDismiss` přes přeposílajícího delegáta), protože SwiftUI na iOS 17 tuhle událost nemá.
+- **Jednotné karty podle Shop › Backgrounds** (od E1): sdílený modifier `fqCard(selected:)` v `GlassSurfaces.swift`.
+  Rozmazané sklo `.ultraThinMaterial`, na světlých pozadích tmavá vrstva rgba(13,11,28,.40), jinak bílá 6 %, okraj bílá 10 % 1 pt,
+  rohy `FQRadius.smallCard`, bez stínu. Používá ho Shop (Gear, náhled, Backgrounds), Hero Profile, Stats, Habits, onboarding
+  a seznam světů. Skleněné `glassCard` zůstává jen pro plovoucí prvky (karta bosse nad mapou, dialogy, panel přestávky, kapsle).
+- **Výběr = bílý rámeček**: nasazený předmět v Gear i používané pozadí mají jen bílý okraj karty 2 pt, žádnou fajfku
+  (u pozadí zůstal text „In use“ místo tlačítka).
+- **Výchozí pozadí nových hráčů je Daybreak** (od E1, `UserProfile.fresh`, i po Reset progress). Stávající profily bez
+  uloženého pozadí dál mají World scenes.
+- **Stats › Habits je kalendář** (od E1): řádek = týden (Po–Ne zleva doprava), nejstarší týden nahoře, dnešek na konci;
+  dny jdou chronologicky jako text. Dřív byl týden sloupec a při čtení po řádcích dny přeskakovaly.
+- **Daily focus target v Hero Profile**: splněná část kruhu má barvu pásku zvolené třídy (`AvatarSprite.classAccent`, stejný
+  token jako pásek hrdiny: Warrior červená, Mage fialová, Archer zelená, Rogue modrá), nesplněná tlumeně šedá. Dřív byl
+  kruh v bílém `accent`, takže nebylo vidět, kolik je splněno.
+- **Pulz aktuálního bosse na mapě** počítá `TimelineView` z hodin (`MapStopPulse`), ne `repeatForever` z `onAppear`, který se
+  při překreslení nebo recyklaci hostingu v UIKit mapě zastavil. Je jemnější (2 pt, zvětšení jen o 18 %) a nesahá k hrdinovi.
 - **Výsledková okna jsou skleněná** (`ResultDialog` v `Views/DesignSystem/Motion.swift`): útěk bosse, vítězství,
   Battle stopped a Call ended.
   - Jemné ztmavení scény 28 % a skleněná karta (`glassCard`, ultraThin materiál), panel přestávky má stejné ztmavení.
@@ -182,7 +212,7 @@ a všechny opravy z auditu jsou hotové.
     a tlačítky. `TabSwipeLock` je odstraněný.
   - každá změna záložky jde přes `switchTab(to:)` (směr a spuštění přechodu ve stejném překreslení).
 - **Zvuky a haptika: jeden centrální `FQFeedback`** (`Audio/FQFeedback.swift`), samostatné přepínače v Settings › Sounds & haptics:
-  - Tap sounds (klik na tlačítka a ovládací prvky), Haptics (všechny vibrace včetně alarmu), Battle sounds (útok, zásah,
+  - Tap sounds (klik na tlačítka a ovládací prvky), Haptics (všechny vibrace včetně alarmu), Battle sounds (finální úder,
     vítězství, útěk bosse, konec přestávky), Reward sounds (mince, XP, level up, série v plamenech), Alarm sound, hlasitost efektů,
   - u každého zapnutého přepínače se rozbalí karta „Try it“ s ukázkou,
   - tlačítka dostávají klik a vibraci přes společný styl (`FQPressStyle` / `TapFeedback`, i `ShopButtonStyle`, dlaždice Path,
@@ -209,6 +239,11 @@ a všechny opravy z auditu jsou hotové.
   a ty jdou do appky (krok „Prevod hudby do AAC“, artefakt `hudba-m4a`). Když `.m4a` v repu je, převod se přeskočí.
   Lo-fi playlist (Calm Currents, Tokyo Sunset, Peaceful Drift) zůstává od HoliznaCC0 pod CC0.
 - **Hudba bitvy**: Off, Lo-fi, Fireplace piano, Study flow, Brown noise, White noise (Settings › Music i Fight sheet).
+  Pořadí je všude pevné, výběr jen zvýrazní. Čip má vždy šířku tučného popisku, takže se vybraný nerozšíří a v `ChipFlow`
+  se nic nezalomí jinam (dřív to vypadalo, že se pořadí mění).
+  Settings › Music (od E1): u každé stopy play/stop s **ukázkou 8 s** (zesílení a zeslabení 1,2 s, `MusicPreview`); jiná ukázka
+  zastaví předchozí, odchod ze stránky zastaví vše. Pod seznamem **posuvník hlasitosti hudby** (`ambientVolume`, ukládá se,
+  platí pro hudbu v bitvě i ukázku). Fajfka vybrané stopy je bílá.
   Fireplace piano a Study flow hrají ve smyčce; 6 s před koncem se skladba spustí znovu potichu a obě se prolnou, takže není slyšet střih.
 - **Notifikace jsou jen lokální** (`UNUserNotificationCenter`), žádný push/APNs: appka je sideloadovaná s bezplatným Apple ID
   a entitlement `aps-environment` nemá. Typy (`BattleNotificationService`, actor):
@@ -324,7 +359,7 @@ a všechny opravy z auditu jsou hotové.
   - CI staví pro Sideloadly konfiguraci Debug, takže v IPA je karta Debug v Settings,
   - v Release je za `#if DEBUG` skrytá,
   - Debug obsahuje „Unlock all worlds“ / „Lock them back“ (`debugUnlockAllWorlds`, v Release se ignoruje)
-    a v běžící bitvě tlačítko „Win now“ (`debugWinNow`): bitva hned skončí výhrou včetně odměn a posunu cesty.
+    a v běžící bitvě malé tlačítko „Win now“ vlevo dole (`debugWinNow`): bitva hned skončí výhrou včetně odměn a posunu cesty.
 - **`containerShape` na iOS 17:**
   - iOS 26 přetížení se nesmí volat mimo `#available(iOS 26.0, *)`, proto `fqContainer` vrací na starších iOS jen `self`,
   - `AnyShape` neumí `strokeBorder`, použít `stroke` + `padding(lineWidth / 2)`.

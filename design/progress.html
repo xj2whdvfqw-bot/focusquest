@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-22T20:08:16+01:00",
-  "current": "D1 Opravy z testu po C1 hotové: build #61 prošel.",
-  "nextStep": "Otestovat build #61 na iPhonu podle poznámky v kartě D1.",
+  "updated": "2026-11-22T21:54:39+01:00",
+  "current": "E1 Opravy z testu po D1: kód hotový, commit a build běží.",
+  "nextStep": "Počkat na výsledek buildu E1, pak otestovat na iPhonu podle poznámky v kartě E1.",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -726,6 +726,27 @@
       "commit": "7a08b5c",
       "build": { "number": 61, "runId": 45056385732, "result": "úspěch" },
       "note": "Build #61 prošel (IPA, Release kompilace, unit testy). Hudba v AAC: Fireplace piano 9,4 → 4,9 MB, Study flow 4,6 → 2,3 MB. Na iPhonu otestuj: tlačítka na mapě (seznam otevře sheet, ozubené kolo Nastavení), popisky světů a mraky, první bossové nad tab barem, Live Activity se zamčeným telefonem (čas a HP ubývají, po konci výsledek), 2 pauzy, Retreat na červené obrazovce, nové Nastavení (zpět swipem), Battle sounds vypnuté, síla haptiky, obě nové písničky ve smyčce, debug Unlock all worlds a Win now."
+    },
+    {
+      "id": "E1",
+      "title": "Test po D1: bitva, výběr, hudba, karty, statistiky",
+      "status": "build",
+      "items": [
+        { "text": "Bitva: pulz kolem aktuálního bosse na mapě robustní (TimelineView), jemnější a menší", "done": true },
+        { "text": "Bitva: po K.O. a po Retreat se neukáže Begin Battle; nová bitva bez K.O. stavu z minula", "done": true },
+        { "text": "Bitva: zvuk poškození úplně odstraněn (kód, volání, soubor)", "done": true },
+        { "text": "Bitva: Win now malé vlevo dole (jen DEBUG); Pauses a Retreat vycentrované", "done": true },
+        { "text": "Bitva: zvednutý telefon bez slip one time, jeden odpočet, pak útěk", "done": true },
+        { "text": "Break: Change boss → Path, Done for today → Home", "done": true },
+        { "text": "Výběr: Studying → Focusing; pevné pořadí zvuků, jen zvýraznění", "done": true },
+        { "text": "Hudba: ukázka 8 s play/stop s fade, posuvník hlasitosti hudby; bílá fajfka, systémový modrý tint pryč", "done": true },
+        { "text": "Karty: jedna sdílená komponenta podle Shop › Backgrounds; výběr = bílý rámeček bez fajfky", "done": true },
+        { "text": "Výchozí pozadí Daybreak", "done": true },
+        { "text": "Stats › Habits chronologicky; koláč Daily focus target v barvě třídy", "done": true }
+      ],
+      "commit": "",
+      "build": { "number": null, "runId": null, "result": "" },
+      "note": "Kód hotový, build běží. Na iPhonu otestuj: pulz kolem bosse na mapě, K.O. a Retreat bez Begin Battle, nová bitva bez K.O. z minula, zvednutý telefon = jeden odpočet a útěk, Done for today → Home, pevné pořadí hudby ve Fight sheetu, ukázky a hlasitost v Settings › Music, karty a bílé rámečky v Shopu, Habits po řádcích, barevný kruh Daily focus target."
     }
   ]
 }

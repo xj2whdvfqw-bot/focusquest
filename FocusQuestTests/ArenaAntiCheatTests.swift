@@ -16,22 +16,18 @@ final class ArenaAntiCheatTests: XCTestCase {
         XCTAssertGreaterThan(rig.audio.warningCount, 0)
     }
 
-    func testFirstExpiredSlipIsForgivenSecondLetsBossEscape() async {
+    /// Zadne "Slip forgiven": prvni propadly odpocet zvednuteho telefonu znamena utek bosse.
+    func testFirstExpiredCountdownLetsBossEscape() async {
         let rig = makeRig(hapticsEnabled: true)
         rig.model.warningSeconds = 1
-        rig.model.slipForgivenSeconds = 0.3
         rig.model.startSession()
         await waitForSession(rig.model)
         await rig.model.handlePosture(.lyingStill)
         await rig.model.handlePosture(.lifted)
-        var sawForgiven = false
-        for _ in 0..<60 {
-            if case .warningCountdown(_, _, true) = rig.model.state { sawForgiven = true }
+        for _ in 0..<40 {
             if case .defeated = rig.model.state { break }
             try? await Task.sleep(for: .milliseconds(50))
         }
-        XCTAssertTrue(sawForgiven)
-        XCTAssertTrue(rig.model.hasUsedSlipGrace)
         guard case let .defeated(defeat) = rig.model.state else { return XCTFail("Boss did not escape") }
         XCTAssertEqual(defeat.reason, .phoneStayedUp)
         // Hlaseni porusení bezi asynchronne; na pomalem CI runneru 50 ms nestaci, cekame az 1 s.
@@ -111,7 +107,7 @@ final class ArenaAntiCheatTests: XCTestCase {
         rig.model.stopSession()
     }
 
-    func testCallDuringLiftedWarningCancelsTheWarningWithoutUsingGrace() async {
+    func testCallDuringLiftedWarningCancelsTheWarning() async {
         let rig = makeRig(hapticsEnabled: false)
         rig.model.startSession()
         await waitForSession(rig.model)
@@ -120,7 +116,6 @@ final class ArenaAntiCheatTests: XCTestCase {
         XCTAssertTrue(isWarning(rig.model.state))
         rig.model.handleCall(active: true)
         guard case .callPaused(_, false) = rig.model.state else { return XCTFail("Call did not replace the warning") }
-        XCTAssertFalse(rig.model.hasUsedSlipGrace)
         rig.model.stopSession()
     }
 

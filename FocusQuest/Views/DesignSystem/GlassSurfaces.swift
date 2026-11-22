@@ -78,6 +78,40 @@ extension View {
     }
 }
 
+extension View {
+    /// Jednotna obdelnikova karta appky podle vzoru Shop › Backgrounds: rozmazane sklo (.ultraThinMaterial),
+    /// na svetlych pozadich tmava vrstva rgba(13,11,28,.40), jinak bila 6 %, tenky okraj bila 10 %, rohy
+    /// FQRadius.smallCard, bez stinu. Vybrana (nasazena) karta ma jen bily okraj 2 pt, zadnou fajfku.
+    func fqCard(selected: Bool = false, radius: CGFloat = FQRadius.smallCard) -> some View {
+        modifier(FQCardModifier(radius: radius, selected: selected))
+    }
+}
+
+struct FQCardModifier: ViewModifier {
+    let radius: CGFloat
+    var selected = false
+    @Environment(\.shopBackground) private var shopBackground
+
+    static let darkOnBright = Color(red: 13 / 255, green: 11 / 255, blue: 28 / 255).opacity(0.40)
+
+    func body(content: Content) -> some View {
+        let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
+        let bright = shopBackground?.isBright == true
+        return content
+            // Vnorene nahledy a tlacitka maji rohy soustredne s kartou.
+            .fqContainer(radius: radius)
+            .background {
+                ZStack {
+                    shape.fill(.ultraThinMaterial)
+                    shape.fill(bright ? Self.darkOnBright : Color.white.opacity(0.06))
+                }
+            }
+            .overlay {
+                shape.strokeBorder(selected ? Color.white : Color.white.opacity(0.10), lineWidth: selected ? 2 : 1)
+            }
+    }
+}
+
 struct GlassCardModifier: ViewModifier {
     let radius: CGFloat
     let tint: Color?

@@ -16,6 +16,9 @@ struct BattleView: View {
     @State private var rewardProgress = 0.0
     /// Po konci bitvy chvili hraje zaverecna scena (financi uder / utek bosse), az pak prijde okno vysledku.
     @State private var playsFinale = false
+    /// Hrac odchazi z vysledku (zpet, Path, Fight sheet): karta bitvy se uz neukaze ani na chvili
+    /// (driv pri zavirani na ~1 s problikla s tlacitkem "Begin Battle").
+    @State private var isLeaving = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
 
@@ -56,7 +59,6 @@ struct BattleView: View {
     private var isIdle: Bool { if case .idle = model.state { true } else { false } }
     private var isVictory: Bool { if case .victory = model.state { true } else { false } }
     private var isDefeat: Bool { if case .defeated = model.state { true } else { false } }
-    private var isFocusing: Bool { if case .focusing = model.state { true } else { false } }
     /// Vysledek bitvy (vyhra, utek bosse, chyba): karta bitvy pod oknem uz neni videt.
     private var showsResult: Bool {
         switch model.state {
@@ -78,7 +80,7 @@ struct BattleView: View {
         switch model.state {
         case .focusing(let value): value
         case .paused(let value, _): value
-        case .warningCountdown(_, let value, _): value
+        case .warningCountdown(_, let value): value
         case .callPaused(let value, _): value
         default: 0
         }
@@ -112,13 +114,13 @@ struct BattleView: View {
                 }
                 .scrollIndicators(.hidden)
                 // Pod vysledkovym oknem karta bitvy neni (driv pod nim prosvitalo "Begin Battle").
-                .opacity(showsResult ? 0 : 1)
+                .opacity(showsResult || isLeaving ? 0 : 1)
             }
             // Bitva roluje pod stavovy radek stejne jako zalozky.
             StatusBarFade()
             if showsRetreatConfirm { retreatDialog.transition(.opacity) }
-            if case let .warningCountdown(seconds, _, forgiven) = model.state {
-                PhoneLiftedAlarm(seconds: seconds, forgiven: forgiven, graceUsed: model.hasUsedSlipGrace, bossName: boss.name) {
+            if case let .warningCountdown(seconds, _) = model.state {
+                PhoneLiftedAlarm(seconds: seconds, bossName: boss.name) {
                     model.retreat()
                 }
             }
@@ -130,6 +132,10 @@ struct BattleView: View {
             if case let .victory(victory) = model.state, !playsFinale {
                 if showsBreak { breakPanel(victory) } else { victoryOverlay(victory) }
             }
+            #if DEBUG
+            // Jen Debug build: male tlacitko vlevo dole, bitva hned skonci vyhrou vcetne odmen.
+            if model.isBattleRunning, !isWarning, !showsRetreatConfirm { debugWinNowButton }
+            #endif
         }
         .preferredColorScheme(.dark)
         .animation(.easeOut(duration: 0.25), value: showsResult)
@@ -139,8 +145,6 @@ struct BattleView: View {
         .fqSound(.victory, trigger: showsVictoryResult) { _, now in now }
         .fqHaptic(.warning, trigger: isDefeat) { _, now in now }
         .fqSound(.escape, trigger: isDefeat) { _, now in now }
-        // Zacatek bitvy (i navrat z pauzy nebo po zvednuti telefonu): zvuk utoku.
-        .fqSound(.attack, trigger: isFocusing) { _, now in now }
         // Novy level po vyhre.
         .fqSound(.levelUp, trigger: profileModel.level) { old, new in new > old }
         .animation(FQMotion.spring(reduceMotion: reduceMotion), value: showsBreak)
@@ -148,6 +152,8 @@ struct BattleView: View {
         .onChange(of: model.state) { old, value in
             // Ustupovy dialog nema smysl, kdyz bitva mezitim skoncila.
             if !model.isBattleRunning { showsRetreatConfirm = false }
+            // Nova bitva (napr. "Next boss" z prestavky) zase ukaze kartu.
+            if case .awaitingFlatPlacement = value { isLeaving = false }
             let ended: Bool = switch value {
             case .victory, .defeated: true
             default: false
@@ -192,9 +198,38 @@ struct BattleView: View {
     }
 
     private func closeResult() {
+        isLeaving = true
         model.stopSession()
         onExit()
     }
+
+    /// Odchod z vysledku na jine misto (Fight sheet, Path, Home): karta bitvy zustane skryta.
+    private func leave(to destination: BattlePresenter.AfterBattle, prepare: () -> Void = {}) {
+        isLeaving = true
+        model.stopSession()
+        prepare()
+        onExitTo(destination)
+    }
+
+    #if DEBUG
+    /// Debug: male tlacitko v levem dolnim rohu obrazovky (mimo kartu bitvy).
+    private var debugWinNowButton: some View {
+        Button { model.debugWinNow() } label: {
+            Label("Win now", systemImage: "bolt.fill")
+                .font(.fqMeta.weight(.semibold))
+                .foregroundStyle(FQColor.accent)
+                .padding(.horizontal, FQSpace.md)
+                .frame(minHeight: 32)
+                .background(Color.black.opacity(0.55), in: Capsule())
+                .overlay { Capsule().strokeBorder(Color.white.opacity(0.25), lineWidth: 1) }
+        }
+        .buttonStyle(.fqPress)
+        .padding(.leading, FQSpace.md)
+        .padding(.bottom, FQSpace.sm)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+        .accessibilityHint("Debug build only")
+    }
+    #endif
 
     /// Krizek pred bitvou: vlastni bitva se zrusi a obrazovka se zavre.
     private func closeBeforeBattle() {
@@ -265,6 +300,8 @@ struct BattleView: View {
                 bossSize: Layout.spriteSize
             )
             .frame(height: Layout.stageHeight)
+            // Kazda bitva ma cerstvou scenu: zadne K.O. ani lezici boss z minule bitvy.
+            .id(model.battleSerial)
             .accessibilityHidden(true)
             VStack(spacing: 2) {
                 Text(stageBoss.name)
@@ -359,17 +396,11 @@ struct BattleView: View {
     @ViewBuilder private var controls: some View {
         switch model.state {
         case .idle, .penalized, .victory, .defeated:
-            // Kazda bitva se spousti pres Fight sheet (predmet, zvuk, Start). Sem se bezne nedostane;
-            // kdyby ano, tlacitko obrazovku zavre a otevre Fight sheet.
-            Button { onExitTo(.fightSheet) } label: {
-                Label("Begin Battle", systemImage: "play.fill")
-                    .font(.fqHeadline)
-                    .foregroundStyle(FQColor.onCta)
-                    .frame(maxWidth: .infinity)
-                    .frame(minHeight: 56)
-                    .background(FQColor.cta, in: FQRadius.shape(FQRadius.inBattleCard))
-            }
-            .buttonStyle(.fqPress)
+            // Mimo bitvu (K.O. scena, utek bosse, zavirani) zadne tlacitko: bitva se spousti jen pres
+            // Fight sheet. Neviditelne misto drzi vysku karty, aby scena neposkocila.
+            BattleActionButton(symbol: "pause.fill", caption: " ", tone: .neutral) { }
+                .hidden()
+                .accessibilityHidden(true)
         case .awaitingFlatPlacement:
             // Hodiny jeste nebezi, takze zruseni nic nestoji: bitva se zrusi a obrazovka zavre.
             BattleActionButton(symbol: "xmark", caption: "Cancel", tone: .neutral) {
@@ -380,6 +411,7 @@ struct BattleView: View {
             // Hovor pauzu nespotrebuje; jedine, co jde udelat, je ustoupit.
             BattleActionButton(symbol: "flag.fill", caption: "Retreat", tone: .danger) { showsRetreatConfirm = true }
         case .focusing, .paused, .warningCountdown:
+            // Pauses a Retreat vycentrovane v karte.
             HStack(spacing: Layout.actionGap) {
                 if isPaused {
                     BattleActionButton(symbol: "play.fill", caption: "Resume", tone: .accent) { model.resumeBattle() }
@@ -391,11 +423,8 @@ struct BattleView: View {
                         .accessibilityHint(model.hasUsedPause ? "No pauses left in this battle" : "Pause for up to 2 minutes")
                 }
                 BattleActionButton(symbol: "flag.fill", caption: "Retreat", tone: .danger) { showsRetreatConfirm = true }
-                #if DEBUG
-                // Jen Debug build: bitva hned skonci vyhrou vcetne odmen.
-                BattleActionButton(symbol: "bolt.fill", caption: "Win now", tone: .accent) { model.debugWinNow() }
-                #endif
             }
+            .frame(maxWidth: .infinity)
         }
     }
 
@@ -553,9 +582,7 @@ struct BattleView: View {
 
     /// "Keep going" po rozcvicce: zavre vysledek a otevre Fight sheet nejkratsiho neporazeneho bosse.
     private func openKeepGoing(_ next: Boss) {
-        model.stopSession()
-        model.selectBoss(next)
-        onExitTo(.fightSheet)
+        leave(to: .fightSheet) { model.selectBoss(next) }
     }
 
     /// Sklenena dlazdice odmeny: pruhledne sklo (bila 8 % + rozmazani) s jemnym okrajem, cislo se napocita.
@@ -590,15 +617,13 @@ struct BattleView: View {
                 model.startNextBoss(boss)
             },
             onSameAgain: {
-                model.stopSession()
-                model.selectBoss(beaten)
-                onExitTo(.fightSheet)
+                leave(to: .fightSheet) { model.selectBoss(beaten) }
             },
             onChangeBoss: {
-                model.stopSession()
-                onExitTo(.path)
+                leave(to: .path)
             },
-            onDone: closeResult,
+            // "Done for today" vede domu (Arena), ne na Path.
+            onDone: { leave(to: .home) },
             onBreakOver: { model.announceBreakOver() }
         )
         // Notifikace "Break is over" prijde i se zamcenou obrazovkou; po odchodu z prestavky se zrusi.
@@ -792,17 +817,13 @@ struct BattleActionButton: View {
 /// s potvrzenim primo u tlacitka (action sheet, v iOS 26 vyrusta z tlacitka).
 private struct PhoneLiftedAlarm: View {
     let seconds: Double
-    let forgiven: Bool
-    let graceUsed: Bool
     let bossName: String
     let onRetreat: () -> Void
     @State private var confirmsRetreat = false
 
-    private var title: String { forgiven ? "Slip forgiven" : "Put it back on the desk" }
-    private var detail: String {
-        if forgiven { return "Nothing lost this time. Next slip and the boss escapes." }
-        return graceUsed ? "Lay it face-down, or \(bossName) escapes with your loot." : "Lay it face-down. Your first slip in a battle is forgiven."
-    }
+    private let title = "Put it back on the desk"
+    /// Odpocet bezi jen jednou: kdo telefon nepolozi do konce, tomu boss uteče.
+    private var detail: String { "Lay it face-down before the countdown ends, or \(bossName) escapes with your loot." }
 
     var body: some View {
         ZStack {
@@ -813,7 +834,7 @@ private struct PhoneLiftedAlarm: View {
                     .textCase(.uppercase)
                     .tracking(1.2)
                     .foregroundStyle(.white)
-                PulsingCount(text: forgiven ? "0" : "\(Int(ceil(seconds)))")
+                PulsingCount(text: "\(Int(ceil(seconds)))")
                 VStack(spacing: FQSpace.sm) {
                     Text(title)
                         .fqFont(size: 28, weight: .bold, design: .rounded)

@@ -541,6 +541,11 @@ final class ProgressionModelTests: XCTestCase {
         XCTAssertNil(profile.backgroundID)
     }
 
+    func testNewProfileStartsWithDaybreakBackground() {
+        XCTAssertEqual(UserProfile.fresh(deviceID: "t").backgroundID, ShopBackground.dawn.rawValue)
+        XCTAssertEqual(ShopBackground.dawn.name, "Daybreak")
+    }
+
     func testShopSceneLayoutUsesThreePointGrid() {
         let layout = ShopSceneLayout(size: CGSize(width: 402, height: 874), background: .wind)
         XCTAssertEqual(layout.px, 3)
@@ -809,6 +814,10 @@ final class ProgressionModelTests: XCTestCase {
         XCTAssertTrue(thisWeek[4].isToday)
         XCTAssertEqual(thisWeek.map(\.isFuture), [false, false, false, false, false, true, true])
         XCTAssertEqual(grid.focusDays, 2, "Sessions outside the grid do not count")
+        // Habits se ctou po radcich (tyden = radek): dny jdou chronologicky, nejstarsi prvni, dnesek na konci minulych dni.
+        let days = grid.weeks.flatMap { $0 }.map(\.date)
+        XCTAssertEqual(days, days.sorted())
+        XCTAssertEqual(grid.weeks.flatMap { $0 }.last(where: { !$0.isFuture })?.isToday, true)
     }
 
     func testHabitLevelsFollowFocusMinutes() {

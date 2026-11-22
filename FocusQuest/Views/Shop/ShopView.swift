@@ -18,7 +18,6 @@ struct ShopView: View {
         var title: String { self == .gear ? "Gear" : "Backgrounds" }
     }
 
-    private var isBright: Bool { shopBackground?.isBright == true }
 
     private var tryOn: EquipmentItem? { tryOnID.flatMap(EquipmentItem.item(withID:)) }
 
@@ -123,7 +122,7 @@ struct ShopView: View {
         }
         .padding(.horizontal, FQSpace.md)
         .padding(.vertical, FQSpace.sm)
-        .glassCard(radius: FQRadius.smallCard)
+        .fqCard()
     }
 
     private var coinsLabel: some View {
@@ -142,16 +141,11 @@ struct ShopView: View {
             Button {
                 withAnimation(FQMotion.spring(reduceMotion: reduceMotion)) { tryOnID = isTryingOn ? nil : item.id }
             } label: {
-                ZStack(alignment: .topTrailing) {
-                    // Mini hrdina uz s timto predmetem - je hned videt, jak bude vypadat.
-                    HeroAvatarView(appearance: wearing(item), heroClass: model.profile.heroClass, size: 72)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, FQSpace.sm)
-                        .background(FQColor.fill, in: FQRadius.shape(FQRadius.inSmallCard))
-                    if equipped {
-                        Image(systemName: "checkmark.circle.fill").font(.fqLabel).foregroundStyle(FQColor.accent).padding(FQSpace.xs)
-                    }
-                }
+                // Mini hrdina uz s timto predmetem - je hned videt, jak bude vypadat.
+                HeroAvatarView(appearance: wearing(item), heroClass: model.profile.heroClass, size: 72)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, FQSpace.sm)
+                    .background(FQColor.fill, in: FQRadius.shape(FQRadius.inSmallCard))
             }
             .buttonStyle(.fqPress)
             .accessibilityLabel("Try on \(item.name)")
@@ -163,8 +157,11 @@ struct ShopView: View {
             gearButton(item, owned: owned, equipped: equipped)
         }
         .padding(FQSpace.md)
-        .glassCard(radius: FQRadius.smallCard, tint: isTryingOn ? FQColor.accent : nil)
-        // Vybrany predmet se jemne zvedne (s Reduce Motion jen zbarvi).
+        // Stejna karta jako Backgrounds; nasazeny predmet ma jen bily okraj (bez fajfky).
+        .fqCard(selected: equipped)
+        .accessibilityElement(children: .contain)
+        .accessibilityValue(equipped ? "Equipped" : "")
+        // Zkouseny predmet se jemne zvedne (s Reduce Motion beze zmeny).
         .scaleEffect(isTryingOn && !reduceMotion ? 1.02 : 1)
     }
 
@@ -220,7 +217,6 @@ struct ShopView: View {
         let inUse = model.selectedBackground == background
         let owned = background.map { model.owns($0) } ?? true
         let previewing = background != nil && model.previewBackground == background
-        let shape = RoundedRectangle(cornerRadius: FQRadius.smallCard, style: .continuous)
         return HStack(alignment: .top, spacing: 14) {
             ShopSceneThumbnail(background: background)
             VStack(alignment: .leading, spacing: 4) {
@@ -249,25 +245,15 @@ struct ShopView: View {
             .padding(.vertical, 4)
         }
         .padding(FQRadius.Inset.backgroundCard)
-        // Nahled a tlacitka uvnitr maji rohy soustredne s kartou.
-        .fqContainer(radius: FQRadius.smallCard)
-        .background {
-            ZStack {
-                shape.fill(.ultraThinMaterial)
-                // Na svetlych pozadich tmave sklo rgba(13,11,28,.40), jinak jemne svetle.
-                shape.fill(isBright ? Color(red: 13 / 255, green: 11 / 255, blue: 28 / 255).opacity(0.40) : Color.white.opacity(0.06))
-            }
-        }
-        .overlay {
-            shape.strokeBorder(inUse ? FQColor.accent : Color.white.opacity(0.10), lineWidth: inUse ? 2 : 1)
-        }
+        // Vzor jednotne karty appky (fqCard); pouzivane pozadi ma jen bily okraj.
+        .fqCard(selected: inUse)
     }
 
     @ViewBuilder private func backgroundAction(_ background: ShopBackground?, inUse: Bool, owned: Bool) -> some View {
         if inUse {
-            Label("In use", systemImage: "checkmark")
+            Text("In use")
                 .fqFont(size: 14, weight: .semibold, design: .rounded)
-                .foregroundStyle(FQColor.accent)
+                .foregroundStyle(FQColor.textSecondary)
                 .frame(minHeight: 36)
         } else if owned {
             Button("Use") { withAnimation(.easeOut(duration: 0.3)) { model.useBackground(background) } }

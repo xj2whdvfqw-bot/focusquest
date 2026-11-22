@@ -7,8 +7,8 @@ enum ArenaState: Equatable {
     case focusing(elapsedSeconds: Int)
     /// Pauza bitvy (2 za bitvu): cas se nepocita, po vyprseni `secondsLeft` boss uteče.
     case paused(elapsedSeconds: Int, secondsLeft: Int)
-    /// Zvednuty telefon. `forgiven` = prvni propadly odpocet v bitve byl prave odpusten ("Slip forgiven").
-    case warningCountdown(secondsRemaining: Double, frozenElapsedSeconds: Int, forgiven: Bool)
+    /// Zvednuty telefon: jediny odpocet, po nem boss uteče (zadne "Slip forgiven").
+    case warningCountdown(secondsRemaining: Double, frozenElapsedSeconds: Int)
     /// Telefonni hovor: hodiny stoji bez casoveho limitu a nepocita se to do pauz bitvy.
     /// `callEnded` = hovor skoncil a bitva pokracuje, az telefon zase lezi displejem dolu.
     case callPaused(elapsedSeconds: Int, callEnded: Bool)
@@ -76,8 +76,8 @@ final class ArenaViewModel: ObservableObject {
     var pausesLeft: Int { max(0, Self.pausesPerBattle - pausesUsed) }
     /// Vsechny pauzy bitvy uz jsou vycerpane.
     var hasUsedPause: Bool { pausesLeft == 0 }
-    /// Prvni propadly odpocet zvednuteho telefonu uz byl odpusten; dalsi znamena utek bosse.
-    @Published private(set) var hasUsedSlipGrace = false
+    /// Poradove cislo bitvy: kazda nova bitva ma cerstvou scenu (bez K.O. z minule bitvy).
+    @Published private(set) var battleSerial = 0
     /// Boss, ktery v posledni bitve opravdu padl (pred posunem cesty). Ukazuje ho obrazovka vitezstvi.
     @Published private(set) var lastBeaten: Boss?
     /// Volano, kdyz se predvolby zmeni z Areny (prehravac, postup na ceste), aby je znalo i Nastaveni.
@@ -155,7 +155,7 @@ final class ArenaViewModel: ObservableObject {
         guard selectedSubject != nil, isBetweenBattles else { return }
         lastBeaten = nil
         pausesUsed = 0
-        hasUsedSlipGrace = false
+        battleSerial += 1
         resetBossHealth()
         // Poloha z minule bitvy neplati: bitva zacne az po novem polozeni telefonu.
         posture = .unavailable
@@ -367,7 +367,7 @@ final class ArenaViewModel: ObservableObject {
         if active {
             let elapsed: Int
             switch state {
-            case .focusing(let value), .paused(let value, _), .warningCountdown(_, let value, _): elapsed = value
+            case .focusing(let value), .paused(let value, _), .warningCountdown(_, let value): elapsed = value
             // Dalsi hovor hned po skonceni predchoziho.
             case .callPaused(let value, true): elapsed = value
             default: return
@@ -405,7 +405,7 @@ final class ArenaViewModel: ObservableObject {
         guard !isFinishing else { return }
         let elapsed: Int
         switch state {
-        case .focusing(let value), .paused(let value, _), .warningCountdown(_, let value, _), .callPaused(let value, _): elapsed = value
+        case .focusing(let value), .paused(let value, _), .warningCountdown(_, let value), .callPaused(let value, _): elapsed = value
         case .awaitingFlatPlacement:
             // Hodiny se jeste nerozbehly: odchod nic nestoji.
             stopSession()
@@ -627,7 +627,7 @@ final class ArenaViewModel: ObservableObject {
         guard !isSensorBypassed else { return }
         posture = value
         if value == .lyingStill {
-            if case let .warningCountdown(_, frozenElapsed, _) = state { recoverFocus(elapsed: frozenElapsed) }
+            if case let .warningCountdown(_, frozenElapsed) = state { recoverFocus(elapsed: frozenElapsed) }
             else if case let .callPaused(elapsed, true) = state { resumeAfterCall(elapsed: elapsed) }
             else if case .awaitingFlatPlacement = state, activeSession != nil { startFocusClock() }
         } else if value == .lifted, !isFinishing, case let .focusing(elapsed) = state {
@@ -779,50 +779,37 @@ final class ArenaViewModel: ObservableObject {
         let duration = warningSeconds
         warningStartedAt = MonotonicClock.now
         warningFrozenElapsed = elapsed
-        state = .warningCountdown(secondsRemaining: Double(duration), frozenElapsedSeconds: elapsed, forgiven: false)
+        state = .warningCountdown(secondsRemaining: Double(duration), frozenElapsedSeconds: elapsed)
         haptics.triggerPickupWarningInitial(enabled: preferences.isHapticsEnabled)
         audio.enterWarning(preferences: preferences, secondsRemaining: duration)
         timerTask = Task { [weak self] in await self?.runWarningTicker(frozenElapsed: elapsed) }
     }
 
-    /// Odpocet zvednuteho telefonu. Prvni propadly odpocet v bitve se odpusti ("Slip forgiven")
-    /// a po chvilce bezi znovu; druhy znamena, ze boss uteče. Polozeni telefonu ticker zrusi.
+    /// Odpocet zvednuteho telefonu probehne jen jednou: kdo telefon do konce nepolozi, tomu boss uteče.
+    /// Polozeni telefonu ticker zrusi (recoverFocus).
     private func runWarningTicker(frozenElapsed: Int) async {
         let clock = ContinuousClock()
         let duration = warningSeconds
+        let start = clock.now
+        var previousSecond = duration + 1
         while !Task.isCancelled {
-            let start = clock.now
-            var previousSecond = duration + 1
-            while true {
-                let remaining = max(0, Double(duration) - start.duration(to: clock.now).secondsDouble)
-                if remaining <= 0 { break }
-                let wholeSecond = Int(ceil(remaining))
-                if wholeSecond < previousSecond {
-                    if previousSecond <= duration {
-                        haptics.triggerCountdownPulse(enabled: preferences.isHapticsEnabled)
-                        audio.countdownTick(preferences: preferences, secondsRemaining: wholeSecond)
-                    }
-                    await activity?.update(bossHP: selectedBoss.currentHP, elapsedSeconds: frozenElapsed, warningSecondsRemaining: wholeSecond)
-                    previousSecond = wholeSecond
+            let remaining = max(0, Double(duration) - start.duration(to: clock.now).secondsDouble)
+            if remaining <= 0 { break }
+            let wholeSecond = Int(ceil(remaining))
+            if wholeSecond < previousSecond {
+                if previousSecond <= duration {
+                    haptics.triggerCountdownPulse(enabled: preferences.isHapticsEnabled)
+                    audio.countdownTick(preferences: preferences, secondsRemaining: wholeSecond)
                 }
-                state = .warningCountdown(secondsRemaining: remaining, frozenElapsedSeconds: frozenElapsed, forgiven: false)
-                do { try await clock.sleep(for: .milliseconds(100)) } catch { return }
+                await activity?.update(bossHP: selectedBoss.currentHP, elapsedSeconds: frozenElapsed, warningSecondsRemaining: wholeSecond)
+                previousSecond = wholeSecond
             }
-            guard !Task.isCancelled else { return }
-            if hasUsedSlipGrace {
-                bossEscapes(.phoneStayedUp, elapsed: frozenElapsed)
-                return
-            }
-            hasUsedSlipGrace = true
-            state = .warningCountdown(secondsRemaining: 0, frozenElapsedSeconds: frozenElapsed, forgiven: true)
-            do { try await clock.sleep(for: .seconds(slipForgivenSeconds)) } catch { return }
-            // Telefon porad neni dole: alarm bezi dal, tentokrat uz naostro.
-            audio.enterWarning(preferences: preferences, secondsRemaining: duration)
+            state = .warningCountdown(secondsRemaining: remaining, frozenElapsedSeconds: frozenElapsed)
+            do { try await clock.sleep(for: .milliseconds(100)) } catch { return }
         }
+        guard !Task.isCancelled else { return }
+        bossEscapes(.phoneStayedUp, elapsed: frozenElapsed)
     }
-
-    /// Jak dlouho zustane na obrazovce "Slip forgiven", nez se odpocet rozbehne znovu.
-    var slipForgivenSeconds = 2.2
     /// Odpocet zvednuteho telefonu (testy ho zkracuji).
     var warningSeconds = AntiCheatRules.warningSeconds
 

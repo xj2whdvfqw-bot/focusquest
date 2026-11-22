@@ -106,8 +106,8 @@ struct SettingsView: View {
             .navigationBarTitleDisplayMode(.large)
             .settingsScrollEdges()
         }
-        // Systemovy modry tint jako v Nastaveni iPhonu (appka ma jinak tyrkysovy); prepinace jsou zelene (settingsToggleTint).
-        .tint(Color(uiColor: .systemBlue))
+        // Bez systemove modre: tint je bily (chevron zpet, fajfky, posuvniky); jen prepinace zustavaji zelene (settingsToggleTint).
+        .tint(.white)
         // Zavreni tahem dolu; ne behem potvrzeni "Reset progress" a ne behem mazani.
         .fqSheetDismissal(blocked: showsResetConfirmation || isResetting) { onClose?() }
         .task { notifications = await NotificationPermission.current() }
@@ -186,7 +186,6 @@ private struct SoundsSettingsPage: View {
                 toggle("Battle sounds", symbol: "bolt.fill", color: .orange, isOn: battleSoundBinding)
                 if prefs.isBattleSoundEnabled {
                     TryItRow {
-                        demo("Attack") { FQFeedback.shared.play(.attack) }
                         demo("Hit") { FQFeedback.shared.play(.hit) }
                         demo("Victory") { FQFeedback.shared.play(.victory) }
                         demo("Escape") { FQFeedback.shared.play(.escape) }
@@ -209,7 +208,7 @@ private struct SoundsSettingsPage: View {
             } header: {
                 Text("Sound effects")
             } footer: {
-                Text("Tap sounds click on buttons. Battle sounds play on attacks, hits, victory and when the boss escapes. Alarm sound beeps when the phone is lifted.")
+                Text("Tap sounds click on buttons. Battle sounds play on the final blow, victory and when the boss escapes. Alarm sound beeps when the phone is lifted.")
             }
 
             Section {
@@ -321,43 +320,98 @@ private struct TryItRow<Buttons: View>: View {
 // MARK: - Music
 
 /// Hudba bitvy: jedna volba (zatrzitko vpravo jako v systemovem Nastaveni).
+/// Vyber hudby do bitvy. U kazde stopy play/stop s 8s ukazkou (zesileni a zeslabeni), pod seznamem
+/// hlasitost hudby (plati pro bitvu i ukazku). Odchod ze stranky vsechny ukazky zastavi.
 private struct MusicSettingsPage: View {
     @ObservedObject var model: SettingsViewModel
+    private let preview = MusicPreview.shared
+
+    private var volumePercent: Int { Int((model.preferences.ambientVolume * 100).rounded()) }
 
     var body: some View {
         List {
             Section {
                 ForEach(BattleSound.allCases) { sound in
-                    Button {
-                        model.update { $0.battleSound = sound }
-                    } label: {
-                        HStack {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(sound.title).foregroundStyle(.primary)
-                                Text(sound.detail).font(.footnote).foregroundStyle(.secondary)
-                            }
-                            Spacer()
-                            if model.preferences.battleSound == sound {
-                                Image(systemName: "checkmark")
-                                    .fontWeight(.semibold)
-                                    .foregroundStyle(.tint)
-                            }
-                        }
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityAddTraits(model.preferences.battleSound == sound ? [.isSelected] : [])
+                    row(sound)
                 }
             } header: {
                 Text("During battles")
             } footer: {
-                Text("Fireplace piano and Study flow loop with a soft crossfade. Music keeps playing when the phone is locked.")
+                Text("Tap play for an 8 second sample. Fireplace piano and Study flow loop with a soft crossfade. Music keeps playing when the phone is locked.")
+            }
+
+            Section {
+                VStack(alignment: .leading, spacing: FQSpace.xs) {
+                    HStack {
+                        Text("Music volume")
+                        Spacer()
+                        Text("\(volumePercent) %")
+                            .monospacedDigit()
+                            .foregroundStyle(.secondary)
+                    }
+                    HStack(spacing: FQSpace.sm) {
+                        Image(systemName: "speaker.fill").foregroundStyle(.secondary).accessibilityHidden(true)
+                        Slider(value: Binding(get: { model.preferences.ambientVolume }, set: { value in
+                            model.update { $0.ambientVolume = value }
+                            preview.setVolume(value)
+                        }), in: 0...1)
+                        .accessibilityLabel("Music volume")
+                        .accessibilityValue("\(volumePercent) percent")
+                        Image(systemName: "speaker.wave.3.fill").foregroundStyle(.secondary).accessibilityHidden(true)
+                    }
+                }
+                .padding(.vertical, 4)
+            } footer: {
+                Text("Applies to music in battles and to the samples.")
             }
         }
         .listStyle(.insetGrouped)
         .navigationTitle("Music")
         .navigationBarTitleDisplayMode(.large)
         .settingsScrollEdges()
+        .onDisappear { preview.stop() }
+    }
+
+    private func row(_ sound: BattleSound) -> some View {
+        let isSelected = model.preferences.battleSound == sound
+        let isPlaying = preview.playing == sound
+        return HStack(spacing: FQSpace.md) {
+            Button {
+                model.update { $0.battleSound = sound }
+            } label: {
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(sound.title).foregroundStyle(.primary)
+                        Text(sound.detail).font(.footnote).foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    // Bila fajfka (ne systemova modra).
+                    if isSelected {
+                        Image(systemName: "checkmark")
+                            .fontWeight(.semibold)
+                            .foregroundStyle(.white)
+                    }
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityAddTraits(isSelected ? [.isSelected] : [])
+            if sound != .off {
+                Button {
+                    preview.toggle(sound, preferences: model.preferences)
+                } label: {
+                    Image(systemName: isPlaying ? "stop.circle.fill" : "play.circle.fill")
+                        .font(.system(size: 28))
+                        .symbolRenderingMode(.hierarchical)
+                        .foregroundStyle(.white)
+                        .contentTransition(.symbolEffect(.replace))
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.borderless)
+                .accessibilityLabel(isPlaying ? "Stop sample of \(sound.title)" : "Play sample of \(sound.title)")
+            }
+        }
     }
 }
 

@@ -1,7 +1,7 @@
 import AVFoundation
 import Foundation
 
-/// Kratke efekty: klepnuti, utok, zasah, vitezstvi, utek bosse, mince, XP, level up a pipnuti alarmu.
+/// Kratke efekty: klepnuti, zasah, vitezstvi, utek bosse, mince, XP, level up a pipnuti alarmu.
 /// Klepnuti (tap-click.mp3) a mince s XP (reward-chime.mp3) jsou nahravky z Pixabay (Pixabay Content License,
 /// viz design/DECISIONS.md); ostatni 8-bit tony se generuji primo v appce (ctverec, pila, sinus s obalkou).
 /// Co a kdy hraje, rozhoduje FQFeedback (podle prepinacu v Nastaveni).
@@ -12,9 +12,7 @@ final class EffectSounds {
     enum Effect: CaseIterable {
         /// Ctverec 520 Hz, 0,06 s (klepnuti na tlacitko).
         case click
-        /// Ctverec rychle stoupajici 300 -> 900 Hz, 0,12 s (zacatek bitvy, utok).
-        case attack
-        /// Pila 220 Hz klesajici k 50 Hz, 0,55 s (zasah, nastvany boss).
+        /// Pila 220 Hz klesajici k 50 Hz, 0,55 s (financi uder, nastvany boss).
         case hit
         /// Fanfara C5 E5 G5 a dlouhe C6 (vitezstvi).
         case victory
@@ -85,9 +83,6 @@ final class EffectSounds {
         case .click:
             buffer = silence(0.12)
             add(&buffer, at: 0.005, duration: 0.06, gain: 0.12, attack: 0.002, wave: .square) { _ in 520 }
-        case .attack:
-            buffer = silence(0.2)
-            add(&buffer, at: 0.005, duration: 0.12, gain: 0.14, attack: 0.003, wave: .square) { t in 300 * pow(3, min(1, t / 0.1)) }
         case .hit:
             buffer = silence(0.62)
             add(&buffer, at: 0.01, duration: 0.55, gain: 0.3, attack: 0.004, wave: .saw) { t in
