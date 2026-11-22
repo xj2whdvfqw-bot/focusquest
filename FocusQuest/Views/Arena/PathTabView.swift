@@ -144,7 +144,20 @@ struct PathTabView: View {
         guard let target, let point = MapLayout.stops[target.id] else { return }
         cameraToken += 1
         camera = MapCameraRequest(point: point, zoom: 1.0, startZoom: intro ? 0.55 : nil, animated: !reduceMotion, token: cameraToken)
+        #if DEBUG
+        // CI screenshoty mapy: bez animace (snimek se dela po par sekundach), oddaleni a otevrena karta.
+        if let mode = Self.debugMapMode {
+            camera = MapCameraRequest(point: point, zoom: mode == "map-overview" ? 0.5 : 0.9, animated: false, token: cameraToken)
+            if mode == "map-card" { selected = target }
+        }
+        #endif
     }
+
+    #if DEBUG
+    static var debugMapMode: String? {
+        UserDefaults.standard.string(forKey: "initialTab").flatMap { $0.hasPrefix("map-") ? $0 : nil }
+    }
+    #endif
 
     /// Nove odemcene svety: mlha se po najezdu kamery jednou rozplyne, pak se to zapamatuje.
     private func revealUnlockedWorlds() {

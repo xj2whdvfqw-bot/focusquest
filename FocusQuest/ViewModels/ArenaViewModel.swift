@@ -114,6 +114,13 @@ final class ArenaViewModel: ObservableObject {
         self.activity = activity
         self.notifications = notifications
         var stored = preferenceStore.load()
+        #if DEBUG
+        // CI screenshoty mapy (-initialTab map-…): ukazkovy postup, nic se neuklada.
+        if let demo = Self.debugMapProgress {
+            stored.clearedNodesByWorld = demo
+            stored.revealedWorlds = BossWorld.allCases.filter { stored.isUnlocked($0) }.map(\.rawValue)
+        }
+        #endif
         // Prvni spusteni verze s mapou: svety, ktere uz jsou odemcene, mlhu nemaji (bez animace).
         if stored.revealedWorlds == nil {
             stored.revealedWorlds = BossWorld.allCases.filter { stored.isUnlocked($0) }.map(\.rawValue)
@@ -192,6 +199,19 @@ final class ArenaViewModel: ObservableObject {
         isCustomBattle = true
         selectedBoss = Boss.warmUpWisp
     }
+
+    #if DEBUG
+    /// Ukazkovy postup pro CI screenshoty mapy (`-initialTab map-forest` atd.).
+    static var debugMapProgress: [String: Int]? {
+        switch UserDefaults.standard.string(forKey: "initialTab") {
+        case "map-forest": ["farm": 7, "forest": 3]
+        case "map-reef", "map-card", "map-overview": ["farm": 7, "forest": 7, "reef": 3]
+        case "map-school": ["farm": 7, "forest": 7, "reef": 7, "dojo": 9, "highSchool": 2]
+        case "map-orbit": ["farm": 7, "forest": 7, "reef": 7, "dojo": 9, "highSchool": 7, "history": 9, "planets": 3]
+        default: nil
+        }
+    }
+    #endif
 
     /// "Keep going" po rozcvicce: aktualni boss mapy (dalsi svety jsou zamcene, takze jiny na rade neni).
     func keepGoingBoss(pathWins: [String: Int]) -> Boss? { currentMapBoss }

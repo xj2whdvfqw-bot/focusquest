@@ -21,6 +21,7 @@ private enum FocusQuestTab: String, CaseIterable, Identifiable {
         switch launchArgument {
         case "settings": return .profile
         case "battle", "fight": return .arena
+        case let value? where value.hasPrefix("map-"): return .path
         default: break
         }
         return launchArgument.flatMap(FocusQuestTab.init(rawValue:)) ?? .arena
