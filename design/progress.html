@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-22T14:42:10+01:00",
-  "current": "Build #57 běží (B1–B3).",
-  "nextStep": "Počkat na výsledek buildu #57; při chybě opravit a spustit znovu.",
+  "updated": "2026-11-22T15:21:06+01:00",
+  "current": "Build #57 prošel, ale terén mapy se na screenshotu nestihl vykreslit; zrychleno, build #58 se spouští.",
+  "nextStep": "Počkat na build #58 a zkontrolovat screenshot mapy.",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -683,7 +683,7 @@
         { "text": "Výkon: terén jako malá bitmapa (1 px = 4 body) ve vrstvách, žádný obří obrázek", "done": true },
         { "text": "VoiceOver popisky zastávek a alternativní seznam", "done": true }
       ],
-      "note": ""
+      "note": "Build #57 prošel (IPA, testy), ale na screenshotu za 6 s ještě nebyl terén (Debug build na pomalém simulátoru) a štítek Farm překrýval hrdinu. Opraveno: generování přímo do paměti, nejdřív hrubý náhled (1 px = 16 bodů) za zlomek sekundy, plná mapa se po prvním výpočtu uloží do Caches a pak se načte hned; štítky světů uprostřed spodní hrany regionu a nad mlhou; mlha přesahuje do sousedního světa jen 16 bodů."
     }
   ]
 }

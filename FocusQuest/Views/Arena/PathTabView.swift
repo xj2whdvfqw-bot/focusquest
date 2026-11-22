@@ -69,7 +69,7 @@ struct PathTabView: View {
         }
         .animation(FQMotion.spring(reduceMotion: reduceMotion), value: selected?.id)
         .task {
-            if terrain == nil { terrain = await MapTerrainCache.loadTerrain() }
+            if terrain == nil { terrain = await MapTerrainCache.loadTerrain { preview in terrain = preview } }
         }
         .onAppear {
             focusCurrent(intro: true)
@@ -231,9 +231,6 @@ private struct MapContent: View {
     var body: some View {
         ZStack(alignment: .topLeading) {
             terrainLayer
-            ForEach(BossWorld.allCases) { world in
-                worldLabel(world)
-            }
             ForEach(Boss.roster) { boss in
                 if let point = MapLayout.stops[boss.id] {
                     MapStopView(
@@ -254,6 +251,10 @@ private struct MapContent: View {
             }
             ForEach(BossWorld.allCases) { world in
                 fogLayer(world)
+            }
+            // Nazvy svetu jsou nad mlhou, aby byl videt i nazev zamceneho sveta.
+            ForEach(BossWorld.allCases) { world in
+                worldLabel(world)
             }
         }
         .frame(width: MapLayout.size.width, height: MapLayout.size.height, alignment: .topLeading)
@@ -285,10 +286,10 @@ private struct MapContent: View {
         return boss.nodeIndex < model.clearedNodes(in: boss.world) || count > 0 ? .defeated : .open
     }
 
-    /// Stitek s nazvem sveta u vstupu cesty do nej.
+    /// Stitek s nazvem sveta uprostred spodni hrany jeho pasu. Cesta tam nevede (u spodni hrany
+    /// je na kraji mapy), takze stitek nikdy nezakryje zastavku ani hrdinu.
     private func worldLabel(_ world: BossWorld) -> some View {
-        let entrance = MapLayout.entrance(of: world)
-        let towardCenter: CGFloat = entrance.x > MapLayout.size.width / 2 ? -150 : 150
+        let band = MapLayout.band(of: world)
         let unlocked = model.isUnlocked(world)
         return HStack(spacing: 6) {
             if !unlocked { Image(systemName: "lock.fill").font(.system(size: 13, weight: .bold)) }
@@ -299,7 +300,7 @@ private struct MapContent: View {
         .padding(.vertical, 8)
         .background(Color(red: 13 / 255, green: 11 / 255, blue: 28 / 255).opacity(0.72), in: Capsule())
         .overlay { Capsule().strokeBorder(world.accent.opacity(0.8), lineWidth: 2) }
-        .position(x: entrance.x + towardCenter, y: entrance.y - 70)
+        .position(x: MapLayout.size.width / 2, y: band.maxY - 56)
         .allowsHitTesting(false)
         .accessibilityHidden(true)
     }
@@ -314,7 +315,7 @@ private struct MapContent: View {
             Image(decorative: fog, scale: 1)
                 .resizable()
                 .interpolation(.none)
-                .frame(width: MapLayout.size.width, height: band.height + 120)
+                .frame(width: MapLayout.size.width, height: band.height + 32)
                 .scaleEffect(dissolving ? 1.25 : 1)
                 .offset(y: dissolving ? -60 : 0)
                 .opacity(dissolving ? 0 : 1)
