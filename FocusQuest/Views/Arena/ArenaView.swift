@@ -60,6 +60,8 @@ struct ArenaView: View {
     @AppStorage(StreakMilestone.storageKey) private var offeredMilestones = ""
     /// B4: milnik, pro ktery je prave otevrena nabidka sdileni.
     @State private var milestoneShare: Int?
+    /// C3: iOS Focus rezim s FocusQuest filtrem ("Suggest a battle").
+    @State private var focusMode = FocusModeState.load()
 
     private struct Poke: Equatable {
         let id: Int
@@ -99,6 +101,9 @@ struct ArenaView: View {
             streakPill
                 .coachMark(.streak)
                 .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).maxY } action: { pillBottom = $0 }
+            if focusMode.suggestsBattle, let node = nextNode, model.isBetweenBattles {
+                focusSuggestion(node)
+            }
             // Volne misto: 1 dil nad bossem, 2 dily pod nim. Boss tak sedi blizko stredu obrazovky
             // a mezi nim a tlacitkem Fight je vzduch. Kdyz se obsah nevejde (SE, velke pismo),
             // spacery maji jen minimum a obrazovka roluje.
@@ -115,7 +120,11 @@ struct ArenaView: View {
             guard !Task.isCancelled, poke?.id == current.id else { return }
             withAnimation(.easeOut(duration: 0.2)) { poke = nil }
         }
+        .onReceive(NotificationCenter.default.publisher(for: FocusModeState.didChange)) { _ in
+            withAnimation(.easeOut(duration: 0.25)) { focusMode = FocusModeState.load() }
+        }
         .onAppear {
+            focusMode = FocusModeState.load()
             isOnScreen = true
             requestStreakCelebration()
         }
@@ -164,6 +173,45 @@ struct ArenaView: View {
             guard !Task.isCancelled, fireStart == started else { return }
             fireStart = nil
         }
+    }
+
+    // MARK: - Focus rezim (C3)
+
+    /// Aktivni iOS Focus s FocusQuest filtrem: kompaktni nabidka bitvy pod serii.
+    private func focusSuggestion(_ node: Boss) -> some View {
+        Button {
+            model.selectBoss(node)
+            battle.openFightSheet()
+        } label: {
+            HStack(spacing: FQSpace.md) {
+                Image(systemName: "moon.circle.fill")
+                    .font(.system(size: 26, weight: .semibold))
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(Color(red: 0.62, green: 0.55, blue: 1.0))
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Your Focus is on")
+                        .fqFont(size: 15, weight: .semibold, design: .rounded)
+                        .foregroundStyle(FQColor.textPrimary)
+                    Text("Perfect time for a battle. Tap to start.")
+                        .fqFont(size: 13, design: .rounded)
+                        .foregroundStyle(FQColor.textSecondary)
+                }
+                Spacer(minLength: 0)
+                Image(systemName: "play.fill")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(FQColor.onCta)
+                    .frame(width: 34, height: 34)
+                    .background(FQColor.cta, in: Circle())
+                    .accessibilityHidden(true)
+            }
+            .padding(.horizontal, FQSpace.md)
+            .padding(.vertical, FQSpace.sm)
+            .fqCard()
+        }
+        .buttonStyle(.fqPress)
+        .accessibilityLabel("Your Focus is on. Start a battle")
+        .transition(.opacity)
     }
 
     // MARK: - Serie

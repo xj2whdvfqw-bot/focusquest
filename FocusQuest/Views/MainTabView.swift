@@ -156,6 +156,17 @@ struct MainTabView: View {
                 OnboardingView(arena: container.arenaViewModel, profile: container.profileViewModel) { finishOnboarding() }
                     .environment(coach)
             }
+            // C1, C4: deep link z widgetu (focusquest://fight) a prikazy ze Siri a Zkratek.
+            .onOpenURL { url in
+                if let command = AppCommandCenter.command(for: url) { AppCommandCenter.shared.request(command) }
+            }
+            .onChange(of: AppCommandCenter.shared.pending) { _, command in
+                if let command { perform(command) }
+            }
+            // C3: iOS Focus rezim se zapnul nebo vypnul: pripominky se naplanuji znovu (nebo ztlumi).
+            .onReceive(NotificationCenter.default.publisher(for: FocusModeState.didChange)) { _ in
+                container.arenaViewModel.refreshDailyReminder(focusedToday: container.profileViewModel.todayVerifiedMinutes > 0)
+            }
             // Po navratu do appky: smazane predmety starsi nez 24 h zmizi i se statistikami.
             .onChange(of: scenePhase) { _, phase in
                 if phase == .active { Task { await maintainSubjects() } }
@@ -274,6 +285,8 @@ struct MainTabView: View {
         container.profileViewModel.applyStreakFreezes()
         // Denni pripominka v 17:00: dnes ne, pokud uz hrac dnes bojoval.
         container.arenaViewModel.refreshDailyReminder(focusedToday: container.profileViewModel.todayVerifiedMinutes > 0)
+        // C1: widget dostane cerstva cisla (kdyz je App Group k dispozici).
+        container.refreshWidgetSnapshot()
     }
 
     /// Reset progress z Nastaveni: po smazani se list zavre, appka se vrati na Home a novy hrac
@@ -299,12 +312,39 @@ struct MainTabView: View {
         await container.profileViewModel.refresh()
         await container.profileViewModel.refreshProgress()
         await maintainSubjects()
+        // C4: prikaz, ktery prisel jeste pred vykreslenim (studeny start ze Zkratek nebo widgetu).
+        if let pending = AppCommandCenter.shared.pending { perform(pending) }
         guard !isScripted, !coach.onboardingDone else { return }
         if container.profileViewModel.stats.sessionHistory.isEmpty {
             showsOnboarding = true
         } else {
             container.profileViewModel.completeHeroCreation()
             coach.markExistingPlayer()
+        }
+    }
+
+    // MARK: - Prikazy z widgetu a Zkratek (C1, C4)
+
+    /// Vyber pred bitvou: Home a Fight sheet s dalsim bossem, nebo vlastni delkou. Behem bitvy, onboardingu
+    /// a tutorialu se nic neotevre (bezici bitva je videt sama).
+    private func perform(_ command: AppCommandCenter.Command) {
+        AppCommandCenter.shared.pending = nil
+        let arena = container.arenaViewModel
+        guard coach.onboardingDone, coach.step == nil, !showsOnboarding, arena.isBetweenBattles, !battlePresenter.isPresented else { return }
+        switch command {
+        case let .fight(minutes):
+            settingsPresenter.isPresented = false
+            switchTab(to: .arena)
+            if let minutes {
+                arena.prepareCustomBattle(minutes: minutes)
+            } else if let boss = arena.currentMapBoss {
+                arena.selectBoss(boss)
+            }
+            // Po zavreni Nastaveni (dve prezentace naraz nejdou).
+            Task {
+                try? await Task.sleep(for: .milliseconds(400))
+                battlePresenter.openFightSheet()
+            }
         }
     }
 

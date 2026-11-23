@@ -1,5 +1,6 @@
 import Foundation
 @preconcurrency import UserNotifications
+import WidgetKit
 
 /// Sklada sluzby a modely. Aplikace nema server ani ucty: profil, statistiky
 /// i overovani bitev bezi jen v telefonu.
@@ -60,7 +61,13 @@ final class AppDIContainer {
         // Zvuky a haptika v cele appce se ridi ulozenymi prepinaci od prvniho spusteni.
         FQFeedback.shared.configure(with: settingsViewModel.preferences)
         // Statistiky zmenene vitezstvim nebo bonusem se hned ukazi i na zalozce Stats.
-        profileViewModel.onStatsChanged = { [weak stats = self.statsViewModel] updated in stats?.replace(with: updated) }
+        profileViewModel.onStatsChanged = { [weak self, weak stats = self.statsViewModel] updated in
+            stats?.replace(with: updated)
+            // C1: widget a "Show streak" maji cerstva cisla.
+            self?.refreshWidgetSnapshot()
+        }
+        // C4: "Pause battle" ze Siri a Zkratek pracuje s bezici bitvou.
+        AppCommandCenter.shared.arena = arenaViewModel
 
         // Ustup z bitvy ("Retreat Anyway") jen necha bosse utect: bitva nic neprinese, serie a mince zustavaji.
         // Odchod z appky uz se netresta: bitva bezi dal i na pozadi.
@@ -74,6 +81,24 @@ final class AppDIContainer {
         didCleanUpAfterTermination = true
         UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [BattleNotificationService.victoryIdentifier])
         await activity.end()
+    }
+
+    /// C1: zapise snimek pro widget (a "Show streak") a pozada widget o prekresleni.
+    /// Bez App Group se snimek ulozi jen v appce; widget pak ukazuje vyzvu k otevreni appky.
+    func refreshWidgetSnapshot() {
+        let boss = arenaViewModel.currentMapBoss
+        let snapshot = WidgetSnapshot(
+            streak: profileViewModel.currentStreak,
+            todayMinutes: profileViewModel.todayVerifiedMinutes,
+            dailyGoalMinutes: profileViewModel.profile.dailyFocusGoalMinutes,
+            nextBossName: boss?.name,
+            nextBossSpriteID: boss?.pixelSpriteConfig,
+            nextBossMinutes: boss?.maxHP,
+            nextBossWorld: boss?.world.title,
+            updatedAt: Date()
+        )
+        snapshot.save()
+        WidgetCenter.shared.reloadAllTimelines()
     }
 
     /// Reset progress v Nastaveni: smaze hrdinu, mince, statistiky, predmety a nastaveni.

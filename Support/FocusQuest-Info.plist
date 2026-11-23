@@ -31,6 +31,18 @@
 
 	<key>NSMotionUsageDescription</key>
 	<string>FocusQuest checks whether your iPhone is lying flat on the desk during a focus battle.</string>
+	<!-- C1/C4: deep link z widgetu: focusquest://fight -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.focusquest.app</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>focusquest</string>
+			</array>
+		</dict>
+	</array>
 	<key>NSSupportsLiveActivities</key>
 	<true/>
 	<key>UIBackgroundModes</key>

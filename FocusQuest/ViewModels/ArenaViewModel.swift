@@ -217,6 +217,13 @@ final class ArenaViewModel: ObservableObject {
         selectedBoss = Boss.warmUpWisp
     }
 
+    /// C4: vlastni delka ze Zkratek ("Start battle" s minutami): stejne jako rychla bitva, jen jine minuty.
+    func prepareCustomBattle(minutes: Int) {
+        guard isBetweenBattles else { return }
+        isCustomBattle = true
+        selectedBoss = Boss.warmUpWisp.withHP(minutes: minutes)
+    }
+
     #if DEBUG
     /// Ukazkovy postup pro CI screenshoty mapy (`-initialTab map-forest` atd.).
     static var debugMapProgress: [String: Int]? {

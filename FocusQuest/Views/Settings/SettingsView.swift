@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import WidgetKit
 
 /// Nastaveni (list z ozubeneho kola) ve stylu systemoveho Nastaveni iOS 26:
 /// inset grouped seznam, velky nadpis vlevo, radky s ikonou v barevnem ctverecku, seda hodnota
@@ -59,10 +60,16 @@ struct SettingsView: View {
                     Button { FQFeedback.shared.tap(); onReplayTutorial?() } label: {
                         SettingsRow(title: "Replay tutorial", symbol: "hand.tap.fill", color: .green, showsChevron: true)
                     }
+                    NavigationLink(value: SettingsPage.focusFilter) {
+                        SettingsRow(title: "Use with iPhone Focus", symbol: "moon.fill", color: .indigo)
+                    }
+                    NavigationLink(value: SettingsPage.shortcuts) {
+                        SettingsRow(title: "Siri & Shortcuts", symbol: "square.2.layers.3d.fill", color: .pink)
+                    }
                 } header: {
                     Text("Help")
                 } footer: {
-                    Text("A quick tour of Fight, Path, Shop, Stats and Hero.")
+                    Text("A quick tour of Fight, Path, Shop, Stats and Hero, plus how to use FocusQuest with Focus modes, Siri and the Action button.")
                 }
 
                 Section {
@@ -120,6 +127,8 @@ struct SettingsView: View {
                 case .sounds: SoundsSettingsPage(model: model)
                 case .music: MusicSettingsPage(model: model)
                 case .notifications: NotificationSettingsPage(model: model, notifications: $notifications)
+                case .focusFilter: FocusFilterGuidePage()
+                case .shortcuts: ShortcutsGuidePage()
                 }
             }
         }
@@ -193,7 +202,7 @@ struct SettingsView: View {
 
 /// Podstranky Nastaveni (navigace pres hodnotu, aby klik hral bez gesta na radku).
 private enum SettingsPage: Hashable {
-    case sounds, music, notifications
+    case sounds, music, notifications, focusFilter, shortcuts
 }
 
 // MARK: - Sounds & haptics
@@ -619,6 +628,30 @@ private struct DebugSettingsSections: View {
         } footer: {
             Text("Victory, Break is over and Daily reminder in 5, 7 and 9 s. Lock the phone to see the banners.")
         }
+
+        // C1: nahled widgetu se skutecnymi daty. Nahrada za App Group: bez ni widget na plose data nema.
+        Section {
+            let snapshot = WidgetSnapshot.current()
+            VStack(alignment: .leading, spacing: FQSpace.md) {
+                widgetPreview(snapshot, family: .systemSmall, width: 158)
+                widgetPreview(snapshot, family: .systemMedium, width: 338)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.vertical, FQSpace.sm)
+            SettingsRow(title: "App Group", symbol: "square.stack.3d.up.fill", color: .purple, value: WidgetSnapshot.isSharingAvailable ? "Shared with widget" : "Not available")
+        } header: {
+            Text("Debug widget")
+        } footer: {
+            Text("The same views as the Home Screen widget, with live data. Without an App Group (free Apple ID) the real widget shows Open FocusQuest.")
+        }
+    }
+
+    private func widgetPreview(_ snapshot: WidgetSnapshot, family: WidgetFamily, width: CGFloat) -> some View {
+        FocusWidgetContent(snapshot: snapshot, family: family, date: Date())
+            .padding(16)
+            .frame(width: width, height: 158)
+            .background { FocusWidgetBackground() }
+            .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
     }
 
     private func debugButton(_ title: String, action: @escaping () -> Void) -> some View {
@@ -696,5 +729,91 @@ private extension View {
         } else {
             self
         }
+    }
+}
+
+// MARK: - Navody (C3, C4)
+
+/// C3: jak pridat FocusQuest do iOS Focus rezimu.
+private struct FocusFilterGuidePage: View {
+    @Environment(\.openURL) private var openURL
+    @State private var state = FocusModeState.load()
+
+    var body: some View {
+        List {
+            Section {
+                step(1, "Open iPhone Settings › Focus and pick a Focus, for example Study or Work.")
+                step(2, "Scroll down to Focus Filters and tap Add Filter.")
+                step(3, "Choose FocusQuest and turn on Suggest a battle, Mute reminders or both.")
+            } header: {
+                Text("How to set it up")
+            } footer: {
+                Text("While that Focus is on, Home offers a battle right away and FocusQuest stays quiet. When the Focus ends, everything goes back to normal.")
+            }
+            Section {
+                SettingsRow(title: "Focus filter", symbol: "moon.fill", color: .indigo, value: state.isActive ? "Active now" : "Not active")
+            }
+            Section {
+                Button {
+                    FQFeedback.shared.tap()
+                    if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
+                } label: {
+                    SettingsRow(title: "Open iPhone Settings", symbol: "gear", color: .gray, showsChevron: true)
+                }
+            }
+        }
+        .listStyle(.insetGrouped)
+        .navigationTitle("Use with iPhone Focus")
+        .navigationBarTitleDisplayMode(.inline)
+        .onReceive(NotificationCenter.default.publisher(for: FocusModeState.didChange)) { _ in state = FocusModeState.load() }
+    }
+
+    private func step(_ number: Int, _ text: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
+            Text("\(number)")
+                .font(.system(size: 13, weight: .bold, design: .rounded))
+                .foregroundStyle(.black)
+                .frame(width: 22, height: 22)
+                .background(Color.white, in: Circle())
+                .accessibilityHidden(true)
+            Text(text).fixedSize(horizontal: false, vertical: true)
+        }
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// C4: zkratky pro Siri, Spotlight a Action button.
+private struct ShortcutsGuidePage: View {
+    var body: some View {
+        List {
+            Section {
+                phrase("Start a battle in FocusQuest", "Opens FocusQuest ready to fight your next boss.")
+                phrase("Show my FocusQuest streak", "Says your current streak.")
+                phrase("Pause my FocusQuest battle", "Uses your free (or extra) pause in a running battle.")
+            } header: {
+                Text("Say to Siri")
+            } footer: {
+                Text("The same actions are in the Shortcuts app and in Spotlight. Start battle can also fight a set length, for example 25 minutes.")
+            }
+            Section {
+                Text("iPhone Settings › Action Button › Shortcut › FocusQuest › Start battle.")
+                    .fixedSize(horizontal: false, vertical: true)
+            } header: {
+                Text("Action button")
+            } footer: {
+                Text("On iPhone 15 Pro and newer. One press opens FocusQuest with the next boss ready.")
+            }
+        }
+        .listStyle(.insetGrouped)
+        .navigationTitle("Siri & Shortcuts")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func phrase(_ text: String, _ detail: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text("“\(text)”").font(.body.weight(.semibold))
+            Text(detail).font(.footnote).foregroundStyle(.secondary)
+        }
+        .accessibilityElement(children: .combine)
     }
 }
