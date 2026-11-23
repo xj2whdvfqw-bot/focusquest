@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-23T19:48:31+01:00",
-  "current": "G1: build #67 běží",
-  "nextStep": "Počkat na výsledek buildu #67",
+  "updated": "2026-11-23T20:23:43+01:00",
+  "current": "G1 hotovo: build #67 prošel",
+  "nextStep": "Otestovat na iPhonu tap zvuk, karty, easter eggy, oslavu série a ťukání v bitvě",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -783,7 +783,7 @@
     {
       "id": "G1",
       "title": "Test po #66: tap zvuk, karty, easter eggy, série, ťukání v bitvě",
-      "status": "build",
+      "status": "hotovo",
       "items": [
         { "text": "2A Tap zvuk všude: audit (Settings řádky, odkazy, přepínače, výběry; boss na Home i naštvaný; chipy Focusing; onboarding, tutoriál, dialogy) přes FQFeedback", "done": true },
         { "text": "2B Victory, Call ended, útěk, Battle stopped, panel přestávky a bublina tutoriálu ve stejném skle jako karta bitvy (fqGlassPanel); dlaždice fqInnerTile", "done": true },
@@ -793,8 +793,8 @@
         { "text": "DECISIONS.md: easter egg stavy, oslava série, kosmetické ťukání, sjednocené karty, audit tapů", "done": true }
       ],
       "commit": "7e22813",
-      "build": { "number": 67, "runId": 45242246561, "result": "běží" },
-      "note": "Build #67 běží."
+      "build": { "number": 67, "runId": 45242246561, "result": "úspěch" },
+      "note": "Build #67 prošel napoprvé (IPA, testy včetně nového testu oslavy série). Na iPhonu otestuj: klik a vibrace v Nastavení (řádky, podstránky, přepínače včetně vypnutí Tap sounds, síla haptiky, výběr hudby, odkazy dole), naštvaný boss na Home pořád cvaká, chipy Focusing, Hero class menu, Habits; světlejší sklo u Victory, Call ended, útěku a panelu přestávky a čitelnost textu na světlých pozadích; bublina tutoriálu; nalezené easter eggy (Debug › Reset easter eggs a znovu najít): jáma s truhlou na Farm, truhla u rybníka, vlajka na planetě, klepnutí jen poskočí; první bitva dne → po návratu na Home oslava série (jen jednou za den); ťukání na bosse v bitvě (útok podle třídy, žádné číslo, max 3/s); Reduce Motion: série jen prolnutí, boss jen otřes. Zbývá: pozice truhly u rybníka a vlajky ověřit na mapě (umístěno výpočtem)."
     }
   ]
 }
