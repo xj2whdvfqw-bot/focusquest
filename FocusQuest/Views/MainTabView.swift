@@ -269,6 +269,9 @@ struct MainTabView: View {
         let history = container.profileViewModel.stats.sessionHistory
         let purged = container.arenaViewModel.maintainSubjects(history: history)
         await container.profileViewModel.removeSubjectStats(purged)
+        // C0: prvni den pouzivani (sloupec 1 Habits). C2: vynechane dny zachrani Streak freeze.
+        container.profileViewModel.ensureFirstUseDate()
+        container.profileViewModel.applyStreakFreezes()
         // Denni pripominka v 17:00: dnes ne, pokud uz hrac dnes bojoval.
         container.arenaViewModel.refreshDailyReminder(focusedToday: container.profileViewModel.todayVerifiedMinutes > 0)
     }

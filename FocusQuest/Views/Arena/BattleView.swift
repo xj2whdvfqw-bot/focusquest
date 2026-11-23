@@ -19,6 +19,9 @@ struct BattleView: View {
     /// Hrac odchazi z vysledku (zpet, Path, Fight sheet): karta bitvy se uz neukaze ani na chvili
     /// (driv pri zavirani na ~1 s problikla s tlacitkem "Begin Battle").
     @State private var isLeaving = false
+    /// C6: volitelna poznamka po vyhre ("What did you get done?").
+    @State private var victoryNote = ""
+    @FocusState private var isNoteFocused: Bool
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
 
@@ -608,8 +611,22 @@ struct BattleView: View {
                     rewardTile(amount: victory.xpEarned, label: "XP", symbol: "sparkles")
                     rewardTile(amount: victory.coinsEarned, label: "Coins", symbol: "dollarsign.circle.fill")
                 }
+                // C6: jeden radek, jde preskocit. Ulozi se s Collect Loot nebo Keep going (a pri Enter).
+                TextField("What did you get done?", text: $victoryNote)
+                    .font(.fqBody)
+                    .foregroundStyle(FQColor.textPrimary)
+                    .submitLabel(.done)
+                    .focused($isNoteFocused)
+                    .onSubmit { isNoteFocused = false }
+                    .onChange(of: victoryNote) { _, value in
+                        if value.count > SessionSummary.noteLimit { victoryNote = String(value.prefix(SessionSummary.noteLimit)) }
+                    }
+                    .padding(.horizontal, FQSpace.md)
+                    .frame(minHeight: 44)
+                    .fqInnerTile(in: FQRadius.shape(FQRadius.inDialog))
+                    .accessibilityLabel("What did you get done? Optional note")
                 VStack(spacing: FQSpace.sm) {
-                    Button { showsBreak = true } label: {
+                    Button { saveVictoryNote(); showsBreak = true } label: {
                         Text("Collect Loot")
                             .font(.fqHeadline)
                             .foregroundStyle(FQColor.onCta)
@@ -623,7 +640,7 @@ struct BattleView: View {
                     .fqHaptic(.medium, trigger: showsBreak) { _, now in now }
                     .fqSound(.coin, trigger: showsBreak) { _, now in now }
                     if let keepGoing {
-                        Button { openKeepGoing(keepGoing) } label: {
+                        Button { saveVictoryNote(); openKeepGoing(keepGoing) } label: {
                             Label("Keep going · \(keepGoing.name) · \(ArenaView.durationText(minutes: keepGoing.maxHP))", systemImage: "play.fill")
                                 .font(.fqLabel)
                                 .foregroundStyle(FQColor.textPrimary)
@@ -641,6 +658,15 @@ struct BattleView: View {
                 }
             }
         }
+    }
+
+    /// C6: poznamka se ulozi k prave vyhrane bitve; prazdna se preskoci.
+    private func saveVictoryNote() {
+        isNoteFocused = false
+        let note = victoryNote.trimmingCharacters(in: .whitespacesAndNewlines)
+        victoryNote = ""
+        guard !note.isEmpty else { return }
+        profileModel.saveVictoryNote(note)
     }
 
     /// "Keep going" po rozcvicce: zavre vysledek a otevre Fight sheet nejkratsiho neporazeneho bosse.

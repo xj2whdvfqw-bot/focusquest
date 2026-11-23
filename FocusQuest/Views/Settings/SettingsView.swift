@@ -465,10 +465,11 @@ private struct NotificationSettingsPage: View {
             }
             Section {
                 toggle("Daily reminder", symbol: "calendar", color: .green, isOn: notificationBinding(\.isDailyReminderEnabled))
+                toggle("Streak in danger", symbol: "flame.fill", color: .red, isOn: notificationBinding(\.isStreakReminderEnabled))
                 toggle("Battle finished", symbol: "flag.checkered", color: .orange, isOn: notificationBinding(\.isBattleDoneNotificationEnabled))
                 toggle("Break is over", symbol: "cup.and.saucer.fill", color: .brown, isOn: notificationBinding(\.isBreakOverNotificationEnabled))
             } footer: {
-                Text("The daily reminder comes at 17:00 if you haven't focused yet. Battle finished arrives when the countdown ends, Break is over when your 5 minute break ends.")
+                Text("The daily reminder comes at 17:00 if you haven't focused yet, Streak in danger at 20:00 if your streak would end tonight. Battle finished arrives when the countdown ends, Break is over when your 5 minute break ends.")
             }
             .disabled(notifications == .denied)
         }
@@ -561,9 +562,10 @@ private struct DebugSettingsSections: View {
                 }
             }
             VStack(alignment: .leading, spacing: FQSpace.sm) {
-                Text("Extra pauses: \(profile.profile.extraPauses) of \(UserProfile.maxExtraPauses)").monospacedDigit().foregroundStyle(.secondary)
+                Text("Extra pauses: \(profile.profile.extraPauses) of \(UserProfile.maxExtraPauses) · Streak freezes: \(profile.profile.streakFreezes) of \(StreakFreeze.maxOwned)").monospacedDigit().foregroundStyle(.secondary)
                 ChipFlow(spacing: FQSpace.sm) {
                     debugButton("+3 extra pauses") { profile.debugAddExtraPauses(3) }
+                    debugButton("+1 streak freeze") { profile.debugAddStreakFreeze() }
                 }
             }
             VStack(alignment: .leading, spacing: FQSpace.sm) {

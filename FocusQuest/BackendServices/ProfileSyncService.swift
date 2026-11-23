@@ -13,6 +13,8 @@ protocol ProfileSyncServiceProtocol: Sendable {
     func setLevel(_ level: Int) async throws -> PlayerStats
     /// Trvale smazani predmetu (24 h po smazani): z historie a Bestiare zmizi jeho bitvy.
     func removeSubjectStats(_ subjectIDs: Set<String>) async throws -> PlayerStats
+    /// C6: poznamka k bitve v historii. Vraci novy stav statistik.
+    func setNote(_ note: String?, forSession id: UUID) async throws -> PlayerStats
     /// Reset progress v Nastaveni: smaze hrdinu, mince i statistiky a vrati vychozi stav.
     func resetProgress() async throws
 }
@@ -64,6 +66,13 @@ actor LocalProfileSyncService: ProfileSyncServiceProtocol {
 
     func removeSubjectStats(_ subjectIDs: Set<String>) async throws -> PlayerStats {
         stats.removeSubjects(subjectIDs)
+        persist(stats, key: Self.statsKey)
+        return stats
+    }
+
+    func setNote(_ note: String?, forSession id: UUID) async throws -> PlayerStats {
+        guard let index = stats.sessionHistory.firstIndex(where: { $0.id == id }) else { return stats }
+        stats.sessionHistory[index].note = note
         persist(stats, key: Self.statsKey)
         return stats
     }

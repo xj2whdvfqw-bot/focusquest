@@ -6,7 +6,8 @@ import os
 /// aps-environment nema a nepotrebuje). Vsechny typy:
 ///  - Victory!        `focusquest.battle.victory`  na cas konce odpoctu bitvy,
 ///  - Break is over   `focusquest.break.over`      5 min po Collect Loot,
-///  - Daily reminder  `focusquest.reminder.0…7`    v 17:00 na pristich 7 dni (kdyz je zapnuta).
+///  - Daily reminder  `focusquest.reminder.0…7`    v 17:00 na pristich 7 dni (kdyz je zapnuta),
+///  - Streak at risk  `focusquest.streak.0…1`      ve 20:00 dnes a zitra, kdyz serie plati a ten den jeste nebyla bitva (C2).
 protocol BattleNotificationServiceProtocol: Sendable {
     func requestAuthorizationIfNeeded() async
     func scheduleVictory(bossName: String, after seconds: Int) async
@@ -16,12 +17,15 @@ protocol BattleNotificationServiceProtocol: Sendable {
     func cancelBreakOver() async
     /// Denni pripominka v 17:00 na pristich 7 dni; dnesni se vynecha, kdyz uz hrac dnes bojoval.
     func updateDailyReminder(enabled: Bool, focusedToday: Bool) async
+    /// C2: vecerni varovani pred ztratou serie (dnes, kdyz jeste nebyla bitva, a zitra).
+    func updateStreakReminder(enabled: Bool, streak: Int, focusedToday: Bool) async
 }
 
 extension BattleNotificationServiceProtocol {
     func scheduleBreakOver(after seconds: Int) async { }
     func cancelBreakOver() async { }
     func updateDailyReminder(enabled: Bool, focusedToday: Bool) async { }
+    func updateStreakReminder(enabled: Bool, streak: Int, focusedToday: Bool) async { }
 }
 
 /// Actor: planovani a ruseni se nikdy neprekryji. Driv mohlo zruseni (napr. ustup hned po startu)
@@ -138,6 +142,35 @@ actor BattleNotificationService: BattleNotificationServiceProtocol {
             let components = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: fireDate)
             let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
             await add(identifier, title: Self.reminderTitle, body: Self.reminderBody, trigger: trigger)
+        }
+    }
+
+    // MARK: - Serie v ohrozeni (C2)
+
+    static let streakPrefix = "focusquest.streak."
+    static let streakHour = 20
+
+    static func streakTitle(_ days: Int) -> String { days == 1 ? "Your streak is in danger" : "Your \(days)-day streak is in danger" }
+    static let streakBody = "No battle yet today. A short one keeps the flame going."
+
+    /// Dnes ve 20:00, kdyz serie plati a dnes jeste nebyla bitva; zitra ve 20:00, kdyz serie plati
+    /// (dnes uz byla bitva, nebo jeste muze byt). Po kazde bitve a navratu do appky se prepocita.
+    func updateStreakReminder(enabled: Bool, streak: Int, focusedToday: Bool) async {
+        let center = UNUserNotificationCenter.current()
+        center.removePendingNotificationRequests(withIdentifiers: [Self.streakPrefix + "0", Self.streakPrefix + "1"])
+        guard enabled, streak > 0, await isAuthorized() else { return }
+        let calendar = Calendar.current
+        let now = Date()
+        for offset in 0...1 {
+            if offset == 0 && focusedToday { continue }
+            guard let day = calendar.date(byAdding: .day, value: offset, to: now),
+                  let fireDate = calendar.date(bySettingHour: Self.streakHour, minute: 0, second: 0, of: day),
+                  fireDate > now else { continue }
+            // `streak` uz zahrnuje dnesek, kdyz dnes hrac bojoval; zitrejsi varovani hlida tutez serii.
+            let days = streak
+            let components = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: fireDate)
+            let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
+            await add(Self.streakPrefix + String(offset), title: Self.streakTitle(days), body: Self.streakBody, trigger: trigger)
         }
     }
 

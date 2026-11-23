@@ -60,9 +60,23 @@ final class ProfileViewModel: ObservableObject {
         if defeated { profile.bossesDefeated += 1 }
         save()
         let summary = SessionSummary(id: UUID(), bossName: victory.boss.name, verifiedMinutes: victory.verifiedMinutes, xpEarned: victory.xpEarned, completedAt: Date(), flawless: true, subject: victory.subject, bossID: victory.boss.id, isQuick: victory.boss.isWarmUp)
+        lastVictorySessionID = summary.id
         Task {
             do { apply(stats: try await sync.recordBattle(summary, bossDefeated: defeated)) }
             catch { errorMessage = "Battle could not be added to your stats." }
+        }
+    }
+
+    /// C6: bitva posledni vyhry (pro poznamku na obrazovce vitezstvi).
+    @Published private(set) var lastVictorySessionID: UUID?
+
+    /// C6: ulozi poznamku k posledni vyhre (prazdna = bez poznamky).
+    func saveVictoryNote(_ text: String) {
+        guard let id = lastVictorySessionID else { return }
+        let trimmed = String(text.trimmingCharacters(in: .whitespacesAndNewlines).prefix(SessionSummary.noteLimit))
+        Task {
+            do { apply(stats: try await sync.setNote(trimmed.isEmpty ? nil : trimmed, forSession: id)) }
+            catch { errorMessage = "The note could not be saved." }
         }
     }
 
@@ -175,6 +189,56 @@ final class ProfileViewModel: ObservableObject {
 
     func debugAddExtraPauses(_ amount: Int) {
         profile.extraPauses = min(UserProfile.maxExtraPauses, profile.extraPauses + amount)
+        save()
+    }
+
+    // MARK: - Serie a Streak freeze (C0, C2)
+
+    /// Dny zachranene Streak freeze.
+    var frozenDayKeys: Set<String> { Set(profile.frozenDays) }
+
+    /// Aktualni serie z historie dni (zamrzle dny ji nepreruseji).
+    var currentStreak: Int { stats.currentStreak(frozenDayKeys: frozenDayKeys) }
+
+    var canBuyStreakFreeze: Bool {
+        profile.streakFreezes < StreakFreeze.maxOwned && profile.coins >= StreakFreeze.price
+    }
+
+    /// Koupi Streak freeze za 150 minci (v zasobe nejvys 2).
+    func buyStreakFreeze() {
+        guard canBuyStreakFreeze else { return }
+        profile.coins -= StreakFreeze.price
+        profile.streakFreezes += 1
+        save()
+    }
+
+    /// Vynechane dny od posledni bitvy: kdyz na ne zasoba staci, freeze se spotrebuje a serie nespadne.
+    /// Vraci pocet pouzitych freeze (0 = nic). Vola se pri spusteni a navratu do appky.
+    @discardableResult
+    func applyStreakFreezes(now: Date = Date()) -> Int {
+        let days = StreakFreeze.daysToFreeze(stats: stats, frozenDayKeys: frozenDayKeys, available: profile.streakFreezes, now: now)
+        guard !days.isEmpty else { return 0 }
+        profile.streakFreezes -= days.count
+        profile.frozenDays = Array(Set(profile.frozenDays).union(days)).sorted()
+        save()
+        return days.count
+    }
+
+    /// Prvni den pouzivani (sloupec 1 Habits). Stavajici hrac: den prvni bitvy, jinak dnesek.
+    func ensureFirstUseDate() {
+        let earliest = stats.sessionHistory.map(\.completedAt).min()
+        if let current = profile.firstUseDate {
+            // Starsi bitva nez ulozeny den (napr. obnovena data): mrizka zacne od ni.
+            guard let earliest, earliest < current else { return }
+            profile.firstUseDate = earliest
+        } else {
+            profile.firstUseDate = earliest ?? Date()
+        }
+        save()
+    }
+
+    func debugAddStreakFreeze() {
+        profile.streakFreezes = min(StreakFreeze.maxOwned, profile.streakFreezes + 1)
         save()
     }
 

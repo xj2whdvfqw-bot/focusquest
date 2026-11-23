@@ -13,6 +13,11 @@ struct SessionSummary: Identifiable, Codable, Sendable {
     var bossID: String? = nil
     /// Rychla 5minutova bitva ("Just 5 minutes"). Nil = zaznam ze starsi verze, jeste neoznaceny.
     var isQuick: Bool? = nil
+    /// C6: volitelna poznamka po vyhre ("What did you get done?"), jeden radek.
+    var note: String? = nil
+
+    /// Nejdelsi poznamka (znaku).
+    static let noteLimit = 120
 }
 
 /// Jeden radek Bestiare: kolikrat hrac porazil daneho bosse pri danem predmetu.
@@ -126,10 +131,31 @@ extension PlayerStats {
     // MARK: - Serie
 
     /// Serie, ktera plati dnes: kdyz hrac vcera ani dnes nebojoval, uz neplati.
-    func currentStreak(now: Date = Date(), calendar: Calendar = .current) -> Int {
-        guard let last = sessionHistory.first?.completedAt, streakDays > 0 else { return 0 }
-        let gap = calendar.dateComponents([.day], from: calendar.startOfDay(for: last), to: calendar.startOfDay(for: now)).day ?? 0
-        return gap <= 1 ? streakDays : 0
+    /// Od J1 (C2, C7) se serie pocita z historie dni, ne z ulozeneho pocitadla: pocet po sobe jdoucich dni
+    /// s bitvou, ktera konci dneskem nebo vcerejskem. Dny zachranene Streak freeze (`frozenDayKeys`) radu
+    /// nepreruseji, ale do poctu se nepocitaji.
+    func currentStreak(frozenDayKeys: Set<String> = [], now: Date = Date(), calendar: Calendar = .current) -> Int {
+        let focus = focusDayKeys(calendar: calendar)
+        guard !focus.isEmpty else { return 0 }
+        var day = calendar.startOfDay(for: now)
+        func key(_ date: Date) -> String { Self.dayKey(date, calendar: calendar) }
+        func isActive(_ date: Date) -> Bool { focus.contains(key(date)) || frozenDayKeys.contains(key(date)) }
+        // Dnes jeste bez bitvy: serie plati od vcerejska.
+        if !isActive(day) { day = calendar.date(byAdding: .day, value: -1, to: day) ?? day }
+        var count = 0
+        var steps = 0
+        while isActive(day), steps < 3_650 {
+            if focus.contains(key(day)) { count += 1 }
+            guard let previous = calendar.date(byAdding: .day, value: -1, to: day) else { break }
+            day = previous
+            steps += 1
+        }
+        return count
+    }
+
+    /// Dny s aspon jednou bitvou ("2026-11-23").
+    func focusDayKeys(calendar: Calendar = .current) -> Set<String> {
+        Set(sessionHistory.map { Self.dayKey($0.completedAt, calendar: calendar) })
     }
 
     /// Den ve tvaru "2026-11-23" (oslava serie se pamatuje po dnech).
@@ -285,6 +311,10 @@ struct HabitDay: Identifiable, Equatable, Sendable {
     let minutes: Int
     let isToday: Bool
     let isFuture: Bool
+    /// Den pred prvnim dnem pouzivani appky (zacatek prvniho tydne): ctverecek se nekresli.
+    var isBeforeStart = false
+    /// C2: den zachraneny Streak freeze (ikonka ledu).
+    var isFrozen = false
 
     var id: Date { date }
 
@@ -292,14 +322,21 @@ struct HabitDay: Identifiable, Equatable, Sendable {
     var level: Int { HabitGrid.level(forMinutes: minutes) }
 }
 
-/// Habits mrizka ve Stats: `weeks` sloupcu (tydny, nejstarsi vlevo), v kazdem 7 dni pondeli az nedele.
-/// Dny po dnesku v poslednim sloupci jsou prazdne (`isFuture`).
-/// Mrizka Habits od nejnovejsiho dne: `weeks[0][0]` je dnesek, dal dolu (v ramci sloupce) a pak doprava
-/// starsi dny. Kazdy sloupec ma 7 po sobe jdoucich dni, takze kazdy radek je vzdy tentyz den v tydnu.
+/// Habits mrizka ve Stats (C0): pevna, nic se neposouva.
+/// - Radky jsou pevne dny v tydnu shora dolu: pondeli az nedele.
+/// - Sloupce jsou tydny; sloupec 0 je tyden prvniho dne pouzivani appky, dalsi tydny doprava.
+/// - Dny pred prvnim dnem (v prvnim tydnu) se nekresli, dny po dnesku jsou prazdne (`isFuture`).
+/// - Dnesek se kazdy den posune o ctverecek dal (dolu, na konci tydne nahoru do dalsiho sloupce).
 struct HabitGrid: Equatable, Sendable {
     let weeks: [[HabitDay]]
-    /// Pismeno dne v tydnu pro kazdy radek (radek 0 = dnesni den v tydnu).
-    var rowLetters: [String] = []
+    /// Pismena radku: vzdy M, T, W, T, F, S, S.
+    var rowLetters: [String] = HabitGrid.weekdayLetters
+    /// Sloupec s dneskem (podle nej se mrizka pri otevreni posune).
+    var todayWeek: Int = 0
+
+    static let weekdayLetters = ["M", "T", "W", "T", "F", "S", "S"]
+    /// Aspon tolik sloupcu, at mrizka nevypada prazdne; dalsi tydny prodlouzi mrizku doprava.
+    static let minimumWeeks = 15
 
     /// Kolik dni ma aspon minutu soustredeni.
     var focusDays: Int { weeks.joined().filter { $0.minutes > 0 }.count }
@@ -314,25 +351,49 @@ struct HabitGrid: Equatable, Sendable {
         }
     }
 
-    static func make(history: [SessionSummary], weeks count: Int = 15, now: Date = Date(), calendar: Calendar = .current) -> HabitGrid {
+    /// Pondeli tydne, ve kterem je `date`.
+    static func weekStart(of date: Date, calendar: Calendar) -> Date {
+        let day = calendar.startOfDay(for: date)
+        // weekday: nedele = 1, pondeli = 2 … sobota = 7.
+        let back = (calendar.component(.weekday, from: day) + 5) % 7
+        return calendar.date(byAdding: .day, value: -back, to: day) ?? day
+    }
+
+    /// `firstDay` = prvni den pouzivani appky; kdyz je v historii starsi bitva, zacne se od ni.
+    static func make(history: [SessionSummary], firstDay: Date? = nil, frozenDayKeys: Set<String> = [], minimumWeeks: Int = HabitGrid.minimumWeeks, now: Date = Date(), calendar: Calendar = .current) -> HabitGrid {
         let today = calendar.startOfDay(for: now)
         var minutesByDay: [Date: Int] = [:]
         for session in history {
             minutesByDay[calendar.startOfDay(for: session.completedAt), default: 0] += max(0, session.verifiedMinutes)
         }
-        let weeks = (0..<max(1, count)).map { week in
+        let earliest = ([firstDay].compactMap { $0 } + history.map(\.completedAt)).min() ?? today
+        let start = min(calendar.startOfDay(for: earliest), today)
+        let firstWeek = weekStart(of: start, calendar: calendar)
+        let daysToToday = calendar.dateComponents([.day], from: firstWeek, to: today).day ?? 0
+        let todayWeek = max(0, daysToToday / 7)
+        let count = max(minimumWeeks, todayWeek + 1)
+        let weeks = (0..<count).map { week in
             (0..<7).compactMap { offset -> HabitDay? in
-                guard let date = calendar.date(byAdding: .day, value: -(week * 7 + offset), to: today) else { return nil }
+                guard let date = calendar.date(byAdding: .day, value: week * 7 + offset, to: firstWeek) else { return nil }
                 let day = calendar.startOfDay(for: date)
-                return HabitDay(date: day, minutes: minutesByDay[day] ?? 0, isToday: day == today, isFuture: false)
+                return HabitDay(
+                    date: day,
+                    minutes: minutesByDay[day] ?? 0,
+                    isToday: day == today,
+                    isFuture: day > today,
+                    isBeforeStart: day < start,
+                    isFrozen: frozenDayKeys.contains(PlayerStats.dayKey(day, calendar: calendar))
+                )
             }
         }
-        // Jednopismenne zkratky dni (M, T, W …) v anglictine jako zbytek appky.
-        var english = calendar
-        english.locale = Locale(identifier: "en_US_POSIX")
-        let letters = english.veryShortStandaloneWeekdaySymbols
-        let rowLetters = (weeks.first ?? []).map { letters[calendar.component(.weekday, from: $0.date) - 1] }
-        return HabitGrid(weeks: weeks, rowLetters: rowLetters)
+        return HabitGrid(weeks: weeks, todayWeek: todayWeek)
+    }
+
+    /// Poslednich `count` tydnu az po tyden s dneskem (mini Habits na obrazku ke sdileni).
+    func recentWeeks(_ count: Int) -> HabitGrid {
+        let end = min(weeks.count, todayWeek + 1)
+        let start = max(0, end - count)
+        return HabitGrid(weeks: Array(weeks[start..<end]), rowLetters: rowLetters, todayWeek: end - start - 1)
     }
 }
 

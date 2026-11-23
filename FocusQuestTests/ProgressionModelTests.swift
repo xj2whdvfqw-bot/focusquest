@@ -816,29 +816,64 @@ final class ProgressionModelTests: XCTestCase {
         SessionSummary(id: UUID(), bossName: "A", verifiedMinutes: minutes, xpEarned: 0, completedAt: date, flawless: true, subject: .math)
     }
 
-    func testHabitGridStartsWithTodayTopLeft() {
-        // Patek 20. 11. 2026: dnesek je prvni ctverecek vlevo nahore, dolu a doprava jdou starsi dny.
+    func testHabitGridIsFixedFromTheFirstDay() {
+        // Prvni den: streda 11. 11. 2026. Dnes: patek 20. 11. 2026 (druhy tyden).
+        let first = day(2026, 11, 11, hour: 8)
         let now = day(2026, 11, 20)
-        let history = [session(on: day(2026, 11, 20, hour: 9), minutes: 20), session(on: day(2026, 11, 20, hour: 15), minutes: 10), session(on: day(2026, 11, 16), minutes: 95), session(on: day(2026, 1, 1), minutes: 30)]
-        let grid = HabitGrid.make(history: history, weeks: 15, now: now, calendar: utcCalendar)
-        XCTAssertEqual(grid.weeks.count, 15)
+        let history = [session(on: day(2026, 11, 20, hour: 9), minutes: 20), session(on: day(2026, 11, 20, hour: 15), minutes: 10), session(on: day(2026, 11, 16), minutes: 95)]
+        let grid = HabitGrid.make(history: history, firstDay: first, now: now, calendar: utcCalendar)
+        XCTAssertEqual(grid.rowLetters, ["M", "T", "W", "T", "F", "S", "S"])
+        XCTAssertEqual(grid.weeks.count, HabitGrid.minimumWeeks)
         XCTAssertTrue(grid.weeks.allSatisfy { $0.count == 7 })
-        let first = grid.weeks[0]
-        XCTAssertTrue(first[0].isToday)
-        XCTAssertEqual(first[0].date, day(2026, 11, 20, hour: 0))
-        XCTAssertEqual(first[0].minutes, 30)
-        XCTAssertEqual(first[0].level, 2)
-        XCTAssertEqual(first[4].date, day(2026, 11, 16, hour: 0))
-        XCTAssertEqual(first[4].minutes, 95)
-        XCTAssertEqual(first[4].level, 4)
-        XCTAssertEqual(grid.weeks[1][0].date, day(2026, 11, 13, hour: 0), "Second column continues 7 days back")
-        XCTAssertFalse(grid.weeks.joined().contains { $0.isFuture })
-        // Ctene po sloupcich jdou dny od nejnovejsiho k nejstarsimu.
-        let days = grid.weeks.flatMap { $0 }.map(\.date)
-        XCTAssertEqual(days, days.sorted(by: >))
-        XCTAssertEqual(grid.rowLetters.count, 7)
-        XCTAssertEqual(grid.rowLetters.first, "F")
-        XCTAssertEqual(grid.focusDays, 2, "Sessions outside the grid do not count")
+        // Sloupec 1 zacina pondelim 9. 11.; pondeli a utery jsou pred prvnim dnem.
+        XCTAssertEqual(grid.weeks[0][0].date, day(2026, 11, 9, hour: 0))
+        XCTAssertTrue(grid.weeks[0][0].isBeforeStart)
+        XCTAssertTrue(grid.weeks[0][1].isBeforeStart)
+        XCTAssertFalse(grid.weeks[0][2].isBeforeStart, "The first day sits in its own weekday row")
+        // Dnesek (patek) je ve druhem sloupci v radku F.
+        XCTAssertEqual(grid.todayWeek, 1)
+        XCTAssertTrue(grid.weeks[1][4].isToday)
+        XCTAssertEqual(grid.weeks[1][4].minutes, 30)
+        XCTAssertEqual(grid.weeks[1][0].minutes, 95)
+        XCTAssertTrue(grid.weeks[1][5].isFuture)
+        XCTAssertTrue(grid.weeks[2][0].isFuture)
+        // Zitra se nic neposune: tytez dny zustanou na stejnem miste.
+        let tomorrow = HabitGrid.make(history: history, firstDay: first, now: day(2026, 11, 21), calendar: utcCalendar)
+        XCTAssertEqual(tomorrow.weeks[1][4].date, grid.weeks[1][4].date)
+        XCTAssertTrue(tomorrow.weeks[1][5].isToday)
+        XCTAssertEqual(grid.focusDays, 2)
+        // Mini Habits ke sdileni konci tydnem s dneskem.
+        let recent = grid.recentWeeks(5)
+        XCTAssertEqual(recent.weeks.count, 2)
+        XCTAssertEqual(recent.todayWeek, 1)
+    }
+
+    func testHabitGridGrowsPastTheMinimumWeeks() {
+        let first = day(2026, 1, 5)
+        let grid = HabitGrid.make(history: [], firstDay: first, now: day(2026, 11, 20), calendar: utcCalendar)
+        XCTAssertGreaterThan(grid.weeks.count, HabitGrid.minimumWeeks)
+        XCTAssertEqual(grid.todayWeek, grid.weeks.count - 1)
+    }
+
+    func testStreakFreezeCoversAMissedDay() {
+        var stats = PlayerStats.initial
+        stats.record(session(on: day(2026, 11, 17), minutes: 20), bossDefeated: true, calendar: utcCalendar)
+        stats.record(session(on: day(2026, 11, 18), minutes: 20), bossDefeated: true, calendar: utcCalendar)
+        let now = day(2026, 11, 20)
+        // 19. 11. vynechany: bez freeze serie spadla.
+        XCTAssertEqual(stats.currentStreak(now: now, calendar: utcCalendar), 0)
+        let days = StreakFreeze.daysToFreeze(stats: stats, frozenDayKeys: [], available: 2, now: now, calendar: utcCalendar)
+        XCTAssertEqual(days, [PlayerStats.dayKey(day(2026, 11, 19), calendar: utcCalendar)])
+        // Zamrzly den serii drzi, ale do poctu se nepocita.
+        XCTAssertEqual(stats.currentStreak(frozenDayKeys: Set(days), now: now, calendar: utcCalendar), 2)
+        // Dva vynechane dny a jen jeden freeze: nic se nespotrebuje.
+        XCTAssertEqual(StreakFreeze.daysToFreeze(stats: stats, frozenDayKeys: [], available: 1, now: day(2026, 11, 21), calendar: utcCalendar), [])
+        XCTAssertEqual(StreakFreeze.daysToFreeze(stats: stats, frozenDayKeys: [], available: 2, now: day(2026, 11, 21), calendar: utcCalendar).count, 2)
+        // Bez mezery (vcera byla bitva) se nic nespotrebuje.
+        XCTAssertEqual(StreakFreeze.daysToFreeze(stats: stats, frozenDayKeys: [], available: 2, now: day(2026, 11, 19), calendar: utcCalendar), [])
+        // Zamrzly den je v Habits videt.
+        let grid = HabitGrid.make(history: stats.sessionHistory, frozenDayKeys: Set(days), now: now, calendar: utcCalendar)
+        XCTAssertTrue(grid.weeks.joined().contains { $0.isFrozen && $0.minutes == 0 })
     }
 
     func testHabitLevelsFollowFocusMinutes() {

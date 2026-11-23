@@ -18,18 +18,18 @@ struct ShareSnapshot: Equatable {
     /// Mini Habits: poslednich 5 tydnu.
     let grid: HabitGrid
 
-    static func make(stats: PlayerStats, profile: UserProfile, greetingName: String?, now: Date = Date(), calendar: Calendar = .current) -> ShareSnapshot {
+    static func make(stats: PlayerStats, profile: UserProfile, greetingName: String?, frozenDayKeys: Set<String> = [], now: Date = Date(), calendar: Calendar = .current) -> ShareSnapshot {
         let weekStart = calendar.date(byAdding: .day, value: -6, to: calendar.startOfDay(for: now)) ?? now
         let week = stats.sessionHistory.filter { $0.completedAt >= weekStart && $0.completedAt <= now }
         return ShareSnapshot(
             name: greetingName,
             hero: profile.avatar,
             heroClass: profile.heroClass,
-            streak: stats.currentStreak(now: now, calendar: calendar),
+            streak: stats.currentStreak(frozenDayKeys: frozenDayKeys, now: now, calendar: calendar),
             longestStreak: stats.longestStreak(calendar: calendar),
             weekMinutes: week.reduce(0) { $0 + max(0, $1.verifiedMinutes) },
             weekBosses: week.filter { $0.isQuick != true }.count,
-            grid: HabitGrid.make(history: stats.sessionHistory, weeks: 5, now: now, calendar: calendar)
+            grid: HabitGrid.make(history: stats.sessionHistory, firstDay: profile.firstUseDate, frozenDayKeys: frozenDayKeys, now: now, calendar: calendar).recentWeeks(5)
         )
     }
 }
@@ -208,7 +208,7 @@ struct StatsShareCard: View {
         .overlay { RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Color.white.opacity(0.12), lineWidth: 1) }
     }
 
-    /// Mini Habits: 5 tydnu, dnesek vlevo nahore jako ve Stats.
+    /// Mini Habits: poslednich 5 tydnu (radky pondeli az nedele, posledni sloupec = tento tyden), jako ve Stats.
     private var habits: some View {
         VStack(spacing: 8) {
             HStack(alignment: .top, spacing: 5) {
@@ -216,7 +216,7 @@ struct StatsShareCard: View {
                     VStack(spacing: 5) {
                         ForEach(week) { day in
                             RoundedRectangle(cornerRadius: 3, style: .continuous)
-                                .fill(day.level == 0 ? Color.white.opacity(0.08) : HabitsCard.color(level: day.level))
+                                .fill(day.isBeforeStart ? Color.clear : day.isFuture ? Color.white.opacity(0.03) : day.isFrozen && day.minutes == 0 ? HabitsCard.ice : day.level == 0 ? Color.white.opacity(0.08) : HabitsCard.color(level: day.level))
                                 .frame(width: 18, height: 18)
                                 .overlay {
                                     if day.isToday {

@@ -1,10 +1,9 @@
 import SwiftUI
 
-/// Habits ve Stats: mrizka dni na sirku (sloupec = 7 dni, radek = den v tydnu), barva podle minut soustredeni.
-/// Poradi je od nejnovejsiho: dnesek je prvni ctverecek vlevo nahore, dolu a doprava jdou starsi dny
-/// (sloupec 1 = poslednich 7 dni). Pismena dni vlevo sedi na kazdy sloupec, protoze sloupce maji po 7 dnech.
-/// Cisla tydnu 1, 3, 5 … stoji kazde vycentrovane nad svym sloupcem (stejna sirka jako bunka).
-/// Klepnuti na den ukaze malou bublinu s datem a minutami; dalsi klepnuti ji schova.
+/// Habits ve Stats (C0): pevna mrizka od prvniho dne pouzivani. Radky jsou dny v tydnu (M … S),
+/// sloupce tydny (tyden 1 vlevo). Dny se nikdy neposouvaji; dnesek ma bily ramecek a kazdy den je o ctverecek dal.
+/// Budouci dny jsou prazdne a tlumene, zamrzle dny (Streak freeze) maji led. Kdyz se tydny nevejdou, mrizka jde
+/// posunout vodorovne a pri otevreni se sama posune k dnesku. Klepnuti na den ukaze bublinu s datem a minutami.
 struct HabitsCard: View {
     let grid: HabitGrid
     @State private var selected: HabitDay?
@@ -28,12 +27,24 @@ struct HabitsCard: View {
             HStack(alignment: .top, spacing: Layout.dayColumnGap) {
                 dayLabels
                     .padding(.top, Layout.weekRowHeight + Layout.weekRowGap)
-                VStack(alignment: .leading, spacing: Layout.weekRowGap) {
-                    weekNumbers
-                    cells
+                ScrollViewReader { reader in
+                    ScrollView(.horizontal) {
+                        VStack(alignment: .leading, spacing: Layout.weekRowGap) {
+                            weekNumbers
+                            cells
+                        }
+                        // Misto pro bublinu nad hornim radkem a pro ramecek dneska.
+                        .padding(.vertical, 2)
+                        .padding(.trailing, 2)
+                    }
+                    .scrollIndicators(.hidden)
+                    .scrollClipDisabled()
+                    // Pri otevreni je dnesek videt (az se tydny nevejdou na sirku).
+                    .onAppear { reader.scrollTo(grid.todayWeek, anchor: .center) }
+                    .onChange(of: grid.todayWeek) { _, week in reader.scrollTo(week, anchor: .center) }
                 }
             }
-            .frame(maxWidth: .infinity)
+            .frame(maxWidth: .infinity, alignment: .leading)
             legend
         }
         .padding(Layout.padding)
@@ -57,12 +68,12 @@ struct HabitsCard: View {
         .accessibilityHidden(true)
     }
 
-    /// Cislo nad kazdym lichym tydnem; prvni (aktualni, vlevo) je zvyrazneny.
+    /// Cislo nad kazdym lichym tydnem (tyden 1 = prvni tyden pouzivani); aktualni tyden je zvyrazneny vzdy.
     private var weekNumbers: some View {
         HStack(spacing: Layout.gap) {
             ForEach(0..<weekCount, id: \.self) { index in
-                let isCurrent = index == 0
-                Text(index % 2 == 0 ? "\(index + 1)" : "")
+                let isCurrent = index == grid.todayWeek
+                Text(index % 2 == 0 || isCurrent ? "\(index + 1)" : "")
                     .font(Layout.labelFont.weight(isCurrent ? .bold : .regular))
                     .monospacedDigit()
                     .foregroundStyle(isCurrent ? FQColor.accent : FQColor.textTertiary)
@@ -81,6 +92,7 @@ struct HabitsCard: View {
                 VStack(spacing: Layout.gap) {
                     ForEach(grid.weeks[week]) { day in cell(day) }
                 }
+                .id(week)
             }
         }
         .overlay(alignment: .topLeading) { bubbleOverlay }
@@ -88,14 +100,28 @@ struct HabitsCard: View {
 
     @ViewBuilder private func cell(_ day: HabitDay) -> some View {
         let shape = RoundedRectangle(cornerRadius: Layout.cell * 0.25, style: .continuous)
-        if day.isFuture {
+        if day.isBeforeStart {
+            // Pred prvnim dnem pouzivani: prazdne misto, aby prvni den sedel ve svem radku.
+            Color.clear
+                .frame(width: Layout.cell, height: Layout.cell)
+                .accessibilityHidden(true)
+        } else if day.isFuture {
+            // Budouci dny: prazdne a tlumenejsi nez dny bez soustredeni.
             shape
-                .strokeBorder(Color.white.opacity(0.08), lineWidth: 1)
+                .strokeBorder(Color.white.opacity(0.06), style: StrokeStyle(lineWidth: 1, dash: [2, 2]))
                 .frame(width: Layout.cell, height: Layout.cell)
                 .accessibilityHidden(true)
         } else {
             shape
-                .fill(Self.color(level: day.level))
+                .fill(day.isFrozen && day.minutes == 0 ? Self.ice : Self.color(level: day.level))
+                .overlay {
+                    if day.isFrozen {
+                        Image(systemName: "snowflake")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(Color.white)
+                            .accessibilityHidden(true)
+                    }
+                }
                 .frame(width: Layout.cell, height: Layout.cell)
                 .shadow(color: day.level == 4 ? Self.glow : .clear, radius: 3)
                 .overlay {
@@ -109,7 +135,7 @@ struct HabitsCard: View {
                     selected = selected == day ? nil : day
                 }
                 .accessibilityElement()
-                .accessibilityLabel("\(Self.dateText(day)): \(Self.minutesText(day.minutes, spoken: true))")
+                .accessibilityLabel("\(Self.dateText(day)): \(day.isFrozen ? "streak freeze, streak kept" : Self.minutesText(day.minutes, spoken: true))")
                 .accessibilityAddTraits(.isButton)
         }
     }
@@ -123,7 +149,7 @@ struct HabitsCard: View {
             let minX = half - Layout.dayColumnGap - 10
             let maxX = gridWidth - half + Layout.padding / 2
             let centerX = maxX >= minX ? min(max(anchorX, minX), maxX) : gridWidth / 2
-            HabitBubble(text: "\(Self.dateText(day)) · \(Self.minutesText(day.minutes, spoken: false))")
+            HabitBubble(text: "\(Self.dateText(day)) · \(day.isFrozen ? "❄︎ streak freeze" : Self.minutesText(day.minutes, spoken: false))")
                 .fixedSize()
                 .onGeometryChange(for: CGSize.self) { $0.size } action: { bubbleSize = $0 }
                 .offset(x: centerX - half, y: CGFloat(position.day) * step - bubbleSize.height - 4)
@@ -159,7 +185,7 @@ struct HabitsCard: View {
     }
 
     private var legendText: some View {
-        Text("Today is top left, older days go down and to the right · filled by your focus time")
+        Text("Each square is one day, starting from your first day · filled by your focus time")
             .fixedSize(horizontal: false, vertical: true)
     }
 
@@ -190,6 +216,9 @@ struct HabitsCard: View {
         default: Color.white.opacity(0.08)
         }
     }
+
+    /// C2: zamrzly den (Streak freeze) bez soustredeni: ledove modra.
+    static let ice = Color(red: 0x5B / 255, green: 0xB8 / 255, blue: 0xF0 / 255).opacity(0.55)
 
     private static let glow = Color(red: 0x8E / 255, green: 0xE0 / 255, blue: 0x7C / 255).opacity(0.45)
 

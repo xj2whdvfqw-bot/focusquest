@@ -111,7 +111,7 @@ enum CoachStep: Int, CaseIterable, Sendable {
         case .path: "Worlds full of bosses wait on the map. Tap Path to take a look."
         case .shop: "Coins from battles buy gear and backgrounds. Tap Shop."
         case .stats: "Focus time, streaks and habits live here. Tap Stats."
-        case .habits: "Each square is one day, and the brighter it glows, the more minutes you focused. Today is the first square, top left."
+        case .habits: "Each square is one day, starting from your first day: rows are Monday to Sunday, every week adds a column. Today has a white frame, and brighter squares mean more focus."
         case .statNumbers: "Win rate is the share of battles you won, next to bosses beaten. Longest streak counts days in a row, focus hours add up all your time."
         case .hero: "Change your hero's look any time. Tap Hero."
         case .dailyTarget: "The ring fills with your class color as you focus today. Slide to set a goal that fits you."

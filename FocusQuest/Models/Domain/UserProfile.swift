@@ -25,6 +25,12 @@ struct UserProfile: Codable, Sendable {
     var foundEasterEggs: [String] = []
     /// B2: extra pauzy koupene v Shopu (nejvys `maxExtraPauses`); v jedne bitve jde pouzit nejvys jedna.
     var extraPauses = 0
+    /// C0: prvni den pouzivani appky (sloupec 1 Habits). Nil = jeste nezjisteno (doplni ProfileViewModel).
+    var firstUseDate: Date? = nil
+    /// C2: Streak freeze v zasobe (nejvys StreakFreeze.maxOwned).
+    var streakFreezes = 0
+    /// C2: dny zachranene Streak freeze (PlayerStats.dayKey).
+    var frozenDays: [String] = []
 
     /// Kolik extra pauz jde drzet najednou.
     static let maxExtraPauses = 5
@@ -35,12 +41,14 @@ struct UserProfile: Codable, Sendable {
         case userID, username, title, heroClass, avatarMatrix, dailyFocusGoalMinutes
         case avatar, coins, bossesDefeated, hasCreatedHero, ownedEquipmentIDs, focusGoals
         case ownedBackgroundIDs, backgroundID, foundEasterEggs, extraPauses
+        case firstUseDate, streakFreezes, frozenDays
     }
 
     /// Novy hrac (i po Reset progress) zacina s pozadim Daybreak; World scenes si muze vybrat v Shopu.
     static func fresh(deviceID: String) -> UserProfile {
         var profile = UserProfile(userID: deviceID, username: defaultUsername, title: "Novice Focuser", heroClass: .warrior, avatarMatrix: [], dailyFocusGoalMinutes: 60)
         profile.backgroundID = ShopBackground.dawn.rawValue
+        profile.firstUseDate = Date()
         return profile
     }
 
@@ -85,6 +93,9 @@ extension UserProfile {
         backgroundID = try? container.decodeIfPresent(String.self, forKey: .backgroundID)
         foundEasterEggs = (try? container.decodeIfPresent([String].self, forKey: .foundEasterEggs)) ?? []
         extraPauses = min(Self.maxExtraPauses, max(0, (try? container.decodeIfPresent(Int.self, forKey: .extraPauses)) ?? 0))
+        firstUseDate = (try? container.decodeIfPresent(Date.self, forKey: .firstUseDate)) ?? nil
+        streakFreezes = min(StreakFreeze.maxOwned, max(0, (try? container.decodeIfPresent(Int.self, forKey: .streakFreezes)) ?? 0))
+        frozenDays = (try? container.decodeIfPresent([String].self, forKey: .frozenDays)) ?? []
     }
 }
 

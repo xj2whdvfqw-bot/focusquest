@@ -295,9 +295,20 @@ final class ArenaViewModel: ObservableObject {
     /// Naplanuje denni pripominku v 17:00 (nebo ji zrusi, kdyz je vypnuta).
     func refreshDailyReminder(focusedToday: Bool) {
         self.focusedToday = focusedToday
-        let enabled = preferences.isDailyReminderEnabled
-        Task { await notifications?.updateDailyReminder(enabled: enabled, focusedToday: focusedToday) }
+        // C3: aktivni iOS Focus rezim s "Mute reminders" vlastni pripominky appky ztlumi.
+        let muted = FocusModeState.load().mutesReminders
+        let enabled = preferences.isDailyReminderEnabled && !muted
+        // C2: vecerni varovani pred ztratou serie.
+        let streakEnabled = preferences.isStreakReminderEnabled && !muted
+        let streak = streakProvider?() ?? 0
+        Task {
+            await notifications?.updateDailyReminder(enabled: enabled, focusedToday: focusedToday)
+            await notifications?.updateStreakReminder(enabled: streakEnabled, streak: streak, focusedToday: focusedToday)
+        }
     }
+
+    /// C2: aktualni serie (z profilu vcetne Streak freeze); nastavuje AppDIContainer.
+    var streakProvider: (@MainActor () -> Int)?
 
     /// Zacatek 5minutove prestavky: notifikace "Break is over", pokud je zapnuta.
     func breakStarted(seconds: Int) {
@@ -609,6 +620,7 @@ final class ArenaViewModel: ObservableObject {
 
     func updatePreferences(_ updated: AppPreferences) {
         let reminderChanged = updated.isDailyReminderEnabled != preferences.isDailyReminderEnabled
+            || updated.isStreakReminderEnabled != preferences.isStreakReminderEnabled
         preferences = updated
         if reminderChanged { refreshDailyReminder(focusedToday: focusedToday) }
         preferenceStore.save(updated)

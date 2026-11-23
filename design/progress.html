@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-24T00:20:00+01:00",
-  "current": "I1 hotovo: build #70 prošel",
-  "nextStep": "Otestovat na iPhonu srdíčka v bitvě, pauzy a Extra pause, break panel a sdílení",
+  "updated": "2026-11-24T01:30:00+01:00",
+  "current": "J1: C0, C2 a C6 hotové v kódu, build běží",
+  "nextStep": "Počkat na build, pak C1 widget, C3 Focus Filter, C4 zkratky",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -832,6 +832,25 @@
       "commit": "7540241",
       "build": { "number": 70, "runId": 45282885767, "result": "úspěch" },
       "note": "Build #70 prošel napoprvé (IPA, testy včetně BossHeartsTests a nových testů pauz). Na iPhonu otestuj: srdíčka v bitvě (Novice 3, Mythic 6), čtvrtka ubude s otřesem a pixely v pravidelném rozestupu (Novice 15 min = každých 75 s; pro rychlý test Just 5 minutes = každých 25 s), poslední až s K.O.; ťukání na bosse nic neubírá; Reduce Motion: čtvrtka jen zmizí; Live Activity má dál plynulý pruh. Pauzy: 1 zdarma, pak „No pauses“; Shop › Battle supplies › Extra pause za 40 (max 5, „need N more“), Debug +3 extra pauses, v bitvě po pauze zdarma „Extra pause“ a jen jedna, řádek „Pause: 1 free + N extra“ a odečtení z inventáře. Přestávka: kompaktní panel (BREAK, odpočet, Next boss), vytažením nahoru Same again, Change boss, Done for today a hrdina u ohně, stáhnout dolů nejde, odchod tlačítky bez zaseknutí. Stats › Share: náhled, přepínání This week / Streak, Show my name, sdílení obrázku (1080×1920). Milník série 7 dní: po oslavě na Home nabídka sdílení (jen jednou)."
+    },
+    {
+      "id": "J1",
+      "title": "Habits, widget, streak freeze, Focus Filter, zkratky, úkoly, poznámky, iCloud příprava",
+      "status": "pracuje",
+      "items": [
+        { "text": "C0 Habits: pevná mřížka od prvního dne (řádky Po–Ne, sloupce týdny), dnešek s rámečkem, vodorovný posun, nový popisek a tutoriál", "done": true },
+        { "text": "C1 Widget malý a střední (série, další boss, dnešní minuty vs. cíl), deep link na výběr bitvy; App Group připravená za flagem", "done": false },
+        { "text": "C2 Streak freeze v Shopu (150 mincí, max 2), automatická spotřeba, led v Habits a na Home, večerní notifikace", "done": true },
+        { "text": "C3 Focus Filter (nabídka bitvy, ztlumení připomínek) a návod v Nastavení", "done": false },
+        { "text": "C4 App Intents a App Shortcuts: Start battle, Show streak, Pause battle", "done": false },
+        { "text": "C5 Týdenní úkoly: 3 každé pondělí, truhla s mincemi, karta na Home", "done": false },
+        { "text": "C6 Poznámka po výhře a historie bitev ve Stats s filtrem", "done": true },
+        { "text": "C7 Jedna úložná vrstva, iCloud KVS sync za flagem (OFF), skrytá sekce v Nastavení", "done": false },
+        { "text": "design/DEVELOPER_ACCOUNT_TODO.md, DECISIONS.md", "done": false }
+      ],
+      "commit": "",
+      "build": { "number": null, "runId": null, "result": "" },
+      "note": ""
     }
   ]
 }

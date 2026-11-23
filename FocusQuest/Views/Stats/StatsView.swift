@@ -26,11 +26,12 @@ struct StatsView: View {
             habitsSection
             metricsCard
             subjectsSection
+            BattleLogSection(history: model.stats.sessionHistory, subjects: arena.preferences.subjects)
         }
         .task { await model.load() }
         .sheet(isPresented: $showsSubjectManager) { SubjectManagerView(model: arena) }
         .sheet(isPresented: $showsShare) {
-            StatsShareSheet(snapshot: ShareSnapshot.make(stats: model.stats, profile: profile.profile, greetingName: profile.greetingName)) {
+            StatsShareSheet(snapshot: ShareSnapshot.make(stats: model.stats, profile: profile.profile, greetingName: profile.greetingName, frozenDayKeys: profile.frozenDayKeys)) {
                 showsShare = false
             }
             .presentationDragIndicator(.visible)
@@ -40,7 +41,7 @@ struct StatsView: View {
     // MARK: - Habits
 
     private var habitsSection: some View {
-        let grid = HabitGrid.make(history: model.stats.sessionHistory)
+        let grid = HabitGrid.make(history: model.stats.sessionHistory, firstDay: profile.profile.firstUseDate, frozenDayKeys: profile.frozenDayKeys)
         let days = grid.focusDays
         return ScreenSection(title: "Habits", detail: "\(days) focus \(days == 1 ? "day" : "days")") {
             HabitsCard(grid: grid)

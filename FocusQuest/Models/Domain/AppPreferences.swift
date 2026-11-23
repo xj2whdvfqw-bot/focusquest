@@ -168,6 +168,8 @@ struct AppPreferences: Codable, Equatable, Sendable {
     var isBattleDoneNotificationEnabled = true
     /// Notifikace "Break is over" na konci 5minutove prestavky.
     var isBreakOverNotificationEnabled = true
+    /// C2: vecer ve 20:00, kdyz dnes jeste nebyla bitva a serie je v ohrozeni.
+    var isStreakReminderEnabled = true
     var ambientVolume = 0.55
     var selectedTrack: AmbientTrack = .calmCurrents
     var soundscape: Soundscape = .lofi
@@ -195,7 +197,7 @@ struct AppPreferences: Codable, Equatable, Sendable {
     enum CodingKeys: String, CodingKey {
         case isHapticsEnabled, isMusicEnabled, isSFXEnabled, ambientVolume, selectedTrack, soundscape, clearedNodesByWorld, lastSubject, lastBossID, subjects
         case isAchievementSoundEnabled, isAlarmSoundEnabled, isDailyReminderEnabled, isBattleDoneNotificationEnabled, isBreakOverNotificationEnabled
-        case isBattleSoundEnabled, effectsVolume, revealedWorlds
+        case isBattleSoundEnabled, effectsVolume, revealedWorlds, isStreakReminderEnabled
         case isBattleSoundUserSet, hapticStrength, debugUnlockAllWorlds
     }
 
@@ -297,6 +299,7 @@ extension AppPreferences {
         isDailyReminderEnabled = (try? container.decodeIfPresent(Bool.self, forKey: .isDailyReminderEnabled)) ?? fallback.isDailyReminderEnabled
         isBattleDoneNotificationEnabled = (try? container.decodeIfPresent(Bool.self, forKey: .isBattleDoneNotificationEnabled)) ?? fallback.isBattleDoneNotificationEnabled
         isBreakOverNotificationEnabled = (try? container.decodeIfPresent(Bool.self, forKey: .isBreakOverNotificationEnabled)) ?? fallback.isBreakOverNotificationEnabled
+        isStreakReminderEnabled = (try? container.decodeIfPresent(Bool.self, forKey: .isStreakReminderEnabled)) ?? fallback.isStreakReminderEnabled
         // Battle sounds jsou vychozi vypnute. Ulozena hodnota plati jen tehdy, kdyz je hrac sam prepnul;
         // starsi instalace (drive vychozi zapnuto, nebo prevzato z "Tap and battle sounds") zacnou vypnute.
         isBattleSoundUserSet = (try? container.decodeIfPresent(Bool.self, forKey: .isBattleSoundUserSet)) ?? false

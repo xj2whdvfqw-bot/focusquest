@@ -137,7 +137,7 @@ struct ArenaView: View {
             }
             celebrateStreak()
             // B4: po oslave milniku serie (7, 30, 100 dni) jednou nabidnout sdileni.
-            guard let milestone = StreakMilestone.due(streak: profileModel.stats.currentStreak(), offered: offeredMilestones) else { return }
+            guard let milestone = StreakMilestone.due(streak: profileModel.currentStreak, offered: offeredMilestones) else { return }
             try? await Task.sleep(for: .seconds(StreakCelebration.sparkSeconds + 0.4))
             guard !Task.isCancelled, isOnScreen, !battle.isPresented, !battle.showsFightSheet else { return }
             offeredMilestones = StreakMilestone.adding(milestone, to: offeredMilestones)
@@ -145,7 +145,7 @@ struct ArenaView: View {
         }
         .sheet(isPresented: Binding(get: { milestoneShare != nil }, set: { if !$0 { milestoneShare = nil } })) {
             StatsShareSheet(
-                snapshot: ShareSnapshot.make(stats: profileModel.stats, profile: profileModel.profile, greetingName: profileModel.greetingName),
+                snapshot: ShareSnapshot.make(stats: profileModel.stats, profile: profileModel.profile, greetingName: profileModel.greetingName, frozenDayKeys: profileModel.frozenDayKeys),
                 initialTemplate: .streak,
                 headline: "\(milestoneShare ?? 0)-day streak!"
             ) { milestoneShare = nil }
@@ -169,10 +169,20 @@ struct ArenaView: View {
     // MARK: - Serie
 
     private var streakPill: some View {
-        let days = shownStreak ?? profileModel.stats.currentStreak()
+        let days = shownStreak ?? profileModel.currentStreak
         let burning = fireStart != nil
+        let frozen = StreakFreeze.recentlyFrozen(frozenDayKeys: profileModel.frozenDayKeys)
         return Button(action: tapStreak) {
-            StreakBadge(days: days, burning: burning, flare: flares)
+            HStack(spacing: 8) {
+                StreakBadge(days: days, burning: burning, flare: flares)
+                // C2: Streak freeze v poslednim tydnu zachranil den: ledova vlocka u serie.
+                if frozen {
+                    Image(systemName: "snowflake")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(Color(red: 0.55, green: 0.82, blue: 1.0))
+                        .accessibilityHidden(true)
+                }
+            }
                 .padding(.vertical, 10)
                 .padding(.horizontal, 14)
                 .glassCard(radius: FQRadius.capsule)
@@ -207,7 +217,7 @@ struct ArenaView: View {
                 }
         }
         .buttonStyle(.fqPress)
-        .accessibilityLabel(days == 1 ? "1 day streak" : "\(days) days streak")
+        .accessibilityLabel((days == 1 ? "1 day streak" : "\(days) days streak") + (frozen ? ", a streak freeze kept it alive" : ""))
     }
 
     /// Kazde klepnuti pilulku nafoukne; 5 klepnuti s rozestupem do 600 ms ji zapali.
@@ -233,14 +243,14 @@ struct ArenaView: View {
     /// Pripravi oslavu: pilulka hned ukaze vcerejsi cislo, oslava prijde po zavreni bitvy.
     private func requestStreakCelebration() {
         guard canCelebrateStreak else { return }
-        shownStreak = max(0, profileModel.stats.currentStreak() - 1)
+        shownStreak = max(0, profileModel.currentStreak - 1)
         celebrationRequest += 1
     }
 
     /// Plaminek se rozhori, cislo naskoci, jiskry, vibrace a zvuk odmeny (Reward sounds, Haptics).
     /// S Reduce Motion jen prolnuti cisla, bez zvetseni a jisker. Jednou za den.
     private func celebrateStreak() {
-        let days = profileModel.stats.currentStreak()
+        let days = profileModel.currentStreak
         celebratedDay = PlayerStats.dayKey(Date())
         if reduceMotion {
             withAnimation(.easeOut(duration: 0.4)) { shownStreak = nil }

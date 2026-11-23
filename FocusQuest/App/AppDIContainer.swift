@@ -42,6 +42,8 @@ final class AppDIContainer {
             // Dnes uz se bojovalo: dnesni pripominka v 17:00 odpada.
             arena?.refreshDailyReminder(focusedToday: true)
         }
+        // C2: serie pro vecerni varovani (vcetne dnu zachranenych Streak freeze).
+        arenaViewModel.streakProvider = { [weak profileViewModel] in profileViewModel?.currentStreak ?? 0 }
         // B2: extra pauza pouzita v bitve se odecte z profilu.
         arenaViewModel.onExtraPauseUsed = { [weak profileViewModel] in
             profileViewModel?.consumeExtraPause()
