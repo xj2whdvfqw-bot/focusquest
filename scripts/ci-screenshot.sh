@@ -89,7 +89,7 @@ shoot() {
 }
 
 # Kazda polozka je "rezim:zalozka". Appka ma vynuceny tmavy rezim, svetle snimky by byly stejne.
-# Onboarding uz neni (od F1 ho nahradil TipKit), proto chybi screenshot "creator".
+# Onboarding a tutorial se pri -initialTab preskakuji (F2), proto chybi screenshot "creator".
 # "battle-hit" = bitva se scenou zastavenou uprostred utoku (viz BattleStage.debugFrozenAt).
 # "map-…" = mapa Path s ukazkovym postupem (viz ArenaViewModel.debugMapProgress a PathTabView.debugMapMode).
 # Poradi = priorita: kdyz je simulator pomaly a krok narazi na limit, chybi az ty posledni.

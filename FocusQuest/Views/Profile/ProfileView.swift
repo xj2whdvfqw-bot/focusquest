@@ -1,12 +1,9 @@
 import SwiftUI
-import TipKit
 
 struct ProfileView: View {
     @ObservedObject var model: ProfileViewModel
     @State private var usernameDraft = ""
     @State private var showsAppearanceEditor = false
-    /// Tutorial 6: uprava hrdiny (az po prvni vyhre).
-    private let heroTip = HeroTip()
     /// Cil behem tazeni posuvniku: kruh a texty se meni zive, ulozi se az po pusteni.
     @State private var goalDraft: Int?
 
@@ -18,7 +15,7 @@ struct ProfileView: View {
 
     var body: some View {
         ScreenScaffold(scene: .enchantedForest) {
-            ScreenHeader(eyebrow: "Hero", title: "Hero profile")
+            ScreenHeader(eyebrow: "Hero", title: "Hero profile", gearMark: .gear)
             heroCard
             ScreenSection(title: "Daily focus target") { dailyTargetCard }
             ScreenSection(title: "Identity") { identityCard }
@@ -43,10 +40,7 @@ struct ProfileView: View {
             VStack(spacing: 6) {
                 HeroAvatarView(appearance: model.profile.avatar, heroClass: model.profile.heroClass, size: 76)
                     .accessibilityHidden(true)
-                Button {
-                    heroTip.invalidate(reason: .actionPerformed)
-                    showsAppearanceEditor = true
-                } label: {
+                Button { showsAppearanceEditor = true } label: {
                     Image(systemName: "paintbrush.fill")
                         .font(.system(size: 15, weight: .semibold))
                         .foregroundStyle(FQColor.textPrimary)
@@ -60,7 +54,6 @@ struct ProfileView: View {
                 .buttonStyle(.fqPress)
                 .padding(.vertical, -5)
                 .accessibilityLabel("Edit appearance")
-                .popoverTip(heroTip, arrowEdge: .top)
             }
             VStack(alignment: .leading, spacing: 4) {
                 Text(model.profile.username)
@@ -89,7 +82,7 @@ struct ProfileView: View {
                 IconTile(symbol: "at")
                 VStack(alignment: .leading, spacing: FQSpace.xs) {
                     Text("Username").font(.fqMeta).foregroundStyle(FQColor.textSecondary)
-                    TextField("3-20 letters or numbers", text: $usernameDraft)
+                    TextField("Your name", text: $usernameDraft)
                         .font(.fqBody)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()

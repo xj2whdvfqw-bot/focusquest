@@ -14,6 +14,10 @@ struct SettingsView: View {
     var onOpenBackgrounds: (() -> Void)? = nil
     /// Reset progress po potvrzeni; vraci false, kdyz se nepovedl.
     var onResetProgress: (() async -> Bool)? = nil
+    /// "Replay tutorial": list se zavre a tutorial zacne znovu na Home.
+    var onReplayTutorial: (() -> Void)? = nil
+    /// Debug "Reset onboarding": znovu uvodni onboarding i tutorial.
+    var onResetOnboarding: (() -> Void)? = nil
 
     @State private var showsResetConfirmation = false
     @State private var isResetting = false
@@ -56,6 +60,16 @@ struct SettingsView: View {
                 }
 
                 Section {
+                    Button { onReplayTutorial?() } label: {
+                        SettingsRow(title: "Replay tutorial", symbol: "hand.tap.fill", color: .green, showsChevron: true)
+                    }
+                } header: {
+                    Text("Help")
+                } footer: {
+                    Text("A quick tour of Fight, Path, Shop, Stats and Hero.")
+                }
+
+                Section {
                     Button { contactDeveloper() } label: {
                         SettingsRow(title: "Contact the developer", symbol: "envelope.fill", color: .blue, showsChevron: true)
                     }
@@ -80,7 +94,7 @@ struct SettingsView: View {
                         Button("Reset progress", role: .destructive) { resetProgress() }
                         Button("Keep my progress", role: .cancel) { }
                     } message: {
-                        Text("Your hero, level, coins, stats, subjects and settings will be deleted from this iPhone. This can't be undone.")
+                        Text("Your hero, level, coins, stats, focus list and settings will be deleted from this iPhone. This can't be undone.")
                     }
                 } header: {
                     Text("Your data")
@@ -93,7 +107,7 @@ struct SettingsView: View {
                 }
 
                 #if DEBUG
-                DebugSettingsSections(model: model, profile: profile, notifications: $notifications)
+                DebugSettingsSections(model: model, profile: profile, notifications: $notifications, onResetOnboarding: onResetOnboarding)
                 #endif
 
                 Section {
@@ -502,7 +516,8 @@ private struct DebugSettingsSections: View {
     @Binding var notifications: NotificationPermission
     @State private var debugNotificationStatus: String?
     @State private var debugPending: [String]?
-    @State private var debugTipsStatus: String?
+    /// Znovu onboarding (1A) i tutorial (1B) od zacatku.
+    var onResetOnboarding: (() -> Void)?
 
     private static let tierLevels: [(name: String, level: Int)] = [
         ("Bronze", 1), ("Silver", 5), ("Gold", 10), ("Sapphire", 15), ("Rainbow", 20),
@@ -539,13 +554,8 @@ private struct DebugSettingsSections: View {
                 Text("Easter eggs found: \(profile.profile.foundEasterEggs.count) of \(MapEasterEgg.allCases.count)").monospacedDigit().foregroundStyle(.secondary)
                 ChipFlow(spacing: FQSpace.sm) {
                     debugButton("Reset easter eggs") { profile.debugResetEasterEggs() }
-                    debugButton("Reset tips") {
-                        // Datastore TipKitu jde smazat jen pred Tips.configure: provede se pri dalsim spusteni.
-                        FQTips.resetOnNextLaunch()
-                        debugTipsStatus = "Tips reset. Quit and reopen the app to see them again."
-                    }
+                    debugButton("Reset onboarding") { onResetOnboarding?() }
                 }
-                if let debugTipsStatus { Text(debugTipsStatus).font(.footnote) }
             }
         } header: {
             Text("Debug")

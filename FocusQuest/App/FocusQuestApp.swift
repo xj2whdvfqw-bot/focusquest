@@ -7,8 +7,6 @@ struct FocusQuestApp: App {
 
     init() {
         UNUserNotificationCenter.current().delegate = ForegroundNotificationPresenter.shared
-        // Tutorial pres TipKit (misto onboardingu).
-        FQTips.configure()
     }
 
     var body: some Scene {

@@ -1,5 +1,4 @@
 import SwiftUI
-import TipKit
 
 /// Bitva pres celou obrazovku (bez spodni listy): jedna plovouci karta uprostred
 /// s bossem, jmenem, obrim odpoctem a kulatymi tlacitky. Nic dalsiho behem bitvy nerusi.
@@ -20,9 +19,6 @@ struct BattleView: View {
     /// Hrac odchazi z vysledku (zpet, Path, Fight sheet): karta bitvy se uz neukaze ani na chvili
     /// (driv pri zavirani na ~1 s problikla s tlacitkem "Begin Battle").
     @State private var isLeaving = false
-    /// Tutorial 3 (pred polozenim telefonu) a 4 (mince na okne vyhry).
-    private let phoneDownTip = PhoneDownTip()
-    private let coinsTip = CoinsTip()
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
 
@@ -72,8 +68,6 @@ struct BattleView: View {
         }
     }
     private var showsVictoryResult: Bool { isVictory && !playsFinale }
-
-    private static func wasVictory(_ state: ArenaState) -> Bool { if case .victory = state { true } else { false } }
 
     /// Bezela bitva (hrdina byl na scene videt)?
     private static func wasFighting(_ state: ArenaState) -> Bool {
@@ -160,9 +154,6 @@ struct BattleView: View {
             if !model.isBattleRunning { showsRetreatConfirm = false }
             // Nova bitva (napr. "Next boss" z prestavky) zase ukaze kartu.
             if case .awaitingFlatPlacement = value { isLeaving = false }
-            // Telefon lezi: tip o pokladani splnil ucel. Vyhra odemyka tipy Path a Hero.
-            if case .focusing = value { phoneDownTip.invalidate(reason: .actionPerformed) }
-            if case .victory = value, !Self.wasVictory(old) { FQTips.recordVictory() }
             let ended: Bool = switch value {
             case .victory, .defeated: true
             default: false
@@ -393,7 +384,6 @@ struct BattleView: View {
             }
         case .awaitingFlatPlacement:
             PlacementHint { model.startWithoutSensor() }
-                .popoverTip(phoneDownTip, arrowEdge: .bottom)
         default:
             EmptyView()
         }
@@ -553,13 +543,9 @@ struct BattleView: View {
                 HStack(spacing: FQSpace.sm) {
                     rewardTile(amount: victory.xpEarned, label: "XP", symbol: "sparkles")
                     rewardTile(amount: victory.coinsEarned, label: "Coins", symbol: "dollarsign.circle.fill")
-                        .popoverTip(coinsTip, arrowEdge: .bottom)
                 }
                 VStack(spacing: FQSpace.sm) {
-                    Button {
-                        coinsTip.invalidate(reason: .actionPerformed)
-                        showsBreak = true
-                    } label: {
+                    Button { showsBreak = true } label: {
                         Text("Collect Loot")
                             .font(.fqHeadline)
                             .foregroundStyle(FQColor.onCta)

@@ -24,7 +24,7 @@ struct SubjectManagerView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: Layout.sectionGap) {
                 header
-                Text("Hidden subjects disappear from fights and Stats. Nothing is lost, tap Show to bring them back.")
+                Text("Hidden items disappear from battles and Stats. Nothing is lost, tap Show to bring them back.")
                     .fqFont(size: 15, design: .rounded)
                     .foregroundStyle(FQColor.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -49,8 +49,8 @@ struct SubjectManagerView: View {
         .preferredColorScheme(.dark)
         // Zavreni tahem dolu; ne behem potvrzeni smazani a ne s rozepsanym predmetem.
         .fqSheetDismissal(blocked: pendingDelete != nil || hasSubjectDraft, onBlockedAttempt: blockedCloseAttempt) { dismiss() }
-        .confirmationDialog("Discard the new subject?", isPresented: $asksDiscardDraft, titleVisibility: .visible) {
-            Button("Discard subject", role: .destructive) { dismiss() }
+        .confirmationDialog("Discard the new focus?", isPresented: $asksDiscardDraft, titleVisibility: .visible) {
+            Button("Discard", role: .destructive) { dismiss() }
             Button("Keep editing", role: .cancel) { }
         }
         .animation(.easeOut(duration: 0.18), value: pendingDelete)
@@ -59,7 +59,7 @@ struct SubjectManagerView: View {
 
     private var header: some View {
         HStack(alignment: .top, spacing: FQSpace.md) {
-            Text("Your subjects")
+            Text("Your focus list")
                 .fqFont(size: 26, weight: .bold, design: .rounded)
                 .foregroundStyle(FQColor.textPrimary)
                 .accessibilityAddTraits(.isHeader)
@@ -82,7 +82,7 @@ struct SubjectManagerView: View {
     @ViewBuilder private var list: some View {
         let entries = model.managedSubjects
         if entries.isEmpty {
-            Text("No subjects yet.")
+            Text("Nothing here yet.")
                 .fqFont(size: 15, design: .rounded)
                 .foregroundStyle(FQColor.textSecondary)
                 .multilineTextAlignment(.center)
@@ -250,7 +250,7 @@ private struct SubjectRow: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            TextField("Subject name", text: $name)
+            TextField("Focus name", text: $name)
                 .fqFont(size: 16, weight: .medium, design: .rounded)
                 .foregroundStyle(entry.isHidden ? FQColor.textTertiary : FQColor.textPrimary)
                 .strikethrough(entry.isHidden && !focused, color: Color.white.opacity(0.25))

@@ -137,12 +137,18 @@ struct SettingsGearButton: View {
 struct ScreenHeader: View {
     var eyebrow: String?
     let title: String
+    /// Ozubene kolo jako cil tutorialu (jen na zalozce Hero).
+    var gearMark: CoachTarget?
 
     var body: some View {
         HStack(alignment: .top, spacing: FQSpace.sm) {
             ScreenTitle(eyebrow: eyebrow, title: title)
             Spacer(minLength: FQSpace.sm)
-            SettingsGearButton()
+            if let gearMark {
+                SettingsGearButton().coachMark(gearMark)
+            } else {
+                SettingsGearButton()
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }

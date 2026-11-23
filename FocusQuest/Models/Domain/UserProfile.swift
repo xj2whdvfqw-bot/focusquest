@@ -32,9 +32,23 @@ struct UserProfile: Codable, Sendable {
 
     /// Novy hrac (i po Reset progress) zacina s pozadim Daybreak; World scenes si muze vybrat v Shopu.
     static func fresh(deviceID: String) -> UserProfile {
-        var profile = UserProfile(userID: deviceID, username: "NewFocuser", title: "Novice Focuser", heroClass: .warrior, avatarMatrix: [], dailyFocusGoalMinutes: 60)
+        var profile = UserProfile(userID: deviceID, username: defaultUsername, title: "Novice Focuser", heroClass: .warrior, avatarMatrix: [], dailyFocusGoalMinutes: 60)
         profile.backgroundID = ShopBackground.dawn.rawValue
         return profile
+    }
+
+    /// Jmeno noveho hrace, nez si v onboardingu zada vlastni (pozdrav na Home se pak neukaze).
+    static let defaultUsername = "NewFocuser"
+    static let nameLimit = 20
+
+    /// Upravene jmeno hrace: 1–20 znaku, pismena (i s diakritikou), cislice, mezery, pomlcka a apostrof;
+    /// vice mezer za sebou se slouci. Nil = jmeno nejde pouzit.
+    static func cleanName(_ raw: String) -> String? {
+        let name = raw.split(whereSeparator: \.isWhitespace).joined(separator: " ")
+        guard (1...nameLimit).contains(name.count) else { return nil }
+        let allowed = name.allSatisfy { $0.isLetter || $0.isNumber || $0 == " " || $0 == "-" || $0 == "'" || $0 == "’" || $0 == "." }
+        guard allowed, name.contains(where: { $0.isLetter || $0.isNumber }) else { return nil }
+        return name
     }
 }
 
@@ -76,7 +90,7 @@ enum FocusGoal: String, Codable, CaseIterable, Identifiable, Sendable {
         switch self {
         case .removeBrainFog: "Remove brain fog"
         case .stopScrolling: "Stop scrolling"
-        case .studyDaily: "Study every day"
+        case .studyDaily: "Focus every day"
         }
     }
 

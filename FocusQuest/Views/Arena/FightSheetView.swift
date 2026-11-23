@@ -1,5 +1,4 @@
 import SwiftUI
-import TipKit
 
 /// List pred bitvou (Fight na Arene nebo dlazdice bosse na Path): predmet, zvuk a velke tlacitko Start.
 /// Delka bitvy je dana bossem, proto tu zadny vyber delky neni.
@@ -10,8 +9,8 @@ struct FightSheetView: View {
     let onClose: () -> Void
 
     @State private var showsAllSubjects = false
-    /// Tutorial 2: predmet a hudba.
-    private let setupTip = FightSetupTip()
+    /// Tutorial (kroky 2–4 jsou ve Fight sheetu).
+    @Environment(CoachMarkStore.self) private var coach: CoachMarkStore?
     @State private var isEditing = false
     @State private var pendingDelete: StudySubject?
     @State private var showsManager = false
@@ -56,6 +55,10 @@ struct FightSheetView: View {
             .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { contentHeight = $0 }
         }
         .scrollBounceBehavior(.basedOnSize)
+        .coachMarkHost()
+        .overlay {
+            if let coach { CoachMarkOverlay(placement: .fightSheet, closeSheet: onClose).environment(coach) }
+        }
         .scrollDismissesKeyboard(.interactively)
         .pixelToast($toast)
         .presentationDetents([.height(min(contentHeight, 720)), .large])
@@ -65,9 +68,10 @@ struct FightSheetView: View {
         .preferredColorScheme(.dark)
         .sheet(isPresented: $showsManager) { SubjectManagerView(model: model) }
         // Zavreni tahem dolu; ne behem potvrzeni smazani a ne s rozepsanym predmetem.
-        .fqSheetDismissal(blocked: pendingDelete != nil || hasSubjectDraft, onBlockedAttempt: blockedCloseAttempt, close: onClose)
-        .confirmationDialog("Discard the new subject?", isPresented: $asksDiscardDraft, titleVisibility: .visible) {
-            Button("Discard subject", role: .destructive) { onClose() }
+        // Behem tutorialu se list zavira jen tlacitkem v bubline (nebo Skip tutorial).
+        .fqSheetDismissal(blocked: pendingDelete != nil || hasSubjectDraft || isTutorialStep, onBlockedAttempt: blockedCloseAttempt, close: onClose)
+        .confirmationDialog("Discard the new focus?", isPresented: $asksDiscardDraft, titleVisibility: .visible) {
+            Button("Discard", role: .destructive) { onClose() }
             Button("Keep editing", role: .cancel) { }
         }
         .animation(.easeOut(duration: 0.18), value: isEditing)
@@ -91,8 +95,10 @@ struct FightSheetView: View {
 
     /// Zavreni pres VoiceOver: stejna pravidla jako tah dolu.
     private func requestClose() {
-        if pendingDelete != nil || hasSubjectDraft { blockedCloseAttempt() } else { onClose() }
+        if pendingDelete != nil || hasSubjectDraft || isTutorialStep { blockedCloseAttempt() } else { onClose() }
     }
+
+    private var isTutorialStep: Bool { coach?.step?.isInFightSheet == true }
 
     /// Pokus zavrit zablokovane okno: rozepsany predmet se zepta, potvrzeni smazani se zrusi.
     private func blockedCloseAttempt() {
@@ -105,7 +111,6 @@ struct FightSheetView: View {
         VStack(alignment: .leading, spacing: Layout.labelGap) {
             HStack {
                 sectionLabel("Focusing")
-                    .popoverTip(setupTip, arrowEdge: .top)
                 Spacer(minLength: 0)
                 if !subjects.isEmpty {
                     Button(isEditing ? "Done" : "Edit") {
@@ -135,11 +140,12 @@ struct FightSheetView: View {
                 }
             }
             if subjects.isEmpty {
-                Text("Add what you're studying so it shows up in Stats.")
+                Text("Add what you're focusing on so it shows up in Stats.")
                     .font(.fqMeta)
                     .foregroundStyle(FQColor.textSecondary)
             }
         }
+        .coachMark(.focusing)
     }
 
     private func subjectChip(_ subject: StudySubject) -> some View {
@@ -152,7 +158,7 @@ struct FightSheetView: View {
             .accessibilityLabel(subject.title)
             .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
             .accessibilityAction { model.selectSubject(subject) }
-            .accessibilityAction(named: "Edit subjects") { showsManager = true }
+            .accessibilityAction(named: "Edit focus list") { showsManager = true }
     }
 
     /// Rezim Edit: prvni klepnuti se zepta ("Delete Math?"), druhe predmet smaze (mekke smazani).
@@ -203,6 +209,7 @@ struct FightSheetView: View {
                 }
             }
         }
+        .coachMark(.sound)
     }
 
     private func select(_ choice: BattleSound) {
@@ -218,10 +225,7 @@ struct FightSheetView: View {
 
     private var startButton: some View {
         let canStart = model.selectedSubject != nil && model.isBetweenBattles
-        return Button {
-            setupTip.invalidate(reason: .actionPerformed)
-            onStart()
-        } label: {
+        return Button(action: onStart) {
             Label("Start \(boss.maxHP) min Battle", systemImage: "play.fill")
                 .font(.system(size: Layout.startFont, weight: .bold, design: .rounded))
                 .foregroundStyle(FQColor.onCta)
@@ -235,7 +239,8 @@ struct FightSheetView: View {
         .buttonStyle(.fqPress)
         .disabled(!canStart)
         .opacity(canStart ? 1 : 0.35)
-        .accessibilityHint(model.selectedSubject == nil ? "Add a subject first" : "")
+        .accessibilityHint(model.selectedSubject == nil ? "Add what you're focusing on first" : "")
+        .coachMark(.start)
         .padding(.top, FQSpace.xs)
     }
 

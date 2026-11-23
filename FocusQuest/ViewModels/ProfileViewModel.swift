@@ -13,10 +13,22 @@ final class ProfileViewModel: ObservableObject {
     init(profile: UserProfile, sync: any ProfileSyncServiceProtocol) { self.profile = profile; self.sync = sync }
 
     func updateUsername(_ value: String) {
-        guard (3...20).contains(value.count), value.allSatisfy({ $0.isASCII && ($0.isLetter || $0.isNumber) }) else { errorMessage = "Use 3-20 letters or numbers."; return }
-        profile.username = value
+        guard let name = UserProfile.cleanName(value) else { errorMessage = "Use 1-20 letters, numbers or spaces."; return }
+        profile.username = name
         errorMessage = nil
         save()
+    }
+
+    /// Jmeno z onboardingu; prazdne nebo neplatne = "Hero".
+    func updateDisplayName(_ value: String) {
+        profile.username = UserProfile.cleanName(value) ?? "Hero"
+        errorMessage = nil
+        save()
+    }
+
+    /// Pozdrav na Home ("Hi, Adam"); nil, dokud si hrac jmeno nezadal.
+    var greetingName: String? {
+        profile.username == UserProfile.defaultUsername ? nil : profile.username
     }
 
     func updateHeroClass(_ value: HeroClass) { profile.heroClass = value; save() }
@@ -106,7 +118,7 @@ final class ProfileViewModel: ObservableObject {
     func removeSubjectStats(_ subjectIDs: Set<String>) async {
         guard !subjectIDs.isEmpty else { return }
         do { apply(stats: try await sync.removeSubjectStats(subjectIDs)) }
-        catch { errorMessage = "Deleted subjects could not be removed from your stats." }
+        catch { errorMessage = "Deleted items could not be removed from your stats." }
     }
 
     /// Statistiky zmenene vitezstvim nebo bonusem; posila je i obrazovce Statistik.

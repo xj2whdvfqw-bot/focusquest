@@ -3,7 +3,7 @@
 Doplňuje `design/CHANGES.md` (zadání sekcí 0–15) a `design/progress.html` (stav, buildy, co otestovat).
 Tady je to, co v nich není: rozhodnutí, která padla během práce, otevřené body a známé pasti.
 
-Stav k 22. 11. 2026: větev `phase3-duolingo`, poslední zelený build #65; dříve #62 (E1); E1 (opravy z testu po D1) prošel jako build #62; F1 (Habits, TipKit, mapa, easter eggy) prošel jako build #65. Všechny sekce z CHANGES.md
+Stav k 23. 11. 2026: větev `phase3-duolingo`, poslední zelený build #65; dříve #62 (E1); E1 (opravy z testu po D1) prošel jako build #62; F1 (Habits, mapa, easter eggy) prošel jako build #65; F2 (nový onboarding a coach marks) viz progress.html. Všechny sekce z CHANGES.md
 a všechny opravy z auditu jsou hotové.
 
 ## 1. Rozhodnutí
@@ -28,7 +28,7 @@ a všechny opravy z auditu jsou hotové.
   - zálohy nečitelných dat (`.unreadable-backup`),
   - výběr appek a naplánované notifikace.
 
-  Pak appka začne na Home s novým výchozím hrdinou (onboarding od F1 není).
+  Pak se znovu ukáže onboarding a po něm tutoriál (od F2).
 - **Rate this app je skryté**, dokud nebude App Store ID. Pak se vrátí jako přímý odkaz
   `https://apps.apple.com/app/id<ID>?action=write-review`, protože `requestReview()` často nic neukáže.
 - **Contact the developer** otevírá Mail jen s předmětem. Adresa zatím chybí (viz Otevřené body).
@@ -121,7 +121,7 @@ a všechny opravy z auditu jsou hotové.
   (obrazovka „Slip forgiven“ na 2,2 s), odpočet běžel znovu a teprve druhý propadlý znamenal útěk bosse (`hasUsedSlipGrace`,
   `slipForgivenSeconds`). Teď odpočet (10 s, `AntiCheatRules.warningSeconds`) proběhne jen jednou: kdo telefon do konce
   nepoloží, tomu boss uteče (`EscapeReason.phoneStayedUp`). Položení telefonu během odpočtu bitvu obnoví jako dřív.
-  Stav `warningCountdown` už nemá parametr `forgiven`; text v onboardingu je „10 seconds to put it back, or the boss escapes.“
+  Stav `warningCountdown` už nemá parametr `forgiven`; v tutoriálu (krok 4) je „Lift it and the boss escapes in 10 seconds“.
 - **Konec bitvy bez mezistavu** (od E1): karta bitvy mimo bitvu nemá žádné tlačítko (dřív „Begin Battle“, které problikávalo
   během K.O. scény, po Retreat a při zavírání). Místo drží neviditelný zástupce, aby scéna neposkočila. Odchod z výsledku
   (`leave(to:)` v `BattleView`) kartu schová hned (`isLeaving`). Každá nová bitva má čerstvou scénu (`battleSerial` + `.id`),
@@ -279,23 +279,52 @@ a všechny opravy z auditu jsou hotové.
   - plánování se na povolení neptá (od F1, viz kontextová žádost výš); bez povolení nic nenaplánuje, chyby jdou do logu (`Logger`, kategorie notifications),
   - Settings ukazují skutečný stav (Allowed, Not allowed yet + Allow, Banners off nebo Off + Open Settings),
   - Debug: „Test notifications“ naplánuje každý typ za 5, 7 a 9 s, „Show pending“ vypíše naplánované s časem.
-- **Onboarding je pryč, místo něj TipKit** (od F1, `Views/DesignSystem/FQTips.swift`). Nový hráč skončí rovnou na Home
-  s výchozím hrdinou (Warrior, základní vzhled), výchozími předměty a pozadím Daybreak; mění je ve Fight sheetu a na záložce Hero.
-  `Tips.configure` při startu (`displayFrequency(.immediate)`), popover tipy přímo u prvků, každý jen jednou, po zavření
-  nebo provedení akce (`invalidate(.actionPerformed)`) se nevrací:
+- **Onboarding (od F2, `Views/Onboarding/OnboardingView.swift`)**: při prvním spuštění stránkovaný onboarding
+  na pixelovém pozadí (swipe, tečky, zpět šipkou i swipem, Continue vždy nad tečkami). Volby jsou v konceptu a do profilu
+  se uloží až tlačítkem Start, takže se při listování neztratí:
 
-  | # | Kde | Tip |
+  | # | Stránka | Obsah |
   |---|---|---|
-  | 1 | Home, tlačítko Fight | Beat the boss by focusing |
-  | 2 | Fight sheet, „Focusing“ | předmět a hudba |
-  | 3 | bitva před položením telefonu | 2 pauzy, zvednutí = útěk bosse |
-  | 4 | okno výhry, dlaždice Coins | mince do Shopu |
-  | 5 | Path, název světa (až po první výhře) | mapa světů |
-  | 6 | Hero, štětec (až po první výhře) | úprava hrdiny |
+  | 1 | Vítej | hrdina vs. boss (pohupují se), „Focus. Your hero fights.“; Skip skočí na jméno |
+  | 2 | How it works | soustředíš se → hrdina bojuje → mince, gear, světy; Skip |
+  | 3 | Jméno | „What should we call you?“ → `username`, pozdrav „Hi, {jméno}“ na Home a jméno na Hero tabu |
+  | 4 | Focus | „What do you want to make time for?“ chipy Work, School, Reading, Project, Exercise, Creative, Languages + vlastní, víc naráz |
+  | 5 | Hrdina | třída, pleť, vlasy, barva vlasů, oblečení, boty; hrdina připnutý nahoře, roluje jen panel; změna = poskočení |
+  | 6 | Ready | „Ready, {jméno}?“ → Start → Home a hned tutoriál |
 
-  Tipy 5 a 6 čekají na událost `battleWon` (první výhra), aby tutoriál šel popořadě. CI screenshoty (`-initialTab`)
-  tipy skrývají. Debug „Reset tips“: datastore jde smazat jen před `Tips.configure`, proto se provede při dalším spuštění.
-- **Oprávnění k notifikacím se žádá kontextově** (od F1): až po první dokončené (vyhrané) bitvě. Plánování notifikací
+  - Onboarding vidí jen nový hráč (bez odehraných bitev). Hráč, který appku už používá, ho přeskočí i s tutoriálem.
+  - Jméno: 1–20 znaků, písmena i s diakritikou, číslice, mezery (`UserProfile.cleanName`, totéž na Hero tabu); prázdné = „Hero“.
+  - Položky „focus“ nahradí výchozí seznam nového hráče; položky s odehranými bitvami zůstanou (`applyOnboardingFocus`).
+  - Řady chipů, které přetékají, mají na kraji fade (`FadingHorizontalScroll`, i v editoru na Hero tabu).
+  - Notifikace se v onboardingu neřeší.
+- **„Focus“ místo „study“** (od F2): appka není jen na učení. V textech je „focus“ / „what you're focusing on“
+  (Fight sheet, Stats › Focus, „Your focus list“, cíl „Focus every day“). Interní typ `StudySubject` a id zůstávají kvůli uloženým datům.
+  Názvy bossů a skladba „Study flow“ se nemění.
+- **Tutoriál jako coach marks místo TipKitu** (od F2, `Views/Onboarding/CoachMarks.swift`). TipKit je pryč (FQTips, popover tipy, Reset tips).
+  - Celá obrazovka ztmavne (72 %), zvýrazněný prvek je vyříznutý zaobleným výřezem podle tvaru (kapsle/kruh, sekce 20 pt)
+    se žlutou pulzující září; vedle bublina (titulek, max 2 věty, „3 of 10“, Next), nahoře vlevo „Skip tutorial“.
+  - Pozice z `anchorPreference` (`.coachMark(_:)`); hostitel (`.coachMarkHost()`) na každé záložce, liště a ve Fight sheetu
+    kotvy převede na globální rámečky v `CoachMarkStore` (preference nemusí projít přes TabView a listy).
+  - Akční kroky (Fight, záložky) se posunou až klepnutím do výřezu; jinde jsou klepnutí blokovaná. VoiceOver má v bublině „Open“.
+  - Výřez mezi prvky přejíždí pružinou; Reduce Motion = jen prolnutí, záře nepulzuje. VoiceOver čte bublinu (modální, fokus na ni).
+  - Tutoriál začne až po zavření onboardingu (`onDismiss`) a krok se ukáže až po ~0,4 s ustálení, takže výřez neproblikne
+    na špatném místě. Prvek, který se do ~2 s nenajde, se tiše přeskočí.
+  - Krok se ukládá (`focusquest.tutorial.step`), po pádu pokračuje od posledního; kroky ve Fight sheetu od kroku 1.
+
+  | # | Kde | Typ |
+  |---|---|---|
+  | 1 | Home: Fight | klepnout na Fight |
+  | 2 | Fight sheet: Focusing | Next |
+  | 3 | Fight sheet: hudba/zvuk | Next |
+  | 4 | Fight sheet: Start + vysvětlení bitvy (telefon dolů, zvednutí = útěk za 10 s, 2 pauzy, animace telefonu) | Got it, list se zavře, bitva se nespustí |
+  | 5 | Home: Just 5 minutes | Next |
+  | 6 | Home: plamínek série | Next |
+  | 7–9 | lišta: Path, Shop, Stats | klepnout na záložku |
+  | 10 | lišta: Hero, pak ozubené kolo | klepnout, pak Done |
+
+  - Fight sheet se během kroků 2–4 nedá zavřít tahem. Settings › Help › „Replay tutorial“; Debug „Reset onboarding“ (1A i 1B).
+  - CI screenshoty (`-initialTab`) onboarding ani tutoriál neukazují.
+- **Oprávnění k notifikacím se žádá kontextově** (od F1): až po první dokončené (vyhrané) bitvě, nikdy v onboardingu ani tutoriálu. Plánování notifikací
   se už neptá (bez povolení nic nenaplánuje); ptá se jen kontextová žádost a Debug „Test notifications“.
 - **Návrat v Settings tahem od levého okraje**: podstránka Sounds & notifications nemá NavigationStack, proto vlastní gesto
   (začátek do 32 pt od okraje, stránka jde s prstem, zpět po ~100 pt nebo švihu). Tlačítko ‹ Settings zůstává.
@@ -335,8 +364,8 @@ a všechny opravy z auditu jsou hotové.
 - Jen iPhone.
 - Notifikace:
   - po zabití aplikace se zruší „Victory!“ a ukončí Live Activity,
-  - přepínače v onboardingu i Settings ukazují skutečný stav a při odmítnutí nabídnou Nastavení iPhonu.
-- Přepínač Motion sensor v onboardingu nahradil informativní řádek, protože senzor oprávnění nepotřebuje.
+  - přepínače v Settings ukazují skutečný stav a při odmítnutí nabídnou Nastavení iPhonu.
+- Onboarding (od F2) povolení neřeší: senzor polohy oprávnění nepotřebuje, notifikace se žádají po první bitvě.
 - CI kompiluje i Release verzi.
 - VoiceOver na liště záložek („Tab 1 of 5“).
 - Záloha dat, která se nepodaří načíst.

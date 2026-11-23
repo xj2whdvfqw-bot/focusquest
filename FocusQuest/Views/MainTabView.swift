@@ -54,6 +54,14 @@ struct MainTabView: View {
     /// Bitva bezi pres celou obrazovku nad zalozkami, takze spodni lista neni videt.
     @State private var battlePresenter = BattlePresenter()
     @Environment(\.scenePhase) private var scenePhase
+    /// Onboarding (1A) a tutorial s coach marks (1B).
+    @State private var coach = CoachMarkStore()
+    @State private var showsOnboarding = false
+    /// Tutorial zacne az po zavreni onboardingu, kdyz je Home opravdu videt.
+    @State private var startsTutorialAfterOnboarding = false
+
+    /// CI screenshoty (`-initialTab`) onboarding ani tutorial neukazuji.
+    private var isScripted: Bool { FocusQuestTab.launchArgument != nil }
 
     var body: some View {
         Group {
@@ -66,6 +74,9 @@ struct MainTabView: View {
                     tabs(reserve: reserve)
                         .environment(\.fqTabMotion, tabMotion)
                     tabChrome
+                    if coach.onboardingDone && !isScripted && !showsOnboarding {
+                        CoachMarkOverlay(placement: .main)
+                    }
                 }
             }
             // Prepnuti zalozky: prechod obsahu a jemna haptika.
@@ -75,6 +86,7 @@ struct MainTabView: View {
             .fqHaptic(.medium, trigger: battlePresenter.isPresented) { _, open in open }
             .environment(settingsPresenter)
             .environment(battlePresenter)
+            .environment(coach)
             .sheet(isPresented: Binding(get: { settingsPresenter.isPresented }, set: { settingsPresenter.isPresented = $0 })) {
                 SettingsView(model: container.settingsViewModel, profile: container.profileViewModel) {
                     settingsPresenter.isPresented = false
@@ -85,6 +97,10 @@ struct MainTabView: View {
                     switchTab(to: .shop)
                 } onResetProgress: {
                     await resetProgress()
+                } onReplayTutorial: {
+                    replayTutorial()
+                } onResetOnboarding: {
+                    resetOnboarding()
                 }
                     .presentationDragIndicator(.visible)
             }
@@ -95,6 +111,7 @@ struct MainTabView: View {
                 } onClose: {
                     battlePresenter.showsFightSheet = false
                 }
+                .environment(coach)
             }
             .fullScreenCover(isPresented: Binding(get: { battlePresenter.isPresented }, set: { battlePresenter.isPresented = $0 }), onDismiss: { openAfterBattle() }) {
                 BattleView(model: container.arenaViewModel, profileModel: container.profileViewModel, onExit: { battlePresenter.isPresented = false }, onExitTo: { destination in
@@ -117,12 +134,24 @@ struct MainTabView: View {
                 if FocusQuestTab.launchArgument == "fight" { battlePresenter.openFightSheet() }
                 await prepareOnLaunch()
             }
+            // Tutorial: akcni kroky se posunou, az hrac klepne na zvyrazneny prvek (otevre Fight sheet, prepne zalozku).
+            .onChange(of: selectedTab) { _, tab in advanceTutorial(for: tab) }
+            .onChange(of: battlePresenter.showsFightSheet) { _, open in
+                if open { coach.advance(from: .fight) } else { coach.leaveFightSheet() }
+            }
+            .fullScreenCover(isPresented: $showsOnboarding, onDismiss: {
+                guard startsTutorialAfterOnboarding else { return }
+                startsTutorialAfterOnboarding = false
+                coach.startTutorial()
+            }) {
+                OnboardingView(arena: container.arenaViewModel, profile: container.profileViewModel) { finishOnboarding() }
+                    .environment(coach)
+            }
             // Po navratu do appky: smazane predmety starsi nez 24 h zmizi i se statistikami.
             .onChange(of: scenePhase) { _, phase in
                 if phase == .active { Task { await maintainSubjects() } }
             }
             // Odchod z appky behem bitvy se netresta: hodiny bitvy bezi dal i na pozadi.
-            // Onboarding neni (od F1): novy hrac skonci rovnou na Home a provede ho TipKit (FQTips).
         }
         // Pixelova krajina je nocni, proto je appka vzdy v tmavem rezimu (text na skle vynikne).
         .preferredColorScheme(.dark)
@@ -178,6 +207,7 @@ struct MainTabView: View {
             .padding(.horizontal, FQTabBarMetrics.sideInset)
             .padding(.bottom, FQTabBarMetrics.bottom)
         }
+        .coachMarkHost()
         .frame(maxHeight: .infinity, alignment: .bottom)
         .ignoresSafeArea(edges: .bottom)
     }
@@ -215,23 +245,88 @@ struct MainTabView: View {
         container.arenaViewModel.refreshDailyReminder(focusedToday: container.profileViewModel.todayVerifiedMinutes > 0)
     }
 
-    /// Reset progress z Nastaveni: po smazani se list zavre a appka se vrati na Arenu s novym vychozim hrdinou.
+    /// Reset progress z Nastaveni: po smazani se list zavre, appka se vrati na Home a novy hrac
+    /// projde onboardingem i tutorialem znovu.
     private func resetProgress() async -> Bool {
         guard await container.resetProgress() else { return false }
         settingsPresenter.isPresented = false
         shopSection = .gear
         switchTab(to: .arena)
-        container.profileViewModel.completeHeroCreation()
+        coach.resetOnboarding()
+        // List Nastaveni a onboarding nejdou prepnout naraz.
+        try? await Task.sleep(for: .milliseconds(600))
+        showsOnboarding = true
         return true
     }
 
-    /// Start appky: nacte profil a statistiky. Novy hrac dostane vychozi hrdinu (Warrior, zakladni vzhled)
-    /// a vychozi predmety; zmeni je ve Fight sheetu a na zalozce Hero.
+    /// Start appky: nacte profil a statistiky. Novy hrac (bez odehranych bitev) uvidi onboarding;
+    /// hrac, ktery appku uz pouziva, ho preskoci (a tutorial taky).
     private func prepareOnLaunch() async {
+        coach.performAction = { step in performTutorialAction(step) }
         await container.profileViewModel.refresh()
         await container.profileViewModel.refreshProgress()
         await maintainSubjects()
-        container.profileViewModel.completeHeroCreation()
+        guard !isScripted, !coach.onboardingDone else { return }
+        if container.profileViewModel.stats.sessionHistory.isEmpty {
+            showsOnboarding = true
+        } else {
+            container.profileViewModel.completeHeroCreation()
+            coach.markExistingPlayer()
+        }
+    }
+
+    // MARK: - Onboarding a tutorial
+
+    private func finishOnboarding() {
+        coach.finishOnboarding()
+        switchTab(to: .arena)
+        startsTutorialAfterOnboarding = true
+        showsOnboarding = false
+    }
+
+    /// Nastaveni › Replay tutorial: list se zavre a tutorial zacne na Home.
+    private func replayTutorial() {
+        settingsPresenter.isPresented = false
+        switchTab(to: .arena)
+        coach.startTutorial()
+    }
+
+    /// Debug › Reset onboarding: znovu uvodni onboarding a po nem tutorial.
+    private func resetOnboarding() {
+        settingsPresenter.isPresented = false
+        switchTab(to: .arena)
+        coach.resetOnboarding()
+        Task {
+            try? await Task.sleep(for: .milliseconds(600))
+            showsOnboarding = true
+        }
+    }
+
+    /// Klepnuti na zvyraznenou zalozku posune akcni krok tutorialu.
+    private func advanceTutorial(for tab: FocusQuestTab) {
+        switch (coach.step, tab) {
+        case (.path, .path): coach.advance(from: .path)
+        case (.shop, .shop): coach.advance(from: .shop)
+        case (.stats, .stats): coach.advance(from: .stats)
+        case (.hero, .profile): coach.advance(from: .hero)
+        default: break
+        }
+    }
+
+    /// VoiceOver: tlacitko Open v bubline udela totez co klepnuti na zvyrazneny prvek.
+    private func performTutorialAction(_ step: CoachStep) {
+        switch step {
+        case .fight:
+            let arena = container.arenaViewModel
+            guard let boss = arena.currentMapBoss, arena.isBetweenBattles else { coach.advance(from: .fight); return }
+            arena.selectBoss(boss)
+            battlePresenter.openFightSheet()
+        case .path: switchTab(to: .path)
+        case .shop: switchTab(to: .shop)
+        case .stats: switchTab(to: .stats)
+        case .hero: switchTab(to: .profile)
+        default: coach.advance(from: step)
+        }
     }
 }
 
@@ -240,6 +335,8 @@ private extension View {
     func tabPage(reserve: CGFloat) -> some View {
         toolbar(.hidden, for: .tabBar)
             .safeAreaInset(edge: .bottom, spacing: 0) { Color.clear.frame(height: reserve) }
+            // Kotvy tutorialu z teto zalozky (preference nemusi projit pres TabView).
+            .coachMarkHost()
     }
 }
 
@@ -337,6 +434,7 @@ private struct FocusQuestTabBar: View {
         .accessibilityLabel(tab.title)
         .accessibilityValue("Tab \(position(of: tab)) of \(FocusQuestTab.allCases.count)")
         .accessibilityAddTraits(isOn ? .isSelected : [])
+        .modifier(TabCoachMark(target: tab.coachTarget))
     }
 }
 
@@ -402,6 +500,27 @@ private struct HeroCircleShape: Shape {
         path.addCurve(to: p(12, 15.4), control1: p(7.9, 16.4), control2: p(9.7, 15.4))
         path.addCurve(to: p(17.4, 18.4), control1: p(14.3, 15.4), control2: p(16.1, 16.4))
         return path
+    }
+}
+
+/// Zalozka jako cil tutorialu (Home nema vlastni krok).
+private struct TabCoachMark: ViewModifier {
+    let target: CoachTarget?
+
+    func body(content: Content) -> some View {
+        if let target { content.coachMark(target) } else { content }
+    }
+}
+
+private extension FocusQuestTab {
+    var coachTarget: CoachTarget? {
+        switch self {
+        case .arena: nil
+        case .path: .tabPath
+        case .shop: .tabShop
+        case .stats: .tabStats
+        case .profile: .tabHero
+        }
     }
 }
 

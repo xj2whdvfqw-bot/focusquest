@@ -490,6 +490,25 @@ final class ArenaViewModel: ObservableObject {
         if selectedSubject == entry.subject { selectedSubject = preferences.preselectedSubject }
     }
 
+    /// Onboarding ("What do you want to make time for?"): vybrane polozky se pridaji (nebo zviditelni)
+    /// a prvni se vybere. Viditelne polozky, ktere hrac nevybral a nema k nim zadnou bitvu (vychozi seznam
+    /// noveho hrace), zmizi; polozky s historii zustanou, aby se neztratily statistiky.
+    func applyOnboardingFocus(_ titles: [String], keeping used: Set<String>) {
+        guard isBetweenBattles else { return }
+        var subjects = preferences.subjects
+        let keys = Set(titles.map(StudySubject.matchKey))
+        subjects.removeAll { $0.isVisible && !used.contains($0.id) && !keys.contains(StudySubject.matchKey($0.subject.title)) }
+        var first: StudySubject?
+        for title in titles {
+            if let result = subjects.add(named: title), first == nil { first = result.subject }
+        }
+        selectedSubject = first ?? subjects.visibleSubjects.first
+        changePreferences {
+            $0.subjects = subjects
+            $0.lastSubject = first
+        }
+    }
+
     /// Mekke smazani predmetu z rezimu Edit ve Fight sheetu; vyber preskoci na jiny viditelny predmet.
     func deleteSubject(_ subject: StudySubject) {
         guard isBetweenBattles else { return }

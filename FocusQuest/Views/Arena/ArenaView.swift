@@ -1,5 +1,4 @@
 import SwiftUI
-import TipKit
 
 /// Otevira bitvu pres celou obrazovku (bez spodni listy) odkudkoli: z Areny, z cesty sveta
 /// nebo z Custom Focus. MainTabView ho vlozi do prostredi a sam bitvu prezentuje.
@@ -34,8 +33,6 @@ struct ArenaView: View {
     @Environment(BattlePresenter.self) private var battle
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.shopBackground) private var shopBackground
-    /// Tutorial 1: Fight.
-    private let fightTip = FightTip()
 
     // 2a: klepani na bosse.
     @State private var poke: Poke?
@@ -84,8 +81,10 @@ struct ArenaView: View {
 
     var body: some View {
         ScreenScaffold(scene: .lanternGrove, fillsHeight: true, spacing: isCompact ? FQSpace.sm : FQSpace.xl) {
-            ScreenHeader(title: "Ready to focus?")
+            // Pozdrav se jmenem z onboardingu.
+            ScreenHeader(eyebrow: profileModel.greetingName.map { "Hi, \($0)" }, title: "Ready to focus?")
             streakPill
+                .coachMark(.streak)
                 .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).maxY } action: { pillBottom = $0 }
             // Volne misto: 1 dil nad bossem, 2 dily pod nim. Boss tak sedi blizko stredu obrazovky
             // a mezi nim a tlacitkem Fight je vzduch. Kdyz se obsah nevejde (SE, velke pismo),
@@ -217,6 +216,7 @@ struct ArenaView: View {
                 }
                 .buttonStyle(.fqPress)
                 .disabled(!model.isBetweenBattles)
+                .coachMark(.quick)
             } else {
                 Button(action: openPath) { ctaLabel("Pick a world", symbol: "map.fill") }
                     .buttonStyle(.fqPress)
@@ -229,7 +229,6 @@ struct ArenaView: View {
 
     private func fightButton(_ node: Boss) -> some View {
         Button {
-            fightTip.invalidate(reason: .actionPerformed)
             model.selectBoss(node)
             battle.openFightSheet()
         } label: {
@@ -237,7 +236,7 @@ struct ArenaView: View {
         }
         .buttonStyle(.fqPress)
         .disabled(!model.isBetweenBattles)
-        .popoverTip(fightTip, arrowEdge: .bottom)
+        .coachMark(.fight)
     }
 
     /// Zlute hlavni tlacitko: zaoblene pismo, velke jen prvni pismeno.

@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-23T00:06:22+01:00",
-  "current": "F1 hotovo, build #65 prošel.",
-  "nextStep": "Otestovat na iPhonu podle poznámky v kartě F1 a poslat další připomínky.",
+  "updated": "2026-11-23T18:42:04+01:00",
+  "current": "F2: nový onboarding a coach marks tutoriál (pracuje)",
+  "nextStep": "Implementovat onboarding 1A, pak coach marks 1B, odstranit TipKit, push a build",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -763,6 +763,22 @@
       "commit": "af0b112",
       "build": { "number": 65, "runId": 45078276847, "result": "úspěch" },
       "note": "Build #65 prošel (IPA, Release kompilace, unit testy); #64 spadl na izolaci Animatable v počítadle mincí, opraveno. Na iPhonu otestuj: Habits (dnešek vlevo nahoře, zelená škála), nový hráč bez onboardingu (Debug Reset progress), 6 tipů v pořadí (Path a Hero až po první výhře), žádost o notifikace po první výhře, Reset tips po restartu, mapa: jeden ztmavený zamčený svět, další pod pixelovými mraky, rozplynutí při odemčení, plynulé hranice světů a pobřeží, rozmazaná hlavička, pergamenový okraj, easter eggy (rybník, planeta, křížek na Farm) i se zoomem, Reset easter eggs."
+    },
+    {
+      "id": "F2",
+      "title": "Nový onboarding a tutoriál s coach marks",
+      "status": "pracuje",
+      "items": [
+        { "text": "1A Onboarding: vítej (hrdina vs. boss), jak to funguje, jméno, na co si chceš udělat čas (chipy + vlastní), hrdina připnutý nahoře, Ready", "done": false },
+        { "text": "1A Jméno v profilu a pozdrav na Home; focus položky ve výběru Focusing; „focus“ místo „study“", "done": false },
+        { "text": "1B Coach marks: ztmavení s výřezem přes anchorPreference, bublina, Skip, akční kroky jen klepnutím na prvek", "done": false },
+        { "text": "1B 10 kroků (Fight, Focusing, hudba, bitva, Just 5 min, streak, Path, Shop, Stats, Hero + nastavení), ukládání a pokračování", "done": false },
+        { "text": "1B Start až po onboardingu a vykreslení Home, chybějící prvek se přeskočí, Reduce Motion, VoiceOver", "done": false },
+        { "text": "Settings Replay tutorial, Debug Reset onboarding; TipKit odstraněn; notifikace až po první bitvě", "done": false }
+      ],
+      "commit": "",
+      "build": { "number": null, "runId": null, "result": "" },
+      "note": "Rozpracováno."
     }
   ]
 }

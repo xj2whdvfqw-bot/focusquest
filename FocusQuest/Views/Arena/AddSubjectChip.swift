@@ -39,7 +39,7 @@ struct AddSubjectChip: View {
 
     private var field: some View {
         HStack(spacing: 6) {
-            TextField("Subject name", text: $newSubject)
+            TextField("Focus name", text: $newSubject)
                 .font(Layout.fieldFont)
                 .foregroundStyle(FQColor.textPrimary)
                 .textInputAutocapitalization(.words)
@@ -52,7 +52,7 @@ struct AddSubjectChip: View {
                 .onSubmit { add(completion ?? newSubject) }
                 .onKeyPress(.tab) { acceptCompletion() ? .handled : .ignored }
                 .onKeyPress(.rightArrow) { acceptCompletion() ? .handled : .ignored }
-                .accessibilityLabel("New subject")
+                .accessibilityLabel("New focus")
                 .accessibilityHint(completion.map { "Suggestion: \($0)" } ?? "")
                 .accessibilityAction(named: "Use suggestion") { _ = acceptCompletion() }
             Button("Add") { add(completion ?? newSubject) }
@@ -79,12 +79,12 @@ struct AddSubjectChip: View {
             newSubject = ""
             isAdding = true
         } label: {
-            Label("Subject", systemImage: "plus")
+            Label("Add", systemImage: "plus")
                 .labelStyle(ChipLabelStyle())
         }
         .buttonStyle(.fqPress)
         .modifier(GhostChip())
-        .accessibilityLabel("Add subject")
+        .accessibilityLabel("Add a focus")
     }
 
     /// Sedy zbytek navrhu hned za napsanym textem. Napsana cast je jen neviditelna podlozka pro zarovnani,

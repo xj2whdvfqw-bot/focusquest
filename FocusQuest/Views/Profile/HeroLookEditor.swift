@@ -39,7 +39,7 @@ struct HeroLookEditor: View {
     private var hairStyleRow: some View {
         VStack(alignment: .leading, spacing: FQSpace.xs) {
             Text("Hair style").font(.fqMeta).foregroundStyle(FQColor.textSecondary)
-            ScrollView(.horizontal, showsIndicators: false) {
+            FadingHorizontalScroll {
                 HStack(spacing: FQSpace.sm) {
                     ForEach(HairStyle.allCases) { style in
                         FQChip(title: style.displayName, isSelected: style == appearance.hairStyle, compact: true) {
@@ -55,7 +55,7 @@ struct HeroLookEditor: View {
     private func swatchRow<Option: SwatchOption>(_ title: String, options: [Option], selected: Option, select: @escaping (Option) -> Void) -> some View {
         VStack(alignment: .leading, spacing: FQSpace.xs) {
             Text(title).font(.fqMeta).foregroundStyle(FQColor.textSecondary)
-            ScrollView(.horizontal, showsIndicators: false) {
+            FadingHorizontalScroll {
                 HStack(spacing: 0) {
                     ForEach(options) { option in
                         let isSelected = option == selected

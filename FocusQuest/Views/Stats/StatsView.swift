@@ -91,9 +91,9 @@ struct StatsView: View {
         let list = arena.preferences.subjects
         return VStack(alignment: .leading, spacing: FQSpace.sm) {
             HStack(alignment: .firstTextBaseline) {
-                SectionHeader(title: "Subjects")
+                SectionHeader(title: "Focus")
                 if !list.isEmpty {
-                    Button("Edit subjects") { showsSubjectManager = true }
+                    Button("Edit focus list") { showsSubjectManager = true }
                         .fqFont(size: 14, weight: .medium, design: .rounded)
                         .underline()
                         .foregroundStyle(FQColor.textSecondary)
@@ -103,7 +103,7 @@ struct StatsView: View {
                 }
             }
             if progress.isEmpty {
-                emptyState("Pick a subject before a battle to track your study time here.")
+                emptyState("Pick what you're focusing on before a battle to track your time here.")
             } else {
                 VStack(spacing: 12) {
                     ForEach(progress) { entry in
