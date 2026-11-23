@@ -568,8 +568,7 @@ struct BattleView: View {
                                 .padding(.horizontal, FQSpace.md)
                                 .frame(maxWidth: .infinity)
                                 .frame(minHeight: 44)
-                                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: FQRadius.control, style: .continuous))
-                                .overlay(RoundedRectangle(cornerRadius: FQRadius.control, style: .continuous).strokeBorder(Color.white.opacity(0.18), lineWidth: 1))
+                                .fqInnerTile(in: FQRadius.shape(FQRadius.inDialog))
                                 .contentShape(Rectangle())
                         }
                         .buttonStyle(.fqPress)
@@ -598,9 +597,7 @@ struct BattleView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, FQSpace.md)
-        .background(.ultraThinMaterial, in: shape)
-        .background(Color.white.opacity(0.08), in: shape)
-        .overlay(shape.strokeBorder(Color.white.opacity(0.12), lineWidth: 1))
+        .fqInnerTile(in: shape)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("+\(amount) \(label)")
     }
@@ -872,8 +869,8 @@ private struct PhoneLiftedAlarm: View {
         .buttonStyle(.fqPress)
         .accessibilityHint("Give up this battle. The boss escapes.")
         .confirmationDialog("Retreat from the battle?", isPresented: $confirmsRetreat, titleVisibility: .visible) {
-            Button("Retreat", role: .destructive) { onRetreat() }
-            Button("Keep fighting", role: .cancel) { }
+            Button("Retreat", role: .destructive) { FQFeedback.shared.tap(); onRetreat() }
+            Button("Keep fighting", role: .cancel) { FQFeedback.shared.tap() }
         } message: {
             Text("\(bossName) escapes and this battle gives no loot.")
         }
@@ -1038,7 +1035,7 @@ private struct BreakPanel: View {
             .padding(.top, FQSpace.sm)
             .padding(.bottom, FQSpace.xl)
             .frame(maxWidth: 520)
-            .glassCard(radius: FQRadius.breakPanel)
+            .fqGlassPanel(radius: FQRadius.breakPanel)
             .padding(.horizontal, FQSpace.sm)
             .padding(.bottom, FQSpace.sm)
         }
@@ -1133,7 +1130,7 @@ private struct BreakPanel: View {
             }
             .frame(maxWidth: .infinity, alignment: .center)
             .padding(FQSpace.md)
-            .background(FQColor.fill, in: FQRadius.shape(FQRadius.breakPanelBottom))
+            .fqInnerTile(in: FQRadius.shape(FQRadius.breakPanelBottom))
             .contentShape(FQRadius.shape(FQRadius.breakPanelBottom))
         }
         .buttonStyle(.fqPress)

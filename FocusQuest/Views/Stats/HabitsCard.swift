@@ -104,7 +104,10 @@ struct HabitsCard: View {
                     }
                 }
                 .contentShape(Rectangle())
-                .onTapGesture { selected = selected == day ? nil : day }
+                .onTapGesture {
+                    FQFeedback.shared.tap()
+                    selected = selected == day ? nil : day
+                }
                 .accessibilityElement()
                 .accessibilityLabel("\(Self.dateText(day)): \(Self.minutesText(day.minutes, spoken: true))")
                 .accessibilityAddTraits(.isButton)

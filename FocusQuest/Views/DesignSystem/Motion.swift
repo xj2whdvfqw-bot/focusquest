@@ -73,7 +73,7 @@ struct ResultDialog<Content: View>: View {
             content()
                 .padding(FQSpace.xl)
                 .frame(maxWidth: 360)
-                .glassCard(radius: FQRadius.dialog)
+                .fqGlassPanel(radius: FQRadius.dialog)
                 .padding(.horizontal, FQSpace.xl)
                 .scaleEffect(shown || reduceMotion ? 1 : 0.92)
                 .opacity(shown ? 1 : 0)

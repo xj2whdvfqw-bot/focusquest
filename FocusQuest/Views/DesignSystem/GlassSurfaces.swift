@@ -87,6 +87,25 @@ extension View {
     }
 }
 
+extension View {
+    /// Plovouci sklenena karta (vysledky bitvy, "Call ended", panel prestavky, bublina tutorialu):
+    /// stejny material jako hlavni karta bitvy a karty v Shop › Backgrounds (fqCard), tedy svetlejsi
+    /// pruhledne sklo .ultraThinMaterial + bila 6 % (na svetlych pozadich tmava vrstva .40), tenky okraj
+    /// bila 10 % a mekky stin, protoze karta lezi nad scenou. Text na ni: bila 100 % / 78 % (kontrast AA
+    /// i nad svetlou krajinou drzi ztmaveni sceny za kartou a tmava varianta materialu, obrazovky jsou .dark).
+    func fqGlassPanel(radius: CGFloat) -> some View {
+        fqCard(radius: radius)
+            .shadow(color: .black.opacity(0.35), radius: 30, y: 12)
+    }
+
+    /// Vnitrni dlazdice ve sklenene karte (XP, Coins, Same again, Change boss, Keep going):
+    /// bila 8 % a okraj bila 12 %, bez dalsiho materialu (sklo ve skle by kartu zase ztmavilo).
+    func fqInnerTile<S: Shape>(in shape: S) -> some View {
+        background(Color.white.opacity(0.08), in: shape)
+            .overlay { shape.stroke(Color.white.opacity(0.12), lineWidth: 1) }
+    }
+}
+
 struct FQCardModifier: ViewModifier {
     let radius: CGFloat
     var selected = false

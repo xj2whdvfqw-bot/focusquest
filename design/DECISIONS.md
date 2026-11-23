@@ -100,6 +100,11 @@ a všechny opravy z auditu jsou hotové.
 
     Odměna: zvuk mincí (Reward sounds), haptika úspěchu a nahoře počítadlo mincí, které se dopočítá. Klepnutí jsou tap gesta
     v obsahu `UIScrollView` (tah je zruší, plocha roste se zoomem). Debug: „Reset easter eggs“,
+  - **nalezený easter egg zůstane na mapě vidět** (od testu #66, `FoundEasterEggView`): Farm = vykopaná jáma přes křížek
+    (11 × 7 buněk) s otevřenou prázdnou truhlou a hromádkou hlíny, Whisperwood = otevřená prázdná truhla na pravém břehu
+    rybníka, Orbit = malá pixelová vlajka na vrcholu oranžové planety. Stav se bere z `foundEasterEggs` (žádná nová data,
+    Reset easter eggs / Reset progress stopy smažou). Další klepnutí nic nedává: jen klik a vibrace (Tap sounds, Haptics)
+    a malé poskočení, s Reduce Motion bez pohybu,
   - přístupnost: zastávky mají VoiceOver popisky („Jelly Later, Coral Deep, boss 3 of 7, 20 min, current boss“),
     tlačítko seznamu otevře list se světy a bossy (stav, délka bitvy); výběr bosse list zavře a otevře Fight sheet.
 
@@ -164,6 +169,11 @@ a všechny opravy z auditu jsou hotové.
     mezi útoky 2 snímky/s (hrdina přešlápne o pixel), na pozadí a se zamčeným telefonem stojí.
     Dýchání pixelových spritů (`PixelArtAvatarView`, ~3 snímky/s) se nově zastaví na pozadí a s Reduce Motion v celé appce.
   - Reduce Motion: statická scéna bez útoků a čísel, mění se jen pruh zdraví.
+  - **Ťukání na bosse během bitvy (od testu #66, čistě kosmetické)**: klepnutí na bosse (jen fáze `fighting`) spustí útok
+    `.poke` podle třídy/zbraně (stejné animace jako běžný útok: švih, kouzlo, šíp, dýka, štít), boss zabliká, otřese se
+    a odletí jiskry. **Neubírá HP ani čas, žádné číslo poškození, žádný zvuk zásahu**, jen klik a vibrace (Tap sounds, Haptics).
+    Nejvýš 3 klepnutí za sekundu (`BattleStage.maxPokesPerSecond`), běžný útok ani finální úder klepnutí nepřeruší.
+    Reduce Motion: boss se jen otřese o 3 body (0,3 s).
   - CI screenshot `battle-hit` (jen Debug) ukazuje scénu zastavenou uprostřed kritického zásahu.
 
 ### Vzhled
@@ -189,7 +199,15 @@ a všechny opravy z auditu jsou hotové.
 - **Jednotné karty podle Shop › Backgrounds** (od E1): sdílený modifier `fqCard(selected:)` v `GlassSurfaces.swift`.
   Rozmazané sklo `.ultraThinMaterial`, na světlých pozadích tmavá vrstva rgba(13,11,28,.40), jinak bílá 6 %, okraj bílá 10 % 1 pt,
   rohy `FQRadius.smallCard`, bez stínu. Používá ho Shop (Gear, náhled, Backgrounds), Hero Profile, Stats, Habits, onboarding
-  a seznam světů. Skleněné `glassCard` zůstává jen pro plovoucí prvky (karta bosse nad mapou, dialogy, panel přestávky, kapsle).
+  a seznam světů. Skleněné `glassCard` zůstává jen pro kartu bosse nad mapou a kapsle.
+- **Sjednocené plovoucí karty** (od testu #66): Victory, „Call ended – continue the battle?“, útěk bosse, Battle stopped,
+  panel přestávky a bublina tutoriálu (coach marks) mají `fqGlassPanel(radius:)` = `fqCard` (stejné světlejší průsvitné sklo
+  jako hlavní karta bitvy a Shop › Backgrounds, okraj bílá 10 %) + měkký stín 0 12 30 černá 35 %. Dřív tmavé `glassCard`
+  (rgba(13,11,28,.60)), resp. u bubliny téměř neprůhledná tmavá .90. Rohy zůstávají (`FQRadius.dialog`, `breakPanel`, `smallCard`).
+  Vnitřní dlaždice (XP, Coins, Keep going, Same again, Change boss) mají sdílené `fqInnerTile(in:)`: bílá 8 % + okraj bílá 12 %,
+  bez dalšího materiálu (sklo ve skle by kartu ztmavilo). Kontrast: text bílá 100 % / 78 % na tmavé variantě materiálu
+  (obrazovky bitvy jsou `.dark`) nad 28% ztmavením scény, stejně jako na kartě bitvy; na světlých pozadích přidá `fqCard` tmavou vrstvu .40.
+  Onboarding žádné tmavé karty neměl (používá `fqCard`).
 - **Výběr = bílý rámeček**: nasazený předmět v Gear i používané pozadí mají jen bílý okraj karty 2 pt, žádnou fajfku
   (u pozadí zůstal text „In use“ místo tlačítka).
 - **Výchozí pozadí nových hráčů je Daybreak** (od E1, `UserProfile.fresh`, i po Reset progress). Stávající profily bez
@@ -201,11 +219,16 @@ a všechny opravy z auditu jsou hotové.
 - **Daily focus target v Hero Profile**: splněná část kruhu má barvu pásku zvolené třídy (`AvatarSprite.classAccent`, stejný
   token jako pásek hrdiny: Warrior červená, Mage fialová, Archer zelená, Rogue modrá), nesplněná tlumeně šedá. Dřív byl
   kruh v bílém `accent`, takže nebylo vidět, kolik je splněno.
+- **Oslava série** (od testu #66): po první dokončené bitvě dne (`PlayerStats.isStreakCelebrationDue`) se po návratu na Home
+  (bitva i Fight sheet zavřené, Home viditelný) plamínek rozhoří (zvětšení 1,65× a záře), číslo naskočí ze včerejší hodnoty
+  (`numericText`), pilulka poskočí a z plamínku odletí pixelové jiskry (`StreakSparks`, 0,9 s); haptika úspěchu a zvuk
+  level up (Reward sounds). Jednou za den: den poslední oslavy je v UserDefaults `fq.streakCelebratedDay` (smaže ho Reset progress).
+  Reduce Motion: jen prolnutí čísla, bez zvětšení a jisker. VoiceOver oznámí „Streak up: N days“.
 - **Pulz aktuálního bosse na mapě** počítá `TimelineView` z hodin (`MapStopPulse`), ne `repeatForever` z `onAppear`, který se
   při překreslení nebo recyklaci hostingu v UIKit mapě zastavil. Je jemnější (2 pt, zvětšení jen o 18 %) a nesahá k hrdinovi.
 - **Výsledková okna jsou skleněná** (`ResultDialog` v `Views/DesignSystem/Motion.swift`): útěk bosse, vítězství,
   Battle stopped a Call ended.
-  - Jemné ztmavení scény 28 % a skleněná karta (`glassCard`, ultraThin materiál), panel přestávky má stejné ztmavení.
+  - Jemné ztmavení scény 28 % a skleněná karta (`fqGlassPanel`, od testu #66 stejné sklo jako karta bitvy), panel přestávky má stejné ztmavení.
   - Pod výsledkem se karta bitvy schová, aby neprosvítala (dřív bylo vidět „Begin Battle“).
   - Karta se objeví pružinou (0,92 → 1), s Reduce Motion jen prolnutím.
 - **Shop nemá velké pixelové nadpisy** („Gear up“, „Change the scenery“ jsou pryč). Hlavička je kompaktní:
@@ -241,6 +264,13 @@ a všechny opravy z auditu jsou hotové.
     skleněná tlačítka a přepínače), nové tlačítko má proto používat `.buttonStyle(.fqPress)`, ne `.plain`,
   - **Battle sounds jsou výchozí vypnuté** (od D1), u nových i stávajících uživatelů: uložená hodnota platí jen s `isBattleSoundUserSet`
     (hráč přepínač sám přepnul); karta „Try it“ se při OFF schová a při ON rozbalí jako u ostatních,
+  - **audit tap zvuku (od testu #66)**: kde nejde použít `FQPressStyle` (systémové řádky Listu, `NavigationLink`, `.bordered`
+    tlačítka, chipy s `onTapGesture`), se volá `.fqTapSound()` (simultánní tap gesto, akce prvku běží beze změny);
+    přepínače mají `Binding.fqTapFeedback()` (klik **před** změnou, takže cvakne i vypnutí Tap sounds / Haptics);
+    výběr v `ValueMenu` a segmentový výběr síly haptiky klikají při změně; tlačítka v potvrzovacích dialozích volají
+    `FQFeedback.shared.tap()` v akci. Šťouchání do bosse na Home hraje klik vždy (naštvaný boss přidá zásah z Battle sounds).
+    Záměrně bez kliku: ukázky „Try it“ (hrají vlastní zvuk), posuvníky (hlasitost má vlastní ukázku), tah a zoom mapy,
+    klepnutí do prázdné mapy a karty Habits (jen zrušení výběru),
   - **síla haptiky** Light / Medium / Strong (segmented control pod přepínačem Haptics, `hapticStrength`) platí pro celou appku
     (`FQFeedback` i `HapticEngineService`, násobek 0,5 / 0,8 / 1); „Try it“ přehraje zvolenou sílu,
   - tap = nahrávka `tap-click.mp3`, mince a XP = `reward-chime.mp3` (viz Zvuky a licence níž); ostatní efekty jsou syntetické tóny (`EffectSounds`),

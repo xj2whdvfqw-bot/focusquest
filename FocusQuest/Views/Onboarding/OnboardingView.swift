@@ -411,7 +411,10 @@ struct OnboardingView: View {
                     .frame(width: item == page ? 18 : 7, height: 7)
                     .frame(height: 24)
                     .contentShape(Rectangle())
-                    .onTapGesture { go(to: item.rawValue) }
+                    .onTapGesture {
+                        FQFeedback.shared.tap()
+                        go(to: item.rawValue)
+                    }
             }
         }
         .animation(FQMotion.quick, value: page)

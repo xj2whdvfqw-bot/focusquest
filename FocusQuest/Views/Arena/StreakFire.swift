@@ -161,3 +161,51 @@ struct StreakFire: View {
         }
     }
 }
+
+// MARK: - 2D: oslava serie
+
+/// Oslava serie na Home: jednou za den, po prvni dokoncene bitve dne (az po navratu na Home).
+enum StreakCelebration {
+    /// UserDefaults: den posledni oslavy (PlayerStats.dayKey). Reset progress ho smaze.
+    static let storageKey = "fq.streakCelebratedDay"
+    /// Jak dlouho jiskry leti.
+    static let sparkSeconds = 0.9
+}
+
+/// Jiskry z plaminku pri oslave serie: 14 pixelovych ctverecku vyleti do stran a nahoru,
+/// zpomali, padaji a zhasnou (0,9 s). S Reduce Motion se nekresli vubec (vola je jen ArenaView).
+struct StreakSparks: View {
+    let start: Date
+
+    private static let colors: [Color] = [
+        Color(red: 255 / 255, green: 246 / 255, blue: 196 / 255),
+        Color(red: 255 / 255, green: 214 / 255, blue: 74 / 255),
+        Color(red: 255 / 255, green: 150 / 255, blue: 30 / 255),
+        Color(red: 235 / 255, green: 80 / 255, blue: 22 / 255),
+    ]
+
+    var body: some View {
+        TimelineView(.animation) { timeline in
+            Canvas { context, size in
+                let t = timeline.date.timeIntervalSince(start)
+                guard t >= 0, t < StreakCelebration.sparkSeconds else { return }
+                let life = t / StreakCelebration.sparkSeconds
+                let center = CGPoint(x: size.width / 2, y: size.height / 2)
+                for index in 0..<14 {
+                    // Rozptyl hlavne nahoru (od -170° do -10°), kazda jiskra jinak rychla.
+                    let angle = (-170.0 + 160.0 * Double(index) / 13.0) * .pi / 180
+                    let speed = 70.0 + Double((index * 37) % 5) * 14
+                    let distance = speed * (1 - pow(1 - life, 2)) * 0.9
+                    let fall = 40.0 * life * life
+                    let x = center.x + CGFloat(cos(angle) * distance)
+                    let y = center.y + CGFloat(sin(angle) * distance + fall)
+                    let side: CGFloat = index % 3 == 0 ? 4 : 3
+                    let color = Self.colors[index % Self.colors.count]
+                    context.fill(Path(CGRect(x: x - side / 2, y: y - side / 2, width: side, height: side)), with: .color(color.opacity(1 - life)))
+                }
+            }
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+}

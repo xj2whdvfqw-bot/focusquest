@@ -377,10 +377,16 @@ private struct MapContent: View {
                     .allowsHitTesting(false)
                     .accessibilityHidden(true)
             }
-            // Easter eggy: jen v odemcenych svetech a jen dokud nejsou nalezene.
+            // Easter eggy: jen v odemcenych svetech. Nalezeny zustane na mape jako stopa (2C):
+            // jama s prazdnou truhlou, truhla na brehu, vlajka na planete; dalsi klepnuti uz nic nedava.
             ForEach(MapEasterEgg.allCases) { egg in
-                if !foundEggs.contains(egg), model.isUnlocked(egg.world), isVisible(egg.world) {
-                    MapEasterEggView(egg: egg) { onEggReward(egg) }
+                if model.isUnlocked(egg.world), isVisible(egg.world) {
+                    if foundEggs.contains(egg) {
+                        FoundEasterEggView(egg: egg)
+                            .transition(.opacity)
+                    } else {
+                        MapEasterEggView(egg: egg) { onEggReward(egg) }
+                    }
                 }
             }
             cloudLayer

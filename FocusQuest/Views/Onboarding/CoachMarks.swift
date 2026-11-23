@@ -336,9 +336,8 @@ struct CoachMarkOverlay: View {
         }
         .padding(FQSpace.lg)
         .frame(width: width)
-        .background(Color(red: 18 / 255, green: 16 / 255, blue: 30 / 255).opacity(0.9), in: RoundedRectangle(cornerRadius: FQRadius.smallCard, style: .continuous))
-        .overlay { RoundedRectangle(cornerRadius: FQRadius.smallCard, style: .continuous).strokeBorder(Color.white.opacity(0.16), lineWidth: 1) }
-        .shadow(color: .black.opacity(0.4), radius: 16, y: 8)
+        // Stejne sklo jako vysledky bitvy a karty v Shop › Backgrounds (2B).
+        .fqGlassPanel(radius: FQRadius.smallCard)
         .accessibilityElement(children: .contain)
         .accessibilityFocused($bubbleFocused)
         .id(step)

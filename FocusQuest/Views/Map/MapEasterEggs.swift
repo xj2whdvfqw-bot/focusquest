@@ -270,3 +270,166 @@ private struct CoinCount: View, Animatable {
 
     var body: some View { Text("\(Int(value.rounded()))") }
 }
+
+// MARK: - 2C: nalezeny easter egg
+
+/// Trvala stopa nalezeneho easter eggu: Farm = vykopana jama s otevrenou prazdnou truhlou misto krizku,
+/// Whisperwood = otevrena truhla na brehu rybnika, Orbit = mala vlajka na oranzove planete.
+/// Klepnuti uz nic nedava: jen klik, vibrace a male poskoceni (s Reduce Motion nic se nehybe).
+struct FoundEasterEggView: View {
+    let egg: MapEasterEgg
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var wiggles = 0
+
+    /// Stopa vuci stredu easter eggu (body mapy).
+    private var markOffset: CGSize {
+        let c = MapLayout.cell
+        switch egg {
+        // Kousek za pravym brehem rybnika (elipsa 46 x 26 bunek).
+        case .pond: return CGSize(width: 30 * c, height: 4 * c)
+        // Vrchol planety (polomer 9 bunek): pata zerdi lehce zapustena.
+        case .planet: return CGSize(width: 2 * c, height: -12 * c)
+        case .farmX: return .zero
+        }
+    }
+
+    var body: some View {
+        mark
+            .keyframeAnimator(initialValue: 0.0, trigger: wiggles) { content, value in
+                content
+                    .offset(y: -4 * sin(.pi * value))
+                    .rotationEffect(.degrees(4 * sin(2 * .pi * value)), anchor: .bottom)
+            } keyframes: { _ in
+                KeyframeTrack {
+                    MoveKeyframe(0.0)
+                    LinearKeyframe(1.0, duration: 0.35)
+                }
+            }
+            .frame(width: 64, height: 56)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                FQFeedback.shared.tap()
+                if !reduceMotion { wiggles += 1 }
+            }
+            .position(x: egg.center.x + markOffset.width, y: egg.center.y + markOffset.height)
+            .accessibilityHidden(true)
+    }
+
+    @ViewBuilder private var mark: some View {
+        switch egg {
+        case .farmX:
+            // Jama presne pres krizek (7 x 5 bunek), vedle otevrena prazdna truhla a hromadka hliny.
+            ZStack {
+                DugPit(pixel: MapLayout.cell)
+                OpenPixelChest(pixel: 3).offset(x: 24, y: -10)
+                DirtMound().offset(x: -26, y: 8)
+            }
+        case .pond:
+            OpenPixelChest(pixel: 4)
+        case .planet:
+            PixelFlag(pixel: 3)
+        }
+    }
+}
+
+/// Otevrena prazdna truhla (12 x 10 pixelu): zvednute viko a tmave prazdne vnitrko.
+struct OpenPixelChest: View {
+    var pixel: CGFloat = 4
+
+    private static let rows = [
+        ".kkkkkkkkkk.",
+        "kttttttttttk",
+        "kyyyyyyyyyyk",
+        "kddddddddddk",
+        "kdDDDDDDDDdk",
+        "kyyyyyyyyyyk",
+        "kttttwwttttk",
+        "kttttyyttttk",
+        "kyttttttttyk",
+        "kkkkkkkkkkkk",
+    ]
+    private static let colors: [Character: Color] = [
+        "k": Color(red: 0.16, green: 0.10, blue: 0.07),
+        "t": Color(red: 0.62, green: 0.38, blue: 0.18),
+        "y": Color(red: 0.98, green: 0.80, blue: 0.30),
+        "w": Color(red: 1, green: 0.96, blue: 0.80),
+        "d": Color(red: 0.24, green: 0.14, blue: 0.09),
+        "D": Color(red: 0.12, green: 0.07, blue: 0.05),
+    ]
+
+    var body: some View {
+        PixelGrid(rows: Self.rows, colors: Self.colors, pixel: pixel)
+            .shadow(color: .black.opacity(0.4), radius: 0, x: 0, y: 2)
+    }
+}
+
+/// Vykopana jama (11 x 7 bunek) se svetlejsim okrajem hliny; prekryje krizek v terenu.
+private struct DugPit: View {
+    let pixel: CGFloat
+
+    private static let rows = [
+        "...lllll...",
+        ".llddddddl.",
+        "lddDDDDDddl",
+        "ldDDkkkDDdl",
+        "ldDDkkkDDdl",
+        ".lddDDDddl.",
+        "...lllll...",
+    ]
+    private static let colors: [Character: Color] = [
+        "l": Color(red: 0.50, green: 0.34, blue: 0.20),
+        "d": Color(red: 0.36, green: 0.24, blue: 0.14),
+        "D": Color(red: 0.22, green: 0.14, blue: 0.08),
+        "k": Color(red: 0.12, green: 0.07, blue: 0.04),
+    ]
+
+    var body: some View { PixelGrid(rows: Self.rows, colors: Self.colors, pixel: pixel) }
+}
+
+/// Mala vlajka na zerdi (6 x 9 pixelu): cervena s bilym pruhem.
+private struct PixelFlag: View {
+    let pixel: CGFloat
+
+    private static let rows = [
+        "prrrr.",
+        "pwwrrr",
+        "prrrr.",
+        "p.....",
+        "p.....",
+        "p.....",
+        "p.....",
+        "p.....",
+        "gg....",
+    ]
+    private static let colors: [Character: Color] = [
+        "p": Color(red: 0.85, green: 0.85, blue: 0.90),
+        "r": Color(red: 0.92, green: 0.26, blue: 0.30),
+        "w": Color(red: 1, green: 0.96, blue: 0.85),
+        "g": Color(red: 0.45, green: 0.42, blue: 0.55),
+    ]
+
+    var body: some View {
+        PixelGrid(rows: Self.rows, colors: Self.colors, pixel: pixel)
+            .shadow(color: .black.opacity(0.5), radius: 0, x: 1, y: 1)
+    }
+}
+
+/// Pixelovy obrazek z radku znaku (tecka = pruhledne).
+private struct PixelGrid: View {
+    let rows: [String]
+    let colors: [Character: Color]
+    let pixel: CGFloat
+
+    var body: some View {
+        let width = rows.map(\.count).max() ?? 0
+        Canvas { context, _ in
+            for (y, row) in rows.enumerated() {
+                for (x, char) in row.enumerated() {
+                    guard let color = colors[char] else { continue }
+                    context.fill(Path(CGRect(x: CGFloat(x) * pixel, y: CGFloat(y) * pixel, width: pixel, height: pixel)), with: .color(color))
+                }
+            }
+        }
+        .frame(width: CGFloat(width) * pixel, height: CGFloat(rows.count) * pixel)
+    }
+}

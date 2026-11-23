@@ -48,6 +48,15 @@ struct ArenaView: View {
     @State private var bumps = 0
     @State private var fireStart: Date?
 
+    // 2D: oslava serie po prvni bitve dne.
+    @AppStorage(StreakCelebration.storageKey) private var celebratedDay = ""
+    /// Pred oslavou pilulka ukazuje puvodni cislo, aby bylo videt, jak naskoci.
+    @State private var shownStreak: Int?
+    @State private var celebrationRequest = 0
+    @State private var flares = 0
+    @State private var sparksStart: Date?
+    @State private var isOnScreen = false
+
     private struct Poke: Equatable {
         let id: Int
         let text: String
@@ -102,6 +111,34 @@ struct ArenaView: View {
             guard !Task.isCancelled, poke?.id == current.id else { return }
             withAnimation(.easeOut(duration: 0.2)) { poke = nil }
         }
+        .onAppear {
+            isOnScreen = true
+            requestStreakCelebration()
+        }
+        .onDisappear {
+            isOnScreen = false
+            shownStreak = nil
+        }
+        // Navrat z bitvy (nebo zavreni Fight sheetu po "Same again"): oslava serie, kdyz je na rade.
+        .onChange(of: battle.isPresented) { _, open in if !open { requestStreakCelebration() } }
+        .onChange(of: battle.showsFightSheet) { _, open in if !open { requestStreakCelebration() } }
+        .task(id: celebrationRequest) {
+            guard celebrationRequest > 0 else { return }
+            // Az dojede zavirani bitvy nebo listu.
+            try? await Task.sleep(for: .milliseconds(600))
+            guard !Task.isCancelled else { return }
+            guard canCelebrateStreak else {
+                shownStreak = nil
+                return
+            }
+            celebrateStreak()
+        }
+        .task(id: sparksStart) {
+            guard let started = sparksStart else { return }
+            try? await Task.sleep(for: .seconds(StreakCelebration.sparkSeconds + 0.1))
+            guard !Task.isCancelled, sparksStart == started else { return }
+            sparksStart = nil
+        }
         .task(id: fireStart) {
             // Ohen se po ~4,5 s vzdy uklidi, i kdyz se mezitim znovu zapalil a zase dohorel.
             guard let started = fireStart else { return }
@@ -114,10 +151,10 @@ struct ArenaView: View {
     // MARK: - Serie
 
     private var streakPill: some View {
-        let days = profileModel.stats.currentStreak()
+        let days = shownStreak ?? profileModel.stats.currentStreak()
         let burning = fireStart != nil
         return Button(action: tapStreak) {
-            StreakBadge(days: days, burning: burning)
+            StreakBadge(days: days, burning: burning, flare: flares)
                 .padding(.vertical, 10)
                 .padding(.horizontal, 14)
                 .glassCard(radius: FQRadius.capsule)
@@ -131,6 +168,14 @@ struct ArenaView: View {
                 .overlay {
                     if let fireStart {
                         StreakFire(start: fireStart).padding(-StreakFire.pad)
+                    }
+                }
+                .overlay(alignment: .leading) {
+                    // Jiskry z plaminku (stred plaminku je 14 + 11 bodu od leveho okraje pilulky).
+                    if let sparksStart {
+                        StreakSparks(start: sparksStart)
+                            .frame(width: 200, height: 160)
+                            .offset(x: 25 - 100)
                     }
                 }
                 .keyframeAnimator(initialValue: 1.0, trigger: bumps) { content, scale in
@@ -157,6 +202,39 @@ struct ArenaView: View {
         streakTaps = 0
         fireStart = now
         FQFeedback.shared.play(.levelUp)
+    }
+
+    // MARK: - 2D: oslava serie
+
+    /// Home je videt a nic ho nezakryva (bitva, Fight sheet) a dnes je oslava na rade.
+    private var canCelebrateStreak: Bool {
+        isOnScreen && !battle.isPresented && !battle.showsFightSheet
+            && profileModel.stats.isStreakCelebrationDue(lastCelebratedDay: celebratedDay)
+    }
+
+    /// Pripravi oslavu: pilulka hned ukaze vcerejsi cislo, oslava prijde po zavreni bitvy.
+    private func requestStreakCelebration() {
+        guard canCelebrateStreak else { return }
+        shownStreak = max(0, profileModel.stats.currentStreak() - 1)
+        celebrationRequest += 1
+    }
+
+    /// Plaminek se rozhori, cislo naskoci, jiskry, vibrace a zvuk odmeny (Reward sounds, Haptics).
+    /// S Reduce Motion jen prolnuti cisla, bez zvetseni a jisker. Jednou za den.
+    private func celebrateStreak() {
+        let days = profileModel.stats.currentStreak()
+        celebratedDay = PlayerStats.dayKey(Date())
+        if reduceMotion {
+            withAnimation(.easeOut(duration: 0.4)) { shownStreak = nil }
+        } else {
+            withAnimation(.spring(response: 0.45, dampingFraction: 0.6)) { shownStreak = nil }
+            flares += 1
+            bumps += 1
+            sparksStart = Date()
+        }
+        FQFeedback.shared.haptic(.success)
+        FQFeedback.shared.play(.levelUp)
+        AccessibilityNotification.Announcement(days == 1 ? "Streak started: 1 day" : "Streak up: \(days) days").post()
     }
 
     /// #EB5016, oranzovy okraj horici pilulky.
@@ -337,7 +415,10 @@ struct ArenaView: View {
         if !reduceMotion {
             if angry { shakes += 1 } else { bobs += 1 }
         }
-        FQFeedback.shared.play(angry ? .hit : .tap)
+        // Klik a vibrace vzdy (i u nastvaneho bosse; driv ho nahradil zvuk zasahu, ktery patri
+        // do Battle sounds, takze se zvuky bitvy vypnutymi bylo ticho). Nastvany boss navic zasah.
+        FQFeedback.shared.tap()
+        if angry { FQFeedback.shared.play(.hit) }
         AccessibilityNotification.Announcement(text).post()
     }
 
@@ -418,17 +499,38 @@ struct StreakBadge: View {
     let days: Int
     /// Easter egg v Arene: plamen zari oranzove, dokud pilulka hori.
     var burning = false
+    /// 2D: kazda zmena = plaminek se rozhori (oslava prvni bitvy dne).
+    var flare = 0
+    @State private var flaring = false
 
     var body: some View {
         HStack(spacing: FQSpace.sm) {
             Image(systemName: "flame.fill")
                 .font(.system(size: 22, weight: .semibold, design: .rounded))
                 .foregroundStyle(days > 0 ? AnyShapeStyle(LinearGradient(colors: [Color.yellow, Color.orange, Color.red], startPoint: .top, endPoint: .bottom)) : AnyShapeStyle(FQColor.textSecondary))
-                .shadow(color: Color(red: 1, green: 138 / 255, blue: 31 / 255).opacity(burning ? 1 : 0), radius: 6)
+                .shadow(color: Color(red: 1, green: 138 / 255, blue: 31 / 255).opacity(burning || flaring ? 1 : 0), radius: flaring ? 10 : 6)
                 .animation(.easeOut(duration: 0.4), value: burning)
+                .animation(.easeOut(duration: 0.35), value: flaring)
+                .keyframeAnimator(initialValue: 1.0, trigger: flare) { content, scale in
+                    content.scaleEffect(scale, anchor: .bottom)
+                } keyframes: { _ in
+                    KeyframeTrack {
+                        MoveKeyframe(1.0)
+                        CubicKeyframe(1.65, duration: 0.22)
+                        SpringKeyframe(1.0, duration: 0.6, spring: .bouncy)
+                    }
+                }
+                .task(id: flare) {
+                    guard flare > 0 else { return }
+                    flaring = true
+                    try? await Task.sleep(for: .seconds(1.2))
+                    guard !Task.isCancelled else { return }
+                    flaring = false
+                }
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 0) {
                 Text("\(days)").font(.fqTitle).monospacedDigit().foregroundStyle(FQColor.textPrimary)
+                    .contentTransition(.numericText(value: Double(days)))
                 Text(days == 1 ? "day streak" : "days streak").font(.fqMeta).foregroundStyle(FQColor.textSecondary)
             }
         }

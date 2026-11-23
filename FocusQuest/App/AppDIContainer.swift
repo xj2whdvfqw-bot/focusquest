@@ -76,6 +76,8 @@ final class AppDIContainer {
         guard arenaViewModel.isBetweenBattles else { return false }
         guard await settingsViewModel.resetProgress() else { return false }
         appBlocker.reset()
+        // Nova hra: prvni bitva dne zase oslavi serii (2D).
+        UserDefaults.standard.removeObject(forKey: StreakCelebration.storageKey)
         let center = UNUserNotificationCenter.current()
         center.removeAllPendingNotificationRequests()
         center.removeAllDeliveredNotifications()

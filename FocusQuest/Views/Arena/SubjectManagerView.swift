@@ -50,8 +50,8 @@ struct SubjectManagerView: View {
         // Zavreni tahem dolu; ne behem potvrzeni smazani a ne s rozepsanym predmetem.
         .fqSheetDismissal(blocked: pendingDelete != nil || hasSubjectDraft, onBlockedAttempt: blockedCloseAttempt) { dismiss() }
         .confirmationDialog("Discard the new focus?", isPresented: $asksDiscardDraft, titleVisibility: .visible) {
-            Button("Discard", role: .destructive) { dismiss() }
-            Button("Keep editing", role: .cancel) { }
+            Button("Discard", role: .destructive) { FQFeedback.shared.tap(); dismiss() }
+            Button("Keep editing", role: .cancel) { FQFeedback.shared.tap() }
         }
         .animation(.easeOut(duration: 0.18), value: pendingDelete)
         .animation(.easeOut(duration: 0.18), value: model.preferences.subjects)
@@ -219,6 +219,8 @@ private struct ManagerButtonStyle: ButtonStyle {
             .opacity(configuration.isPressed ? 0.7 : 1)
             .frame(minHeight: 44)
             .contentShape(Rectangle())
+            // Klik a vibrace jako u ostatnich tlacitek (Hide, Show, Cancel, Delete, Restore).
+            .modifier(TapFeedback(isPressed: configuration.isPressed))
     }
 
     private var foreground: Color {

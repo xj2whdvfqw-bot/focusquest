@@ -97,6 +97,13 @@ struct BattleStage: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var event: StageEvent?
     @State private var eventCounter = 0
+    /// 2E: casy poslednich klepnuti na bosse (nejvys 3 za sekundu).
+    @State private var pokeTimes: [Date] = []
+    /// 2E s Reduce Motion: misto utoku se boss jen otrese.
+    @State private var pokeShakes = 0
+
+    /// Kolik kosmetickych klepnuti na bosse projde za sekundu.
+    static let maxPokesPerSecond = 3
 
     private var attack: HeroAttack { HeroAttack.of(appearance: appearance, heroClass: heroClass) }
     private var animates: Bool { !reduceMotion && scenePhase == .active }
@@ -176,6 +183,23 @@ struct BattleStage: View {
         event = StageEvent(id: eventCounter, kind: kind, start: .now)
     }
 
+    /// 2E: klepnuti na bosse behem bitvy. Ciste kosmeticke: hrdina zautoci podle tridy (mec svih,
+    /// mag kouzlo, lukostrelec sip, zlodej dyka), boss se otrese a odletnou jiskry. Neubira HP ani cas,
+    /// zadne cislo poskozeni ani zvuk zasahu; jen klik a vibrace (Tap sounds, Haptics).
+    /// Nejvys 3 klepnuti za sekundu; probihajici pravidelny utok ani financi uder se neprerusi.
+    private func poke() {
+        let now = Date()
+        pokeTimes = pokeTimes.filter { now.timeIntervalSince($0) < 1 }
+        guard pokeTimes.count < Self.maxPokesPerSecond else { return }
+        pokeTimes.append(now)
+        FQFeedback.shared.tap()
+        if reduceMotion {
+            pokeShakes += 1
+        } else if animates, event == nil || event?.kind == .poke {
+            start(.poke)
+        }
+    }
+
     // MARK: - Snimek sceny
 
     @ViewBuilder
@@ -201,6 +225,15 @@ struct BattleStage: View {
                 .position(bossCenter)
 
             PixelArtAvatarView(sprite: .boss(boss.pixelSpriteConfig), hitFlash: frame.bossFlash, size: bossSize)
+                // Reduce Motion: klepnuti na bosse = jen kratky otres o 3 body (2E).
+                .keyframeAnimator(initialValue: 0.0, trigger: pokeShakes) { content, value in
+                    content.offset(x: 3 * sin(2 * .pi * value))
+                } keyframes: { _ in
+                    KeyframeTrack {
+                        MoveKeyframe(0.0)
+                        LinearKeyframe(3.0, duration: 0.3)
+                    }
+                }
                 .scaleEffect(x: frame.bossFacingAway ? -1 : 1, y: 1)
                 .rotationEffect(.degrees(frame.bossTilt), anchor: .bottom)
                 .opacity(frame.bossOpacity)
@@ -210,6 +243,15 @@ struct BattleStage: View {
                 .position(x: heroCenter.x + frame.heroOffset.width, y: heroCenter.y + frame.heroOffset.height)
 
             effects(frame: frame, hero: heroCenter, boss: bossCenter, weaponOnRight: weaponOnRight)
+
+            // 2E: plocha klepnuti na bosse, jen behem bezici bitvy.
+            if phase == .fighting {
+                Color.clear
+                    .frame(width: bossSize, height: bossSize)
+                    .contentShape(Rectangle())
+                    .position(bossCenter)
+                    .onTapGesture { poke() }
+            }
         }
         .frame(width: size.width, height: size.height)
     }
@@ -302,6 +344,8 @@ struct BattleStage: View {
 private struct StageEvent: Equatable {
     enum Kind: Equatable {
         case attack(index: Int)
+        /// 2E: kosmeticky utok po klepnuti na bosse (bez poskozeni a bez cisla).
+        case poke
         case finalBlow
         case escape
     }
@@ -313,6 +357,7 @@ private struct StageEvent: Equatable {
     var duration: Double {
         switch kind {
         case .attack: 1.5
+        case .poke: 0.9
         case .finalBlow: BattleStage.finaleSeconds
         case .escape: 1.6
         }
@@ -320,7 +365,7 @@ private struct StageEvent: Equatable {
 
     func impactTime(for attack: HeroAttack) -> Double? {
         switch kind {
-        case .attack, .finalBlow: attack.impact
+        case .attack, .poke, .finalBlow: attack.impact
         case .escape: nil
         }
     }
@@ -379,10 +424,11 @@ private struct StageFrame {
         let lunge = Double(max(0, size.width * 0.46 - heroSize * 0.5 - bossSize * 0.28))
 
         switch event.kind {
-        case .attack, .finalBlow:
+        case .attack, .poke, .finalBlow:
             let final = event.kind == .finalBlow
+            let cosmetic = event.kind == .poke
             frame.bossOpacity = 1
-            frame.apply(attack: attack, t: t, lunge: lunge, power: final ? 1.3 : 1)
+            frame.apply(attack: attack, t: t, lunge: lunge, power: final ? 1.3 : (cosmetic ? 0.8 : 1))
             let impact = attack.impact
             let hits = attack == .stab ? [impact, impact + 0.3] : [impact]
             for hit in hits where t >= hit {
@@ -406,7 +452,7 @@ private struct StageFrame {
                 if t >= impact + 0.1 { frame.knockout = clamp((t - impact - 0.1) / 1.2) }
                 let jump = clamp((t - impact - 0.75) / 0.4)
                 if jump > 0, jump < 1 { frame.heroOffset.height -= CGFloat(14 * sin(jump * .pi)) }
-            } else if t >= impact {
+            } else if !cosmetic, t >= impact {
                 frame.damage = event.damage
                 frame.damageRise = clamp((t - impact) / 1.0)
                 if frame.damageRise == 1 { frame.damageRise = nil }

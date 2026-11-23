@@ -108,7 +108,30 @@ final class FQFeedback {
     }
 }
 
+extension Binding where Value == Bool {
+    /// Prepinac (Toggle) s klikem a vibraci. Klik zazni pred zmenou hodnoty, takze i vypnuti
+    /// "Tap sounds" ci "Haptics" jeste cvakne (driv onChange po zmene: klik nekdy chybel).
+    @MainActor func fqTapFeedback() -> Binding<Bool> {
+        Binding(get: { wrappedValue }, set: { newValue in
+            if newValue != wrappedValue { FQFeedback.shared.tap() }
+            wrappedValue = newValue
+        })
+    }
+}
+
 extension View {
+    /// Klik a vibrace (FQFeedback.tap) pro prvky, ktere nemaji styl FQPressStyle / ShopButtonStyle:
+    /// systemove radky v Listu (NavigationLink, Button), .bordered tlacitka, chipy s onTapGesture.
+    /// Simultanni gesto, takze vlastni akce prvku (navigace, vyber) bezi beze zmeny.
+    func fqTapSound() -> some View {
+        simultaneousGesture(TapGesture().onEnded { FQFeedback.shared.tap() })
+    }
+
+    /// Klik a vibrace pri zmene hodnoty (vyber v Pickeru, segmentovy prepinac).
+    func fqTapSound<T: Equatable>(onChangeOf value: T) -> some View {
+        onChange(of: value) { FQFeedback.shared.tap() }
+    }
+
     /// Vibrace pres FQFeedback (respektuje prepinac Haptics), kdyz se `trigger` zmeni a plati `condition`.
     func fqHaptic<T: Equatable>(_ kind: FQFeedback.Haptic, trigger: T, when condition: @escaping (T, T) -> Bool = { _, _ in true }) -> some View {
         onChange(of: trigger) { old, new in

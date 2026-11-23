@@ -321,6 +321,25 @@ final class ProgressionModelTests: XCTestCase {
         XCTAssertEqual(stats.currentStreak(now: dayTwo.addingTimeInterval(86_400 * 2), calendar: calendar), 0)
     }
 
+    func testStreakCelebrationOncePerDayAfterFirstBattle() {
+        let calendar = Calendar(identifier: .gregorian)
+        let dayOne = Date(timeIntervalSince1970: 1_700_000_000)
+        let dayTwo = dayOne.addingTimeInterval(86_400)
+        var stats = PlayerStats.initial
+        // Bez bitvy zadna oslava.
+        XCTAssertFalse(stats.isStreakCelebrationDue(lastCelebratedDay: "", now: dayOne, calendar: calendar))
+
+        stats.record(SessionSummary(id: UUID(), bossName: "A", verifiedMinutes: 10, xpEarned: 100, completedAt: dayOne, flawless: true), bossDefeated: true, calendar: calendar)
+        XCTAssertTrue(stats.isStreakCelebrationDue(lastCelebratedDay: "", now: dayOne, calendar: calendar))
+        // Uz oslavena dnes: podruhe ne.
+        let celebrated = PlayerStats.dayKey(dayOne, calendar: calendar)
+        XCTAssertFalse(stats.isStreakCelebrationDue(lastCelebratedDay: celebrated, now: dayOne, calendar: calendar))
+        // Druhy den jeste bez bitvy: ne. Po prvni bitve druheho dne: ano.
+        XCTAssertFalse(stats.isStreakCelebrationDue(lastCelebratedDay: celebrated, now: dayTwo, calendar: calendar))
+        stats.record(SessionSummary(id: UUID(), bossName: "B", verifiedMinutes: 10, xpEarned: 100, completedAt: dayTwo, flawless: true), bossDefeated: true, calendar: calendar)
+        XCTAssertTrue(stats.isStreakCelebrationDue(lastCelebratedDay: celebrated, now: dayTwo, calendar: calendar))
+    }
+
     func testStatsFromOlderVersionWithHPComboAndFailureStillLoad() throws {
         let calendar = Calendar(identifier: .gregorian)
         let dayOne = Date(timeIntervalSince1970: 1_700_000_000)

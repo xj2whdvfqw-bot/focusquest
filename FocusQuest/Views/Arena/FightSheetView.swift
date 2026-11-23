@@ -71,8 +71,8 @@ struct FightSheetView: View {
         // Behem tutorialu se list zavira jen tlacitkem v bubline (nebo Skip tutorial).
         .fqSheetDismissal(blocked: pendingDelete != nil || hasSubjectDraft || isTutorialStep, onBlockedAttempt: blockedCloseAttempt, close: onClose)
         .confirmationDialog("Discard the new focus?", isPresented: $asksDiscardDraft, titleVisibility: .visible) {
-            Button("Discard", role: .destructive) { onClose() }
-            Button("Keep editing", role: .cancel) { }
+            Button("Discard", role: .destructive) { FQFeedback.shared.tap(); onClose() }
+            Button("Keep editing", role: .cancel) { FQFeedback.shared.tap() }
         }
         .animation(.easeOut(duration: 0.18), value: isEditing)
         .animation(.easeOut(duration: 0.18), value: showsAllSubjects)
@@ -120,6 +120,7 @@ struct FightSheetView: View {
                     .fqFont(size: 13, weight: .semibold, design: .rounded)
                     .foregroundStyle(FQColor.textSecondary)
                     .frame(minHeight: 32)
+                    .buttonStyle(.fqPress)
                 }
             }
             ChipFlow(spacing: Layout.chipGap, rowSpacing: Layout.chipGap) {
@@ -152,7 +153,10 @@ struct FightSheetView: View {
         let isSelected = subject == model.selectedSubject
         return Text(subject.title)
             .fqChip(selected: isSelected)
-            .onTapGesture { model.selectSubject(subject) }
+            .onTapGesture {
+                FQFeedback.shared.tap()
+                model.selectSubject(subject)
+            }
             .onLongPressGesture(minimumDuration: 0.5) { showsManager = true }
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(subject.title)

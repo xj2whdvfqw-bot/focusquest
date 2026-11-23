@@ -228,7 +228,11 @@ struct ValueMenu<Value: Hashable, Options: View>: View {
 
     var body: some View {
         Menu {
-            Picker(title, selection: $selection) { options() }
+            // Klik a vibrace pri vyberu (Menu samo zadny zvuk nema).
+            Picker(title, selection: Binding(get: { selection }, set: { value in
+                if value != selection { FQFeedback.shared.tap() }
+                selection = value
+            })) { options() }
         } label: {
             HStack(spacing: FQSpace.xs) {
                 Text(valueText).font(.fqBody).lineLimit(1)

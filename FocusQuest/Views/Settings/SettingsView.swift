@@ -35,16 +35,19 @@ struct SettingsView: View {
                     } label: {
                         SettingsRow(title: "Sounds & haptics", symbol: "speaker.wave.2.fill", color: .pink, value: "\(model.preferences.soundEffectsOnCount) of 4 on")
                     }
+                    .fqTapSound()
                     NavigationLink {
                         MusicSettingsPage(model: model)
                     } label: {
                         SettingsRow(title: "Music", symbol: "music.note", color: .orange, value: model.preferences.battleSound.title)
                     }
+                    .fqTapSound()
                     NavigationLink {
                         NotificationSettingsPage(model: model, notifications: $notifications)
                     } label: {
                         SettingsRow(title: "Notifications", symbol: "bell.badge.fill", color: .red, value: notificationSummary)
                     }
+                    .fqTapSound()
                 } footer: {
                     Text("Music plays during battles. Sounds and haptics apply to the whole app.")
                 }
@@ -53,6 +56,7 @@ struct SettingsView: View {
                     Button { onOpenBackgrounds?() } label: {
                         SettingsRow(title: "Background", symbol: "photo.fill", color: .indigo, value: profile.selectedBackground?.name ?? ShopBackground.worldName, showsChevron: true)
                     }
+                    .fqTapSound()
                 } header: {
                     Text("Appearance")
                 } footer: {
@@ -63,6 +67,7 @@ struct SettingsView: View {
                     Button { onReplayTutorial?() } label: {
                         SettingsRow(title: "Replay tutorial", symbol: "hand.tap.fill", color: .green, showsChevron: true)
                     }
+                    .fqTapSound()
                 } header: {
                     Text("Help")
                 } footer: {
@@ -73,6 +78,7 @@ struct SettingsView: View {
                     Button { contactDeveloper() } label: {
                         SettingsRow(title: "Contact the developer", symbol: "envelope.fill", color: .blue, showsChevron: true)
                     }
+                    .fqTapSound()
                     // "Rate this app" je skryte, dokud appka nema App Store ID. Pak se vrati s primym odkazem
                     // https://apps.apple.com/app/id<ID>?action=write-review (requestReview() casto nic neukaze).
                 } header: {
@@ -89,10 +95,11 @@ struct SettingsView: View {
                             if isResetting { ProgressView() }
                         }
                     }
+                    .fqTapSound()
                     .disabled(isResetting)
                     .confirmationDialog("Reset all progress?", isPresented: $showsResetConfirmation, titleVisibility: .visible) {
-                        Button("Reset progress", role: .destructive) { resetProgress() }
-                        Button("Keep my progress", role: .cancel) { }
+                        Button("Reset progress", role: .destructive) { FQFeedback.shared.tap(); resetProgress() }
+                        Button("Keep my progress", role: .cancel) { FQFeedback.shared.tap() }
                     } message: {
                         Text("Your hero, level, coins, stats, focus list and settings will be deleted from this iPhone. This can't be undone.")
                     }
@@ -143,11 +150,11 @@ struct SettingsView: View {
         VStack(spacing: FQSpace.xs) {
             Text("FocusQuest version \(Self.appVersion)")
             HStack(spacing: FQSpace.sm) {
-                Button("Privacy Policy") { openURL(LegalLinks.privacy) }
+                Button("Privacy Policy") { openURL(LegalLinks.privacy) }.fqTapSound()
                 Text("·").accessibilityHidden(true)
-                Button("Terms of Use") { openURL(LegalLinks.terms) }
+                Button("Terms of Use") { openURL(LegalLinks.terms) }.fqTapSound()
                 Text("·").accessibilityHidden(true)
-                Button("Support") { openURL(LegalLinks.support) }
+                Button("Support") { openURL(LegalLinks.support) }.fqTapSound()
             }
             .fontWeight(.semibold)
             .buttonStyle(.borderless)
@@ -256,7 +263,8 @@ private struct SoundsSettingsPage: View {
                 if prefs.isHapticsEnabled {
                     Picker("Strength", selection: Binding(get: { prefs.hapticStrength }, set: { value in
                         model.update { $0.hapticStrength = value }
-                        // Nova sila se hned ukaze (FQFeedback ma predvolby po update).
+                        // Nova sila se hned ukaze (FQFeedback ma predvolby po update); klik jako u ostatnich voleb.
+                        FQFeedback.shared.play(.tap)
                         FQFeedback.shared.haptic(.medium)
                     })) {
                         ForEach(HapticStrength.allCases) { strength in
@@ -285,12 +293,11 @@ private struct SoundsSettingsPage: View {
     }
 
     private func toggle(_ title: String, symbol: String, color: Color, isOn: Binding<Bool>) -> some View {
-        Toggle(isOn: isOn) {
+        // Prepinac je ovladaci prvek: klik a vibrace stejne jako tlacitka (pred zmenou hodnoty).
+        Toggle(isOn: isOn.fqTapFeedback()) {
             SettingsRow(title: title, symbol: symbol, color: color)
         }
         .settingsToggleTint()
-        // Prepinac je ovladaci prvek: klik a vibrace stejne jako tlacitka.
-        .onChange(of: isOn.wrappedValue) { FQFeedback.shared.tap() }
     }
 
     private func demo(_ title: String, action: @escaping () -> Void) -> some View {
@@ -409,6 +416,7 @@ private struct MusicSettingsPage: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .fqTapSound()
             .accessibilityAddTraits(isSelected ? [.isSelected] : [])
             if sound != .off {
                 Button {
@@ -423,6 +431,7 @@ private struct MusicSettingsPage: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.borderless)
+                .fqTapSound()
                 .accessibilityLabel(isPlaying ? "Stop sample of \(sound.title)" : "Play sample of \(sound.title)")
             }
         }
@@ -475,21 +484,22 @@ private struct NotificationSettingsPage: View {
             Button { Task { notifications = await NotificationPermission.request() } } label: {
                 SettingsRow(title: "Allow notifications", symbol: "bell.fill", color: .red, showsChevron: true)
             }
+            .fqTapSound()
         case .silent, .denied:
             Button {
                 if let url = URL(string: UIApplication.openNotificationSettingsURLString) { openURL(url) }
             } label: {
                 SettingsRow(title: "Open iPhone Settings", symbol: "bell.slash.fill", color: .gray, value: notifications == .denied ? "Off" : "Quiet", showsChevron: true)
             }
+            .fqTapSound()
         }
     }
 
     private func toggle(_ title: String, symbol: String, color: Color, isOn: Binding<Bool>) -> some View {
-        Toggle(isOn: isOn) {
+        Toggle(isOn: isOn.fqTapFeedback()) {
             SettingsRow(title: title, symbol: symbol, color: color)
         }
         .settingsToggleTint()
-        .onChange(of: isOn.wrappedValue) { FQFeedback.shared.tap() }
     }
 
     /// Prepinac notifikace ukazuje skutecny stav: kdyz iOS notifikace blokuje, je vypnuty.
@@ -599,6 +609,7 @@ private struct DebugSettingsSections: View {
             .buttonBorderShape(.capsule)
             .controlSize(.small)
             .monospacedDigit()
+            .fqTapSound()
     }
 }
 #endif

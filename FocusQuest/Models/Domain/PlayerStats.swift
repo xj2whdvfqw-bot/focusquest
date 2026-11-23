@@ -132,6 +132,21 @@ extension PlayerStats {
         return gap <= 1 ? streakDays : 0
     }
 
+    /// Den ve tvaru "2026-11-23" (oslava serie se pamatuje po dnech).
+    static func dayKey(_ date: Date, calendar: Calendar = .current) -> String {
+        let parts = calendar.dateComponents([.year, .month, .day], from: date)
+        return String(format: "%04d-%02d-%02d", parts.year ?? 0, parts.month ?? 0, parts.day ?? 0)
+    }
+
+    /// 2D: oslava serie na Home. Plati, kdyz dnes uz probehla bitva (prvni dnesni serii zvysila),
+    /// serie plati a dnes jeste oslava nebyla (`lastCelebratedDay` = dayKey posledni oslavy).
+    func isStreakCelebrationDue(lastCelebratedDay: String, now: Date = Date(), calendar: Calendar = .current) -> Bool {
+        guard let last = sessionHistory.first?.completedAt,
+              calendar.isDate(last, inSameDayAs: now),
+              currentStreak(now: now, calendar: calendar) > 0 else { return false }
+        return lastCelebratedDay != Self.dayKey(now, calendar: calendar)
+    }
+
     /// Overene minuty po dnech za poslednich `days` dni, od nejstarsiho po dnesek.
     func dailyFocusMinutes(days: Int = 7, now: Date = Date(), calendar: Calendar = .current) -> [DailyFocus] {
         let today = calendar.startOfDay(for: now)
