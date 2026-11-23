@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-23T20:23:43+01:00",
-  "current": "G1 hotovo: build #67 prošel",
-  "nextStep": "Otestovat na iPhonu tap zvuk, karty, easter eggy, oslavu série a ťukání v bitvě",
+  "updated": "2026-11-23T22:10:10+01:00",
+  "current": "H1: opravy z testu po #67 hotové v kódu, čeká na commit a build",
+  "nextStep": "Commit, push a spustit build",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -795,6 +795,26 @@
       "commit": "7e22813",
       "build": { "number": 67, "runId": 45242246561, "result": "úspěch" },
       "note": "Build #67 prošel napoprvé (IPA, testy včetně nového testu oslavy série). Na iPhonu otestuj: klik a vibrace v Nastavení (řádky, podstránky, přepínače včetně vypnutí Tap sounds, síla haptiky, výběr hudby, odkazy dole), naštvaný boss na Home pořád cvaká, chipy Focusing, Hero class menu, Habits; světlejší sklo u Victory, Call ended, útěku a panelu přestávky a čitelnost textu na světlých pozadích; bublina tutoriálu; nalezené easter eggy (Debug › Reset easter eggs a znovu najít): jáma s truhlou na Farm, truhla u rybníka, vlajka na planetě, klepnutí jen poskočí; první bitva dne → po návratu na Home oslava série (jen jednou za den); ťukání na bosse v bitvě (útok podle třídy, žádné číslo, max 3/s); Reduce Motion: série jen prolnutí, boss jen otřes. Zbývá: pozice truhly u rybníka a vlajky ověřit na mapě (umístěno výpočtem)."
+    },
+    {
+      "id": "H1",
+      "title": "Test po #67: Nastavení, tutoriál, zamčené světy",
+      "status": "pracuje",
+      "items": [
+        { "text": "A1 Nastavení se zase otevírá: pryč simultaneousGesture (.fqTapSound) z řádků Listu; klik v akci tlačítek, u podstránek přes onChange cesty (NavigationLink(value:))", "done": true },
+        { "text": "A1 Audit míst z G1: chipy Focusing, Habits, tečky onboardingu, dialogy, ManagerButtonStyle, ťukání na bosse mají klik v akci nebo stylu, nic neblokují", "done": true },
+        { "text": "A2 Tutoriál: každý krok má svou záložku, start vždy na Home, lišta zamčená kromě zvýrazněné záložky, automatické přepnutí na správnou záložku", "done": true },
+        { "text": "A2 Výřez se schová a přepočítá po změně záložky, otevření/zavření listu a změně velikosti (rotace)", "done": true },
+        { "text": "A3 Skip tutorial: samostatná pilulka v safe area se stínem a tmavým přechodem pod ní (i ve Fight sheetu)", "done": true },
+        { "text": "A4 Tutoriál 13 kroků: Habits (čtverečky, barva, dnešek), čísla ve Stats, Daily focus target v Hero", "done": true },
+        { "text": "A5 Zamčené světy: mapa i seznam = odemčené + jeden zamčený se siluetami (nejde otevřít), pak „??? · N more worlds to discover“; názvy ani bossové nikde", "done": true },
+        { "text": "A6 Credit „Vibecoded with artificial intelligence“ úplně dole v Nastavení", "done": true },
+        { "text": "A7 „Subject“ pryč i z webu (Privacy, Support) a komentářů; správa je „Your focus list“", "done": true },
+        { "text": "DECISIONS.md: tap zvuk bez gest v Listu, tutoriál 13 kroků a záložky, zamčené světy, credit", "done": true }
+      ],
+      "commit": "",
+      "build": { "number": null, "runId": null, "result": "" },
+      "note": "V kódu aplikace už text „Your subjects“ nebyl (správa se jmenuje „Your focus list“ od F2); pokud ho vidíš, jde o starý build. „Subject“ zbýval jen na webu Privacy/Support."
     }
   ]
 }

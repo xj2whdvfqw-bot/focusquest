@@ -21,10 +21,14 @@ final class OnboardingTests: XCTestCase {
         XCTAssertNil(UserProfile.cleanName("--"), "Needs a letter or digit")
     }
 
-    func testTutorialHasTenStepsInUsageOrder() {
+    func testTutorialHasThirteenStepsInUsageOrder() {
         XCTAssertEqual(CoachStep.allCases.first, .fight)
         XCTAssertEqual(CoachStep.allCases.last?.number, CoachStep.total)
-        XCTAssertEqual(CoachStep.total, 10)
+        XCTAssertEqual(CoachStep.total, 13)
+        XCTAssertEqual(CoachStep.hero.number, CoachStep.dailyTarget.number, "Hero tab and its daily target are one step")
+        XCTAssertEqual(CoachStep.habits.screen, .stats)
+        XCTAssertEqual(CoachStep.shop.screen, .path, "Tab steps wait on the previous tab")
+        XCTAssertEqual(CoachStep.dailyTarget.screen, .hero)
         XCTAssertEqual(CoachStep.allCases.filter(\.isInFightSheet), [.focusing, .sound, .battle])
         XCTAssertTrue(CoachStep.fight.isAction)
         XCTAssertFalse(CoachStep.battle.isAction, "Battle is explained, not played")

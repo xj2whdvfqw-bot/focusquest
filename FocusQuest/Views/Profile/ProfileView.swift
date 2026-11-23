@@ -17,7 +17,7 @@ struct ProfileView: View {
         ScreenScaffold(scene: .enchantedForest) {
             ScreenHeader(eyebrow: "Hero", title: "Hero profile", gearMark: .gear)
             heroCard
-            ScreenSection(title: "Daily focus target") { dailyTargetCard }
+            ScreenSection(title: "Daily focus target") { dailyTargetCard.coachMark(.dailyTarget) }
             ScreenSection(title: "Identity") { identityCard }
             if let error = model.errorMessage {
                 Label(error, systemImage: "exclamationmark.circle.fill")

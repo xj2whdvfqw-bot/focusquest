@@ -515,7 +515,7 @@ final class ArenaViewModel: ObservableObject {
         changePreferences { $0.subjects.softDelete(subject) }
     }
 
-    /// Predmety pro spravu "Your subjects": vsechny krome smazanych (i skryte).
+    /// Predmety pro spravu "Your focus list": vsechny krome smazanych (i skryte).
     var managedSubjects: [SubjectEntry] { preferences.subjects.filter { $0.deletedAt == nil } }
 
     /// "Recently deleted" ve sprave predmetu: jdou 24 h obnovit.
@@ -540,7 +540,7 @@ final class ArenaViewModel: ObservableObject {
         return purged
     }
 
-    /// Prejmenovani v "Your subjects". Id zustava, takze historie bitev patri dal k predmetu.
+    /// Prejmenovani v "Your focus list". Id zustava, takze historie bitev patri dal k predmetu.
     func renameSubject(_ subject: StudySubject, to name: String) {
         let title = name.split(whereSeparator: \.isWhitespace).joined(separator: " ")
         guard !title.isEmpty else { return }
@@ -551,7 +551,7 @@ final class ArenaViewModel: ObservableObject {
         }
     }
 
-    /// Skryti v "Your subjects": predmet zmizi z bitev, data zustanou.
+    /// Skryti v "Your focus list": predmet zmizi z bitev, data zustanou.
     func setSubjectHidden(_ subject: StudySubject, hidden: Bool) {
         changePreferences { preferences in
             guard let index = preferences.subjects.firstIndex(where: { $0.id == subject.id }) else { return }

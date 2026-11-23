@@ -135,10 +135,19 @@ struct MainTabView: View {
                 await prepareOnLaunch()
             }
             // Tutorial: akcni kroky se posunou, az hrac klepne na zvyrazneny prvek (otevre Fight sheet, prepne zalozku).
-            .onChange(of: selectedTab) { _, tab in advanceTutorial(for: tab) }
+            .onChange(of: selectedTab) { _, tab in
+                coach.screen = tab.coachScreen
+                advanceTutorial(for: tab)
+                enforceTutorialTab()
+                coach.layoutChanged()
+            }
+            .onChange(of: coach.step) { _, _ in enforceTutorialTab() }
             .onChange(of: battlePresenter.showsFightSheet) { _, open in
                 if open { coach.advance(from: .fight) } else { coach.leaveFightSheet() }
+                coach.layoutChanged()
             }
+            // Otevreni a zavreni listu (Nastaveni, Fight) meni rozvrzeni: vyrez se zmeri znovu.
+            .onChange(of: settingsPresenter.isPresented) { _, _ in coach.layoutChanged() }
             .fullScreenCover(isPresented: $showsOnboarding, onDismiss: {
                 guard startsTutorialAfterOnboarding else { return }
                 startsTutorialAfterOnboarding = false
@@ -163,7 +172,16 @@ struct MainTabView: View {
     /// Kazda zmena zalozky jde pres switchTab, aby se prechod obsahu spustil ve stejnem
     /// prekresleni jako samotne prepnuti (jinak by nova zalozka na jeden snimek problikla).
     private var tabSelection: Binding<FocusQuestTab> {
-        Binding(get: { selectedTab }, set: { switchTab(to: $0) })
+        Binding(get: { selectedTab }, set: { userSwitchTab(to: $0) })
+    }
+
+    /// Prepnuti zalozky hracem (lista, odkaz na mapu). Behem tutorialu je lista zamcena (A2):
+    /// projde jen klepnuti na zalozku, kterou akcni krok prave zvyraznuje.
+    private func userSwitchTab(to tab: FocusQuestTab) {
+        if let step = coach.step {
+            guard step.isAction, let target = tab.coachTarget, step.target == target else { return }
+        }
+        switchTab(to: tab)
     }
 
     private func switchTab(to tab: FocusQuestTab) {
@@ -171,6 +189,15 @@ struct MainTabView: View {
         tabMotion.direction = index(of: tab) > index(of: selectedTab) ? 1 : -1
         tabMotion.switches += 1
         selectedTab = tab
+        coach.screen = tab.coachScreen
+    }
+
+    /// A2: krok tutorialu stoji na sve zalozce. Kdyz je hrac jinde (start tutorialu, obnoveny krok,
+    /// prepnuti odjinud), appka ho tam prepne; vyrez se zmeri az po vykresleni nove zalozky.
+    private func enforceTutorialTab() {
+        guard let screen = coach.step?.screen else { return }
+        let tab = FocusQuestTab(coachScreen: screen)
+        if tab != selectedTab { switchTab(to: tab) }
     }
 
     private func index(of tab: FocusQuestTab) -> Int { FocusQuestTab.allCases.firstIndex(of: tab) ?? 0 }
@@ -178,7 +205,7 @@ struct MainTabView: View {
     /// Systemovy TabView drzi stav kazde zalozky; jeho vlastni lista je skryta, kreslime FocusQuestTabBar.
     private func tabs(reserve: CGFloat) -> some View {
         TabView(selection: tabSelection) {
-            ArenaView(model: container.arenaViewModel, profileModel: container.profileViewModel) { switchTab(to: .path) }
+            ArenaView(model: container.arenaViewModel, profileModel: container.profileViewModel) { userSwitchTab(to: .path) }
                 .tabPage(reserve: reserve)
                 .tag(FocusQuestTab.arena)
             PathTabView(model: container.arenaViewModel, profileModel: container.profileViewModel)
@@ -188,6 +215,7 @@ struct MainTabView: View {
                 .tabPage(reserve: reserve)
                 .tag(FocusQuestTab.shop)
             StatsView(model: container.statsViewModel, arena: container.arenaViewModel) {
+                guard coach.step == nil else { return }
                 switchTab(to: .arena)
                 battlePresenter.openFightSheet()
             }
@@ -263,6 +291,8 @@ struct MainTabView: View {
     /// hrac, ktery appku uz pouziva, ho preskoci (a tutorial taky).
     private func prepareOnLaunch() async {
         coach.performAction = { step in performTutorialAction(step) }
+        coach.screen = selectedTab.coachScreen
+        if !isScripted { enforceTutorialTab() }
         await container.profileViewModel.refresh()
         await container.profileViewModel.refreshProgress()
         await maintainSubjects()
@@ -279,6 +309,7 @@ struct MainTabView: View {
 
     private func finishOnboarding() {
         coach.finishOnboarding()
+        // Tutorial vzdy zacina na Home (A2).
         switchTab(to: .arena)
         startsTutorialAfterOnboarding = true
         showsOnboarding = false
@@ -513,6 +544,27 @@ private struct TabCoachMark: ViewModifier {
 }
 
 private extension FocusQuestTab {
+    /// Zalozka pro krok tutorialu (A2).
+    init(coachScreen: CoachScreen) {
+        switch coachScreen {
+        case .home: self = .arena
+        case .path: self = .path
+        case .shop: self = .shop
+        case .stats: self = .stats
+        case .hero: self = .profile
+        }
+    }
+
+    var coachScreen: CoachScreen {
+        switch self {
+        case .arena: .home
+        case .path: .path
+        case .shop: .shop
+        case .stats: .stats
+        case .profile: .hero
+        }
+    }
+
     var coachTarget: CoachTarget? {
         switch self {
         case .arena: nil

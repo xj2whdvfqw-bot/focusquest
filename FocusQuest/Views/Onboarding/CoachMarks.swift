@@ -10,25 +10,32 @@ import SwiftUI
 /// Prvky, ktere tutorial umi zvyraznit.
 enum CoachTarget: String, Hashable, Sendable {
     case fight, quick, streak, focusing, sound, start, tabPath, tabShop, tabStats, tabHero, gear
+    /// A4: graf Habits, karta s cisly ve Stats a Daily focus target v Hero.
+    case habits, statNumbers, dailyTarget
 
-    /// Kulate a kapslove prvky maji kulaty vyrez, sekce Fight sheetu zaobleny obdelnik.
+    /// Kulate a kapslove prvky maji kulaty vyrez, karty a sekce Fight sheetu zaobleny obdelnik.
     var isRound: Bool {
         switch self {
-        case .focusing, .sound: false
+        case .focusing, .sound, .habits, .statNumbers, .dailyTarget: false
         default: true
         }
     }
 }
 
-/// Kroky tutorialu v poradi, jak appku hrac poprve pouzije. Krok 10 (Hero) ma dve casti:
-/// klepnuti na zalozku Hero a pak ozubene kolo Nastaveni.
+/// Zalozka, na ktere krok tutorialu stoji (A2). Kroky ve Fight sheetu maji `nil`.
+enum CoachScreen: Sendable {
+    case home, path, shop, stats, hero
+}
+
+/// Kroky tutorialu v poradi, jak appku hrac poprve pouzije.
 enum CoachStep: Int, CaseIterable, Sendable {
-    case fight, focusing, sound, battle, quick, streak, path, shop, stats, hero, settings
+    case fight, focusing, sound, battle, quick, streak, path, shop, stats, habits, statNumbers, hero, dailyTarget, settings
 
-    static let total = 10
+    /// Pocet kroku pro hrace. Hero (klepnuti na zalozku) a Daily focus target jsou jeden krok "12 of 13".
+    static let total = 13
 
-    /// Cislo kroku pro hrace ("3 of 10").
-    var number: Int { min(rawValue + 1, Self.total) }
+    /// Cislo kroku pro hrace ("3 of 13").
+    var number: Int { self.rawValue >= CoachStep.dailyTarget.rawValue ? self.rawValue : self.rawValue + 1 }
 
     var target: CoachTarget {
         switch self {
@@ -41,8 +48,24 @@ enum CoachStep: Int, CaseIterable, Sendable {
         case .path: .tabPath
         case .shop: .tabShop
         case .stats: .tabStats
+        case .habits: .habits
+        case .statNumbers: .statNumbers
         case .hero: .tabHero
+        case .dailyTarget: .dailyTarget
         case .settings: .gear
+        }
+    }
+
+    /// Zalozka, na ktere ma hrac byt, kdyz se krok ukaze. Akcni krok zalozky stoji na predchozi zalozce
+    /// (klepnutim na zvyraznenou zalozku se posune dal).
+    var screen: CoachScreen? {
+        switch self {
+        case .fight, .quick, .streak, .path: .home
+        case .focusing, .sound, .battle: nil
+        case .shop: .path
+        case .stats: .shop
+        case .habits, .statNumbers, .hero: .stats
+        case .dailyTarget, .settings: .hero
         }
     }
 
@@ -55,12 +78,7 @@ enum CoachStep: Int, CaseIterable, Sendable {
     }
 
     /// Kroky uvnitr Fight sheetu kresli overlay listu, ne hlavni obrazovka.
-    var isInFightSheet: Bool {
-        switch self {
-        case .focusing, .sound, .battle: true
-        default: false
-        }
-    }
+    var isInFightSheet: Bool { screen == nil }
 
     var title: String {
         switch self {
@@ -73,7 +91,10 @@ enum CoachStep: Int, CaseIterable, Sendable {
         case .path: "The Path"
         case .shop: "The Shop"
         case .stats: "Your progress"
+        case .habits: "Your habits"
+        case .statNumbers: "Your numbers"
         case .hero: "Your hero"
+        case .dailyTarget: "Daily focus target"
         case .settings: "Settings"
         }
     }
@@ -90,7 +111,10 @@ enum CoachStep: Int, CaseIterable, Sendable {
         case .path: "Worlds full of bosses wait on the map. Tap Path to take a look."
         case .shop: "Coins from battles buy gear and backgrounds. Tap Shop."
         case .stats: "Focus time, streaks and habits live here. Tap Stats."
+        case .habits: "Each square is one day, and the brighter it glows, the more minutes you focused. Today is the first square, top left."
+        case .statNumbers: "Win rate is the share of battles you won, next to bosses beaten. Longest streak counts days in a row, focus hours add up all your time."
         case .hero: "Change your hero's look any time. Tap Hero."
+        case .dailyTarget: "The ring fills with your class color as you focus today. Slide to set a goal that fits you."
         case .settings: "Sounds, music and notifications are behind the gear. You're all set!"
         }
     }
@@ -122,6 +146,13 @@ final class CoachMarkStore {
     /// Zmerene ramecky prvku (globalni souradnice) od vsech hostitelu.
     private(set) var frames: [CoachTarget: CGRect] = [:]
     @ObservationIgnored private var hostFrames: [UUID: [CoachTarget: CGRect]] = [:]
+    /// Zalozka, ktera je prave videt (nastavuje MainTabView). Vyrez kroku se ukaze jen na jeho zalozce (A2).
+    var screen: CoachScreen = .home
+    /// Zmena rozvrzeni (zalozka, otevreni/zavreni listu, otoceni): overlay vyrez schova a po vykresleni
+    /// znovu zmeri, takze nikdy nesedi na starem miste.
+    private(set) var layoutVersion = 0
+
+    func layoutChanged() { layoutVersion &+= 1 }
     /// Akce akcniho kroku pro VoiceOver (vyrez se hlasovym ovladanim neda klepnout): otevre Fight sheet,
     /// prepne zalozku. Nastavuje MainTabView.
     @ObservationIgnored var performAction: (@MainActor (CoachStep) -> Void)?
@@ -280,7 +311,16 @@ struct CoachMarkOverlay: View {
         }
         // VoiceOver cte jen bublinu a Skip, ne obrazovku pod ztmavenim.
         .accessibilityAddTraits(shown != nil ? .isModal : [])
-        .task(id: coach.step) { await resolve() }
+        // Otoceni nebo jina velikost: vyrez se prepocita.
+        .onGeometryChange(for: CGSize.self) { $0.size } action: { _ in coach.layoutChanged() }
+        // Novy krok, zmena zalozky nebo listu: vyrez se schova a zmeri znovu az po vykresleni (A2).
+        .task(id: ResolveKey(step: coach.step, layout: coach.layoutVersion, screen: coach.screen)) { await resolve() }
+    }
+
+    private struct ResolveKey: Equatable {
+        let step: CoachStep?
+        let layout: Int
+        let screen: CoachScreen
     }
 
     // MARK: Rozvrzeni
@@ -348,20 +388,38 @@ struct CoachMarkOverlay: View {
         .frame(width: bounds.width, height: bounds.height, alignment: below ? .top : .bottom)
     }
 
+    /// A3: samostatna pilulka vlevo nahore v bezpecne zone. Pod ni je jemny tmavsi prechod, ktery
+    /// ztlumi nadpisy obrazovky, takze se text pilulky s nicim neplete; pilulka ma vlastni plne pozadi a stin.
     private var skipButton: some View {
-        VStack {
+        let ink = Color(red: 10 / 255, green: 9 / 255, blue: 20 / 255)
+        return VStack(spacing: 0) {
             HStack {
-                Button("Skip tutorial") { withAnimation(.easeOut(duration: 0.25)) { coach.skipTutorial() } }
-                    .fqFont(size: 15, weight: .semibold, design: .rounded)
-                    .foregroundStyle(FQColor.textPrimary)
-                    .padding(.horizontal, FQSpace.md)
-                    .frame(minHeight: 44)
-                    .background(Color.black.opacity(0.35), in: Capsule())
-                    .buttonStyle(.fqPress)
+                Button { withAnimation(.easeOut(duration: 0.25)) { coach.skipTutorial() } } label: {
+                    Text("Skip tutorial")
+                        .fqFont(size: 15, weight: .semibold, design: .rounded)
+                        .foregroundStyle(FQColor.textPrimary)
+                        .lineLimit(1)
+                        .padding(.horizontal, FQSpace.lg)
+                        .frame(minHeight: 40)
+                        .background(ink.opacity(0.94), in: Capsule())
+                        .overlay { Capsule().stroke(Color.white.opacity(0.16), lineWidth: 1) }
+                        .shadow(color: .black.opacity(0.5), radius: 10, y: 4)
+                        .frame(minHeight: 44)
+                        .contentShape(Capsule())
+                }
+                .buttonStyle(.fqPress)
                 Spacer()
             }
             .padding(.horizontal, FQSpace.lg)
-            .padding(.top, placement == .fightSheet ? FQSpace.md : 0)
+            .padding(.top, placement == .fightSheet ? FQSpace.md : FQSpace.xs)
+            .padding(.bottom, FQSpace.md)
+            .background(alignment: .top) {
+                LinearGradient(colors: [ink.opacity(0.85), ink.opacity(0.55), ink.opacity(0)], startPoint: .top, endPoint: .bottom)
+                    .padding(.top, -80)
+                    .ignoresSafeArea(edges: .top)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+            }
             Spacer()
         }
         .transition(.opacity)
@@ -384,10 +442,20 @@ struct CoachMarkOverlay: View {
             withAnimation(.easeOut(duration: 0.2)) { shown = nil }
             return
         }
+        // Jina zalozka, nez krok potrebuje (MainTabView ji prave prepina), nebo zmena rozvrzeni:
+        // stary vyrez hned pryc, aby nesedel na prazdnem miste.
+        if let screen = step.screen, screen != coach.screen {
+            withAnimation(.easeOut(duration: 0.15)) { shown = nil }
+            return
+        }
+        if shown != nil && shown == step {
+            withAnimation(.easeOut(duration: 0.15)) { shown = nil }
+        }
         // Prechod zalozky, zavreni onboardingu nebo listu: chvili pockat, at vyrez nesedi na pohybujicim se prvku.
         try? await Task.sleep(for: .milliseconds(shown == nil ? 450 : 350))
         for _ in 0..<10 {
             guard !Task.isCancelled else { return }
+            if let screen = step.screen, screen != coach.screen { return }
             if let frame = coach.frames[step.target], frame.width > 1, frame.height > 1 {
                 if reduceMotion {
                     // Reduce Motion: zadny presun vyrezu, jen prolnuti.

@@ -6,7 +6,7 @@ import UIKit
 // Samotny tah obstarava system: okno sleduje prst, po pusteni se podle vzdalenosti a rychlosti
 // zavre nebo zajede zpet, a kdyz obsah roluje, zavira se az od horniho okraje. Tady se jen:
 // - tah zablokuje tam, kde okno zavrit nesmi (potvrzeni smazani, reset, rozepsany predmet),
-// - zachyti pokus o zavreni zablokovaneho okna (napr. dotaz "Discard the new subject?"),
+// - zachyti pokus o zavreni zablokovaneho okna (napr. dotaz "Discard the new focus?"),
 // - prida zavreni pro VoiceOver misto krizku (escape gesto a akce "Close").
 
 extension View {

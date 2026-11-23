@@ -354,6 +354,13 @@ private struct MapContent: View {
         return index == frontier + 1 && revealing.contains(Self.worlds[frontier])
     }
 
+    /// A5: bossove zamceneho sveta jsou jen ztmavene siluety (bez jmena, nejdou otevrit).
+    /// Svet, nad kterym se prave rozplyva zavoj, uz ukazuje skutecne bosse.
+    private func isSilhouette(_ world: BossWorld) -> Bool {
+        if revealing.contains(world) { return false }
+        return !model.isUnlocked(world) || model.needsReveal(world)
+    }
+
     var body: some View {
         ZStack(alignment: .topLeading) {
             terrainLayer
@@ -364,6 +371,7 @@ private struct MapContent: View {
                         boss: boss,
                         state: MapStopState.of(boss, model: model, wins: wins, current: current),
                         isSelected: boss.id == selectedID,
+                        isSilhouette: isSilhouette(boss.world),
                         action: { onSelect(boss) }
                     )
                     .position(point)
@@ -524,10 +532,13 @@ private struct MapStopView: View {
     let boss: Boss
     let state: MapStopState
     let isSelected: Bool
+    /// A5: boss zamceneho sveta, jen tmava silueta.
+    var isSilhouette = false
     let action: () -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var ring: Color {
+        if isSilhouette { return Color.white.opacity(0.22) }
         switch state {
         case .current: FQColor.cta
         case .locked: Color.white.opacity(0.35)
@@ -545,9 +556,15 @@ private struct MapStopView: View {
                     .frame(width: 60, height: 60)
                 Circle().strokeBorder(ring, lineWidth: state == .current ? 3 : 2)
                     .frame(width: 60, height: 60)
-                StaticPixelSprite(sprite: .boss(boss.pixelSpriteConfig), size: 40)
-                    .saturation(state == .locked ? 0 : 1)
-                    .opacity(state == .locked ? 0.5 : 1)
+                if isSilhouette {
+                    StaticPixelSprite(sprite: .boss(boss.pixelSpriteConfig), size: 40)
+                        .colorMultiply(.black)
+                        .opacity(0.85)
+                } else {
+                    StaticPixelSprite(sprite: .boss(boss.pixelSpriteConfig), size: 40)
+                        .saturation(state == .locked ? 0 : 1)
+                        .opacity(state == .locked ? 0.5 : 1)
+                }
             }
             .overlay(alignment: .topTrailing) { badge.offset(x: 4, y: -4) }
             .overlay(alignment: .bottom) {
@@ -566,8 +583,13 @@ private struct MapStopView: View {
         }
         .buttonStyle(.fqPress)
         .animation(FQMotion.quick, value: isSelected)
-        .accessibilityLabel("\(boss.name), \(boss.world.title), boss \(boss.nodeIndex + 1) of \(boss.world.bosses.count), \(ArenaView.durationText(minutes: boss.maxHP)), \(state.accessibilityText)")
-        .accessibilityHint("Shows the boss card")
+        // Silueta nejde otevrit a VoiceOver jmeno bosse neprozradi.
+        .allowsHitTesting(!isSilhouette)
+        .accessibilityLabel(isSilhouette
+            ? "Locked boss \(boss.nodeIndex + 1) of \(boss.world.bosses.count) in \(boss.world.title)"
+            : "\(boss.name), \(boss.world.title), boss \(boss.nodeIndex + 1) of \(boss.world.bosses.count), \(ArenaView.durationText(minutes: boss.maxHP)), \(state.accessibilityText)")
+        .accessibilityHint(isSilhouette ? "" : "Shows the boss card")
+        .accessibilityRemoveTraits(isSilhouette ? .isButton : [])
     }
 
     @ViewBuilder private var badge: some View {
@@ -722,7 +744,7 @@ struct WorldListView: View {
                 .accessibilityLabel("Close the list")
             }
             VStack(spacing: FQSpace.lg) {
-                ForEach(BossWorld.allCases) { world in
+                ForEach(listedWorlds) { world in
                     WorldCard(
                         world: world,
                         cleared: model.clearedNodes(in: world),
@@ -735,15 +757,29 @@ struct WorldListView: View {
                         onPick: onPick
                     )
                 }
+                // A5: dalsi svety jsou tajne: jedna karta bez nazvu a bossu.
+                if hiddenWorldCount > 0 {
+                    HiddenWorldsCard(count: hiddenWorldCount)
+                }
             }
         }
         // Svet, ve kterem hrac prave je, je rovnou rozbaleny.
         .onAppear { if openWorld == nil { openWorld = model.currentMapBoss?.world } }
     }
 
+    /// A5: stejne jako mapa: odemcene svety a jeden dalsi (zamceny, se siluetami bossu).
+    private var listedWorlds: [BossWorld] {
+        let worlds = BossWorld.allCases
+        let firstLocked = worlds.firstIndex { !model.isUnlocked($0) } ?? worlds.count
+        return Array(worlds.prefix(min(worlds.count, firstLocked + 1)))
+    }
+
+    private var hiddenWorldCount: Int { BossWorld.allCases.count - listedWorlds.count }
+
     /// Karta se plynule zvetsi a mrizka se na miste odkryje (fade + vyska, 0,25 s).
     /// S Reduce Motion se svet otevre hned, bez animace.
     private func toggle(_ world: BossWorld) {
+        guard model.isUnlocked(world) else { return }
         withAnimation(reduceMotion ? nil : .easeOut(duration: 0.25)) {
             openWorld = openWorld == world ? nil : world
         }
@@ -777,11 +813,16 @@ private struct WorldCard: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            Button(action: onToggle) { header }
-                .buttonStyle(.fqPress)
-                .accessibilityAddTraits(isOpen ? .isSelected : [])
-                .accessibilityHint(isOpen ? "Hides the bosses" : "Shows the bosses")
-            if isOpen {
+            if isUnlocked {
+                Button(action: onToggle) { header }
+                    .buttonStyle(.fqPress)
+                    .accessibilityAddTraits(isOpen ? .isSelected : [])
+                    .accessibilityHint(isOpen ? "Hides the bosses" : "Shows the bosses")
+            } else {
+                // A5: zamceny svet nejde otevrit; misto mrizky jen ztmavene siluety bossu.
+                lockedHeader
+            }
+            if isOpen && isUnlocked {
                 bossGrid
                     .padding(.top, FQSpace.lg)
                     // Jen fade na miste; vysku odkryva rostouci karta (orez nize). Zadny pohyb odjinud.
@@ -869,9 +910,68 @@ private struct WorldCard: View {
         .accessibilityElement(children: .combine)
     }
 
+    private var lockedHeader: some View {
+        VStack(alignment: .leading, spacing: FQSpace.md) {
+            HStack(spacing: 6) {
+                Image(systemName: "lock.fill").font(.system(size: 13, weight: .bold))
+                Text(world.title).fqFont(size: 17, weight: .semibold, design: .rounded)
+            }
+            .foregroundStyle(FQColor.textPrimary)
+            Text(unlockHint)
+                .fqFont(size: 13, design: .rounded)
+                .foregroundStyle(FQColor.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+            HStack(spacing: FQSpace.xs) {
+                ForEach(bosses) { boss in
+                    StaticPixelSprite(sprite: .boss(boss.pixelSpriteConfig), size: 28)
+                        .colorMultiply(.black)
+                        .opacity(0.8)
+                        .frame(width: 36, height: 36)
+                        .background(Color.white.opacity(0.06), in: Circle())
+                        .frame(maxWidth: .infinity)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(world.title), locked. \(unlockHint) \(bosses.count) bosses wait inside.")
+    }
+
     private var unlockHint: String {
         guard let previous = world.previous, let final = previous.bosses.last else { return world.tagline }
         return "Beat \(final.name) in \(previous.title) to unlock."
+    }
+}
+
+/// A5: vsechny svety za prvnim zamcenym v jedne karte. Zadne nazvy ani bossove (ani pro VoiceOver).
+private struct HiddenWorldsCard: View {
+    let count: Int
+
+    private var text: String { "\(count) more \(count == 1 ? "world" : "worlds") to discover" }
+
+    var body: some View {
+        HStack(spacing: FQSpace.md) {
+            Image(systemName: "cloud.fill")
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(FQColor.textSecondary)
+                .frame(width: 36, height: 36)
+                .background(Color.white.opacity(0.08), in: Circle())
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(verbatim: "???")
+                    .fqFont(size: 17, weight: .semibold, design: .rounded)
+                    .foregroundStyle(FQColor.textPrimary)
+                Text(text)
+                    .fqFont(size: 13, design: .rounded)
+                    .foregroundStyle(FQColor.textSecondary)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(FQSpace.lg)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .fqCard()
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(text)
     }
 }
 

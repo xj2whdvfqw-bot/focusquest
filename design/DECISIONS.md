@@ -3,7 +3,7 @@
 Doplňuje `design/CHANGES.md` (zadání sekcí 0–15) a `design/progress.html` (stav, buildy, co otestovat).
 Tady je to, co v nich není: rozhodnutí, která padla během práce, otevřené body a známé pasti.
 
-Stav k 23. 11. 2026: větev `phase3-duolingo`, poslední zelený build #66; dříve #65 (F1); E1 (opravy z testu po D1) prošel jako build #62; F1 (Habits, mapa, easter eggy) prošel jako build #65; F2 (nový onboarding a coach marks) prošel jako build #66. Všechny sekce z CHANGES.md
+Stav k 23. 11. 2026: větev `phase3-duolingo`, poslední zelený build #67 (G1), opravy z testu po #67 jsou sekce H1; dříve #65 (F1); E1 (opravy z testu po D1) prošel jako build #62; F1 (Habits, mapa, easter eggy) prošel jako build #65; F2 (nový onboarding a coach marks) prošel jako build #66. Všechny sekce z CHANGES.md
 a všechny opravy z auditu jsou hotové.
 
 ## 1. Rozhodnutí
@@ -35,6 +35,9 @@ a všechny opravy z auditu jsou hotové.
 - Privacy Policy, Terms of Use a Support v patičce otevírají web:
   - Privacy a Support jsou na GitHub Pages,
   - Terms = standardní Apple EULA.
+- **Credit** (od H1): úplně dole pod verzí a odkazy nenápadný řádek „Vibecoded with artificial intelligence“ (caption2, terciární barva).
+- **Podstránky přes hodnotu** (od H1): `NavigationStack(path:)` + `NavigationLink(value: SettingsPage)` + `navigationDestination`.
+  Klik při otevření hraje `onChange(of: path)`, ne gesto na řádku.
 
 ### Světy, bossové a mapa (od testu #56)
 - **Tři parodické světy jsou úplně pryč** (bossové, sprity, texty, ID, testy i `design/`). Všechny postavy jsou vlastní.
@@ -75,7 +78,11 @@ a všechny opravy z auditu jsou hotové.
     závojem (`MapTerrain.veil`, 50 % tmavá, vyhlazený okraj po organické hranici). Všechny další světy zakrývají **plné
     pixelové mraky** (`MapTerrain.clouds`, 1 px = 8 bodů, bez vyhlazování): neprůhledné, s obrysem, stínem u spodku
     a světlými skvrnami, spodní okraj z oblých chomáčků (půlkruhy 3–7 px) pod hranicí světa, ne vodorovný pruh.
-    Bossové, hrdina, easter eggy ani názvy světů pod mraky se nekreslí. Při odemčení se závoj nového světa a mraky
+    Bossové, hrdina, easter eggy ani názvy světů pod mraky se nekreslí.
+    **Od H1** jsou bossové zamčeného světa jen tmavé siluety (`colorMultiply(.black)`) bez jména, nejdou otevřít a VoiceOver
+    čte jen „Locked boss 3 of 7 in {svět}“. Seznam světů (prostřední tlačítko vpravo nahoře) ukazuje totéž co mapa:
+    odemčené světy, jeden zamčený (název, nápověda k odemčení, řada siluet, nejde rozbalit) a pak jedinou kartu
+    „??? · N more worlds to discover“ bez názvů a bossů (`HiddenWorldsCard`). Při odemčení se závoj nového světa a mraky
     nad dalším světem jednou animovaně rozplynou (zprůhlednění, rozmazání, posun nahoru) a zapamatuje se to (`revealedWorlds`),
   - **přechody mezi světy** (od F1): hranice je organická (`MapLayout.boundaryShift`: dlouhá vlna + šum, vybočení až ~140 bodů)
     a pixely na ní se náhodně promíchají, takže nikde není rovný šev přes celou šířku. Kolem Coral Deep je pobřeží
@@ -264,8 +271,11 @@ a všechny opravy z auditu jsou hotové.
     skleněná tlačítka a přepínače), nové tlačítko má proto používat `.buttonStyle(.fqPress)`, ne `.plain`,
   - **Battle sounds jsou výchozí vypnuté** (od D1), u nových i stávajících uživatelů: uložená hodnota platí jen s `isBattleSoundUserSet`
     (hráč přepínač sám přepnul); karta „Try it“ se při OFF schová a při ON rozbalí jako u ostatních,
-  - **audit tap zvuku (od testu #66)**: kde nejde použít `FQPressStyle` (systémové řádky Listu, `NavigationLink`, `.bordered`
-    tlačítka, chipy s `onTapGesture`), se volá `.fqTapSound()` (simultánní tap gesto, akce prvku běží beze změny);
+  - **audit tap zvuku (od testu #66, opraveno v H1)**: kde nejde použít `FQPressStyle` (systémové řádky Listu, `NavigationLink`, `.bordered`
+    tlačítka, chipy s `onTapGesture`), je `FQFeedback.shared.tap()` **přímo v akci** tlačítka, u navigace v `onChange` cesty.
+    `.fqTapSound()` se `simultaneousGesture(TapGesture())` je pryč: v `List` gesto pohltilo klepnutí a řádky Nastavení
+    se neotevřely (regrese buildu #67). **Na řádky Listu nikdy nedávat tap gesta.** Skleněná tlačítka (`glassButtonStyle`,
+    `prominentGlassButtonStyle`) simultánní gesto mají dál, mimo List funguje;
     přepínače mají `Binding.fqTapFeedback()` (klik **před** změnou, takže cvakne i vypnutí Tap sounds / Haptics);
     výběr v `ValueMenu` a segmentový výběr síly haptiky klikají při změně; tlačítka v potvrzovacích dialozích volají
     `FQFeedback.shared.tap()` v akci. Šťouchání do bosse na Home hraje klik vždy (naštvaný boss přidá zásah z Battle sounds).
@@ -329,10 +339,19 @@ a všechny opravy z auditu jsou hotové.
   - Notifikace se v onboardingu neřeší.
 - **„Focus“ místo „study“** (od F2): appka není jen na učení. V textech je „focus“ / „what you're focusing on“
   (Fight sheet, Stats › Focus, „Your focus list“, cíl „Focus every day“). Interní typ `StudySubject` a id zůstávají kvůli uloženým datům.
+  Od H1 ani Privacy a Support na webu ani komentáře neříkají „subject“ (stránka správy je „Your focus list“, tlačítko „Edit focus list“).
   Názvy bossů a skladba „Study flow“ se nemění.
 - **Tutoriál jako coach marks místo TipKitu** (od F2, `Views/Onboarding/CoachMarks.swift`). TipKit je pryč (FQTips, popover tipy, Reset tips).
   - Celá obrazovka ztmavne (72 %), zvýrazněný prvek je vyříznutý zaobleným výřezem podle tvaru (kapsle/kruh, sekce 20 pt)
-    se žlutou pulzující září; vedle bublina (titulek, max 2 věty, „3 of 10“, Next), nahoře vlevo „Skip tutorial“.
+    se žlutou pulzující září; vedle bublina (titulek, max 2 věty, „3 of 13“, Next), nahoře vlevo „Skip tutorial“.
+  - **„Skip tutorial“** (od H1) je samostatná pilulka v safe area vlevo nahoře: plné tmavé pozadí, tenký okraj, stín
+    a pod ní jemný tmavý přechod od horního okraje, aby nadpisy obrazovky pod ní nerušily. Stejně ve Fight sheetu.
+  - **Krok stojí na své záložce** (od H1, `CoachStep.screen`): Home pro kroky 1, 5–7, Path pro Shop, Shop pro Stats,
+    Stats pro Habits, čísla a Hero, Hero pro Daily focus target a Nastavení. Lišta je během tutoriálu zamčená
+    (`userSwitchTab`), projde jen klepnutí na záložku, kterou akční krok zvýrazňuje. Když je hráč jinde (start, obnovený
+    krok, přepnutí odjinud), appka ho přepne sama (`enforceTutorialTab`). Výřez se ukáže jen na správné záložce
+    (`CoachMarkStore.screen`) a při změně záložky, otevření/zavření listu a změně velikosti (`layoutVersion`) se schová
+    a změří znovu až po vykreslení. Dřív šlo hned na začátku přepnout na Path a výřez Fight seděl na prázdné mapě.
   - Pozice z `anchorPreference` (`.coachMark(_:)`); hostitel (`.coachMarkHost()`) na každé záložce, liště a ve Fight sheetu
     kotvy převede na globální rámečky v `CoachMarkStore` (preference nemusí projít přes TabView a listy).
   - Akční kroky (Fight, záložky) se posunou až klepnutím do výřezu; jinde jsou klepnutí blokovaná. VoiceOver má v bublině „Open“.
@@ -350,7 +369,12 @@ a všechny opravy z auditu jsou hotové.
   | 5 | Home: Just 5 minutes | Next |
   | 6 | Home: plamínek série | Next |
   | 7–9 | lišta: Path, Shop, Stats | klepnout na záložku |
-  | 10 | lišta: Hero, pak ozubené kolo | klepnout, pak Done |
+  | 10 | Stats: graf Habits (čtverečky = dny, barva = minuty, dnešek vlevo nahoře) | Next |
+  | 11 | Stats: Win rate, Bosses beaten, Longest streak, Focus hours | Next |
+  | 12 | lišta: Hero, pak Daily focus target (kroužek v barvě třídy, posuvník cíle) | klepnout, pak Next |
+  | 13 | Hero: ozubené kolo Nastavení | Done |
+
+  Uložené číslo kroku je `rawValue`; po aktualizaci z 10 kroků může rozběhnutý tutoriál pokračovat o krok vedle (neškodné).
 
   - Fight sheet se během kroků 2–4 nedá zavřít tahem. Settings › Help › „Replay tutorial“; Debug „Reset onboarding“ (1A i 1B).
   - CI screenshoty (`-initialTab`) onboarding ani tutoriál neukazují.

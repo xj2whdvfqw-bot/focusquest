@@ -1,9 +1,9 @@
 import SwiftUI
 
-/// "+ Subject" se po klepnuti zmeni primo v radku na textove pole (zadny modal).
+/// "+ Focus" se po klepnuti zmeni primo v radku na textove pole (zadny modal).
 /// Navrh se doplnuje sedym textem za kurzorem: → / Tab / klepnuti na sedy text ho doplni,
 /// Enter nebo Add prida predmet tak, jak je v poli videt (vcetne sedeho navrhu).
-/// Pouziva ho Fight sheet (v rade cipu) i "Your subjects" (dole pod seznamem).
+/// Pouziva ho Fight sheet (v rade cipu) i "Your focus list" (dole pod seznamem).
 struct AddSubjectChip: View {
     @ObservedObject var model: ArenaViewModel
     /// Predmety, ktere hrac uz ma; ty se jako navrh nenabizi.
@@ -69,7 +69,7 @@ struct AddSubjectChip: View {
         .background(Color.white.opacity(0.12), in: Capsule())
         .onAppear { fieldFocused = true }
         .onChange(of: fieldFocused) { _, focused in
-            // Prazdne pole po odchodu z klavesnice se vrati zpet na "+ Subject".
+            // Prazdne pole po odchodu z klavesnice se vrati zpet na "+ Focus".
             if !focused, newSubject.trimmingCharacters(in: .whitespaces).isEmpty { isAdding = false }
         }
     }
@@ -121,7 +121,7 @@ struct AddSubjectChip: View {
     }
 }
 
-/// Pruhledny cip s jemnym okrajem ("More…", "+ Subject").
+/// Pruhledny cip s jemnym okrajem ("More…", "+ Focus").
 struct GhostChip: ViewModifier {
     func body(content: Content) -> some View {
         content
@@ -134,7 +134,7 @@ struct GhostChip: ViewModifier {
     }
 }
 
-/// Ikona a text tesne vedle sebe (ikona "+" u "Subject").
+/// Ikona a text tesne vedle sebe (ikona "+" u "Focus").
 struct ChipLabelStyle: LabelStyle {
     func makeBody(configuration: Configuration) -> some View {
         HStack(spacing: 6) {

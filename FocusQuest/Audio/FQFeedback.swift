@@ -120,12 +120,8 @@ extension Binding where Value == Bool {
 }
 
 extension View {
-    /// Klik a vibrace (FQFeedback.tap) pro prvky, ktere nemaji styl FQPressStyle / ShopButtonStyle:
-    /// systemove radky v Listu (NavigationLink, Button), .bordered tlacitka, chipy s onTapGesture.
-    /// Simultanni gesto, takze vlastni akce prvku (navigace, vyber) bezi beze zmeny.
-    func fqTapSound() -> some View {
-        simultaneousGesture(TapGesture().onEnded { FQFeedback.shared.tap() })
-    }
+    // A1: zadne gesto pro klik na radcich Listu. simultaneousGesture tam pohltilo klepnuti a radky
+    // Nastaveni (NavigationLink, Button) se neotevrely. Klik patri do akce tlacitka, u navigace do zmeny cesty.
 
     /// Klik a vibrace pri zmene hodnoty (vyber v Pickeru, segmentovy prepinac).
     func fqTapSound<T: Equatable>(onChangeOf value: T) -> some View {

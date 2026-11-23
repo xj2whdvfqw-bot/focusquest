@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// "Your subjects": sprava predmetu (dlouhy stisk cipu ve Fight sheetu nebo "Edit subjects" ve Stats).
+/// "Your focus list": sprava predmetu (dlouhy stisk cipu ve Fight sheetu nebo "Edit focus list" ve Stats).
 /// Radek = upravitelny nazev, Hide/Show a kos. Skryti i smazani data zachovaji; smazany predmet
 /// jde 24 h obnovit v "Recently deleted", pak zmizi i se statistikami (MainTabView.maintainSubjects).
 struct SubjectManagerView: View {

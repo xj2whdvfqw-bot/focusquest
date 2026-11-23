@@ -4,7 +4,7 @@ import SwiftUI
 /// Bestiar a battle log tu nejsou (data zustavaji v PlayerStats).
 struct StatsView: View {
     @ObservedObject var model: StatsViewModel
-    /// Seznam predmetu hrace (nazvy po prejmenovani, skryte, smazane) a sprava "Your subjects".
+    /// Seznam predmetu hrace (nazvy po prejmenovani, skryte, smazane) a sprava "Your focus list".
     @ObservedObject var arena: ArenaViewModel
     /// "▶ Start a battle" v prazdnem stavu: Arena s otevrenym Fight sheetem.
     let onStartBattle: () -> Void
@@ -34,6 +34,7 @@ struct StatsView: View {
         let days = grid.focusDays
         return ScreenSection(title: "Habits", detail: "\(days) focus \(days == 1 ? "day" : "days")") {
             HabitsCard(grid: grid)
+                .coachMark(.habits)
         }
     }
 
@@ -58,6 +59,7 @@ struct StatsView: View {
         }
         .padding(Layout.metricsInset)
         .fqCard()
+        .coachMark(.statNumbers)
     }
 
     private func metric(_ title: String, value: String) -> some View {
