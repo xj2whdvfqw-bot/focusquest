@@ -96,7 +96,8 @@ struct ShopView: View {
 
     // MARK: Vybaveni
 
-    private var gearList: some View {
+    @ViewBuilder private var gearList: some View {
+        ScreenSection(title: "Battle supplies") { extraPauseCard }
         ForEach(EquipmentSlot.shopOrder, id: \.self) { slot in
             ScreenSection(title: slot.displayName) {
                 LazyVGrid(columns: [GridItem(.flexible(), spacing: FQSpace.md), GridItem(.flexible())], spacing: FQSpace.md) {
@@ -104,6 +105,67 @@ struct ShopView: View {
                 }
             }
         }
+    }
+
+    /// B2: extra pauza za 40 minci. Drzet jde 5, v jedne bitve jde navic pouzit jedna (po pauze zdarma).
+    private var extraPauseCard: some View {
+        let owned = model.profile.extraPauses
+        let full = owned >= UserProfile.maxExtraPauses
+        let short = UserProfile.extraPausePrice - model.profile.coins
+        return HStack(alignment: .center, spacing: FQSpace.md) {
+            Image(systemName: "pause.circle.fill")
+                .font(.system(size: 30, weight: .semibold))
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(FQColor.accent)
+                .frame(width: 48, height: 48)
+                .background(FQColor.fill, in: FQRadius.shape(FQRadius.inSmallCard))
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: FQSpace.sm) {
+                    Text("Extra pause").font(.fqLabel).foregroundStyle(FQColor.textPrimary)
+                    Text("\(owned) / \(UserProfile.maxExtraPauses)")
+                        .fqFont(size: 12, weight: .bold, design: .rounded)
+                        .monospacedDigit()
+                        .foregroundStyle(FQColor.textPrimary)
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 2)
+                        .background(Color.white.opacity(0.12), in: Capsule())
+                        .contentTransition(.numericText())
+                }
+                Text("Every battle has 1 free pause. An extra pause gives you a second one; 1 per battle.")
+                    .font(.fqMeta)
+                    .foregroundStyle(FQColor.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Group {
+                    if full {
+                        Text("You hold the maximum of \(UserProfile.maxExtraPauses)")
+                            .fqFont(size: 13, design: .rounded)
+                            .foregroundStyle(FQColor.textSecondary)
+                            .frame(minHeight: 36)
+                    } else if short > 0 {
+                        CoinLabel("\(UserProfile.extraPausePrice) · need \(short) more")
+                            .fqFont(size: 13, design: .rounded)
+                            .monospacedDigit()
+                            .foregroundStyle(FQColor.textSecondary)
+                            .frame(minHeight: 36)
+                    } else {
+                        Button {
+                            withAnimation(.easeOut(duration: 0.2)) { model.buyExtraPause() }
+                        } label: {
+                            CoinLabel("Buy for \(UserProfile.extraPausePrice)").monospacedDigit()
+                        }
+                        .buttonStyle(ShopButtonStyle())
+                        .accessibilityLabel("Buy an extra pause for \(UserProfile.extraPausePrice) coins. You have \(owned) of \(UserProfile.maxExtraPauses).")
+                    }
+                }
+                .padding(.top, 4)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(FQSpace.md)
+        .fqCard()
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Extra pause, you have \(owned) of \(UserProfile.maxExtraPauses)")
     }
 
     private var previewCard: some View {

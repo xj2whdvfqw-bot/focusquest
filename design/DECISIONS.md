@@ -127,8 +127,15 @@ a všechny opravy z auditu jsou hotové.
 - **Kontrola integrity (jailbreak, debugger) je úplně odstraněná.** Zůstala jen kontrola posunu hodin v bitvě
   (`AntiCheatRules.clockIsTampered`).
 - Zabití aplikace během bitvy: bitva se ztratí. Při dalším spuštění se zruší notifikace „Victory!“ a ukončí Live Activity.
-- **Pauzy** (od D1): **2 pauzy za bitvu** (`ArenaViewModel.pausesPerBattle`), každá nejdéle 2 minuty. Tlačítko ukazuje
-  „Pauses 2/2“, po vyčerpání zůstane vidět, ale je neaktivní. Hovor se do pauz nepočítá.
+- **Pauzy** (od I1, dřív 2 za bitvu): **1 pauza zdarma za bitvu** (`freePausesPerBattle`), každá nejdéle 2 minuty.
+  Hovor se do pauz nepočítá.
+  - **Extra pause** v Shopu (Gear › Battle supplies) za **40 mincí** (`UserProfile.extraPausePrice`), drží se nejvýš **5**
+    (`maxExtraPauses`, uloženo v profilu `extraPauses`, starší profily = 0). V jedné bitvě jde navíc použít nejvýš **1**
+    (`maxExtraPausesPerBattle`), vždy až po pauze zdarma. Použití se hned odečte z profilu (`onExtraPauseUsed` → `consumeExtraPause`).
+  - Cena: 3 mince za minutu → extra pauza ≈ 13 minut soustředění, levnější předměty Shopu stojí víc. Má být dostupná,
+    ale ne zadarmo; limit 5 a 1 za bitvu brání tomu, aby se z bitvy stalo „pauzování“.
+  - Na kartě bitvy je pod tlačítky řádek „Pause: 1 free + 2 extra“ (po použití „free used“ / „extra used“), tlačítko má popisek
+    Pause / Extra pause / No pauses a nápovědu pro VoiceOver. Debug: „+3 extra pauses“.
 - **Zvednutý telefon: jediný odpočet, bez „slip one time“** (od E1). Dřív: první propadlý odpočet v bitvě se odpustil
   (obrazovka „Slip forgiven“ na 2,2 s), odpočet běžel znovu a teprve druhý propadlý znamenal útěk bosse (`hasUsedSlipGrace`,
   `slipForgivenSeconds`). Teď odpočet (10 s, `AntiCheatRules.warningSeconds`) proběhne jen jednou: kdo telefon do konce
@@ -162,8 +169,13 @@ a všechny opravy z auditu jsou hotové.
     | Rogue | dvě rychlá bodnutí dýkou |
     | Warrior bez meče | výpad se štítem |
 
-  - Rytmus: útok každých 5 s času bitvy (`BattleStage.attackInterval`). Boss zabliká, otřese se a vyskočí číslo poškození
-    (~10 HP za sekundu bitvy, každý 7. útok kritický ×2). Číslo je jen efekt, pruh zdraví dál ubývá podle odpočtu.
+  - **Srdíčka místo HP čáry** (od I1, `BossHearts`, `BossHeartsView`): pixelová srdíčka 8 × 7, počet podle obtížnosti
+    (Novice 3, Adept 4, Elite 5, Mythic 6), každé má 4 čtvrtky (vlevo nahoře, vpravo nahoře, vpravo dole, vlevo dole;
+    ubývá se od posledního srdíčka vpravo). Rozestup úderů = délka bitvy / počet čtvrtek (Novice 15 min = 12 čtvrtek, úder
+    po 75 s), úder k padne v k × délka / čtvrtky, poslední čtvrtka je finální úder přesně na konci. Hrdina zaútočí jen při
+    úderu (dřív každých 5 s), vyskočí „-¼“ (žádné kritické zásahy). Srdíčko se otřese a čtvrtka se rozpadne na 6 pixelů;
+    Reduce Motion = čtvrtka jen zmizí. Kosmetické ťukání nic neubírá. **Live Activity má dál plynulý pruh podle času.**
+    VoiceOver: „2 and 3 quarters of 3 hearts left“.
   - Výhra: finální úder, boss se skácí a zmizí, „K.O.!“ a hrdina vyskočí. Okno výhry (a fanfára) přijde až po 1,8 s.
     Útěk bosse (ústup, zvednutý telefon, došlá pauza): hrdina sklopí zbraň, boss se otočí a odběhne, pak okno „escaped“.
     Když bitva skončí na pozadí nebo je zapnuté Reduce Motion, okno výsledku přijde hned.
@@ -236,6 +248,12 @@ a všechny opravy z auditu jsou hotové.
 - **Výsledková okna jsou skleněná** (`ResultDialog` v `Views/DesignSystem/Motion.swift`): útěk bosse, vítězství,
   Battle stopped a Call ended.
   - Jemné ztmavení scény 28 % a skleněná karta (`fqGlassPanel`, od testu #66 stejné sklo jako karta bitvy), panel přestávky má stejné ztmavení.
+- **Panel přestávky je sheet se dvěma výškami** (od I1, `BreakPanel` v `BattleView.swift`): `presentationDetents`
+  kompaktní 330 pt (BREAK, odpočet, Next boss) a roztažená 640 pt (navíc Same again, Change boss, Done for today
+  a scéna `RestingHeroScene`: hrdina dýchá u pixelového ohně, nad ním „z“; Reduce Motion = stojí). Mezi výškami plynulý
+  tah systémovým madlem, `interactiveDismissDisabled`: úplně stáhnout nejde, zavírá se jen tlačítky. Při odchodu
+  (Same again, Change boss, Done) se nejdřív zavře sheet a po 0,38 s celá bitva (dvě prezentace naráz se zasekávaly).
+  Když už není další boss, kompaktní výška ukáže Same again.
   - Pod výsledkem se karta bitvy schová, aby neprosvítala (dřív bylo vidět „Begin Battle“).
   - Karta se objeví pružinou (0,92 → 1), s Reduce Motion jen prolnutím.
 - **Shop nemá velké pixelové nadpisy** („Gear up“, „Change the scenery“ jsou pryč). Hlavička je kompaktní:
@@ -365,7 +383,7 @@ a všechny opravy z auditu jsou hotové.
   | 1 | Home: Fight | klepnout na Fight |
   | 2 | Fight sheet: Focusing | Next |
   | 3 | Fight sheet: hudba/zvuk | Next |
-  | 4 | Fight sheet: Start + vysvětlení bitvy (telefon dolů, zvednutí = útěk za 10 s, 2 pauzy, animace telefonu) | Got it, list se zavře, bitva se nespustí |
+  | 4 | Fight sheet: Start + vysvětlení bitvy (telefon dolů, zvednutí = útěk za 10 s, pauza zdarma, animace telefonu) | Got it, list se zavře, bitva se nespustí |
   | 5 | Home: Just 5 minutes | Next |
   | 6 | Home: plamínek série | Next |
   | 7–9 | lišta: Path, Shop, Stats | klepnout na záložku |
@@ -390,6 +408,16 @@ a všechny opravy z auditu jsou hotové.
 - Na nízkých displejích (iPhone SE, výška pod 620 bodů) má Arena kompaktní rozložení, aby Fight nebyl pod lištou.
 - Aplikace je jen pro iPhone (`TARGETED_DEVICE_FAMILY = 1`).
 - Dočasná ikona je Warm-up Wisp na tmavém pozadí (`FocusQuest/Resources/Assets.xcassets`).
+
+### Sdílení statistik (od I1)
+- **Stats › Share** (ikona vedle ozubeného kola, `ScreenHeader(onShare:)`) otevře náhled `StatsShareSheet`: přepínač šablon
+  **This week** (minuty za 7 dní, poražení bossové, série) a **Streak** (série, další milník nebo nejdelší série),
+  přepínač „Show my name“ (výchozí vypnutý) a `ShareLink` s obrázkem.
+- Obrázek `StatsShareCard` 360 × 640 bodů × 3 = **1080 × 1920** přes `ImageRenderer`: hrdina, série, minuty za týden,
+  poražení bossové, mini Habits (5 týdnů, dnešek vlevo nahoře) a „FocusQuest“. ImageRenderer neumí materiály,
+  proto je sklo z průhledných výplní. **Žádná osobní data** kromě volitelného jména (ne jména bossů, předmětů ani data).
+- **Milníky série 7, 30 a 100 dní:** po denní oslavě série na Home se jednou nabídne sdílení se šablonou Streak.
+  Nabídnuté milníky jsou v UserDefaults `fq.offeredStreakMilestones`.
 
 ### Repo, CI a hosting
 - **Repo `xj2whdvfqw-bot/focusquest` zůstává veřejné až do vydání.** Proto nikdy necommitovat tajné údaje

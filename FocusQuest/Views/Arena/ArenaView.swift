@@ -56,6 +56,10 @@ struct ArenaView: View {
     @State private var flares = 0
     @State private var sparksStart: Date?
     @State private var isOnScreen = false
+    /// B4: milniky serie (7, 30, 100), po kterych uz Home sdileni nabidl.
+    @AppStorage(StreakMilestone.storageKey) private var offeredMilestones = ""
+    /// B4: milnik, pro ktery je prave otevrena nabidka sdileni.
+    @State private var milestoneShare: Int?
 
     private struct Poke: Equatable {
         let id: Int
@@ -132,6 +136,20 @@ struct ArenaView: View {
                 return
             }
             celebrateStreak()
+            // B4: po oslave milniku serie (7, 30, 100 dni) jednou nabidnout sdileni.
+            guard let milestone = StreakMilestone.due(streak: profileModel.stats.currentStreak(), offered: offeredMilestones) else { return }
+            try? await Task.sleep(for: .seconds(StreakCelebration.sparkSeconds + 0.4))
+            guard !Task.isCancelled, isOnScreen, !battle.isPresented, !battle.showsFightSheet else { return }
+            offeredMilestones = StreakMilestone.adding(milestone, to: offeredMilestones)
+            milestoneShare = milestone
+        }
+        .sheet(isPresented: Binding(get: { milestoneShare != nil }, set: { if !$0 { milestoneShare = nil } })) {
+            StatsShareSheet(
+                snapshot: ShareSnapshot.make(stats: profileModel.stats, profile: profileModel.profile, greetingName: profileModel.greetingName),
+                initialTemplate: .streak,
+                headline: "\(milestoneShare ?? 0)-day streak!"
+            ) { milestoneShare = nil }
+            .presentationDragIndicator(.visible)
         }
         .task(id: sparksStart) {
             guard let started = sparksStart else { return }

@@ -40,24 +40,21 @@ final class ArenaAntiCheatTests: XCTestCase {
         XCTAssertEqual(violationCount, 1)
     }
 
-    func testTwoPausesPerBattleAndRunsOut() async {
+    /// B2: bez extra pauz ma bitva jen jednu pauzu zdarma.
+    func testOneFreePausePerBattleAndRunsOut() async {
         let rig = makeRig(hapticsEnabled: false)
         rig.model.pauseLimitSeconds = 1
         rig.model.startSession()
         await waitForSession(rig.model)
         await rig.model.handlePosture(.lyingStill)
-        XCTAssertEqual(rig.model.pausesLeft, 2)
+        XCTAssertEqual(rig.model.pausesLeft, 1)
         rig.model.pauseBattle()
         XCTAssertTrue(isPaused(rig.model.state))
         rig.model.resumeBattle()
         XCTAssertTrue(isFocusing(rig.model.state))
-        XCTAssertEqual(rig.model.pausesLeft, 1)
-        rig.model.pauseBattle()
-        XCTAssertTrue(isPaused(rig.model.state), "Two pauses per battle")
-        rig.model.resumeBattle()
         XCTAssertTrue(rig.model.hasUsedPause)
         rig.model.pauseBattle()
-        XCTAssertTrue(isFocusing(rig.model.state), "Third pause must be refused")
+        XCTAssertTrue(isFocusing(rig.model.state), "Second pause without extras must be refused")
 
         let other = makeRig(hapticsEnabled: false)
         other.model.pauseLimitSeconds = 1
@@ -71,6 +68,30 @@ final class ArenaAntiCheatTests: XCTestCase {
         }
         guard case let .defeated(defeat) = other.model.state else { return XCTFail("Pause did not run out") }
         XCTAssertEqual(defeat.reason, .pauseRanOut)
+        rig.model.stopSession()
+    }
+
+    /// B2: s extra pauzami jde po pauze zdarma pouzit nejvys jedna extra; jeji pouziti se ohlasi profilu.
+    func testExtraPauseAfterFreePauseOncePerBattle() async {
+        let rig = makeRig(hapticsEnabled: false, extraPauses: 3)
+        var consumed = 0
+        rig.model.onExtraPauseUsed = { consumed += 1 }
+        rig.model.startSession()
+        await waitForSession(rig.model)
+        await rig.model.handlePosture(.lyingStill)
+        XCTAssertEqual(rig.model.pausesLeft, 2)
+        rig.model.pauseBattle()
+        rig.model.resumeBattle()
+        XCTAssertEqual(consumed, 0, "The free pause goes first")
+        XCTAssertEqual(rig.model.pausesLeft, 1)
+        rig.model.pauseBattle()
+        XCTAssertTrue(isPaused(rig.model.state), "One extra pause after the free one")
+        XCTAssertEqual(consumed, 1)
+        rig.model.resumeBattle()
+        XCTAssertTrue(rig.model.hasUsedPause)
+        rig.model.pauseBattle()
+        XCTAssertTrue(isFocusing(rig.model.state), "Only 1 extra pause per battle")
+        XCTAssertEqual(consumed, 1)
         rig.model.stopSession()
     }
 
@@ -207,13 +228,17 @@ final class ArenaAntiCheatTests: XCTestCase {
         XCTAssertTrue(AntiCheatRules.clockIsTampered(wallDelta: .infinity, monotonicDelta: 10))
     }
 
-    private func makeRig(hapticsEnabled: Bool) -> Rig {
+    private func makeRig(hapticsEnabled: Bool, extraPauses: Int = 0) -> Rig {
         let prefs = AppPreferences(isHapticsEnabled: hapticsEnabled, isMusicEnabled: true, isSFXEnabled: true, ambientVolume: 0.5, selectedTrack: .calmCurrents)
         let validation = ValidationSpy()
         let motion = MotionSpy()
         let haptics = HapticsSpy()
         let audio = AudioSpy()
-        let model = ArenaViewModel(validation: validation, motion: motion, haptics: haptics, audio: audio, preferenceStore: PreferencesSpy(value: prefs), profileProvider: { .fresh(deviceID: "test-device") })
+        let model = ArenaViewModel(validation: validation, motion: motion, haptics: haptics, audio: audio, preferenceStore: PreferencesSpy(value: prefs), profileProvider: {
+            var profile = UserProfile.fresh(deviceID: "test-device")
+            profile.extraPauses = extraPauses
+            return profile
+        })
         model.selectSubject(.math)
         return Rig(model: model, validation: validation, haptics: haptics, audio: audio)
     }

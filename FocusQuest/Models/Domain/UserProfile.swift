@@ -23,11 +23,18 @@ struct UserProfile: Codable, Sendable {
     var backgroundID: String? = nil
     /// Nalezene easter eggy na mape (MapEasterEgg.rawValue); kazdy jde najit jednou za celou hru.
     var foundEasterEggs: [String] = []
+    /// B2: extra pauzy koupene v Shopu (nejvys `maxExtraPauses`); v jedne bitve jde pouzit nejvys jedna.
+    var extraPauses = 0
+
+    /// Kolik extra pauz jde drzet najednou.
+    static let maxExtraPauses = 5
+    /// Cena jedne extra pauzy v mincich (asi 13 minut soustredeni pri 3 mincich za minutu).
+    static let extraPausePrice = 40
 
     enum CodingKeys: String, CodingKey {
         case userID, username, title, heroClass, avatarMatrix, dailyFocusGoalMinutes
         case avatar, coins, bossesDefeated, hasCreatedHero, ownedEquipmentIDs, focusGoals
-        case ownedBackgroundIDs, backgroundID, foundEasterEggs
+        case ownedBackgroundIDs, backgroundID, foundEasterEggs, extraPauses
     }
 
     /// Novy hrac (i po Reset progress) zacina s pozadim Daybreak; World scenes si muze vybrat v Shopu.
@@ -77,6 +84,7 @@ extension UserProfile {
         ownedBackgroundIDs = (try? container.decodeIfPresent([String].self, forKey: .ownedBackgroundIDs)) ?? []
         backgroundID = try? container.decodeIfPresent(String.self, forKey: .backgroundID)
         foundEasterEggs = (try? container.decodeIfPresent([String].self, forKey: .foundEasterEggs)) ?? []
+        extraPauses = min(Self.maxExtraPauses, max(0, (try? container.decodeIfPresent(Int.self, forKey: .extraPauses)) ?? 0))
     }
 }
 

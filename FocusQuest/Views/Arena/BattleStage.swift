@@ -61,9 +61,9 @@ extension AvatarSprite {
 
 /// Scena bitvy: hrdina vlevo, boss vpravo.
 ///
-/// Rytmus je navazany na cas bitvy: kazdych `attackInterval` s hrdina zautoci, boss se otrese,
-/// zablika a vyskoci cislo poskozeni (pruh zdravi dal ubyva podle odpoctu). Pri vyhre prijde
-/// financi uder a boss padne, pri uteku hrdina sklopi zbran a boss utece.
+/// Rytmus je navazany na cas bitvy (B1): hrdina zautoci vzdy, kdyz bossovi ubude ctvrtka srdicka
+/// (rozestup = delka bitvy / pocet ctvrtek, viz BossHearts), boss se otrese, zablika a vyskoci "-¼".
+/// Posledni ctvrtka je financi uder presne na konci: boss padne. Pri uteku hrdina sklopi zbran a boss utece.
 ///
 /// Uspora baterie: vse se pocita z hodin v jednom TimelineView. Behem utoku bezi 30 snimku/s,
 /// mezi utoky 2 snimky/s (hrdina jen prešlapuje o pixel), na pozadi nebo se zamcenym telefonem stoji.
@@ -84,12 +84,13 @@ struct BattleStage: View {
     let appearance: AvatarAppearance
     let heroClass: HeroClass
     let phase: Phase
-    /// Sekundy bitvy; kazda `attackInterval`-ta spusti utok.
+    /// Sekundy bitvy; kazdy uder z BossHearts spusti utok.
     let elapsed: Int
+    /// Delka bitvy v sekundach (rozestup uderu srdicek).
+    var targetSeconds: Int = 0
     var bossSize: CGFloat = 120
     var heroSize: CGFloat = 84
 
-    static let attackInterval = 5
     /// Jak dlouho drzi BattleView vysledek, nez financi scena dobehne.
     static let finaleSeconds = 1.8
 
@@ -120,8 +121,11 @@ struct BattleStage: View {
         .onAppear { if Self.debugFrozenAt != nil { start(.attack(index: 6)) } }
         #endif
         .onChange(of: elapsed) { old, new in
-            guard phase == .fighting, animates, new > old, new > 0, new % Self.attackInterval == 0 else { return }
-            start(.attack(index: new / Self.attackInterval))
+            // B1: utok, kdyz bossovi ubude ctvrtka srdicka. Posledni ctvrtka je financi uder (faze .won).
+            let hearts = BossHearts(tier: boss.tier, targetSeconds: targetSeconds)
+            let strikes = hearts.strikes(atElapsed: new)
+            guard phase == .fighting, animates, new > old, strikes > hearts.strikes(atElapsed: old), strikes < hearts.totalQuarters else { return }
+            start(.attack(index: strikes))
         }
         .onChange(of: phase) { old, new in
             guard animates else { event = nil; return }
@@ -312,7 +316,8 @@ struct BattleStage: View {
                 .position(x: bossCenter.x - bossSize * 0.12, y: bossCenter.y)
         }
         if let rise = frame.damageRise, let damage = frame.damage {
-            Text(damage.crit ? "-\(damage.amount)!" : "-\(damage.amount)")
+            // B1: kazdy uder ubere jednu ctvrtku srdicka.
+            Text(damage.crit ? "-¼!" : "-¼")
                 .fqFont(size: damage.crit ? 28 : 22, weight: .heavy, design: .rounded)
                 .monospacedDigit()
                 .foregroundStyle(damage.crit ? FQColor.cta : .white)
@@ -373,10 +378,9 @@ private struct StageEvent: Equatable {
     /// Poskozeni ~10 HP za sekundu bitvy, s malym rozptylem; kazdy 7. utok je kriticky (dvojnasobek).
     var damage: (amount: Int, crit: Bool)? {
         guard case let .attack(index) = kind else { return nil }
-        let base = BattleStage.attackInterval * 10
-        let spread = [-6, 3, -2, 7, 0, -4, 5][index % 7]
-        let crit = index % 7 == 6
-        return ((base + spread) * (crit ? 2 : 1), crit)
+        // B1: vzdy prave jedna ctvrtka srdicka, zadne kriticke zasahy.
+        _ = index
+        return (1, false)
     }
 }
 

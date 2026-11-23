@@ -5,7 +5,7 @@ enum ArenaState: Equatable {
     case idle
     case awaitingFlatPlacement
     case focusing(elapsedSeconds: Int)
-    /// Pauza bitvy (2 za bitvu): cas se nepocita, po vyprseni `secondsLeft` boss uteče.
+    /// Pauza bitvy (1 zdarma + nejvys 1 extra za bitvu): cas se nepocita, po vyprseni `secondsLeft` boss uteče.
     case paused(elapsedSeconds: Int, secondsLeft: Int)
     /// Zvednuty telefon: jediny odpocet, po nem boss uteče (zadne "Slip forgiven").
     case warningCountdown(secondsRemaining: Double, frozenElapsedSeconds: Int)
@@ -68,12 +68,23 @@ final class ArenaViewModel: ObservableObject {
     @Published private(set) var activeSession: StudySession?
     /// Vlastni bitva (Custom Battle): libovolna delka, nahodny boss, cestu sveta neposouva.
     @Published private(set) var isCustomBattle = false
-    /// Kolik pauz uz hrac v teto bitve pouzil (nejvys `pausesPerBattle`).
-    @Published private(set) var pausesUsed = 0
-    /// Pocet pauz za jednu bitvu.
-    static let pausesPerBattle = 2
-    /// Kolik pauz jeste zbyva.
-    var pausesLeft: Int { max(0, Self.pausesPerBattle - pausesUsed) }
+    /// B2: pouzite pauzy zdarma v teto bitve (nejvys `freePausesPerBattle`).
+    @Published private(set) var freePausesUsed = 0
+    /// B2: pouzite extra pauzy z Shopu v teto bitve (nejvys `maxExtraPausesPerBattle`).
+    @Published private(set) var extraPausesUsed = 0
+    /// Kazda bitva ma jednu pauzu zdarma.
+    static let freePausesPerBattle = 1
+    /// V jedne bitve jde navic pouzit nejvys jednu extra pauzu z Shopu.
+    static let maxExtraPausesPerBattle = 1
+    /// Bitva pouzila extra pauzu: profil ji odecte (AppDIContainer).
+    var onExtraPauseUsed: (() -> Void)?
+    /// Extra pauzy, ktere hrac vlastni (z profilu).
+    var ownedExtraPauses: Int { max(0, profileProvider().extraPauses) }
+    var freePausesLeft: Int { max(0, Self.freePausesPerBattle - freePausesUsed) }
+    /// Jde v teto bitve jeste pouzit extra pauzu?
+    var canUseExtraPause: Bool { extraPausesUsed < Self.maxExtraPausesPerBattle && ownedExtraPauses > 0 }
+    /// Kolik pauz jeste zbyva v teto bitve (zdarma + extra, ktera jde pouzit).
+    var pausesLeft: Int { freePausesLeft + (canUseExtraPause ? 1 : 0) }
     /// Vsechny pauzy bitvy uz jsou vycerpane.
     var hasUsedPause: Bool { pausesLeft == 0 }
     /// Poradove cislo bitvy: kazda nova bitva ma cerstvou scenu (bez K.O. z minule bitvy).
@@ -154,7 +165,8 @@ final class ArenaViewModel: ObservableObject {
     func startSession() {
         guard selectedSubject != nil, isBetweenBattles else { return }
         lastBeaten = nil
-        pausesUsed = 0
+        freePausesUsed = 0
+        extraPausesUsed = 0
         battleSerial += 1
         resetBossHealth()
         // Poloha z minule bitvy neplati: bitva zacne az po novem polozeni telefonu.
@@ -320,7 +332,13 @@ final class ArenaViewModel: ObservableObject {
     /// Kdo se do 2:00 nevrati, tomu boss uteče.
     func pauseBattle() {
         guard case let .focusing(elapsed) = state, !isFinishing, pausesLeft > 0 else { return }
-        pausesUsed += 1
+        // Nejdriv pauza zdarma, pak extra pauza z Shopu (odecte se z profilu).
+        if freePausesLeft > 0 {
+            freePausesUsed += 1
+        } else {
+            extraPausesUsed += 1
+            onExtraPauseUsed?()
+        }
         timerTask?.cancel()
         pausedAt = MonotonicClock.now
         state = .paused(elapsedSeconds: elapsed, secondsLeft: pauseLimitSeconds)

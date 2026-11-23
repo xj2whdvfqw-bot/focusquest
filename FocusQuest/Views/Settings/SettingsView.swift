@@ -561,6 +561,12 @@ private struct DebugSettingsSections: View {
                 }
             }
             VStack(alignment: .leading, spacing: FQSpace.sm) {
+                Text("Extra pauses: \(profile.profile.extraPauses) of \(UserProfile.maxExtraPauses)").monospacedDigit().foregroundStyle(.secondary)
+                ChipFlow(spacing: FQSpace.sm) {
+                    debugButton("+3 extra pauses") { profile.debugAddExtraPauses(3) }
+                }
+            }
+            VStack(alignment: .leading, spacing: FQSpace.sm) {
                 Text("Level: \(profile.level)").monospacedDigit().foregroundStyle(.secondary)
                 ChipFlow(spacing: FQSpace.sm) {
                     debugButton("Level −1") { profile.debugSetLevel(profile.level - 1) }

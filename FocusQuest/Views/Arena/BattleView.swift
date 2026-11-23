@@ -36,7 +36,6 @@ struct BattleView: View {
         static let stageHeight: CGFloat = 150
         static let spriteSize: CGFloat = 120
         static let bossGap: CGFloat = 8
-        static let healthBarWidth: CGFloat = 220
         static let timerSize: CGFloat = 114
         static let timerSizeLong: CGFloat = 89
         static let timerGap: CGFloat = 3
@@ -130,7 +129,12 @@ struct BattleView: View {
             }
             if case let .defeated(defeat) = model.state, !playsFinale { defeatOverlay(defeat) }
             if case let .victory(victory) = model.state, !playsFinale {
-                if showsBreak { breakPanel(victory) } else { victoryOverlay(victory) }
+                // B3: prestavka je sheet se dvema vyskami (viz breakSheet); pod nim zustane jen ztmaveni.
+                if showsBreak {
+                    Color.black.opacity(ResultDialog<EmptyView>.dim).ignoresSafeArea().accessibilityHidden(true)
+                } else {
+                    victoryOverlay(victory)
+                }
             }
             #if DEBUG
             // Jen Debug build: male tlacitko vlevo dole, bitva hned skonci vyhrou vcetne odmen.
@@ -148,6 +152,12 @@ struct BattleView: View {
         // Novy level po vyhre.
         .fqSound(.levelUp, trigger: profileModel.level) { old, new in new > old }
         .animation(FQMotion.spring(reduceMotion: reduceMotion), value: showsBreak)
+        // B3: panel prestavky jako sheet se dvema vyskami. Stahnout dolu ho nejde, zavre se jen tlacitky.
+        .sheet(isPresented: Binding(get: { showsBreakSheet }, set: { _ in })) {
+            if case let .victory(victory) = model.state {
+                breakPanel(victory)
+            }
+        }
         .animation(.easeOut(duration: 0.2), value: showsRetreatConfirm)
         .onChange(of: model.state) { old, value in
             // Ustupovy dialog nema smysl, kdyz bitva mezitim skoncila.
@@ -205,10 +215,19 @@ struct BattleView: View {
 
     /// Odchod z vysledku na jine misto (Fight sheet, Path, Home): karta bitvy zustane skryta.
     private func leave(to destination: BattlePresenter.AfterBattle, prepare: () -> Void = {}) {
+        // B3: z prestavky (sheet) nejdriv zavrit sheet, az pak celou obrazovku bitvy (dve prezentace naraz se zasekaly).
+        let fromBreakSheet = showsBreakSheet
         isLeaving = true
         model.stopSession()
         prepare()
-        onExitTo(destination)
+        if fromBreakSheet {
+            Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(380))
+                onExitTo(destination)
+            }
+        } else {
+            onExitTo(destination)
+        }
     }
 
     #if DEBUG
@@ -297,6 +316,7 @@ struct BattleView: View {
                 heroClass: profileModel.profile.heroClass,
                 phase: stagePhase,
                 elapsed: elapsed,
+                targetSeconds: stageBoss.maxHP * 60,
                 bossSize: Layout.spriteSize
             )
             .frame(height: Layout.stageHeight)
@@ -312,13 +332,29 @@ struct BattleView: View {
                     .font(.fqMeta)
                     .foregroundStyle(FQColor.textSecondary)
             }
-            // Tenky pruh zdravi bez cisla.
-            BossHealthBarView(fraction: bossHealthFraction, tint: stageBoss.accent)
-                .frame(maxWidth: Layout.healthBarWidth)
+            // B1: pixelova srdicka po ctvrtkach misto HP cary.
+            BossHeartsView(hearts: stageHearts.hearts, quartersLeft: bossQuartersLeft)
                 .padding(.top, FQSpace.xs)
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(stageBoss.name), \(stageBoss.tierTitle), \(ArenaView.durationText(minutes: stageBoss.maxHP))")
+        .accessibilityLabel("\(stageBoss.name), \(stageBoss.tierTitle), \(ArenaView.durationText(minutes: stageBoss.maxHP)), \(BossHeartsView.spoken(quartersLeft: bossQuartersLeft, hearts: stageHearts.hearts))")
+    }
+
+    private var stageHearts: BossHearts { BossHearts(tier: stageBoss.tier, targetSeconds: stageBoss.maxHP * 60) }
+
+    /// B1: behem bitvy ubyvaji ctvrtky po pravidelnych uderech; po vyhre nic, po uteku kolik zbylo.
+    private var bossQuartersLeft: Int {
+        let hearts = stageHearts
+        switch model.state {
+        case .focusing, .paused, .warningCountdown, .callPaused:
+            return hearts.quartersLeft(atElapsed: elapsed)
+        case .victory:
+            return 0
+        case let .defeated(defeat):
+            return hearts.quartersLeft(atElapsed: defeat.focusedMinutes * 60)
+        default:
+            return hearts.totalQuarters
+        }
     }
 
     /// Boss na scene: po vyhre ten porazeny (model uz mohl vybrat dalsiho), po uteku ten, co utekl.
@@ -337,16 +373,6 @@ struct BattleView: View {
         case .victory: .won
         case .defeated: .escaped
         default: .waiting
-        }
-    }
-
-    /// Behem bitvy ubyva pruh po sekundach podle odpoctu; jinak ukazuje skutecne HP bosse.
-    private var bossHealthFraction: Double {
-        switch model.state {
-        case .focusing, .paused, .warningCountdown, .callPaused:
-            model.targetSeconds > 0 ? Double(remaining) / Double(model.targetSeconds) : 0
-        default:
-            boss.healthFraction
         }
     }
 
@@ -411,21 +437,59 @@ struct BattleView: View {
             // Hovor pauzu nespotrebuje; jedine, co jde udelat, je ustoupit.
             BattleActionButton(symbol: "flag.fill", caption: "Retreat", tone: .danger) { showsRetreatConfirm = true }
         case .focusing, .paused, .warningCountdown:
-            // Pauses a Retreat vycentrovane v karte.
-            HStack(spacing: Layout.actionGap) {
-                if isPaused {
-                    BattleActionButton(symbol: "play.fill", caption: "Resume", tone: .accent) { model.resumeBattle() }
-                } else {
-                    // 2 pauzy za bitvu; po vycerpani zustane tlacitko videt, ale neaktivni.
-                    BattleActionButton(symbol: "pause.fill", caption: "Pauses \(model.pausesLeft)/\(ArenaViewModel.pausesPerBattle)", tone: .neutral) { model.pauseBattle() }
-                        .disabled(model.hasUsedPause)
-                        .opacity(model.hasUsedPause ? 0.45 : 1)
-                        .accessibilityHint(model.hasUsedPause ? "No pauses left in this battle" : "Pause for up to 2 minutes")
+            // Pause a Retreat vycentrovane v karte, pod nimi stav pauz (B2).
+            VStack(spacing: FQSpace.md) {
+                HStack(spacing: Layout.actionGap) {
+                    if isPaused {
+                        BattleActionButton(symbol: "play.fill", caption: "Resume", tone: .accent) { model.resumeBattle() }
+                    } else {
+                        // Po vycerpani zustane tlacitko videt, ale neaktivni.
+                        BattleActionButton(symbol: "pause.fill", caption: pauseCaption, tone: .neutral) { model.pauseBattle() }
+                            .disabled(model.hasUsedPause)
+                            .opacity(model.hasUsedPause ? 0.45 : 1)
+                            .accessibilityHint(pauseHint)
+                    }
+                    BattleActionButton(symbol: "flag.fill", caption: "Retreat", tone: .danger) { showsRetreatConfirm = true }
                 }
-                BattleActionButton(symbol: "flag.fill", caption: "Retreat", tone: .danger) { showsRetreatConfirm = true }
+                pauseSummary
             }
             .frame(maxWidth: .infinity)
         }
+    }
+
+    // MARK: - Pauzy (B2)
+
+    /// Extra pauzy v inventari (zive z profilu, odecitaji se pri pouziti).
+    private var ownedExtraPauses: Int { profileModel.profile.extraPauses }
+
+    /// Popisek tlacitka: dalsi pauza je zdarma, extra (z Shopu), nebo zadna.
+    private var pauseCaption: String {
+        if model.freePausesLeft > 0 { return "Pause" }
+        if model.canUseExtraPause { return "Extra pause" }
+        return "No pauses"
+    }
+
+    private var pauseHint: String {
+        if model.freePausesLeft > 0 { return "Uses your free pause. Up to 2 minutes." }
+        if model.canUseExtraPause { return "Uses 1 extra pause from the Shop. Up to 2 minutes." }
+        return model.extraPausesUsed > 0 ? "You already used 1 extra pause in this battle" : "No pauses left in this battle"
+    }
+
+    /// "Pause: 1 free + 2 extra"; extra = pauzy z Shopu (v jedne bitve jde pouzit nejvys jedna).
+    private var pauseSummary: some View {
+        let free = model.freePausesLeft
+        let extra = ownedExtraPauses
+        let freeText = free > 0 ? "\(free) free" : "free used"
+        let extraText = model.extraPausesUsed >= ArenaViewModel.maxExtraPausesPerBattle
+            ? "extra used"
+            : "\(extra) extra"
+        return Text("Pause: \(freeText) + \(extraText)")
+            .font(.fqMeta)
+            .monospacedDigit()
+            .foregroundStyle(FQColor.textSecondary)
+            .accessibilityLabel(free > 0
+                ? "1 free pause\(extra > 0 ? ", plus \(extra) extra from the Shop, 1 usable per battle" : "")"
+                : (model.canUseExtraPause ? "Free pause used. 1 extra pause usable, \(extra) owned" : "No pauses left in this battle"))
     }
 
     // MARK: - Ustup
@@ -604,12 +668,18 @@ struct BattleView: View {
 
     // MARK: - Prestavka
 
+    /// Sheet prestavky je videt po "Collect Loot", dokud je vyhra na obrazovce a hrac neodchazi.
+    private var showsBreakSheet: Bool { showsBreak && isVictory && !playsFinale && !isLeaving }
+
     /// Spodni panel prestavky po "Collect Loot". Odmena uz je pripsana, tady se jen vybira, co dal.
     private func breakPanel(_ victory: BattleVictory) -> some View {
         let beaten = model.lastBeaten ?? Boss.find(victory.boss.id) ?? victory.boss
         return BreakPanel(
             nextBoss: model.upcomingPathBoss,
             sameAgain: beaten,
+            hero: profileModel.profile.avatar,
+            heroClass: profileModel.profile.heroClass,
+            accent: beaten.accent,
             onNextBoss: { boss in
                 model.startNextBoss(boss)
             },
@@ -626,7 +696,6 @@ struct BattleView: View {
         // Notifikace "Break is over" prijde i se zamcenou obrazovkou; po odchodu z prestavky se zrusi.
         .onAppear { model.breakStarted(seconds: BreakPanel.breakSeconds) }
         .onDisappear { model.breakEnded() }
-        .transition(reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity))
     }
 
     /// Obrazovka prohry: boss utekl. Jediny trest je, ze bitva nic neprinese;
@@ -989,11 +1058,16 @@ private struct CountUpNumber: View, Animatable {
     var body: some View { Text("+\(Int(value.rounded()))") }
 }
 
-/// Prestavka po vyhre: velky tenky odpocet 5:00, ktery opravdu bezi; v 0:00 "Break's over",
-/// zluty cas a zvuk. Dole zlute tlacitko na dalsiho bosse cesty, dve dlazdice a kompaktni "Done for today".
+/// Prestavka po vyhre (B3): sheet se dvema vyskami. Kompaktni = BREAK, odpocet 5:00 (v 0:00 "Break's over",
+/// zluty cas a zvuk) a zlute tlacitko na dalsiho bosse. Vytazeni nahoru navic ukaze Same again, Change boss,
+/// Done for today a malou scenu odpocivajiciho hrdiny. Mezi vyskami se tahne plynule (systemove detenty);
+/// uplne stahnout panel nejde, zavre se jen tlacitky.
 private struct BreakPanel: View {
     let nextBoss: Boss?
     let sameAgain: Boss
+    let hero: AvatarAppearance
+    let heroClass: HeroClass
+    let accent: Color
     let onNextBoss: (Boss) -> Void
     let onSameAgain: () -> Void
     let onChangeBoss: () -> Void
@@ -1001,45 +1075,73 @@ private struct BreakPanel: View {
     let onBreakOver: () -> Void
 
     static let breakSeconds = 5 * 60
+    /// Kompaktni vyska: madlo, BREAK, odpocet a Next boss.
+    static let compact = PresentationDetent.height(330)
+    /// Roztazena vyska: navic dlazdice, Done for today a scena hrdiny.
+    static let expanded = PresentationDetent.height(640)
+
     /// Konec prestavky podle hodin, takze odpocet sedi i po navratu z pozadi.
     @State private var endsAt = Date().addingTimeInterval(TimeInterval(BreakPanel.breakSeconds))
+    @State private var detent = BreakPanel.compact
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private var isExpanded: Bool { detent == Self.expanded }
 
     var body: some View {
-        ZStack(alignment: .bottom) {
-            // Stejne jemne ztmaveni jako vysledkova okna.
-            Color.black.opacity(ResultDialog<EmptyView>.dim).ignoresSafeArea().accessibilityHidden(true)
+        // ScrollView jen kvuli zarovnani nahoru: obsah ma prirozenou vysku a sheet ho orizne podle detentu.
+        ScrollView {
             VStack(spacing: FQSpace.lg) {
-                Capsule().fill(FQColor.textTertiary).frame(width: 36, height: 5).accessibilityHidden(true)
                 TimelineView(.periodic(from: .now, by: 1)) { context in
                     countdown(secondsLeft: max(0, Int(ceil(endsAt.timeIntervalSince(context.date)))))
                 }
-                VStack(spacing: FQSpace.sm) {
-                    if let nextBoss { nextBossButton(nextBoss) }
-                    HStack(spacing: FQSpace.sm) {
-                        tile(symbol: "arrow.counterclockwise", title: "Same again", detail: sameAgain.name, action: onSameAgain)
+                if let nextBoss {
+                    nextBossButton(nextBoss)
+                } else {
+                    // Vsechny svety dobyte: hlavni akce je zopakovat posledniho bosse.
+                    tile(symbol: "arrow.counterclockwise", title: "Same again", detail: sameAgain.name, action: onSameAgain)
+                }
+                VStack(spacing: FQSpace.md) {
+                    if nextBoss != nil {
+                        HStack(spacing: FQSpace.sm) {
+                            tile(symbol: "arrow.counterclockwise", title: "Same again", detail: sameAgain.name, action: onSameAgain)
+                            tile(symbol: "map.fill", title: "Change boss", detail: "Pick on the Path", action: onChangeBoss)
+                        }
+                    } else {
                         tile(symbol: "map.fill", title: "Change boss", detail: "Pick on the Path", action: onChangeBoss)
                     }
+                    Button(action: onDone) {
+                        Text("Done for today")
+                            .font(.fqLabel)
+                            .foregroundStyle(FQColor.textPrimary)
+                            .padding(.horizontal, FQSpace.xl)
+                            .frame(minHeight: 44)
+                            .overlay(Capsule().strokeBorder(FQColor.textSecondary.opacity(0.55), lineWidth: 1))
+                            .contentShape(Capsule())
+                    }
+                    .buttonStyle(.fqPress)
+                    RestingHeroScene(hero: hero, heroClass: heroClass, accent: accent)
                 }
-                Button(action: onDone) {
-                    Text("Done for today")
-                        .font(.fqLabel)
-                        .foregroundStyle(FQColor.textPrimary)
-                        .padding(.horizontal, FQSpace.xl)
-                        .frame(minHeight: 44)
-                        .overlay(Capsule().strokeBorder(FQColor.textSecondary.opacity(0.55), lineWidth: 1))
-                        .contentShape(Capsule())
-                }
-                .buttonStyle(.fqPress)
+                // V kompaktni vysce je cast pod okrajem: prolne se, az se panel vytahne.
+                .opacity(isExpanded ? 1 : 0)
+                .animation(reduceMotion ? nil : .easeOut(duration: 0.25), value: isExpanded)
+                .accessibilityHidden(!isExpanded)
             }
             .padding(.horizontal, FQSpace.lg)
-            .padding(.top, FQSpace.sm)
+            .padding(.top, FQSpace.xl)
             .padding(.bottom, FQSpace.xl)
             .frame(maxWidth: 520)
-            .fqGlassPanel(radius: FQRadius.breakPanel)
-            .padding(.horizontal, FQSpace.sm)
-            .padding(.bottom, FQSpace.sm)
+            .frame(maxWidth: .infinity)
         }
-        .accessibilityAddTraits(.isModal)
+        .scrollDisabled(true)
+        .scrollIndicators(.hidden)
+        .presentationDetents([Self.compact, Self.expanded], selection: $detent)
+        .presentationDragIndicator(.visible)
+        // Stahnout dolu nejde (jen mezi vyskami); zavreni jen tlacitky.
+        .interactiveDismissDisabled()
+        .presentationBackgroundInteraction(.disabled)
+        .presentationCornerRadius(FQRadius.breakPanel)
+        .presentationBackground(.ultraThinMaterial)
+        .preferredColorScheme(.dark)
         .task {
             // Zvuk prijde jednou, az odpocet opravdu dobehne.
             let left = endsAt.timeIntervalSinceNow
@@ -1134,5 +1236,76 @@ private struct BreakPanel: View {
             .contentShape(FQRadius.shape(FQRadius.breakPanelBottom))
         }
         .buttonStyle(.fqPress)
+    }
+}
+
+/// B3: mala scena v roztazenem panelu prestavky: hrdina odpociva u pixeloveho ohne a nad nim plujou "z".
+/// S Reduce Motion stoji (ohen neplapola, "z" stoji).
+private struct RestingHeroScene: View {
+    let hero: AvatarAppearance
+    let heroClass: HeroClass
+    let accent: Color
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        TimelineView(.animation(minimumInterval: 1.0 / 8, paused: reduceMotion)) { context in
+            let t = reduceMotion ? 0 : context.date.timeIntervalSinceReferenceDate
+            ZStack(alignment: .bottom) {
+                // Zem a jemna zare ohne.
+                Capsule()
+                    .fill(Color.black.opacity(0.25))
+                    .frame(height: 14)
+                    .padding(.horizontal, FQSpace.xl)
+                Circle()
+                    .fill(RadialGradient(colors: [Color(red: 1, green: 0.6, blue: 0.2).opacity(0.35), .clear], center: .center, startRadius: 0, endRadius: 70))
+                    .frame(width: 140, height: 140)
+                    .offset(x: 34, y: 40)
+                HStack(alignment: .bottom, spacing: FQSpace.lg) {
+                    ZStack(alignment: .topTrailing) {
+                        HeroAvatarView(appearance: hero, heroClass: heroClass, size: 72)
+                            // Pomale dychani.
+                            .scaleEffect(x: 1, y: 1 + 0.02 * sin(t * 1.6), anchor: .bottom)
+                        ForEach(0..<3, id: \.self) { index in
+                            let phase = (t * 0.45 + Double(index) / 3).truncatingRemainder(dividingBy: 1)
+                            Text("z")
+                                .fqFont(size: 11 + CGFloat(index) * 3, weight: .heavy, design: .rounded)
+                                .foregroundStyle(FQColor.textSecondary)
+                                .opacity(reduceMotion ? 0.8 : 1 - phase)
+                                .offset(x: 6 + CGFloat(index) * 8 + (reduceMotion ? 0 : CGFloat(phase) * 6),
+                                        y: -4 - CGFloat(index) * 10 - (reduceMotion ? 0 : CGFloat(phase) * 14))
+                        }
+                    }
+                    PixelCampfire(time: t)
+                        .frame(width: 36, height: 42)
+                }
+                .padding(.bottom, 6)
+            }
+        }
+        .frame(height: 110)
+        .frame(maxWidth: .infinity)
+        .background(accent.opacity(0.08), in: FQRadius.shape(FQRadius.inBreakPanel))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Your hero rests by the fire")
+    }
+}
+
+/// Pixelovy taborak: polena a plamen, ktery se kazdou 1/8 s maly zmeni.
+private struct PixelCampfire: View {
+    let time: TimeInterval
+
+    private static let frames: [[String]] = [
+        ["...Y..", "..YO..", ".YOOY.", ".ORRO.", "ORRRRO", "BB..BB"],
+        ["..Y...", "..OY..", ".YOOY.", ".OROO.", "ORRRRO", "BB..BB"],
+        ["....Y.", "..YO..", ".YOOO.", ".ORRO.", "OORRRO", "BB..BB"],
+    ]
+
+    var body: some View {
+        let rows = Self.frames[Int(time * 8) % Self.frames.count]
+        ZStack {
+            PixelLayerShape(rows: rows, symbol: "B").fill(Color(red: 0.45, green: 0.28, blue: 0.16))
+            PixelLayerShape(rows: rows, symbol: "R").fill(Color(red: 0.95, green: 0.30, blue: 0.15))
+            PixelLayerShape(rows: rows, symbol: "O").fill(Color(red: 1.0, green: 0.60, blue: 0.20))
+            PixelLayerShape(rows: rows, symbol: "Y").fill(Color(red: 1.0, green: 0.88, blue: 0.40))
+        }
     }
 }

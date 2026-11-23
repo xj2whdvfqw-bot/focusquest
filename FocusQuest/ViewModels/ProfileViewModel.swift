@@ -152,6 +152,32 @@ final class ProfileViewModel: ObservableObject {
         save()
     }
 
+    // MARK: - Extra pauzy (B2)
+
+    var canBuyExtraPause: Bool {
+        profile.extraPauses < UserProfile.maxExtraPauses && profile.coins >= UserProfile.extraPausePrice
+    }
+
+    /// Koupi jednu extra pauzu za 40 minci (drzet jde nejvys 5).
+    func buyExtraPause() {
+        guard canBuyExtraPause else { return }
+        profile.coins -= UserProfile.extraPausePrice
+        profile.extraPauses += 1
+        save()
+    }
+
+    /// Bitva pouzila extra pauzu (vola ArenaViewModel pres AppDIContainer).
+    func consumeExtraPause() {
+        guard profile.extraPauses > 0 else { return }
+        profile.extraPauses -= 1
+        save()
+    }
+
+    func debugAddExtraPauses(_ amount: Int) {
+        profile.extraPauses = min(UserProfile.maxExtraPauses, profile.extraPauses + amount)
+        save()
+    }
+
     // MARK: - Pozadi
 
     /// Pozadi, ktere si hrac prave zkousi (Preview). Neuklada se a po odchodu z obchodu zmizi.

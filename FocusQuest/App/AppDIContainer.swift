@@ -42,6 +42,10 @@ final class AppDIContainer {
             // Dnes uz se bojovalo: dnesni pripominka v 17:00 odpada.
             arena?.refreshDailyReminder(focusedToday: true)
         }
+        // B2: extra pauza pouzita v bitve se odecte z profilu.
+        arenaViewModel.onExtraPauseUsed = { [weak profileViewModel] in
+            profileViewModel?.consumeExtraPause()
+        }
         // Zmeny v Nastaveni (hudba, hlasitost, skladba) se maji projevit hned i v bezici bitve.
         settingsViewModel.onPreferencesChanged = { [weak arenaViewModel] updated in
             FQFeedback.shared.configure(with: updated)

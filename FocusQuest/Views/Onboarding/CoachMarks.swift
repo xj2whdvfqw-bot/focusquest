@@ -105,7 +105,7 @@ enum CoachStep: Int, CaseIterable, Sendable {
         case .fight: "Every boss is one focus session. Tap Fight to set one up."
         case .focusing: "Pick what this session is for. Stats tracks your time for each one."
         case .sound: "Choose music or quiet for the battle. It keeps playing when the screen is locked."
-        case .battle: "After Start, lay your phone face down and your hero fights. Lift it and the boss escapes in 10 seconds, unless you use one of 2 pauses."
+        case .battle: "After Start, lay your phone face down and your hero fights. Lift it and the boss escapes in 10 seconds, unless you use your free pause."
         case .quick: "Start with just 5 minutes. Small wins still count."
         case .streak: "Focus a little every day to keep the flame going."
         case .path: "Worlds full of bosses wait on the map. Tap Path to take a look."

@@ -139,11 +139,27 @@ struct ScreenHeader: View {
     let title: String
     /// Ozubene kolo jako cil tutorialu (jen na zalozce Hero).
     var gearMark: CoachTarget?
+    /// B4: tlacitko Share vedle ozubeneho kola (Stats).
+    var onShare: (() -> Void)? = nil
 
     var body: some View {
         HStack(alignment: .top, spacing: FQSpace.sm) {
             ScreenTitle(eyebrow: eyebrow, title: title)
             Spacer(minLength: FQSpace.sm)
+            if let onShare {
+                Button(action: onShare) {
+                    Image(systemName: "square.and.arrow.up")
+                        .font(.system(size: 17, weight: .semibold, design: .rounded))
+                        .foregroundStyle(FQColor.textPrimary)
+                        .offset(y: -1)
+                        .frame(width: 44, height: 44)
+                        .glassControl(in: Circle(), interactive: true)
+                        .contentShape(Circle())
+                }
+                .buttonStyle(.fqPress)
+                .accessibilityLabel("Share")
+                .accessibilityHint("Makes a picture of your progress to share")
+            }
             if let gearMark {
                 SettingsGearButton().coachMark(gearMark)
             } else {

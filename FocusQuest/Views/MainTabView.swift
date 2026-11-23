@@ -214,7 +214,7 @@ struct MainTabView: View {
             ShopView(model: container.profileViewModel, section: $shopSection)
                 .tabPage(reserve: reserve)
                 .tag(FocusQuestTab.shop)
-            StatsView(model: container.statsViewModel, arena: container.arenaViewModel) {
+            StatsView(model: container.statsViewModel, arena: container.arenaViewModel, profile: container.profileViewModel) {
                 guard coach.step == nil else { return }
                 switchTab(to: .arena)
                 battlePresenter.openFightSheet()

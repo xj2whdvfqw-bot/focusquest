@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-23T23:05:00+01:00",
-  "current": "H1 hotovo: build #69 prošel",
-  "nextStep": "Otestovat na iPhonu Nastavení, tutoriál (13 kroků, zamčená lišta, Skip) a zamčené světy",
+  "updated": "2026-11-23T23:46:25+01:00",
+  "current": "I1: srdíčka, pauzy, break panel a sdílení hotové v kódu, čeká na commit a build",
+  "nextStep": "Commit, push a spustit build",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -815,6 +815,23 @@
       "commit": "31a93a0",
       "build": { "number": 69, "runId": 45267498664, "result": "úspěch" },
       "note": "Build #69 prošel (IPA, testy); #68 spadl na chybějícím return v MapStopView.ring, opraveno. Na iPhonu otestuj: Nastavení – každý řádek se otevře a cvakne (Sounds & haptics, Music, Notifications, Background, Replay tutorial, Contact, Reset, odkazy dole), dole credit; tutoriál (Settings › Replay tutorial) – začne na Home, lišta nereaguje kromě zvýrazněné záložky, výřez vždy na správném prvku i po zavření Fight sheetu, Skip čitelný vlevo nahoře i ve Fight sheetu, nové kroky Habits, čísla ve Stats a Daily focus target (na malém iPhonu zkontroluj, že karta s čísly není pod lištou); zamčené světy – na mapě siluety bossů bez jména, nejdou otevřít, v seznamu jeden zamčený svět se siluetami a karta „??? · N more worlds to discover“, VoiceOver jména neprozradí. Text „Your subjects“ v kódu už nebyl (správa je „Your focus list“), „subject“ zbýval jen na webu Privacy/Support."
+    },
+    {
+      "id": "I1",
+      "title": "Srdíčka, pauzy, break panel, sdílení",
+      "status": "pracuje",
+      "items": [
+        { "text": "B1 Srdíčka místo HP čáry: Novice 3 … Mythic 6, 4 čtvrtky; úder = délka / čtvrtky, poslední přesně na konci; otřes a pixely, Reduce Motion jen zmizí; ťukání nic neubírá; Live Activity beze změny", "done": true },
+        { "text": "B2 Pauzy: 1 zdarma za bitvu; Shop › Battle supplies › Extra pause za 40 mincí, max 5, v bitvě max 1 navíc; „Pause: 1 free + N extra“ na kartě bitvy; Debug +3 extra pauses", "done": true },
+        { "text": "B3 Break panel jako sheet se dvěma výškami (kompaktní: BREAK, odpočet, Next boss; roztažená: Same again, Change boss, Done for today, odpočívající hrdina); nejde stáhnout", "done": true },
+        { "text": "B4 Stats › Share: náhled se šablonami This week / Streak, volitelné jméno, obrázek 1080×1920 přes ImageRenderer, ShareLink", "done": true },
+        { "text": "B4 Milníky série 7, 30, 100 dní: po oslavě na Home jednou nabídka sdílení", "done": true },
+        { "text": "Testy: BossHeartsTests (počty, rozestup, poslední úder, čtvrtky), pauzy 1 zdarma + 1 extra", "done": true },
+        { "text": "DECISIONS.md: srdíčka, ekonomika pauz a cena, break panel, sdílení", "done": true }
+      ],
+      "commit": "",
+      "build": { "number": null, "runId": null, "result": "" },
+      "note": ""
     }
   ]
 }

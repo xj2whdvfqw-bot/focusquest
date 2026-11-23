@@ -6,9 +6,13 @@ struct StatsView: View {
     @ObservedObject var model: StatsViewModel
     /// Seznam predmetu hrace (nazvy po prejmenovani, skryte, smazane) a sprava "Your focus list".
     @ObservedObject var arena: ArenaViewModel
+    /// B4: hrdina a jmeno pro obrazek ke sdileni.
+    @ObservedObject var profile: ProfileViewModel
     /// "▶ Start a battle" v prazdnem stavu: Arena s otevrenym Fight sheetem.
     let onStartBattle: () -> Void
     @State private var showsSubjectManager = false
+    /// B4: nahled sdileni statistik.
+    @State private var showsShare = false
 
     private enum Layout {
         static let cardPadding: CGFloat = 16
@@ -18,13 +22,19 @@ struct StatsView: View {
 
     var body: some View {
         ScreenScaffold(scene: .starlitPeaks) {
-            ScreenHeader(eyebrow: "Stats", title: "Your progress")
+            ScreenHeader(eyebrow: "Stats", title: "Your progress", onShare: { showsShare = true })
             habitsSection
             metricsCard
             subjectsSection
         }
         .task { await model.load() }
         .sheet(isPresented: $showsSubjectManager) { SubjectManagerView(model: arena) }
+        .sheet(isPresented: $showsShare) {
+            StatsShareSheet(snapshot: ShareSnapshot.make(stats: model.stats, profile: profile.profile, greetingName: profile.greetingName)) {
+                showsShare = false
+            }
+            .presentationDragIndicator(.visible)
+        }
     }
 
     // MARK: - Habits
