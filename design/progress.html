@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-23T22:10:10+01:00",
-  "current": "H1: opravy z testu po #67 hotové v kódu, čeká na commit a build",
-  "nextStep": "Commit, push a spustit build",
+  "updated": "2026-11-23T22:13:00+01:00",
+  "current": "H1: build #68 běží",
+  "nextStep": "Počkat na výsledek buildu #68",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -799,7 +799,7 @@
     {
       "id": "H1",
       "title": "Test po #67: Nastavení, tutoriál, zamčené světy",
-      "status": "pracuje",
+      "status": "build",
       "items": [
         { "text": "A1 Nastavení se zase otevírá: pryč simultaneousGesture (.fqTapSound) z řádků Listu; klik v akci tlačítek, u podstránek přes onChange cesty (NavigationLink(value:))", "done": true },
         { "text": "A1 Audit míst z G1: chipy Focusing, Habits, tečky onboardingu, dialogy, ManagerButtonStyle, ťukání na bosse mají klik v akci nebo stylu, nic neblokují", "done": true },
@@ -812,8 +812,8 @@
         { "text": "A7 „Subject“ pryč i z webu (Privacy, Support) a komentářů; správa je „Your focus list“", "done": true },
         { "text": "DECISIONS.md: tap zvuk bez gest v Listu, tutoriál 13 kroků a záložky, zamčené světy, credit", "done": true }
       ],
-      "commit": "",
-      "build": { "number": null, "runId": null, "result": "" },
+      "commit": "37b93bd",
+      "build": { "number": 68, "runId": 45267001312, "result": "běží" },
       "note": "V kódu aplikace už text „Your subjects“ nebyl (správa se jmenuje „Your focus list“ od F2); pokud ho vidíš, jde o starý build. „Subject“ zbýval jen na webu Privacy/Support."
     }
   ]
