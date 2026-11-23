@@ -539,7 +539,7 @@ private struct MapStopView: View {
 
     private var ring: Color {
         if isSilhouette { return Color.white.opacity(0.22) }
-        switch state {
+        return switch state {
         case .current: FQColor.cta
         case .locked: Color.white.opacity(0.35)
         default: Color.white.opacity(0.85)
