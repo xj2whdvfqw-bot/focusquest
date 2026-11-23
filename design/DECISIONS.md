@@ -3,7 +3,7 @@
 Doplňuje `design/CHANGES.md` (zadání sekcí 0–15) a `design/progress.html` (stav, buildy, co otestovat).
 Tady je to, co v nich není: rozhodnutí, která padla během práce, otevřené body a známé pasti.
 
-Stav k 23. 11. 2026: větev `phase3-duolingo`, poslední zelený build #65; dříve #62 (E1); E1 (opravy z testu po D1) prošel jako build #62; F1 (Habits, mapa, easter eggy) prošel jako build #65; F2 (nový onboarding a coach marks) viz progress.html. Všechny sekce z CHANGES.md
+Stav k 23. 11. 2026: větev `phase3-duolingo`, poslední zelený build #66; dříve #65 (F1); E1 (opravy z testu po D1) prošel jako build #62; F1 (Habits, mapa, easter eggy) prošel jako build #65; F2 (nový onboarding a coach marks) prošel jako build #66. Všechny sekce z CHANGES.md
 a všechny opravy z auditu jsou hotové.
 
 ## 1. Rozhodnutí

@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-23T18:54:30+01:00",
-  "current": "F2: build #66 běží",
-  "nextStep": "Počkat na výsledek buildu #66, při chybě opravit",
+  "updated": "2026-11-23T19:29:21+01:00",
+  "current": "F2 hotovo: build #66 prošel",
+  "nextStep": "Otestovat na iPhonu nový onboarding a tutoriál (Debug › Reset onboarding)",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -767,7 +767,7 @@
     {
       "id": "F2",
       "title": "Nový onboarding a tutoriál s coach marks",
-      "status": "build",
+      "status": "hotovo",
       "items": [
         { "text": "1A Onboarding: vítej (hrdina vs. boss), jak to funguje, jméno, na co si chceš udělat čas (chipy + vlastní), hrdina připnutý nahoře, Ready", "done": true },
         { "text": "1A Jméno v profilu a pozdrav na Home; focus položky ve výběru Focusing; „focus“ místo „study“", "done": true },
@@ -777,8 +777,8 @@
         { "text": "Settings Replay tutorial, Debug Reset onboarding; TipKit odstraněn; notifikace až po první bitvě", "done": true }
       ],
       "commit": "4924f9f",
-      "build": { "number": 66, "runId": 45232622265, "result": "běží" },
-      "note": "Build #66 běží. Body odškrtnuté podle implementace, hotovo až po zeleném buildu."
+      "build": { "number": 66, "runId": 45232622265, "result": "úspěch" },
+      "note": "Build #66 prošel napoprvé (IPA, testy, screenshoty). Stávající hráč s odehranými bitvami onboarding nevidí, spusť ho přes Settings › Debug › Reset onboarding. Na iPhonu otestuj: swipe a zpět v onboardingu, Skip na prvních dvou stránkách, jméno s diakritikou a pozdrav „Hi, …“ na Home, výběr focus položek a vlastní položku (pak ve Fight sheetu), hrdina připnutý nahoře a fade u řad chipů, Start → tutoriál bez bliknutí výřezu, 10 kroků (Fight otevře list, kroky 2–4 v listu, Got it list zavře bez bitvy, záložky jen klepnutím), Skip tutorial, pokračování po zabití appky, Settings › Help › Replay tutorial, Reduce Motion (jen prolnutí), VoiceOver (tlačítko Open), žádost o notifikace až po první vyhrané bitvě."
     }
   ]
 }
