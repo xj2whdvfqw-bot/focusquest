@@ -639,6 +639,9 @@ Shop má od K1 tři záložky: **Gear** (jen vybavení hrdiny), **Backgrounds** 
 - **`GeometryReader` s `.ignoresSafeArea()` hlásí `safeAreaInsets` = 0.** Kdo potřebuje velikost bezpečné zóny
   a zároveň kreslit přes celou obrazovku, potřebuje dva readery: vnější (respektuje safe area) dá `safeAreaInsets`,
   vnitřní s `.ignoresSafeArea()` dá celou plochu (viz `CoachMarkOverlay`). Kvůli tomu byl Skip tutoriálu přes hodiny.
+- **`ImageRenderer` nevykreslí view s materiálem (sklem) vůbec**, ani jeho text a tlačítka (build #77: bublina tutoriálu
+  chyběla celá, ztmavení a Skip ano). Testy s ImageRenderer proto kreslí plnou výplň (`CoachMarkOverlay(plainBubbleForSnapshot:)`,
+  sdílecí karty průhledné výplně).
 - **Cíle tutoriálu nedávat do listů (sheetů).** Overlay je v jiném okně a list se animuje; rámečky prvků v listu
   se hledaly špatně (L1/E1). Tutoriál list nikdy neotevírá.
 - **`containerShape` na iOS 17:**

@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-24T13:06:00+01:00",
-  "current": "L1: build #77 běží",
-  "nextStep": "Počkat na výsledek buildu #77 a opravit případné chyby",
+  "updated": "2026-11-24T13:45:29+01:00",
+  "current": "L1: build #77 spadl na testu vykreslení bubliny, opraveno",
+  "nextStep": "Commit opravy testu a nový build",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -872,7 +872,7 @@
     {
       "id": "L1",
       "title": "Opravy z testu #76: tutoriál, Skip, přechody, Home bez scrollu, Break panel",
-      "status": "build",
+      "status": "spadl",
       "items": [
         { "text": "E1 Tutoriál neotvírá sheety: kroky 2–4 na Home se spotlightem na Fight, pojistka bubliny uprostřed do 1 s, kroky se nepřeskakují, test 13 kroků přes Next", "done": true },
         { "text": "E2 Skip tutorial v safe area vlevo nahoře, ve výšce ozubeného kola, ve všech krocích stejně, nic nepřekrývá", "done": true },
@@ -882,8 +882,8 @@
         { "text": "DECISIONS.md", "done": true }
       ],
       "commit": "809e0f8",
-      "build": { "number": 77, "runId": 45390107611, "result": "běží" },
-      "note": "Kód hotový, čeká na build. Tutoriál už neotevírá Fight sheet (kroky 2–4 na Home u Fight), bublina je vidět vždy (bez cíle do 1 s uprostřed), Skip ve výšce ozubeného kola, Home bez scrollu, Break panel celý v malé výšce + probuzení hrdiny."
+      "build": { "number": 77, "runId": 45390107611, "result": "spadl" },
+      "note": "Build #77: kompilace, IPA i Release prošly, spadl jen nový test vykreslení bubliny (0 žlutých pixelů). Příloha testu ukázala ztmavení, výřez i Skip, ale ne bublinu: ImageRenderer neumí materiály (sklo bubliny), stejně jako u sdílecích karet. V appce se bublina se sklem kreslí (krok 1 byla vidět i dřív). Oprava: test kreslí bublinu s plnou výplní stejného tvaru. Ostatní nové testy (13 kroků přes Next, pojistka 1 s, Skip, Home na SE/17/Pro Max) prošly."
     }
   ]
 }

@@ -529,6 +529,9 @@ fileprivate extension CGRect {
 /// odjedou pruzinou ~0,35 s na novy prvek; zadna prazdna pauza. E1: bublina je videt vzdy, kdyz tutorial bezi;
 /// prvek, ktery se do 1 s nenajde, = bublina uprostred bez vyrezu. Reduce Motion: jen prolnuti.
 struct CoachMarkOverlay: View {
+    /// Jen pro testy: ImageRenderer neumi materialy a bublinu se sklem by vubec nevykreslil
+    /// (stejne jako u sdilecich karet). V testu ma bublina plnou tmavou vyplen stejneho tvaru.
+    var plainBubbleForSnapshot = false
     @Environment(CoachMarkStore.self) private var coach
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// Plocha overlaye zmerena v body (pro sledovani prvku mimo body).
@@ -605,8 +608,7 @@ struct CoachMarkOverlay: View {
                 .transition(.opacity)
         }
         .frame(width: layout.bubble.width, alignment: .topLeading)
-        // Stejne sklo jako vysledky bitvy a karty v Shop › Backgrounds (2B).
-        .fqGlassPanel(radius: FQRadius.smallCard)
+        .modifier(CoachBubbleSurface(plain: plainBubbleForSnapshot))
         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { bubbleHeight = $0 }
         .accessibilityElement(children: .contain)
         .accessibilityFocused($bubbleFocused)
@@ -712,6 +714,23 @@ struct CoachMarkOverlay: View {
     private func apply(_ new: CoachLayout) {
         if let layout, layout.isClose(to: new) { return }
         withAnimation(moveAnimation) { layout = new }
+    }
+}
+
+/// Povrch bubliny: stejne sklo jako vysledky bitvy a karty v Shop › Backgrounds (2B).
+/// `plain` = plna tmava vypln stejneho tvaru pro testy s ImageRenderer (neumi materialy).
+struct CoachBubbleSurface: ViewModifier {
+    let plain: Bool
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if plain {
+            content
+                .background(Color(red: 22 / 255, green: 20 / 255, blue: 34 / 255),
+                            in: RoundedRectangle(cornerRadius: FQRadius.smallCard, style: .continuous))
+        } else {
+            content.fqGlassPanel(radius: FQRadius.smallCard)
+        }
     }
 }
 

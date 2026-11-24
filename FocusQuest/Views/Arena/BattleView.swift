@@ -1346,7 +1346,7 @@ private struct RestingHeroScene: View {
                     ZStack(alignment: .topTrailing) {
                         HeroAvatarView(appearance: hero, heroClass: heroClass, size: 72)
                             // Spanek = pomale dychani; probuzeni = protazeni a poskok.
-                            .scaleEffect(x: wake.stretchX, y: awake ? wake.stretchY : 1 + 0.02 * sin(t * 1.6), anchor: .bottom)
+                            .scaleEffect(x: wake.stretchX, y: awake ? wake.stretchY : CGFloat(1 + 0.02 * sin(t * 1.6)), anchor: .bottom)
                             .offset(y: -wake.hop)
                         ForEach(0..<3, id: \.self) { index in
                             let phase = (t * 0.45 + Double(index) / 3).truncatingRemainder(dividingBy: 1)

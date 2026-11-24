@@ -128,8 +128,11 @@ final class CoachMarkTests: XCTestCase {
             store.screen = step.screen
             for withTarget in [true, false] {
                 store.setFramesForTesting(withTarget ? frames : [:])
-                let renderer = ImageRenderer(content: CoachMarkOverlay()
+                // ImageRenderer neumi materialy: bublina se sklem by se nevykreslila vubec (build #77),
+                // proto plna vypln stejneho tvaru. Overlay je v appce vzdy tmavy (okno .dark).
+                let renderer = ImageRenderer(content: CoachMarkOverlay(plainBubbleForSnapshot: true)
                     .environment(store)
+                    .environment(\.colorScheme, .dark)
                     .frame(width: space.size.width, height: space.size.height))
                 renderer.scale = 1
                 let image = try XCTUnwrap(renderer.uiImage, "\(step): nothing rendered")
@@ -137,7 +140,9 @@ final class CoachMarkTests: XCTestCase {
                 let yellow = try yellowPixels(in: image, outside: hole)
                 XCTAssertGreaterThan(yellow, 400, "\(step) \(withTarget ? "with" : "without") target: no Next button visible")
                 rendered += 1
-                if step == .battle && withTarget { attach(image, name: "coach-\(step)") }
+                if (step == .battle && withTarget) || (step == .settings && !withTarget) {
+                    attach(image, name: "coach-\(step)-\(withTarget ? "target" : "centered")")
+                }
             }
             store.next(from: step)
         }
