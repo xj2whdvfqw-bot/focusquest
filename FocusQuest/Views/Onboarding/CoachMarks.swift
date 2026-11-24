@@ -20,11 +20,13 @@ enum CoachTarget: String, Hashable, Sendable {
     case focusing, sound, start
     /// M1/F2: karta hrdiny nahore na zalozce Hero.
     case heroCard
+    /// P1/I6: cedule stanku v Shopu (Gear, Backgrounds, Supplies).
+    case shopStall
 
     /// Zaobleni vyrezu kolem karet a tlacitka Start; nil = kulaty vyrez (kapsle, kruh).
     var cornerRadius: CGFloat? {
         switch self {
-        case .habits, .statNumbers, .dailyTarget, .heroCard, .focusing, .sound: 20
+        case .habits, .statNumbers, .dailyTarget, .heroCard, .focusing, .sound, .shopStall: 20
         // Start Battle ma rohy soustredne s displejem; vyrez je o odsazeni vetsi.
         case .start: FQRadius.sheetBottomButton + CoachMetrics.holePadding
         default: nil
@@ -81,7 +83,8 @@ enum CoachStep: Int, CaseIterable, Sendable {
         case .quick: .quick
         case .streak: .streak
         case .path: .tabPath
-        case .shop: .tabShop
+        // P1/I6: spotlight na cedule stanku (driv ikona v liste).
+        case .shop: .shopStall
         case .stats: .tabStats
         case .habits: .habits
         case .statNumbers: .statNumbers
@@ -135,7 +138,7 @@ enum CoachStep: Int, CaseIterable, Sendable {
         case .quick: "Start with just 5 minutes. Small wins still count."
         case .streak: "Focus a little every day to keep the flame going."
         case .path: "Worlds full of bosses wait on the map. Each win moves you along the path."
-        case .shop: "Coins from battles buy gear for your hero, backgrounds and supplies like streak freezes."
+        case .shop: "Coins from battles buy gear, backgrounds and supplies. Tap a sign to switch, tap an item to try it on."
         case .stats: "Focus time, streaks and habits live on this tab."
         case .habits: "Each square is one day, starting from your first day: rows are Monday to Sunday, every week adds a column. Today has a white frame, and brighter squares mean more focus."
         case .statNumbers: "Win rate is the share of battles you won, next to bosses beaten. Longest streak counts days in a row, focus hours add up all your time."

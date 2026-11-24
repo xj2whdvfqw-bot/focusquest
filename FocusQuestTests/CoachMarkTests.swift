@@ -44,6 +44,8 @@ final class CoachMarkTests: XCTestCase {
             .streak: CGRect(x: 16, y: contentTop + CoachMetrics.skipClearance + 56 + 16, width: 130, height: 64),
             .tabPath: tab(1),
             .tabShop: tab(2),
+            // P1/I6: cedule pod stankem v Shopu (pod hlavickou, striskou a hrdinou).
+            .shopStall: CGRect(x: 16, y: contentTop + 44 + 8 + 33 + 136 + 15, width: width - 32, height: 66),
             .tabStats: tab(3),
             .tabHero: tab(4),
             .gear: CGRect(x: width - 60, y: contentTop, width: 44, height: 44),

@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-24T20:06:00+01:00",
-  "current": "O1: build #82 běží; začíná P1 (obchod jako kupecký stánek)",
-  "nextStep": "Počkat na build #82 (O1); souběžně psát P1 (I1–I6)",
+  "updated": "2026-11-24T20:15:00+01:00",
+  "current": "P1 (I1–I6 obchod jako kupecký stánek): kód hotový, commit a build; O1 build #82 běží",
+  "nextStep": "Commitnout P1, pustit build #83, počkat na #82 a #83",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -924,11 +924,28 @@
         { "text": "H2 Zvuk odměny (mince, XP, `reward-chime.mp3`) na 37 % (asi −8,6 dB), ostatní efekty beze změny", "done": true },
         { "text": "H3 Třídy bez pokrývek hlavy: Warrior sekera + nárameník, Mage hůl + krátký plášť, Archer luk + toulec, Rogue dýka + šátek", "done": true },
         { "text": "H3 Pokrývky z obchodu s maskou účesu (Long jen pramínky, Spiky/Mohawk schované, Short/Bald podle tvaru); test 4 třídy × 5 účesů × 3 pokrývky", "done": true },
-        { "text": "DECISIONS.md", "done": false }
+        { "text": "DECISIONS.md", "done": true }
       ],
       "commit": "c950f6c",
       "build": { "number": 82, "runId": 45466069265, "result": "běží" },
       "note": "Build #82 běží."
+    },
+    {
+      "id": "P1",
+      "title": "Obchod jako pixelový kupecký stánek (I1–I6)",
+      "status": "pracuje",
+      "items": [
+        { "text": "I1 Stánek: pruhovaná stříška, sloupky, okno s oblohou a krajinou, hrdina velký na podstavci; mince vpravo nahoře; try-on s poskokem a jiskrami (ne u nasazené věci)", "done": true },
+        { "text": "I2 Cedule Gear / Backgrounds / Supplies na řetízcích s pixelovou ikonou; aktivní světlejší a zhoupne se; klik a vibrace", "done": true },
+        { "text": "I3 Gear na dřevěných policích jako sprity, cenovky na provázku (Owned, hvězdička u nasazené), panel Buy · 150 / Equip / Unequip / Need N more, cedulky skupin", "done": true },
+        { "text": "I4 Backgrounds jako obrazy v pixelových rámech na stěně, karusel se snapem, živý náhled jen v okně stánku, visačka Free/cena, Use / In use / cena; odchod vrátí používané pozadí", "done": true },
+        { "text": "I5 Supplies na pultu: přesýpací hodiny a ledový krystal (animované), odznak ×2, limit 2 / 5, popis v panelu s Buy · 40", "done": true },
+        { "text": "I6 Reduce Motion, Dynamic Type (zkrácení/zmenšení štítků), VoiceOver u každé věci; krok tutoriálu Shop míří na cedule; test vykreslení na SE a Pro Max", "done": true },
+        { "text": "DECISIONS.md", "done": true }
+      ],
+      "commit": null,
+      "build": { "number": null, "runId": null, "result": null },
+      "note": "Kód hotový, build ještě neběžel."
     }
   ]
 }

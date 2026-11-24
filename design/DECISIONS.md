@@ -3,7 +3,7 @@
 Doplňuje `design/CHANGES.md` (zadání sekcí 0–15) a `design/progress.html` (stav, buildy, co otestovat).
 Tady je to, co v nich není: rozhodnutí, která padla během práce, otevřené body a známé pasti.
 
-Stav k 24. 11. 2026: větev `phase3-duolingo`; N1 (G1: plynulé přechody tutoriálu, A na stejné obrazovce v jedné animaci, B při změně obrazovky se schováním a objevením na stabilním cíli) prošel jako build #81. Předtím M1 (tutoriál: kroky 2–4 v otevřeném Fight setupu, cíle měřené v `.global`, Hero ve dvou krocích, celkem 14) prošel jako build #80, viz progress.html. Předtím L1 (opravy E1–E5 po testu #76: Skip v safe area, plynulé přechody, Home bez scrollu, Break panel) prošel jako build #79. Předtím zelený build #76 (K1: onboarding karta, tutoriál ve vlastním okně, Shop Supplies, sdílecí karty, zvuky) a #74 (J1: Habits, widget, freeze, Focus, zkratky, úkoly, poznámky, příprava iCloud); dříve #70 (I1), #69 (H1), #67 (G1); dříve #65 (F1); E1 (opravy z testu po D1) prošel jako build #62; F1 (Habits, mapa, easter eggy) prošel jako build #65; F2 (nový onboarding a coach marks) prošel jako build #66. Všechny sekce z CHANGES.md
+Stav k 24. 11. 2026: větev `phase3-duolingo`; P1 (I1–I6: obchod jako pixelový kupecký stánek s cedulemi, policemi, obrazy a pultem) a O1 (H1–H3: footer a hlavička Settings, tišší odměna, třídy bez pokrývek hlavy s maskou účesu), stav buildů v progress.html. Předtím N1 (G1: plynulé přechody tutoriálu, A na stejné obrazovce v jedné animaci, B při změně obrazovky se schováním a objevením na stabilním cíli) prošel jako build #81. Předtím M1 (tutoriál: kroky 2–4 v otevřeném Fight setupu, cíle měřené v `.global`, Hero ve dvou krocích, celkem 14) prošel jako build #80, viz progress.html. Předtím L1 (opravy E1–E5 po testu #76: Skip v safe area, plynulé přechody, Home bez scrollu, Break panel) prošel jako build #79. Předtím zelený build #76 (K1: onboarding karta, tutoriál ve vlastním okně, Shop Supplies, sdílecí karty, zvuky) a #74 (J1: Habits, widget, freeze, Focus, zkratky, úkoly, poznámky, příprava iCloud); dříve #70 (I1), #69 (H1), #67 (G1); dříve #65 (F1); E1 (opravy z testu po D1) prošel jako build #62; F1 (Habits, mapa, easter eggy) prošel jako build #65; F2 (nový onboarding a coach marks) prošel jako build #66. Všechny sekce z CHANGES.md
 a všechny opravy z auditu jsou hotové.
 
 ## 1. Rozhodnutí
@@ -167,7 +167,9 @@ a všechny opravy z auditu jsou hotové.
     | Magic Staff, Mage | zářící koule se stopou, záblesk |
     | Archer | pixelový šíp |
     | Rogue | dvě rychlá bodnutí dýkou |
-    | Warrior bez meče | výpad se štítem |
+    | Warrior (sekera, od O1/H3) | švih sekerou (jako meč) |
+
+    `HeroAttack.bash` (výpad se štítem) od O1/H3 nic nepoužívá; Warrior nemá štít.
 
   - **Srdíčka místo HP čáry** (od I1, `BossHearts`, `BossHeartsView`): pixelová srdíčka 8 × 7, počet podle obtížnosti
     (Novice 3, Adept 4, Elite 5, Mythic 6), každé má 4 čtvrtky (vlevo nahoře, vpravo nahoře, vpravo dole, vlevo dole;
@@ -268,11 +270,54 @@ a všechny opravy z auditu jsou hotové.
     ohně se jen prolnou. VoiceOver: tlačítko „Your hero sleeps by the fire“ s nápovědou „Wakes your hero up“.
   - Pod výsledkem se karta bitvy schová, aby neprosvítala (dřív bylo vidět „Begin Battle“).
   - Karta se objeví pružinou (0,92 → 1), s Reduce Motion jen prolnutím.
-- **Shop nemá velké pixelové nadpisy** („Gear up“, „Change the scenery“ jsou pryč). Hlavička je kompaktní:
-  malý štítek „Shop“, mince, ozubené kolo, záložky Gear/Backgrounds a u Gear menší náhled hrdiny.
+- **Třídy nemají pokrývku hlavy, účes je vždy celý vidět** (od O1/H3, `AvatarSprite.classMarks`). Helma Warriora,
+  kapuce Archera a kápě Roguea jsou pryč. Třídu odliší zbraň + doplněk: Warrior sekera (pravá ruka) + kovový
+  nárameník, Mage hůl s fialovým kamenem + krátký plášť, Archer luk + toulec s šípy na zádech, Rogue dýka + šátek
+  přes pusu. Zbraň třídy (slot weapon) ustoupí zbrani z obchodu, doplněk zůstává.
+  - **Pokrývky hlavy jsou jen z obchodu** a každá definuje masku účesu (`EquipmentItem.hairBrimRow`,
+    `AvatarSprite.hairRows`): vlasy do okraje pokrývky a pod jejími pixely se schovají; Long nechá jen pramínky
+    po stranách pod okrajem, Spiky a Mohawk se schovají celé, Short a Bald podle tvaru. Vlasy nikdy netrčí přes pokrývku.
+  - Testy: `testClassesWearNoHeadwearAndHairIsAlwaysWhole` a `testHeadwearMasksEveryHairstyleForEveryClass`
+    (4 třídy × 5 účesů × 3 pokrývky); onboarding „Create your hero“ kreslí stejné vrstvy (`HeroAvatarView`).
+- **Shop je pixelový kupecký stánek** (od P1/I, `ShopView.swift` + `ShopStallArt.swift`; ruší seznam karet, podtržené
+  záložky, náhled hrdiny v kartě a Preview pozadí přes celou appku). Vše je kreslené po pixelech (Canvas, mřížky znaků,
+  pixel stánku 3 body) stejně jako sprity; žádné cizí assety, žlutá jen pro hlavní akci, žádná tyrkysová ani systémová modrá.
+  - **Hlavička (připnutá)**: štítek „Shop“, mince (pixelová mince + číslo) a ozubené kolo; pod nimi stánek: pruhovaná
+    stříška (žlutá a krémová, obloučky), dřevěné sloupky, v okně mezi nimi obloha a krajina (`StallScene`: scéna pozadí
+    zmenšená na šířku okna, horizont dole, 12 snímků/s, s Reduce Motion stojí), hrdina velký (104 bodů, na nízkém
+    displeji pod 640 bodů 76) na kamenném podstavci, pod stánkem pult (prkno), z něj visí cedule.
+  - **Cedule** (I2): Gear / Backgrounds / Supplies jako dřevěné desky na dvou řetízcích s pixelovou ikonou (meč, obraz,
+    lahvička) a nápisem. Aktivní je světlejší se zlatým lemem a při výběru se zhoupne (keyframe kolem horní hrany;
+    Reduce Motion bez zhoupnutí). Klik a vibrace výběru přes `FQFeedback`.
+  - **Gear na policích** (I3): skupiny (Helmets & hats, Weapons, Boots, Gadgets) mají malou dřevěnou cedulku nad
+    policí; věci stojí na prkně jen jako sprity (`ItemSprite`: vrstvy předmětu oříznuté na obrys, pixel 3–6 bodů),
+    pod prknem visí papírová cenovka na provázku (pixelová mince + cena, vlastněné „Owned“), nasazená věc má hvězdičku
+    a bílou záři, vybraná žlutou záři a zvedne se o 4 body. Klepnutí = hrdina si věc hned vyzkouší (poskok a 8 jisker,
+    ne když ji už má nasazenou) a dole vyjede kompaktní panel (sklo `fqGlassPanel`): název, popis, žluté
+    „Buy · 150“ / žluté „Equip“ / vedlejší „Unequip“, bez mincí šedé „Need 40 more“. Panel zavře druhé klepnutí na věc,
+    tah dolů nebo VoiceOver escape (žádný křížek); přepnutí cedule nebo odchod ze Shopu ho zavře i se zkoušením.
+  - **Backgrounds jako obrazy na zadní stěně** (I4): stěna ze svislých prken, obrazy v pixelovém zlatém rámu
+    (`PixelFrame`, `PaintingScene`), vodorovný karusel se snapem na střed (`scrollTargetBehavior(.viewAligned)`,
+    `scrollPosition(id:)`), sousední obrazy zmenšené na 0,8 vykukují po stranách. Visačka na rámu: „Free“, cena
+    nebo „Owned“; používaný obraz má hvězdičku. Vycentrovaný obraz se plynule prolne do okna stánku (živý náhled),
+    celá appka ani lišta se nepřepínají (`previewBackground` Shop už nenastavuje). Pod obrazem název, popis a žluté
+    „Use“ / šedé „In use“ / žluté „Buy · N“ / „Need N more“. Odchod ze Shopu nebo přepnutí cedule vrátí do okna
+    používané pozadí.
+  - **Supplies na pultu** (I5): dřevěný pult s přední stěnou; Extra pause = přesýpací hodiny (písek se přesýpá
+    ve 4 fázích), Streak freeze = ledový krystal (třpyt), s Reduce Motion stojí. Odznak „×2“ u předmětu, na přední
+    stěně pultu název a limit „2 / 5“. Popis až v panelu (stejný jako u Gear) s „Buy · 40“ / „Need N more“ /
+    „You hold the maximum of 5“.
+  - **Kvalita** (I6): VoiceOver u každé věci název, stav (cena, Owned, Equipped, In use, počet) a nápověda; cenovky,
+    cedule a popisky mají `lineLimit(1)` + `minimumScaleFactor`, takže je velké písmo nerozbije. Test
+    `ShopStallTests` vykreslí stánek ve skutečném okně na SE i Pro Max s největším písmem a Reduce Motion.
 - **Připnutá hlavička (`pinnedTopHeader`)**: přechod do průhledna (24 pt) je součástí odsazení obsahu,
   takže na začátku nic nepodjíždí pod hlavičku. Dřív přesahoval 60 pt a zakrýval nadpis první sekce.
 - **Settings nemají tlačítko Done**, zavírá se jen tahem dolů (VoiceOver gestem escape).
+- **Footer Settings na střed** (od O1/H1): „FocusQuest version …“, odkazy a credit na středu se stejnými odstupy (8 bodů).
+  Privacy Policy · Terms of Use · Support jsou `.footnote` na jednom řádku a žádný se nezalomí; když se nevejdou
+  (úzký iPhone, velké písmo), `ViewThatFits` je dá pod sebe, každý na střed.
+- **Hlavička Settings má pozadí** (od O1/H1): `toolbarBackground(.bar)` + `.visible` na všech stránkách Settings
+  (`settingsScrollEdges`), na iOS 26 nahoře tvrdý okraj, dole dál měkký. Dřív se velký nadpis při rolování kreslil přes obsah.
 - **Skeletony místo spinnerů**: pro načítání obsahu se používá skeleton ve tvaru obsahu (redacted + jemný lesk),
   ne `ProgressView`. Teď se v appce nic nenačítá (všechna data jsou v telefonu), takže žádný skeleton zatím není.
   Jediné kolečko je u Reset progress a to značí probíhající akci, ne načítání.
@@ -315,6 +360,8 @@ a všechny opravy z auditu jsou hotové.
   - **síla haptiky** Light / Medium / Strong (segmented control pod přepínačem Haptics, `hapticStrength`) platí pro celou appku
     (`FQFeedback` i `HapticEngineService`, násobek 0,5 / 0,8 / 1); „Try it“ přehraje zvolenou sílu,
   - tap = nahrávka `tap-click.mp3`, mince a XP = `reward-chime.mp3` (viz Zvuky a licence níž); ostatní efekty jsou syntetické tóny (`EffectSounds`),
+  - **odměna hraje na 37 %** (od O1/H2, `EffectSounds.Effect.gain`, asi −8,6 dB): nahrávka `reward-chime.mp3` byla výrazně
+    hlasitější než ostatní efekty; násobí se s posuvníkem Effects volume (i v ukázce v Settings), ostatní efekty 100 %,
   - efekty mimo bitvu hrají přes audio session `.ambient`: respektují přepínač ticha a nepřeruší hudbu z jiných appek;
     hudba bitvy zůstává `.playback` s `mixWithOthers` a po bitvě se session vrací na `.ambient`,
   - v uložených datech zůstávají klíče `isSFXEnabled` (= Tap sounds) a `isAchievementSoundEnabled` (= Reward sounds);
@@ -454,7 +501,7 @@ a všechny opravy z auditu jsou hotové.
   | 4 | Fight setup: Start Battle + animace telefonu | po Start telefon dolů, zvednutí = útěk za 10 s, pauza zdarma; Next panel zavře |
   | 5 | Home: odkaz „Not feeling it? Just 5 minutes“ (jen text, ne celý řádek) | |
   | 6 | Home: plamínek série | |
-  | 7–9 | lišta: Path, Shop (gear, pozadí, supplies), Stats, každý na své záložce | záložku přepne tutoriál |
+  | 7–9 | lišta: Path a Stats; Shop (od P1/I6) cedule stánku (`CoachTarget.shopStall`); každý na své záložce | záložku přepne tutoriál |
   | 10 | Stats: graf Habits (čtverečky = dny od prvního dne, řádky Po–Ne, dnešek s rámečkem, barva = minuty) | |
   | 11 | Stats: Win rate, Bosses beaten, Longest streak, Focus hours | |
   | 12 | Hero: karta hrdiny nahoře („Your hero“) | vzhled (štětec = úprava), level a XP |
