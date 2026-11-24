@@ -533,16 +533,18 @@ final class ProgressionModelTests: XCTestCase {
         XCTAssertFalse(preferences.isDailyReminderEnabled)
         XCTAssertTrue(preferences.isBattleDoneNotificationEnabled)
         XCTAssertTrue(preferences.isBreakOverNotificationEnabled)
-        // Stary spolecny prepinac "Tap and battle sounds" byl vypnuty: vypnute jsou klepnuti i bitva.
-        XCTAssertFalse(preferences.isBattleSoundEnabled)
+        // K1/D6: Battle sounds bez rucniho prepnuti maji vychozi stav (zapnuto), i u starsich dat.
+        XCTAssertTrue(preferences.isBattleSoundEnabled)
         XCTAssertEqual(preferences.effectsVolume, 0.8)
-        XCTAssertEqual(preferences.soundEffectsOnCount, 2)
+        XCTAssertEqual(preferences.soundEffectsOnCount, 3)
     }
 
     func testSplitSoundTogglesRoundTrip() throws {
         var preferences = AppPreferences()
         preferences.isSFXEnabled = true
+        // Prepinac v Nastaveni vzdy zapise i isBattleSoundUserSet.
         preferences.isBattleSoundEnabled = false
+        preferences.isBattleSoundUserSet = true
         preferences.isAchievementSoundEnabled = false
         preferences.effectsVolume = 0.35
         let decoded = try JSONDecoder().decode(AppPreferences.self, from: JSONEncoder().encode(preferences))
