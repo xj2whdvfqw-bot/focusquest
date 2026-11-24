@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-24T21:15:00+01:00",
-  "current": "Build #85 běží pro O1 i P1",
-  "nextStep": "Počkat na build #85; při pádu opravit a pustit znovu",
+  "updated": "2026-11-24T21:47:00+01:00",
+  "current": "O1 a P1 hotovo: build #85 prošel",
+  "nextStep": "Otestovat na iPhonu: footer a hlavička Settings, hlasitost odměny, hrdina bez pokrývek hlavy a s klobouky z obchodu, celý nový Shop (stánek, cedule, police, obrazy, pult) na SE i Pro Max",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -917,7 +917,7 @@
     {
       "id": "O1",
       "title": "Settings footer, tišší odměna, účesy vs. pokrývky hlavy (H1–H3)",
-      "status": "build",
+      "status": "hotovo",
       "items": [
         { "text": "H1 Footer Settings na střed: verze, odkazy Privacy Policy · Terms of Use · Support na jednom řádku (.footnote, bez zalomení), na úzkém displeji pod sebou; credit na střed, stejné odstupy", "done": true },
         { "text": "H1 Hlavička „Settings“ má pozadí (materiál jako systémová navigace), obsah pod ní mizí", "done": true },
@@ -927,13 +927,13 @@
         { "text": "DECISIONS.md", "done": true }
       ],
       "commit": "c950f6c",
-      "build": { "number": 85, "runId": 45478252874, "result": "běží" },
-      "note": "Build #82 zrušen (start #83, `cancel-in-progress`), #83 spadl na překladu testu P1, #84 spadl jen na jednom testu P1 (text tutoriálu). Testy O1 (účesy, pokrývky, hlasitost odměny) prošly. Ověří build #85."
+      "build": { "number": 85, "runId": 45478252874, "result": "úspěch" },
+      "note": "Build #85 prošel (IPA, Release, 130 testů). #82 zrušen startem #83 (`cancel-in-progress`), #83 a #84 spadly jen na testech P1. Na iPhonu otestuj: Settings dole – verze, odkazy Privacy Policy · Terms of Use · Support na jednom řádku na středu (Terms of Use se nezalomí; s velkým písmem pod sebou), credit na středu; při rolování Settings obsah mizí pod hlavičkou a nadpis se nekreslí přes řádky. Hlasitost: Settings › Sounds & haptics › Reward sounds › Try it – mince a XP mají být zhruba stejně hlasité jako ostatní efekty (kdyby byly pořád moc hlasité nebo moc tiché, napiš, upraví se `rewardGain` 0,37). Hrdina: žádná třída nemá helmu ani kapuci, účes je celý vidět; Warrior sekera + nárameník, Mage hůl + krátký plášť, Archer luk + toulec, Rogue dýka + šátek; v obchodě vyzkoušej Viking Helmet, Wizard Hat a Royal Crown s účesy Long (jen pramínky po stranách), Spiky a Mohawk (schované) a Short; Warrior v bitvě útočí švihem sekery; onboarding Create your hero."
     },
     {
       "id": "P1",
       "title": "Obchod jako pixelový kupecký stánek (I1–I6)",
-      "status": "build",
+      "status": "hotovo",
       "items": [
         { "text": "I1 Stánek: pruhovaná stříška, sloupky, okno s oblohou a krajinou, hrdina velký na podstavci; mince vpravo nahoře; try-on s poskokem a jiskrami (ne u nasazené věci)", "done": true },
         { "text": "I2 Cedule Gear / Backgrounds / Supplies na řetízcích s pixelovou ikonou; aktivní světlejší a zhoupne se; klik a vibrace", "done": true },
@@ -944,8 +944,8 @@
         { "text": "DECISIONS.md", "done": true }
       ],
       "commit": "2f42092",
-      "build": { "number": 85, "runId": 45478252874, "result": "běží" },
-      "note": "Build #84: jediný pád `testTutorialHasFourteenStepsInUsageOrder`: nový text kroku Shop říkal „Tap a sign…“, ale texty tutoriálu nesmí vyzývat ke klepnutí (prvky v tutoriálu nereagují). Text přepsán bez „Tap“. Ostatní testy včetně `ShopStallTests` prošly."
+      "build": { "number": 85, "runId": 45478252874, "result": "úspěch" },
+      "note": "Build #85 prošel (130 testů včetně `ShopStallTests`: sprity, karusel, krok tutoriálu, vykreslení na SE a Pro Max s největším písmem). #83 spadl na překladu testu (Reduce Motion v prostředí jen pro čtení), #84 na textu kroku Shop („Tap“ v tutoriálu nesmí být). Vzhled ověří až iPhone. Otestuj: stánek nahoře (stříška, sloupky, krajina za hrdinou, hrdina na podstavci, mince vpravo nahoře); tři cedule na řetízcích, aktivní světlejší a zhoupne se, klik a vibrace; Gear – police se sprity a cenovkami, klepnutí = hrdina si věc vyzkouší s poskokem a jiskrami (ne u nasazené), dole panel Buy · cena / Equip / Unequip / Need N more, zavření druhým klepnutím nebo tahem dolů; Backgrounds – obrazy v rámech, swipe se snapem, sousední vykukují, krajina za stánkem se prolne na vycentrovaný obraz, celá appka se nemění, Use / In use / cena, po odchodu z obchodu se vrátí používané; Supplies – přesýpací hodiny a krystal na pultu, ×počet, limit, Buy · 40 v panelu; Reduce Motion (bez poskoku, zhoupnutí a animací spritů); velké písmo (štítky se zmenší, nerozbijí); VoiceOver čte název, cenu a stav; tutoriál krok 8 zvýrazní cedule. Na SE je stánek menší (hrdina 76 bodů); kdyby bylo pod stánkem málo místa nebo se karusel nevešel, napiš."
     }
   ]
 }
