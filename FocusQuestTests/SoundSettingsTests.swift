@@ -1,19 +1,24 @@
 import XCTest
 @testable import FocusQuest
 
-/// Zvuky a haptika: Battle sounds vychozi vypnute, sila haptiky a nove skladby.
+/// Zvuky a haptika: vse vychozi zapnute (K1/D6), sila haptiky a nove skladby.
 final class SoundSettingsTests: XCTestCase {
-    func testBattleSoundsAreOffByDefault() {
-        XCTAssertFalse(AppPreferences().isBattleSoundEnabled)
-        XCTAssertFalse(AppPreferences().isBattleSoundUserSet)
+    func testAllSoundsAndHapticsAreOnByDefault() {
+        let preferences = AppPreferences()
+        XCTAssertTrue(preferences.isBattleSoundEnabled)
+        XCTAssertTrue(preferences.isSFXEnabled, "Tap sounds")
+        XCTAssertTrue(preferences.isHapticsEnabled)
+        XCTAssertTrue(preferences.isAchievementSoundEnabled)
+        XCTAssertTrue(preferences.isAlarmSoundEnabled)
+        XCTAssertFalse(preferences.isBattleSoundUserSet)
     }
 
-    /// Starsi instalace mely Battle sounds vychozi zapnute; dokud je hrac sam neprepnul, jsou ted vypnute.
-    func testExistingUsersWhoNeverToggledBattleSoundsStartWithThemOff() throws {
-        let legacy = Data(#"{"isHapticsEnabled":true,"isMusicEnabled":true,"isSFXEnabled":true,"isBattleSoundEnabled":true}"#.utf8)
-        let preferences = try JSONDecoder().decode(AppPreferences.self, from: legacy)
-        XCTAssertFalse(preferences.isBattleSoundEnabled)
-        XCTAssertTrue(preferences.isSFXEnabled)
+    /// Ulozena data bez rucniho prepnuti dostanou vychozi stav (zapnuto); rucni vypnuti plati.
+    func testBattleSoundsFollowTheDefaultUntilTheUserTogglesThem() throws {
+        let untouched = Data(#"{"isHapticsEnabled":true,"isMusicEnabled":true,"isSFXEnabled":true,"isBattleSoundEnabled":false}"#.utf8)
+        XCTAssertTrue(try JSONDecoder().decode(AppPreferences.self, from: untouched).isBattleSoundEnabled)
+        let switchedOff = Data(#"{"isHapticsEnabled":true,"isMusicEnabled":true,"isSFXEnabled":true,"isBattleSoundEnabled":false,"isBattleSoundUserSet":true}"#.utf8)
+        XCTAssertFalse(try JSONDecoder().decode(AppPreferences.self, from: switchedOff).isBattleSoundEnabled)
     }
 
     func testManuallyEnabledBattleSoundsSurviveARoundTrip() throws {

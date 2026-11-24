@@ -180,9 +180,10 @@ struct AppPreferences: Codable, Equatable, Sendable {
     var lastBossID: String?
     /// Predmety hrace v pevnem poradi (poradi cipu ve Fight sheetu), vcetne skrytych a smazanych.
     var subjects: [SubjectEntry] = StudySubject.defaults.map { SubjectEntry(subject: $0) }
-    /// Battle sounds: utok, zasah, vitezstvi, utek bosse a konec prestavky. Vychozi stav je vypnuto.
-    var isBattleSoundEnabled = false
-    /// Hrac Battle sounds sam prepnul. Dokud ne, zustavaji vypnute i u starsich instalaci.
+    /// Battle sounds: utok, zasah, vitezstvi, utek bosse a konec prestavky. Vychozi stav je zapnuto (K1/D6,
+    /// rusi drivejsi "vychozi vypnuto"): vsechny zvuky i haptika jsou zapnute, kdo nechce, vypne si je.
+    var isBattleSoundEnabled = true
+    /// Hrac Battle sounds sam prepnul. Dokud ne, plati vychozi stav (zapnuto).
     var isBattleSoundUserSet = false
     /// Sila vibraci v cele appce.
     var hapticStrength: HapticStrength = .medium
@@ -300,10 +301,12 @@ extension AppPreferences {
         isBattleDoneNotificationEnabled = (try? container.decodeIfPresent(Bool.self, forKey: .isBattleDoneNotificationEnabled)) ?? fallback.isBattleDoneNotificationEnabled
         isBreakOverNotificationEnabled = (try? container.decodeIfPresent(Bool.self, forKey: .isBreakOverNotificationEnabled)) ?? fallback.isBreakOverNotificationEnabled
         isStreakReminderEnabled = (try? container.decodeIfPresent(Bool.self, forKey: .isStreakReminderEnabled)) ?? fallback.isStreakReminderEnabled
-        // Battle sounds jsou vychozi vypnute. Ulozena hodnota plati jen tehdy, kdyz je hrac sam prepnul;
-        // starsi instalace (drive vychozi zapnuto, nebo prevzato z "Tap and battle sounds") zacnou vypnute.
+        // K1/D6: Battle sounds jsou vychozi zapnute. Ulozena hodnota plati jen tehdy, kdyz je hrac sam prepnul;
+        // jinak plati vychozi stav (bez migrace: drive vynucene "vypnuto" se tim samo vrati na zapnuto).
         isBattleSoundUserSet = (try? container.decodeIfPresent(Bool.self, forKey: .isBattleSoundUserSet)) ?? false
-        isBattleSoundEnabled = isBattleSoundUserSet && ((try? container.decodeIfPresent(Bool.self, forKey: .isBattleSoundEnabled)) ?? false)
+        isBattleSoundEnabled = isBattleSoundUserSet
+            ? ((try? container.decodeIfPresent(Bool.self, forKey: .isBattleSoundEnabled)) ?? fallback.isBattleSoundEnabled)
+            : fallback.isBattleSoundEnabled
         hapticStrength = (try? container.decodeIfPresent(HapticStrength.self, forKey: .hapticStrength)) ?? fallback.hapticStrength
         debugUnlockAllWorlds = (try? container.decodeIfPresent(Bool.self, forKey: .debugUnlockAllWorlds)) ?? false
         effectsVolume = min(1, max(0, (try? container.decodeIfPresent(Double.self, forKey: .effectsVolume)) ?? fallback.effectsVolume))

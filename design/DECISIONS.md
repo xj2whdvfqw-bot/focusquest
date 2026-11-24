@@ -3,7 +3,7 @@
 Doplňuje `design/CHANGES.md` (zadání sekcí 0–15) a `design/progress.html` (stav, buildy, co otestovat).
 Tady je to, co v nich není: rozhodnutí, která padla během práce, otevřené body a známé pasti.
 
-Stav k 23. 11. 2026: větev `phase3-duolingo`, poslední zelený build #74 (J1: Habits, widget, freeze, Focus, zkratky, úkoly, poznámky, příprava iCloud); dříve #70 (I1), #69 (H1), #67 (G1); dříve #65 (F1); E1 (opravy z testu po D1) prošel jako build #62; F1 (Habits, mapa, easter eggy) prošel jako build #65; F2 (nový onboarding a coach marks) prošel jako build #66. Všechny sekce z CHANGES.md
+Stav k 24. 11. 2026: větev `phase3-duolingo`; K1 (opravy D1–D6: onboarding karta, tutoriál ve vlastním okně, Shop Supplies, sdílecí karty, zvuky) je v buildu, viz progress.html. Předtím zelený build #74 (J1: Habits, widget, freeze, Focus, zkratky, úkoly, poznámky, příprava iCloud); dříve #70 (I1), #69 (H1), #67 (G1); dříve #65 (F1); E1 (opravy z testu po D1) prošel jako build #62; F1 (Habits, mapa, easter eggy) prošel jako build #65; F2 (nový onboarding a coach marks) prošel jako build #66. Všechny sekce z CHANGES.md
 a všechny opravy z auditu jsou hotové.
 
 ## 1. Rozhodnutí
@@ -293,8 +293,9 @@ a všechny opravy z auditu jsou hotové.
   - u každého zapnutého přepínače se rozbalí karta „Try it“ s ukázkou,
   - tlačítka dostávají klik a vibraci přes společný styl (`FQPressStyle` / `TapFeedback`, i `ShopButtonStyle`, dlaždice Path,
     skleněná tlačítka a přepínače), nové tlačítko má proto používat `.buttonStyle(.fqPress)`, ne `.plain`,
-  - **Battle sounds jsou výchozí vypnuté** (od D1), u nových i stávajících uživatelů: uložená hodnota platí jen s `isBattleSoundUserSet`
-    (hráč přepínač sám přepnul); karta „Try it“ se při OFF schová a při ON rozbalí jako u ostatních,
+  - **Všechny zvuky i haptika jsou výchozí zapnuté** (od K1/D6): Battle sounds ON, Tap sounds ON, Haptics ON (i Reward a Alarm sound).
+    **Ruší dřívější rozhodnutí „Battle sounds OFF by default“** (od D1). Uložená hodnota Battle sounds platí jen s `isBattleSoundUserSet`
+    (hráč přepínač sám přepnul), jinak platí výchozí ON. Bez migrace (jediný uživatel). Karta „Try it“ se při OFF schová a při ON rozbalí,
   - **audit tap zvuku (od testu #66, opraveno v H1)**: kde nejde použít `FQPressStyle` (systémové řádky Listu, `NavigationLink`, `.bordered`
     tlačítka, chipy s `onTapGesture`), je `FQFeedback.shared.tap()` **přímo v akci** tlačítka, u navigace v `onChange` cesty.
     `.fqTapSound()` se `simultaneousGesture(TapGesture())` je pryč: v `List` gesto pohltilo klepnutí a řádky Nastavení
@@ -353,7 +354,7 @@ a všechny opravy z auditu jsou hotové.
   | 2 | How it works | soustředíš se → hrdina bojuje → mince, gear, světy; Skip |
   | 3 | Jméno | „What should we call you?“ → `username`, pozdrav „Hi, {jméno}“ na Home a jméno na Hero tabu |
   | 4 | Focus | „What do you want to make time for?“ chipy Work, School, Reading, Project, Exercise, Creative, Languages + vlastní, víc naráz |
-  | 5 | Hrdina | třída, pleť, vlasy, barva vlasů, oblečení, boty; hrdina připnutý nahoře, roluje jen panel; změna = poskočení |
+  | 5 | Hrdina | třída, pleť, vlasy, barva vlasů, oblečení, boty; hrdina připnutý nahoře; karta voleb stojí pevně s čistými zaoblenými rohy (bez masky, od K1) a roluje jen její obsah, Continue je samostatně pod kartou; změna = poskočení |
   | 6 | Ready | „Ready, {jméno}?“ → Start → Home a hned tutoriál |
 
   - Onboarding vidí jen nový hráč (bez odehraných bitev). Hráč, který appku už používá, ho přeskočí i s tutoriálem.
@@ -368,17 +369,26 @@ a všechny opravy z auditu jsou hotové.
 - **Tutoriál jako coach marks místo TipKitu** (od F2, `Views/Onboarding/CoachMarks.swift`). TipKit je pryč (FQTips, popover tipy, Reset tips).
   - Celá obrazovka ztmavne (72 %), zvýrazněný prvek je vyříznutý zaobleným výřezem podle tvaru (kapsle/kruh, sekce 20 pt)
     se žlutou pulzující září; vedle bublina (titulek, max 2 věty, „3 of 13“, Next), nahoře vlevo „Skip tutorial“.
-  - **„Skip tutorial“** (od H1) je samostatná pilulka v safe area vlevo nahoře: plné tmavé pozadí, tenký okraj, stín
-    a pod ní jemný tmavý přechod od horního okraje, aby nadpisy obrazovky pod ní nerušily. Stejně ve Fight sheetu.
-  - **Krok stojí na své záložce** (od H1, `CoachStep.screen`): Home pro kroky 1, 5–7, Path pro Shop, Shop pro Stats,
-    Stats pro Habits, čísla a Hero, Hero pro Daily focus target a Nastavení. Lišta je během tutoriálu zamčená
-    (`userSwitchTab`), projde jen klepnutí na záložku, kterou akční krok zvýrazňuje. Když je hráč jinde (start, obnovený
-    krok, přepnutí odjinud), appka ho přepne sama (`enforceTutorialTab`). Výřez se ukáže jen na správné záložce
+  - **Overlay je ve vlastním `UIWindow`** (od K1, `CoachOverlayWindow`, úroveň `.normal + 5`) nad hlavním oknem i všemi listy.
+    Okno je vidět jen během tutoriálu a pohlcuje všechna klepnutí; projde jen Next a Skip.
+    Rámečky prvků jsou v souřadnicích okna: každý `.coachMarkHost()` pošle lokální rámečky a neviditelnou UIKit sondu
+    (`CoachWindowProbe`), která je převede `convert(_:to: nil)`; overlay je před ukázáním kroku přepočítá (`refreshFrames`),
+    protože list nebo záložka mohly dojet animací. `.global` ze SwiftUI se nepoužívá (v listu může být vztažené k listu).
+  - **„Skip tutorial“** je samostatná pilulka (plné tmavé pozadí, okraj, stín) **vždy na stejném místě**: vlevo nahoře
+    v safe area, v každém kroku i mezi kroky, i s otevřeným Fight sheetem (od K1; dřív se kreslila uvnitř listu a skákala).
+    Nic nepřekrývá: obsah záložek se během tutoriálu odsune pod pás Skip (`safeAreaInset` 56 pt, `CoachMarkOverlay.skipBand`),
+    bublina do pásu nikdy nezajede a Fight sheet má během kroků 2–4 jen výšku podle obsahu (bez `.large`, max 600 pt).
+  - **Postup jen přes Next** (od K1, ruší „akční kroky“ z F2/H1): každý krok má Next, poslední Finish, žádné „Got it“/„Done“.
+    Zvýrazněné prvky (Fight, Start, záložky) nejsou interaktivní. Next na kroku 1 otevře Fight sheet sám, Next na kroku 4
+    ho zavře (bitva se nespustí). **Krok záložky stojí na své záložce** (`CoachStep.screen`): Path na Path, Shop na Shop,
+    Stats na Stats, Daily focus target a Nastavení na Hero. Po Next tutoriál přepne záložku sám (`enforceTutorialTab`,
+    běžný přechod záložek) a výřez počká, až je prvek vykreslený a dvakrát po sobě změřený na stejném místě.
+    Lišta je během tutoriálu úplně zamčená (`userSwitchTab`). Výřez se ukáže jen na správné záložce
     (`CoachMarkStore.screen`) a při změně záložky, otevření/zavření listu a změně velikosti (`layoutVersion`) se schová
     a změří znovu až po vykreslení. Dřív šlo hned na začátku přepnout na Path a výřez Fight seděl na prázdné mapě.
   - Pozice z `anchorPreference` (`.coachMark(_:)`); hostitel (`.coachMarkHost()`) na každé záložce, liště a ve Fight sheetu
     kotvy převede na globální rámečky v `CoachMarkStore` (preference nemusí projít přes TabView a listy).
-  - Akční kroky (Fight, záložky) se posunou až klepnutím do výřezu; jinde jsou klepnutí blokovaná. VoiceOver má v bublině „Open“.
+  - Mezi kroky se výřez zavře do bodu u dalšího prvku a pak se z něj pružně otevře (jedna stálá vrstva ztmavení, nic nebliká).
   - Výřez mezi prvky přejíždí pružinou; Reduce Motion = jen prolnutí, záře nepulzuje. VoiceOver čte bublinu (modální, fokus na ni).
   - Tutoriál začne až po zavření onboardingu (`onDismiss`) a krok se ukáže až po ~0,4 s ustálení, takže výřez neproblikne
     na špatném místě. Prvek, který se do ~2 s nenajde, se tiše přeskočí.
@@ -386,17 +396,17 @@ a všechny opravy z auditu jsou hotové.
 
   | # | Kde | Typ |
   |---|---|---|
-  | 1 | Home: Fight | klepnout na Fight |
+  | 1 | Home: Fight | Next (otevře Fight sheet) |
   | 2 | Fight sheet: Focusing | Next |
   | 3 | Fight sheet: hudba/zvuk | Next |
-  | 4 | Fight sheet: Start + vysvětlení bitvy (telefon dolů, zvednutí = útěk za 10 s, pauza zdarma, animace telefonu) | Got it, list se zavře, bitva se nespustí |
+  | 4 | Fight sheet: Start + vysvětlení bitvy (telefon dolů, zvednutí = útěk za 10 s, pauza zdarma, animace telefonu) | Next, list se zavře, bitva se nespustí |
   | 5 | Home: Just 5 minutes | Next |
   | 6 | Home: plamínek série | Next |
-  | 7–9 | lišta: Path, Shop, Stats | klepnout na záložku |
+  | 7–9 | lišta: Path, Shop (gear, pozadí, supplies), Stats, každý na své záložce | Next (záložku přepne tutoriál) |
   | 10 | Stats: graf Habits (čtverečky = dny od prvního dne, řádky Po–Ne, dnešek s rámečkem, barva = minuty) | Next |
   | 11 | Stats: Win rate, Bosses beaten, Longest streak, Focus hours | Next |
-  | 12 | lišta: Hero, pak Daily focus target (kroužek v barvě třídy, posuvník cíle) | klepnout, pak Next |
-  | 13 | Hero: ozubené kolo Nastavení | Done |
+  | 12 | Hero: Daily focus target (vzhled hrdiny na této záložce, kroužek v barvě třídy, posuvník cíle) | Next |
+  | 13 | Hero: ozubené kolo Nastavení | Finish |
 
   Uložené číslo kroku je `rawValue`; po aktualizaci z 10 kroků může rozběhnutý tutoriál pokračovat o krok vedle (neškodné).
 
@@ -419,9 +429,17 @@ a všechny opravy z auditu jsou hotové.
 - **Stats › Share** (ikona vedle ozubeného kola, `ScreenHeader(onShare:)`) otevře náhled `StatsShareSheet`: přepínač šablon
   **This week** (minuty za 7 dní, poražení bossové, série) a **Streak** (série, další milník nebo nejdelší série),
   přepínač „Show my name“ (výchozí vypnutý) a `ShareLink` s obrázkem.
-- Obrázek `StatsShareCard` 360 × 640 bodů × 3 = **1080 × 1920** přes `ImageRenderer`: hrdina, série, minuty za týden,
-  poražení bossové, mini Habits (posledních 5 týdnů) a „FocusQuest“. ImageRenderer neumí materiály,
+- Obrázek `StatsShareCard` přes `ImageRenderer` (skala 3) ve dvou formátech (od K1, přepínač Story / Wide v náhledu):
+  **Story 360 × 640 bodů = 1080 × 1920** (Instagram, TikTok) a **Wide 640 × 360 = 1920 × 1080** (hrdina | čísla | Habits vedle sebe).
+  Obsah: hrdina, série, minuty za týden, poražení bossové, mini Habits a „FocusQuest“. ImageRenderer neumí materiály,
   proto je sklo z průhledných výplní. **Žádná osobní data** kromě volitelného jména (ne jména bossů, předmětů ani data).
+  - **Bezpečný okraj 7,5 % šířky ze všech stran** (`ShareFormat.margin`: 27 pt na výšku, 48 pt na šířku). Obsah je v pevném rámu,
+    záře a hvězdy jsou jen `background`. Dřív 420pt kruh v ZStacku roztáhl kartu na šířku a dlaždice se ořízly, obsah
+    přetékal na výšku a nadpis se lepil na okraj. Test `ShareCardRenderTests` kartu vyrenderuje (i dlouhé jméno a velká čísla)
+    a ověří, že v okraji není žádný pixel obsahu; PNG jsou přílohy výsledku testu.
+  - **Mini Habits = vždy celá mřížka 5 týdnů (7 × 5)**, stejná logika jako ve Stats (`HabitGrid.recentWeeks`): poslední týdny
+    po týden s dneškem; u nového hráče se doplní budoucí týdny (čárkované), dny před prvním dnem jsou prázdné.
+  - **Jméno = `profile.username`** (bez výchozího „NewFocuser“). „Hero“ je tam jen tehdy, když hráč v onboardingu jméno nevyplnil.
 - **Milníky série 7, 30 a 100 dní:** po denní oslavě série na Home se jednou nabídne sdílení se šablonou Streak.
   Nabídnuté milníky jsou v UserDefaults `fq.offeredStreakMilestones`.
 
@@ -430,7 +448,7 @@ a všechny opravy z auditu jsou hotové.
   (to zůstává jen kvůli starším datům a iCloudu).
   - Počet po sobě jdoucích dnů s bitvou, končí dneškem nebo včerejškem.
   - Zamrzlé dny řadu nepřeruší, ale do počtu se nepočítají.
-- **Streak freeze** v Shopu › Gear › Battle supplies za **150 mincí**, v zásobě nejvýš **2** (`StreakFreeze`).
+- **Streak freeze** v Shopu › Supplies za **150 mincí**, v zásobě nejvýš **2** (`StreakFreeze`).
   - Při spuštění a návratu do appky (`applyStreakFreezes`) se vynechané dny od poslední bitvy zmrazí, když na ně zásoba stačí.
   - Když nestačí, nespotřebuje se nic a série spadne.
   - Dnešek se nezmrazí nikdy.
@@ -493,6 +511,8 @@ a všechny opravy z auditu jsou hotové.
   - Sekce „iCloud sync“ v Nastavení je skrytá, dokud není flag zapnutý.
 
 ### Ceny v Shopu (od J1)
+Shop má od K1 tři záložky: **Gear** (jen vybavení hrdiny), **Backgrounds** a **Supplies** (Extra pause, Streak freeze).
+
 | Předmět | Cena | Zásoba |
 |---|---|---|
 | Extra pause | 40 mincí | max 5, v bitvě 1 navíc |

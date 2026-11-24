@@ -351,7 +351,7 @@ private struct SoundsSettingsPage: View {
             .controlSize(.small)
     }
 
-    /// Battle sounds: zapamatuje se, ze je hrac prepnul sam (jinak zustavaji vychozi vypnute).
+    /// Battle sounds: zapamatuje se, ze je hrac prepnul sam (jinak plati vychozi zapnuto, K1/D6).
     private var battleSoundBinding: Binding<Bool> {
         Binding(get: { prefs.isBattleSoundEnabled }, set: { value in
             model.update {
