@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-24T11:12:50+01:00",
-  "current": "K1: build #75 spadl na 2 starých testech zvuků, opraveno, běží build #76",
-  "nextStep": "Počkat na výsledek buildu #76",
+  "updated": "2026-11-24T11:49:04+01:00",
+  "current": "K1 hotovo: build #76 prošel",
+  "nextStep": "Otestovat na iPhonu onboarding kartu, celý tutoriál 1–13 a Replay tutorial, Shop Supplies, sdílecí karty Story/Wide a zvuky",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -855,7 +855,7 @@
     {
       "id": "K1",
       "title": "Opravy z testu: onboarding karta, tutoriál, Shop Supplies, sdílecí karty, zvuky",
-      "status": "build",
+      "status": "hotovo",
       "items": [
         { "text": "D1 Onboarding: karta Create your hero s čistým zaobleným horním rohem, obsah scrolluje, Continue samostatně pod kartou", "done": true },
         { "text": "D2 Tutoriál: Skip tutorial vždy vlevo nahoře v safe area, overlay ve vlastním UIWindow nad sheety", "done": true },
@@ -866,8 +866,8 @@
         { "text": "DECISIONS.md", "done": true }
       ],
       "commit": "abea248",
-      "build": { "number": 76, "runId": 45372565792, "result": "běží" },
-      "note": "Build #75: kompilace i IPA prošly, nové testy (render sdílecích karet, tutoriál) prošly; spadly 2 starší testy zvuků, které čekaly Battle sounds OFF (D6). Opraveno v testech."
+      "build": { "number": 76, "runId": 45372565792, "result": "úspěch" },
+      "note": "Build #76 prošel (IPA, Release, testy včetně renderu sdílecích karet). #75 spadl jen na 2 starých testech zvuků (čekaly Battle sounds OFF), opraveno. Na iPhonu otestuj: onboarding › Create your hero (čistý horní roh karty, obsah roluje uvnitř, Continue pod kartou, hrdina vidět); celý tutoriál 1–13 jen přes Next/Finish (Skip vždy vlevo nahoře i s otevřeným Fight sheetem, nic nepřekrývá; taby ani Start nereagují; Next přepne záložku sám a spotlight nesedí na prázdném místě) a Settings › Help › Replay tutorial; Shop › Supplies (Extra pause, Streak freeze), Gear jen vybavení; Stats › Share: Story i Wide, okraje, mřížka 7×5, jméno (Hero jen když v onboardingu nebylo vyplněné); Settings › Sounds: Battle sounds, Tap sounds a Haptics zapnuté. Starý uložený krok tutoriálu se může posunout o krok (neškodné)."
     }
   ]
 }
