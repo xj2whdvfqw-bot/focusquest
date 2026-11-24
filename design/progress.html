@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-24T20:15:00+01:00",
-  "current": "P1 (I1–I6 obchod jako kupecký stánek): kód hotový, commit a build; O1 build #82 běží",
-  "nextStep": "Commitnout P1, pustit build #83, počkat na #82 a #83",
+  "updated": "2026-11-24T20:17:00+01:00",
+  "current": "O1 build #82 a P1 build #83 běží",
+  "nextStep": "Počkat na výsledky buildů #82 (O1) a #83 (P1); při pádu opravit a pustit znovu",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -933,7 +933,7 @@
     {
       "id": "P1",
       "title": "Obchod jako pixelový kupecký stánek (I1–I6)",
-      "status": "pracuje",
+      "status": "build",
       "items": [
         { "text": "I1 Stánek: pruhovaná stříška, sloupky, okno s oblohou a krajinou, hrdina velký na podstavci; mince vpravo nahoře; try-on s poskokem a jiskrami (ne u nasazené věci)", "done": true },
         { "text": "I2 Cedule Gear / Backgrounds / Supplies na řetízcích s pixelovou ikonou; aktivní světlejší a zhoupne se; klik a vibrace", "done": true },
@@ -943,9 +943,9 @@
         { "text": "I6 Reduce Motion, Dynamic Type (zkrácení/zmenšení štítků), VoiceOver u každé věci; krok tutoriálu Shop míří na cedule; test vykreslení na SE a Pro Max", "done": true },
         { "text": "DECISIONS.md", "done": true }
       ],
-      "commit": null,
-      "build": { "number": null, "runId": null, "result": null },
-      "note": "Kód hotový, build ještě neběžel."
+      "commit": "09947ff",
+      "build": { "number": 83, "runId": 45468084279, "result": "běží" },
+      "note": "Build #83 běží."
     }
   ]
 }
