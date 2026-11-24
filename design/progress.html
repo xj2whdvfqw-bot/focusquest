@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-24T23:24:00+01:00",
-  "current": "Q1 (J1–J2): build #86 běží",
-  "nextStep": "Počkat na výsledek buildu #86, případně opravit chyby",
+  "updated": "2026-11-24T23:53:00+01:00",
+  "current": "Q1 hotovo: build #86 prošel",
+  "nextStep": "Otestovat na iPhonu: nový stánek Shopu (sbalování při rolování, panel věci) na SE i Pro Max a nadpis Settings včetně podstránek",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -950,7 +950,7 @@
     {
       "id": "Q1",
       "title": "Shop: stánek jako sbalovací hlavička, Settings: nadpis (J1–J2)",
-      "status": "build",
+      "status": "hotovo",
       "items": [
         { "text": "J1 Stánek jako hlavička ~35 % výšky obrazovky: stříška, okno s krajinou a hrdinou na podstavci přes celé okno, bez tmavých rozmazaných ploch", "done": true },
         { "text": "J1 Cedule Gear / Backgrounds / Supplies hned pod oknem, pod nimi viditelné police / obrazy / pult; obsah nikdy nezajede pod stánek", "done": true },
@@ -961,8 +961,8 @@
         { "text": "DECISIONS.md", "done": true }
       ],
       "commit": "17d27b4",
-      "build": { "number": 86, "runId": 45497037388, "result": "běží" },
-      "note": "Build #86 běží. Vzhled ověří až iPhone (SE i Pro Max, všechny tři záložky Shopu, Settings a podstránky)."
+      "build": { "number": 86, "runId": 45497037388, "result": "úspěch" },
+      "note": "Build #86 prošel (IPA, Release, unit testy včetně nového testu rozměrů stánku `StallHeaderMetrics`, screenshot). Vzhled a rolování ověří až iPhone. Shop na SE i Pro Max ve všech třech záložkách (Gear, Backgrounds, Supplies): stánek zabírá asi třetinu výšky, krajina a hrdina na podstavci vyplní celé okno, nikde tmavé rozmazané plochy; cedule hned pod oknem, pod nimi vidět police / obrazy / pult; rolování dolů plynule zúží okno s hrdinou na 40 %, cedule zůstanou nahoře a obsah mizí pod nimi (nikdy přes stánek), rolování zpět okno roztáhne; tah po stánku roluje taky. Panel věci: jeden řádek (název a popis vlevo, tlačítko vpravo) nad tab barem, nepřekryje cedule, vybraná police se odroluje nad panel; zavření tahem dolů nebo druhým klepnutím; u plných zásob „Max 5 held“. Settings: hned pod grabberem velký nadpis „Settings“ vlevo, při rolování se zmenší a nahoře se prolne malý nadpis na středu s materiálem; podstránky (Sounds & haptics, Music, Notifications, Focus, Shortcuts) malý nadpis a zpět, lišta v klidu průhledná. Kdyby se okno při rolování cukalo nebo panel zakryl vybranou věc, napiš."
     }
   ]
 }
