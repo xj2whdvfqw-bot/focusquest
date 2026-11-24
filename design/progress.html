@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-24T18:04:00+01:00",
-  "current": "N1: build #81 běží",
-  "nextStep": "Počkat na výsledek buildu #81 (N1); při pádu opravit a pustit znovu",
+  "updated": "2026-11-24T18:28:00+01:00",
+  "current": "N1 hotovo: build #81 prošel",
+  "nextStep": "Otestovat na iPhonu průchod 14 kroků tutoriálu: přechody na stejné obrazovce v jedné animaci, při změně obrazovky schování a objevení na cíli (1→2, 4→5, 6→7, 7→8, 8→9, 11→12, 12→13)",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -903,7 +903,7 @@
     {
       "id": "N1",
       "title": "Tutoriál: plynulé přechody mezi kroky (G1)",
-      "status": "build",
+      "status": "hotovo",
       "items": [
         { "text": "G1/A Stejná obrazovka: cíle změřené předem, po Next jedna pružina 0,35 s (bublina, výřez a prolnutí textu současně), poloha po odrolování spočítaná předem (`coachViewport`)", "done": true },
         { "text": "G1/B Změna obrazovky (Fight setup, tab): overlay zmizí za 0,15 s (Skip zůstává), čeká na stabilní cíl (2 stejná měření, panel dojel), objeví se za 0,2 s se zvětšením z 0,96", "done": true },
@@ -911,8 +911,8 @@
         { "text": "DECISIONS.md", "done": true }
       ],
       "commit": "13d53c1",
-      "build": { "number": 81, "runId": 45443860852, "result": "běží" },
-      "note": "Build #81 běží."
+      "build": { "number": 81, "runId": 45443860852, "result": "úspěch" },
+      "note": "Build #81 prošel (IPA, Release, testy včetně nových testů typu přechodu a odhadu polohy po odrolování). Skutečné animace ověří až iPhone. Na iPhonu otestuj (Settings › Help › Replay tutorial) všech 14 kroků jen přes Next: na stejné obrazovce (5→6, 2→3, 3→4, 9→10, 10→11, 12→13, 13→14) se bublina, výřez a text pohnou současně v jedné animaci bez půlsekundového čekání; při změně obrazovky (1→2, 4→5, 6→7, 7→8, 8→9, 11→12) ztmavení, výřez i bublina rychle zmizí, Skip zůstane, panel dojede / tab se přepne a overlay se objeví rovnou na správném cíli s novým textem (hlavně 1→2: žádný skok na Sound). Kdyby se overlay po změně obrazovky do 1 s neobjevil u cíle, je bublina uprostřed a Next funguje. S Reduce Motion jen prolínání. Kdyby se u 12→13 nebo na SE výřez po dojetí ještě jednou posunul, napiš (odhad polohy po odrolování nesedí)."
     }
   ]
 }
