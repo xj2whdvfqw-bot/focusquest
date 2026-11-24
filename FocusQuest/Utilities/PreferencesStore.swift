@@ -10,7 +10,7 @@ protocol PreferencesStoreProtocol: AnyObject {
 @MainActor
 final class PreferencesStore: PreferencesStoreProtocol {
     private let defaults: UserDefaults
-    private let key = "focusquest.sensory-preferences"
+    private let key = AppStateStore.preferencesKey
 
     init(defaults: UserDefaults = .standard) { self.defaults = defaults }
 
@@ -27,6 +27,7 @@ final class PreferencesStore: PreferencesStoreProtocol {
     func save(_ preferences: AppPreferences) {
         guard let data = try? JSONEncoder().encode(preferences) else { return }
         defaults.set(data, forKey: key)
+        AppStateStore.touch(defaults)
     }
 
     func reset() {

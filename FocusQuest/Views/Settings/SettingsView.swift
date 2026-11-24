@@ -23,6 +23,8 @@ struct SettingsView: View {
     @State private var showsResetConfirmation = false
     /// Otevrene podstranky (Sounds & haptics, Music, Notifications).
     @State private var path: [SettingsPage] = []
+    /// C7: prepinac iCloud sync (plati jen se zapnutym FeatureFlags.iCloudSync).
+    @AppStorage(CloudSync.enabledKey) private var iCloudSyncEnabled = false
     @State private var isResetting = false
     /// Skutecny stav povoleni notifikaci v iOS.
     @State private var notifications = NotificationPermission.notDetermined
@@ -106,6 +108,25 @@ struct SettingsView: View {
                         Text(message).foregroundStyle(FQColor.danger)
                     } else {
                         Text("Everything is stored only on this iPhone. Reset starts over with a new hero.")
+                    }
+                }
+
+                // C7: pripravene, skryte, dokud neni FeatureFlags.iCloudSync (placeny ucet, viz DEVELOPER_ACCOUNT_TODO.md).
+                if FeatureFlags.iCloudSync {
+                    Section {
+                        Toggle(isOn: Binding(get: { iCloudSyncEnabled }, set: { value in
+                            iCloudSyncEnabled = value
+                            // Po zapnuti se hned nahraje mistni stav; stav z iCloudu se slouci pri dalsim spusteni.
+                            if value { CloudSync.scheduleUpload() }
+                        }).fqTapFeedback()) {
+                            SettingsRow(title: "Sync with iCloud", symbol: "icloud.fill", color: .blue)
+                        }
+                        .settingsToggleTint()
+                        SettingsRow(title: "Last synced", symbol: "clock.arrow.circlepath", color: .gray, value: CloudSync.lastSync.map { $0.formatted(date: .abbreviated, time: .shortened) } ?? "Never")
+                    } header: {
+                        Text("iCloud sync")
+                    } footer: {
+                        Text("Keeps your hero, progress and stats the same on all your devices with this Apple ID. Changes from another device show up the next time you open FocusQuest.")
                     }
                 }
 
@@ -639,6 +660,8 @@ private struct DebugSettingsSections: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.vertical, FQSpace.sm)
             SettingsRow(title: "App Group", symbol: "square.stack.3d.up.fill", color: .purple, value: WidgetSnapshot.isSharingAvailable ? "Shared with widget" : "Not available")
+            // C7: kolik mista zabira ulozeny stav (iCloud KVS ma limit 1 MB).
+            SettingsRow(title: "Saved data", symbol: "internaldrive.fill", color: .gray, value: ByteCountFormatter.string(fromByteCount: Int64(AppStateStore.byteSizes(in: .standard).reduce(0) { $0 + $1.bytes }), countStyle: .file))
         } header: {
             Text("Debug widget")
         } footer: {

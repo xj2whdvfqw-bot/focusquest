@@ -242,6 +242,29 @@ final class ProfileViewModel: ObservableObject {
         save()
     }
 
+    // MARK: - Tydenni ukoly (C5)
+
+    /// 3 ukoly tohoto tydne (z historie, stejne po cely tyden).
+    var weeklyQuests: [WeeklyQuest] { WeeklyQuests.make(history: stats.sessionHistory) }
+
+    /// Bitvy tohoto tydne (postup ukolu).
+    var weekSessions: [SessionSummary] { WeeklyQuests.sessions(in: stats.sessionHistory, weekOf: Date()) }
+
+    func isClaimed(_ quest: WeeklyQuest) -> Bool { profile.claimedQuests.contains(quest.id) }
+
+    func isComplete(_ quest: WeeklyQuest) -> Bool { quest.progress(in: weekSessions) >= quest.target }
+
+    /// Otevre truhlu splneneho ukolu: mince do profilu. Vraci pripsane mince (0 = nic).
+    @discardableResult
+    func claim(_ quest: WeeklyQuest) -> Int {
+        guard isComplete(quest), !isClaimed(quest) else { return 0 }
+        profile.coins += quest.reward
+        // Jen poslednich ~5 tydnu (15 ukolu), at seznam neroste donekonecna.
+        profile.claimedQuests = Array((profile.claimedQuests + [quest.id]).suffix(15))
+        save()
+        return quest.reward
+    }
+
     // MARK: - Pozadi
 
     /// Pozadi, ktere si hrac prave zkousi (Preview). Neuklada se a po odchodu z obchodu zmizi.

@@ -31,6 +31,8 @@ struct UserProfile: Codable, Sendable {
     var streakFreezes = 0
     /// C2: dny zachranene Streak freeze (PlayerStats.dayKey).
     var frozenDays: [String] = []
+    /// C5: vyzvednute truhly tydennich ukolu (WeeklyQuest.id, jen nekolik poslednich tydnu).
+    var claimedQuests: [String] = []
 
     /// Kolik extra pauz jde drzet najednou.
     static let maxExtraPauses = 5
@@ -41,7 +43,7 @@ struct UserProfile: Codable, Sendable {
         case userID, username, title, heroClass, avatarMatrix, dailyFocusGoalMinutes
         case avatar, coins, bossesDefeated, hasCreatedHero, ownedEquipmentIDs, focusGoals
         case ownedBackgroundIDs, backgroundID, foundEasterEggs, extraPauses
-        case firstUseDate, streakFreezes, frozenDays
+        case firstUseDate, streakFreezes, frozenDays, claimedQuests
     }
 
     /// Novy hrac (i po Reset progress) zacina s pozadim Daybreak; World scenes si muze vybrat v Shopu.
@@ -96,6 +98,7 @@ extension UserProfile {
         firstUseDate = (try? container.decodeIfPresent(Date.self, forKey: .firstUseDate)) ?? nil
         streakFreezes = min(StreakFreeze.maxOwned, max(0, (try? container.decodeIfPresent(Int.self, forKey: .streakFreezes)) ?? 0))
         frozenDays = (try? container.decodeIfPresent([String].self, forKey: .frozenDays)) ?? []
+        claimedQuests = (try? container.decodeIfPresent([String].self, forKey: .claimedQuests)) ?? []
     }
 }
 

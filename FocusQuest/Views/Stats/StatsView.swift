@@ -25,6 +25,8 @@ struct StatsView: View {
             ScreenHeader(eyebrow: "Stats", title: "Your progress", onShare: { showsShare = true })
             habitsSection
             metricsCard
+            // C5: pod cisly, at kroky tutorialu (Habits, cisla) zustanou nahore.
+            WeeklyQuestsCard(profile: profile)
             subjectsSection
             BattleLogSection(history: model.stats.sessionHistory, subjects: arena.preferences.subjects)
         }

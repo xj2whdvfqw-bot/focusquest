@@ -18,6 +18,8 @@ final class AppDIContainer {
     private var didCleanUpAfterTermination = false
 
     init() {
+        // C7: se zapnutym iCloud sync (flag + prepinac) se nejdriv slouci stav z iCloudu, az pak se nacte.
+        CloudSync.pullAndMerge()
         let profileSync: any ProfileSyncServiceProtocol = LocalProfileSyncService()
         let preferences = PreferencesStore()
         let profile = UserProfile.fresh(deviceID: "local-preview")

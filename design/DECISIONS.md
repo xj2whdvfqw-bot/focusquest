@@ -231,10 +231,16 @@ a všechny opravy z auditu jsou hotové.
   (u pozadí zůstal text „In use“ místo tlačítka).
 - **Výchozí pozadí nových hráčů je Daybreak** (od E1, `UserProfile.fresh`, i po Reset progress). Stávající profily bez
   uloženého pozadí dál mají World scenes.
-- **Stats › Habits** (od F1): mřížka na šířku jako dřív (sloupec = 7 dní, řádek = den v týdnu), ale od nejnovějšího:
-  dnešek je první čtvereček vlevo nahoře, dolů a doprava jdou starší dny. Každý sloupec má 7 po sobě jdoucích dní,
-  takže řádek je vždy tentýž den v týdnu (písmena vlevo začínají dnešním dnem, `HabitGrid.rowLetters`). Svislá verze
-  z E1 je zrušená. Škála je zelená od tmavé po světlou (bez tyrkysové a mint).
+- **Stats › Habits je pevná mřížka od prvního dne** (od J1, dřív byl dnešek přišpendlený vlevo nahoře a mřížka se každý den posouvala):
+  - řádky jsou pevně M, T, W, T, F, S, S,
+  - sloupce jsou týdny; sloupec 1 je týden prvního dne používání (`UserProfile.firstUseDate`; u stávajících hráčů den první bitvy).
+  - Dny před prvním dnem se nekreslí, budoucí dny mají tlumený čárkovaný obrys.
+  - Dnešek má bílý rámeček a každý den se posune o čtvereček dál.
+  - Aspoň 15 sloupců, další týdny mřížku prodlouží; vodorovně se dá posouvat a při otevření se posune na dnešek (`todayWeek`).
+  - Popisek: „Each square is one day, starting from your first day · filled by your focus time“.
+  - Zamrzlý den (Streak freeze) je ledově modrý s vločkou.
+  - Škála je zelená od tmavé po světlou.
+  - Mini Habits ke sdílení = posledních 5 týdnů (`recentWeeks`).
 - **Daily focus target v Hero Profile**: splněná část kruhu má barvu pásku zvolené třídy (`AvatarSprite.classAccent`, stejný
   token jako pásek hrdiny: Warrior červená, Mage fialová, Archer zelená, Rogue modrá), nesplněná tlumeně šedá. Dřív byl
   kruh v bílém `accent`, takže nebylo vidět, kolik je splněno.
@@ -387,7 +393,7 @@ a všechny opravy z auditu jsou hotové.
   | 5 | Home: Just 5 minutes | Next |
   | 6 | Home: plamínek série | Next |
   | 7–9 | lišta: Path, Shop, Stats | klepnout na záložku |
-  | 10 | Stats: graf Habits (čtverečky = dny, barva = minuty, dnešek vlevo nahoře) | Next |
+  | 10 | Stats: graf Habits (čtverečky = dny od prvního dne, řádky Po–Ne, dnešek s rámečkem, barva = minuty) | Next |
   | 11 | Stats: Win rate, Bosses beaten, Longest streak, Focus hours | Next |
   | 12 | lišta: Hero, pak Daily focus target (kroužek v barvě třídy, posuvník cíle) | klepnout, pak Next |
   | 13 | Hero: ozubené kolo Nastavení | Done |
@@ -414,10 +420,84 @@ a všechny opravy z auditu jsou hotové.
   **This week** (minuty za 7 dní, poražení bossové, série) a **Streak** (série, další milník nebo nejdelší série),
   přepínač „Show my name“ (výchozí vypnutý) a `ShareLink` s obrázkem.
 - Obrázek `StatsShareCard` 360 × 640 bodů × 3 = **1080 × 1920** přes `ImageRenderer`: hrdina, série, minuty za týden,
-  poražení bossové, mini Habits (5 týdnů, dnešek vlevo nahoře) a „FocusQuest“. ImageRenderer neumí materiály,
+  poražení bossové, mini Habits (posledních 5 týdnů) a „FocusQuest“. ImageRenderer neumí materiály,
   proto je sklo z průhledných výplní. **Žádná osobní data** kromě volitelného jména (ne jména bossů, předmětů ani data).
 - **Milníky série 7, 30 a 100 dní:** po denní oslavě série na Home se jednou nabídne sdílení se šablonou Streak.
   Nabídnuté milníky jsou v UserDefaults `fq.offeredStreakMilestones`.
+
+### Série a Streak freeze (od J1)
+- **Série se počítá z historie dnů** (`PlayerStats.currentStreak(frozenDayKeys:)`), ne z uloženého počítadla `streakDays`
+  (to zůstává jen kvůli starším datům a iCloudu).
+  - Počet po sobě jdoucích dnů s bitvou, končí dneškem nebo včerejškem.
+  - Zamrzlé dny řadu nepřeruší, ale do počtu se nepočítají.
+- **Streak freeze** v Shopu › Gear › Battle supplies za **150 mincí**, v zásobě nejvýš **2** (`StreakFreeze`).
+  - Při spuštění a návratu do appky (`applyStreakFreezes`) se vynechané dny od poslední bitvy zmrazí, když na ně zásoba stačí.
+  - Když nestačí, nespotřebuje se nic a série spadne.
+  - Dnešek se nezmrazí nikdy.
+  - Zamrzlé dny jsou v `UserProfile.frozenDays`.
+  - Na Home je u série vločka, když freeze v posledních 7 dnech zachránil den. Debug: „+1 streak freeze“.
+- **Streak in danger** (notifikace `focusquest.streak.0/1`):
+  - ve 20:00, když série platí a ten den ještě nebyla bitva,
+  - plánuje se na dnes a zítra, po každé bitvě a návratu do appky se přepočítá,
+  - přepínač v Notifications (výchozí zapnutý), ztlumí ho i Focus Filter.
+
+### Týdenní úkoly (od J1)
+- Každé pondělí 3 úkoly (`WeeklyQuests.make`), generované lokálně.
+  - **Obtížnost** z průměru posledních 4 týdnů před pondělím, počítají se jen týdny od první bitvy; během týdne se nemění:
+    - minuty: průměr × 1,15 zaokrouhleno na 15, 60–600,
+    - dny: průměr + 1, 3–7,
+    - bossové: průměr + 1, 2–12,
+    - třetí úkol se střídá podle týdne: bossové / různé focus oblasti / jedna dlouhá bitva 20 nebo 30 min.
+  - **Odměna:** truhla 40–100 mincí podle obtížnosti, vyzvedne se ve Stats tlačítkem Open.
+  - **Oslava:** truhla poskočí, vyletí „+N“, zvuk mince, haptika.
+  - Vyzvednuté truhly jsou v `UserProfile.claimedQuests` (posledních 15).
+  - Karta je ve Stats pod čísly, aby kroky tutoriálu (Habits, čísla) zůstaly nahoře.
+
+### Poznámky po výhře a Battle log (od J1)
+- Na Victory obrazovce volitelné pole „What did you get done?“ (jeden řádek, max 120 znaků).
+  - Uloží se s Collect Loot nebo Keep going k právě vyhrané bitvě (`SessionSummary.note`).
+  - Prázdné se přeskočí.
+- Stats › **Battle log**: datum, boss, focus oblast, délka a poznámka.
+  - Filtr podle focus oblasti (jen oblasti z historie).
+  - 10 posledních, „Show more“ přidává po 20.
+
+### Widget, Focus Filter, Siri a Zkratky (od J1)
+- **Widget na plochu** (malý a střední, `FocusStatusWidget` ve Widget Extension, obsah `FocusWidgetContent` v Shared):
+  - ukazuje sérii, dalšího bosse (sprite, jméno, délka) a dnešní minuty vs. Daily focus target,
+  - tónované widgety (`widgetAccentable`, iOS 26) i tmavá plocha,
+  - klepnutí: `focusquest://fight` (URL schéma v Info.plist) → Home a Fight sheet s dalším bossem.
+  - **Data přes App Group** (`WidgetSnapshot`, appka ho zapíše po změně statistik a při návratu do appky):
+    - s bezplatným účtem App Group není (Sideloadly ji zahodí),
+    - appka to za běhu pozná (`containerURL` je nil) a widget pak ukazuje „Open FocusQuest“.
+  - **Náhrada pro testování:** Debug › „Debug widget“ vykreslí stejné views se skutečnými daty.
+  - Aktivace App Group: `design/DEVELOPER_ACCOUNT_TODO.md`.
+- **Focus Filter** (`FocusQuestFocusFilter`, iOS Nastavení › Focus › Add Filter › FocusQuest):
+  - volby „Suggest a battle“ (Home ukáže kartu „Your Focus is on“ s bitvou) a „Mute reminders“ (ruší Daily reminder a Streak in danger),
+  - obě výchozí vypnuté: iOS při vypnutí režimu volá filtr s výchozími hodnotami, takže se stav sám vrátí.
+  - Po vypnutí režimu se připomínky naplánují znovu, až appka poběží.
+  - Návod: Nastavení › Help › „Use with iPhone Focus“.
+- **App Intents a App Shortcuts** (`FocusQuestIntents.swift`, bez entitlementu):
+  - **Start battle** otevře appku na Fight sheetu: další boss, nebo volitelně délka 5–240 min jako vlastní bitva (`prepareCustomBattle`),
+  - **Show streak** odpoví bez otevření (z `WidgetSnapshot`),
+  - **Pause battle** použije pauzu v běžící bitvě.
+  - Fráze pro Siri a Spotlight; v Nastavení › Help › „Siri & Shortcuts“ i postup pro Action button.
+  - Příkazy jdou přes `AppCommandCenter`. Během bitvy, onboardingu a tutoriálu se nic neotevře.
+
+### Úložiště a iCloud (od J1, iCloud vypnutý)
+- **Jedna vrstva `AppStateStore`:**
+  - celý stav `AppState` = profil + statistiky + nastavení + verze formátu + čas poslední změny (`fq.stateMeta`),
+  - `LocalProfileSyncService` a `PreferencesStore` zapisují přes ni a při každém uložení obnoví časovou značku,
+  - klíče a velikosti jsou v DEVELOPER_ACCOUNT_TODO.md, aktuální velikost v Debug › Saved data.
+- **`CloudSync`** (iCloud Key-Value Store, jeden klíč `fq.state`) za `FeatureFlags.iCloudSync = false`.
+  - Pravidla konfliktu viz `CloudSync.merge`: novější vyhrává, odemčené věci a postup se nikdy neztratí, série z historie.
+  - Sekce „iCloud sync“ v Nastavení je skrytá, dokud není flag zapnutý.
+
+### Ceny v Shopu (od J1)
+| Předmět | Cena | Zásoba |
+|---|---|---|
+| Extra pause | 40 mincí | max 5, v bitvě 1 navíc |
+| Streak freeze | 150 mincí | max 2 |
+| Truhla týdenního úkolu | odměna 40–100 mincí | 3 za týden |
 
 ### Repo, CI a hosting
 - **Repo `xj2whdvfqw-bot/focusquest` zůstává veřejné až do vydání.** Proto nikdy necommitovat tajné údaje
@@ -473,6 +553,7 @@ a všechny opravy z auditu jsou hotové.
 - **E-mail pro Contact the developer.** Samostatná adresa pro podporu. Doplnit i na stránku Support.
 - **Placený Apple Developer Program** (99 USD/rok). Bez něj nejde odeslat build ani TestFlight.
   Podepisování pak přes GitHub Actions (App Store Connect API klíč v Secrets).
+  Čeká na něj i **App Group pro widget** a **iCloud sync**: přesný postup je v `design/DEVELOPER_ACCOUNT_TODO.md`.
 - **Ověřit licence hudby**: `calm-currents.mp3`, `peaceful-drift.mp3`, `tokyo-sunset.mp3` (viz `CREDITS.md`).
 - **Před vydáním vyčistit git historii.** Tři odstraněné parodické světy jsou v kódu i v `design/` pryč, ale ve
   starých commitech veřejného repa zůstávají. Před vydáním založit nové čisté repo (nebo přepsat historii

@@ -22,8 +22,9 @@ protocol ProfileSyncServiceProtocol: Sendable {
 /// Profil a statistiky ulozene jen v telefonu (rezim bez serveru).
 /// Uklada se do UserDefaults, takze hrdina, mince i statistiky preziji restart appky.
 actor LocalProfileSyncService: ProfileSyncServiceProtocol {
-    private static let profileKey = "focusquest.local-profile"
-    private static let statsKey = "focusquest.local-stats"
+    // C7: klice a casova znacka zmeny jsou ve spolecne vrstve AppStateStore.
+    private static let profileKey = AppStateStore.profileKey
+    private static let statsKey = AppStateStore.statsKey
 
     private let defaults: UserDefaults
     private var profile: UserProfile
@@ -84,11 +85,13 @@ actor LocalProfileSyncService: ProfileSyncServiceProtocol {
         defaults.removeObject(forKey: Self.statsKey)
         defaults.removeObject(forKey: StoredDataBackup.key(for: Self.profileKey))
         defaults.removeObject(forKey: StoredDataBackup.key(for: Self.statsKey))
+        AppStateStore.touch(defaults)
     }
 
     private func persist<Value: Encodable>(_ value: Value, key: String) {
         guard let data = try? JSONEncoder().encode(value) else { return }
         defaults.set(data, forKey: key)
+        AppStateStore.touch(defaults)
     }
 
     private static func read<Value: Decodable>(_ type: Value.Type, key: String, from defaults: UserDefaults) -> Value? {
