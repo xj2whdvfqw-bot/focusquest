@@ -12,10 +12,17 @@ struct ShopView: View {
     @Environment(\.shopBackground) private var shopBackground
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
+    /// K1/D4: Gear = jen vybaveni hrdiny, Supplies = spotrebni veci (Extra pause, Streak freeze).
     enum ShopSection: String, CaseIterable, Identifiable {
-        case gear, backgrounds
+        case gear, backgrounds, supplies
         var id: String { rawValue }
-        var title: String { self == .gear ? "Gear" : "Backgrounds" }
+        var title: String {
+            switch self {
+            case .gear: "Gear"
+            case .backgrounds: "Backgrounds"
+            case .supplies: "Supplies"
+            }
+        }
     }
 
 
@@ -33,6 +40,7 @@ struct ShopView: View {
             switch section {
             case .gear: gearList
             case .backgrounds: backgroundList
+            case .supplies: suppliesList
             }
         }
         // Kompaktni hlavicka bez velkeho nadpisu: maly stitek "Shop", mince a ozubene kolo,
@@ -97,17 +105,22 @@ struct ShopView: View {
     // MARK: Vybaveni
 
     @ViewBuilder private var gearList: some View {
-        ScreenSection(title: "Battle supplies") {
-            VStack(spacing: FQSpace.md) {
-                extraPauseCard
-                streakFreezeCard
-            }
-        }
         ForEach(EquipmentSlot.shopOrder, id: \.self) { slot in
             ScreenSection(title: slot.displayName) {
                 LazyVGrid(columns: [GridItem(.flexible(), spacing: FQSpace.md), GridItem(.flexible())], spacing: FQSpace.md) {
                     ForEach(EquipmentItem.catalog.filter { $0.slot == slot }) { itemCard($0) }
                 }
+            }
+        }
+    }
+
+    // MARK: Zasoby
+
+    @ViewBuilder private var suppliesList: some View {
+        ScreenSection(title: "Battle supplies") {
+            VStack(spacing: FQSpace.md) {
+                extraPauseCard
+                streakFreezeCard
             }
         }
     }
