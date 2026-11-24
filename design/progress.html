@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-24T13:45:29+01:00",
-  "current": "L1: build #77 spadl na testu vykreslení bubliny, opraveno",
-  "nextStep": "Commit opravy testu a nový build",
+  "updated": "2026-11-24T13:47:00+01:00",
+  "current": "L1: build #78 běží (oprava testu vykreslení bubliny)",
+  "nextStep": "Počkat na výsledek buildu #78",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -872,7 +872,7 @@
     {
       "id": "L1",
       "title": "Opravy z testu #76: tutoriál, Skip, přechody, Home bez scrollu, Break panel",
-      "status": "spadl",
+      "status": "build",
       "items": [
         { "text": "E1 Tutoriál neotvírá sheety: kroky 2–4 na Home se spotlightem na Fight, pojistka bubliny uprostřed do 1 s, kroky se nepřeskakují, test 13 kroků přes Next", "done": true },
         { "text": "E2 Skip tutorial v safe area vlevo nahoře, ve výšce ozubeného kola, ve všech krocích stejně, nic nepřekrývá", "done": true },
@@ -881,8 +881,8 @@
         { "text": "E5 Break panel: malý detent celý (BREAK, odpočet, Next boss, Same again, Change boss, Done for today), velký + oheň; tap na hrdinu ho probudí", "done": true },
         { "text": "DECISIONS.md", "done": true }
       ],
-      "commit": "809e0f8",
-      "build": { "number": 77, "runId": 45390107611, "result": "spadl" },
+      "commit": "918cab6",
+      "build": { "number": 78, "runId": 45396642441, "result": "běží" },
       "note": "Build #77: kompilace, IPA i Release prošly, spadl jen nový test vykreslení bubliny (0 žlutých pixelů). Příloha testu ukázala ztmavení, výřez i Skip, ale ne bublinu: ImageRenderer neumí materiály (sklo bubliny), stejně jako u sdílecích karet. V appce se bublina se sklem kreslí (krok 1 byla vidět i dřív). Oprava: test kreslí bublinu s plnou výplní stejného tvaru. Ostatní nové testy (13 kroků přes Next, pojistka 1 s, Skip, Home na SE/17/Pro Max) prošly."
     }
   ]
