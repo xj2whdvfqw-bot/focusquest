@@ -27,6 +27,9 @@ struct EquipmentItem: Identifiable, Hashable, Sendable {
     let price: Int
     /// true = kresli se za telem (napr. raketovy batoh).
     let drawsBehindBody: Bool
+    /// O1/H3: pokryvka hlavy definuje masku ucesu: vlasy do tohoto radku (vcetne) se pod ni schovaji
+    /// (viz `AvatarSprite.hairRows`). nil = predmet vlasy nezakryva.
+    let hairBrimRow: Int?
     let layers: [AvatarLayer]
 
     /// Jedna barevna cast predmetu: radky mrizky a v nich sloupce.
@@ -37,13 +40,14 @@ struct EquipmentItem: Identifiable, Hashable, Sendable {
         init(_ name: String, _ spans: [Int: [ClosedRange<Int>]], _ rgb: RGB) { self.name = name; self.spans = spans; self.rgb = rgb }
     }
 
-    init(id: String, name: String, summary: String, slot: EquipmentSlot, price: Int, drawsBehindBody: Bool = false, parts: [Part]) {
+    init(id: String, name: String, summary: String, slot: EquipmentSlot, price: Int, drawsBehindBody: Bool = false, hairBrimRow: Int? = nil, parts: [Part]) {
         self.id = id
         self.name = name
         self.summary = summary
         self.slot = slot
         self.price = price
         self.drawsBehindBody = drawsBehindBody
+        self.hairBrimRow = hairBrimRow
         self.layers = parts.map { AvatarLayer(id: "\(id)-\($0.name)", rows: AvatarSprite.grid($0.spans), rgb: $0.rgb) }
     }
 
@@ -61,16 +65,16 @@ struct EquipmentItem: Identifiable, Hashable, Sendable {
 
     static let catalog: [EquipmentItem] = [
         // Hlava
-        EquipmentItem(id: "viking-helmet", name: "Viking Helmet", summary: "Steel dome with two proud horns.", slot: .head, price: 150, parts: [
+        EquipmentItem(id: "viking-helmet", name: "Viking Helmet", summary: "Steel dome with two proud horns.", slot: .head, price: 150, hairBrimRow: 2, parts: [
             Part("dome", [0: [6...9], 1: [5...10]], steel),
             Part("rim", [2: [4...11]], gold),
             Part("horns", [0: [3...3, 12...12], 1: [3...4, 11...12]], ivory)
         ]),
-        EquipmentItem(id: "wizard-hat", name: "Wizard Hat", summary: "Pointy, starry and full of answers.", slot: .head, price: 220, parts: [
+        EquipmentItem(id: "wizard-hat", name: "Wizard Hat", summary: "Pointy, starry and full of answers.", slot: .head, price: 220, hairBrimRow: 2, parts: [
             Part("cone", [0: [7...8], 1: [6...9], 2: [4...11]], RGB(0.45, 0.30, 0.85)),
             Part("star", [1: [7...7]], gold)
         ]),
-        EquipmentItem(id: "royal-crown", name: "Royal Crown", summary: "For the ruler of deep focus.", slot: .head, price: 600, parts: [
+        EquipmentItem(id: "royal-crown", name: "Royal Crown", summary: "For the ruler of deep focus.", slot: .head, price: 600, hairBrimRow: 1, parts: [
             Part("gold", [0: [5...5, 7...8, 10...10], 1: [5...10]], gold),
             Part("gems", [1: [6...6, 9...9]], RGB(0.90, 0.22, 0.35))
         ]),

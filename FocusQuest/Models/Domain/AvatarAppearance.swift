@@ -136,8 +136,10 @@ enum AvatarSprite {
             AvatarLayer(id: "belt", rows: grid([11: [5...10]]), rgb: classAccent(heroClass)),
             AvatarLayer(id: "boots", rows: grid([14: [4...6, 9...11]]), rgb: appearance.bootsColor.rgb)
         ]
-        if let hair = hairSpans(appearance.hairStyle) {
-            layers.append(AvatarLayer(id: "hair", rows: grid(hair), rgb: appearance.hairColor.rgb))
+        // O1/H3: ucesy jsou vzdy cele videt; jen pokryvka hlavy z obchodu cast vlasu schova (maska).
+        let headwear = gear.first { $0.slot == .head }
+        if let hair = hairRows(appearance.hairStyle, under: headwear) {
+            layers.append(AvatarLayer(id: "hair", rows: hair, rgb: appearance.hairColor.rgb))
         }
         layers.append(AvatarLayer(id: "eyes", rows: grid([4: [6...6, 9...9]]), rgb: RGB(0.10, 0.10, 0.16)))
         layers += marks.filter { !$0.behindBody }.map(\.layer)
@@ -160,30 +162,32 @@ enum AvatarSprite {
         func mark(_ id: String, _ slot: EquipmentSlot?, behind: Bool = false, _ spans: [Int: [ClosedRange<Int>]], _ rgb: RGB) -> ClassMark {
             ClassMark(slot: slot, behindBody: behind, layer: AvatarLayer(id: "class-\(id)", rows: grid(spans), rgb: rgb))
         }
-        let hood: [Int: [ClosedRange<Int>]] = [0: [6...9], 1: [5...10], 2: [4...11], 3: [4...4, 11...11], 4: [4...4, 11...11], 5: [4...4, 11...11]]
+        // O1/H3: zadna trida nema pokryvku hlavy (helma, kapuce i kape jsou pryc), ucesy jsou vzdy cele videt.
+        // Tridu odlisi zbran a doplnek: Warrior sekera + kovovy naramenik, Mage hul + kratky plast,
+        // Archer luk + toulec na zadech, Rogue dyka + satek pres pusu. Zbran ustoupi zbrani z obchodu.
         switch heroClass {
         case .warrior:
             return [
-                mark("helmet", .head, [1: [5...10], 2: [5...10], 3: [5...5, 7...8, 10...10]], steel),
-                mark("shield", .gadget, [8: [0...2], 9: [0...2], 10: [0...2], 11: [1...1]], steel),
-                mark("crest", .gadget, [9: [1...1]], classAccent(.warrior))
+                mark("pauldron", nil, [6: [3...3], 7: [2...3], 8: [2...3]], steel),
+                mark("axe-handle", .weapon, [3: [13...13], 4: [13...13], 5: [13...13], 6: [13...13], 7: [13...13], 8: [13...13], 9: [13...13], 10: [13...13], 11: [13...13]], wood),
+                mark("axe-blade", .weapon, [3: [14...15], 4: [12...12, 14...15], 5: [14...15], 6: [14...14]], steel)
             ]
         case .mage:
             return [
-                mark("cape", nil, behind: true, [7: [3...12], 8: [2...13], 9: [4...11], 10: [4...11], 11: [4...11], 12: [4...11], 13: [4...11]], RGB(0.36, 0.22, 0.62)),
-                mark("orb", .gadget, [8: [1...2], 9: [1...2]], RGB(0.55, 0.86, 1.00)),
-                mark("spark", .gadget, [7: [0...0], 6: [3...3]], RGB(1.00, 0.95, 0.70))
+                mark("cape", nil, behind: true, [7: [3...12], 8: [2...13], 9: [3...12], 10: [4...11]], RGB(0.36, 0.22, 0.62)),
+                mark("staff", .weapon, [2: [13...13], 3: [13...13], 4: [13...13], 5: [13...13], 6: [13...13], 7: [13...13], 8: [13...13], 9: [13...13], 10: [13...13], 11: [13...13], 12: [13...13], 13: [13...13], 14: [13...13]], wood),
+                mark("gem", .weapon, [0: [13...13], 1: [12...14]], RGB(0.68, 0.45, 0.85))
             ]
         case .archer:
             return [
-                mark("hood", .head, hood, RGB(0.24, 0.52, 0.30)),
-                mark("bow", .gadget, [5: [2...2], 6: [1...1], 7: [0...0], 8: [0...0], 9: [0...0], 10: [0...0], 11: [0...0], 12: [1...1], 13: [2...2]], wood),
-                mark("string", .gadget, [6: [2...2], 7: [2...2], 8: [2...2], 9: [2...2], 10: [2...2], 11: [2...2], 12: [2...2]], RGB(0.92, 0.90, 0.82))
+                mark("quiver", nil, behind: true, [5: [12...13], 6: [12...13], 7: [12...13], 8: [13...13]], RGB(0.50, 0.32, 0.17)),
+                mark("fletching", nil, behind: true, [3: [13...13], 4: [12...13]], RGB(0.92, 0.90, 0.82)),
+                mark("bow", .weapon, [5: [2...2], 6: [1...1], 7: [0...0], 8: [0...0], 9: [0...0], 10: [0...0], 11: [0...0], 12: [1...1], 13: [2...2]], wood),
+                mark("string", .weapon, [6: [2...2], 7: [2...2], 8: [2...2], 9: [2...2], 10: [2...2], 11: [2...2], 12: [2...2]], RGB(0.92, 0.90, 0.82))
             ]
         case .rogue:
             return [
-                mark("hood", .head, hood, RGB(0.22, 0.22, 0.30)),
-                mark("mask", nil, [5: [5...10]], RGB(0.14, 0.14, 0.20)),
+                mark("scarf", nil, [5: [5...10], 6: [6...10]], RGB(0.22, 0.22, 0.30)),
                 mark("dagger", .weapon, [6: [13...13], 7: [13...13], 8: [13...13]], steel),
                 mark("hilt", .weapon, [9: [12...14], 10: [13...13]], wood)
             ]
@@ -197,6 +201,31 @@ enum AvatarSprite {
         case .archer: RGB(0.36, 0.73, 0.46)
         case .warrior: RGB(0.78, 0.30, 0.26)
         }
+    }
+
+    /// O1/H3: radky vlasu pod pokryvkou hlavy z obchodu (maska). Bez pokryvky cely ucs.
+    /// Pod pokryvkou se schova vse do jejiho okraje (`hairBrimRow`) i kazdy pixel, ktery pokryvka kresli;
+    /// Long nechava jen pramínky po stranach pod okrajem, Spiky a Mohawk se schovaji cele, Short a Bald podle tvaru.
+    /// nil = zadne vlasy.
+    static func hairRows(_ style: HairStyle, under headwear: EquipmentItem?) -> [String]? {
+        guard let spans = hairSpans(style) else { return nil }
+        var rows = grid(spans)
+        guard let headwear, let brim = headwear.hairBrimRow else { return rows }
+        let covered = headwear.layers.map { $0.rows }
+        for y in rows.indices {
+            var cells = Array(rows[y])
+            for x in cells.indices where cells[x] == "#" {
+                let underHat = covered.contains { Array($0[y])[x] == "#" }
+                let hidden: Bool = switch style {
+                case .spiky, .mohawk: true
+                case .long: y <= brim || (x > 4 && x < 11)
+                case .short, .bald: y <= brim
+                }
+                if hidden || underHat { cells[x] = "." }
+            }
+            rows[y] = String(cells)
+        }
+        return rows.contains { $0.contains("#") } ? rows : nil
     }
 
     private static func hairSpans(_ style: HairStyle) -> [Int: [ClosedRange<Int>]]? {

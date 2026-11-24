@@ -35,6 +35,18 @@ final class EffectSounds {
             default: nil
             }
         }
+
+        /// O1/H2: vychozi zesileni efektu proti posuvniku "Effects volume". Nahravka odmeny
+        /// (reward-chime.mp3, lolo_s-start) je vyrazne hlasitejsi nez ostatni efekty, proto hraje na 37 %
+        /// (asi −8,6 dB). Ostatni efekty se nemeni.
+        var gain: Float {
+            switch self {
+            case .coin, .xp: Self.rewardGain
+            default: 1
+            }
+        }
+
+        static let rewardGain: Float = 0.37
     }
 
     private var cache: [Effect: Data] = [:]
@@ -53,7 +65,7 @@ final class EffectSounds {
         cache[effect] = data
         players.removeAll { !$0.isPlaying }
         guard players.count < 6, let player = try? AVAudioPlayer(data: data) else { return }
-        player.volume = max(0, min(1, volume))
+        player.volume = max(0, min(1, volume * effect.gain))
         player.play()
         players.append(player)
     }

@@ -18,7 +18,7 @@ enum HeroClass: String, Codable, CaseIterable, Sendable, Identifiable {
     /// Kratky popis na karte povolani.
     var tagline: String {
         switch self {
-        case .warrior: "Shield up, push through long sessions."
+        case .warrior: "Axe in hand, push through long sessions."
         case .mage: "Turns quiet hours into arcane power."
         case .archer: "Patient aim, one target at a time."
         case .rogue: "Slips past every distraction."

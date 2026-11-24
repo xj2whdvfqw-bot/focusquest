@@ -180,26 +180,42 @@ struct SettingsView: View {
         }
     }
 
+    /// O1/H1: vse na stred se stejnymi odstupy. Odkazy na jednom radku (.footnote, "Terms of Use" se nezalomi);
+    /// kdyz se na uzky iPhone nebo s velkym pismem nevejdou, jsou pod sebou, kazdy na stredu.
     private var footer: some View {
-        VStack(spacing: FQSpace.xs) {
+        VStack(spacing: FQSpace.sm) {
             Text("FocusQuest version \(Self.appVersion)")
-            HStack(spacing: FQSpace.sm) {
-                Button("Privacy Policy") { FQFeedback.shared.tap(); openURL(LegalLinks.privacy) }
-                Text("·").accessibilityHidden(true)
-                Button("Terms of Use") { FQFeedback.shared.tap(); openURL(LegalLinks.terms) }
-                Text("·").accessibilityHidden(true)
-                Button("Support") { FQFeedback.shared.tap(); openURL(LegalLinks.support) }
+                .font(.footnote)
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: FQSpace.sm) {
+                    legalLinks(separated: true)
+                }
+                VStack(spacing: FQSpace.xs) {
+                    legalLinks(separated: false)
+                }
             }
-            .fontWeight(.semibold)
+            .font(.footnote.weight(.semibold))
             .buttonStyle(.borderless)
             // A6: nenapadny credit uplne dole.
             Text("Vibecoded with artificial intelligence")
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
-                .padding(.top, FQSpace.sm)
         }
-        .frame(maxWidth: .infinity)
+        .multilineTextAlignment(.center)
+        .frame(maxWidth: .infinity, alignment: .center)
         .padding(.top, FQSpace.sm)
+    }
+
+    @ViewBuilder
+    private func legalLinks(separated: Bool) -> some View {
+        Button("Privacy Policy") { FQFeedback.shared.tap(); openURL(LegalLinks.privacy) }
+            .lineLimit(1).fixedSize()
+        if separated { Text("·").accessibilityHidden(true) }
+        Button("Terms of Use") { FQFeedback.shared.tap(); openURL(LegalLinks.terms) }
+            .lineLimit(1).fixedSize()
+        if separated { Text("·").accessibilityHidden(true) }
+        Button("Support") { FQFeedback.shared.tap(); openURL(LegalLinks.support) }
+            .lineLimit(1).fixedSize()
     }
 
     static var appVersion: String {
@@ -755,12 +771,18 @@ private extension View {
     /// Nativni prepinac se systemovou zelenou, jako v Nastaveni iPhonu.
     func settingsToggleTint() -> some View { tint(Color(uiColor: .systemGreen)) }
 
-    /// Mekky scroll edge efekt nahore i dole (iOS 26); starsi iOS maji standardni listu.
+    /// O1/H1: hlavicka ma vlastni pozadi (material jako systemova navigace), takze obsah pod ni pri rolovani
+    /// mizi a nadpis "Settings" se nekresli pres radky. Dole zustava mekky scroll edge efekt (iOS 26).
     @ViewBuilder func settingsScrollEdges() -> some View {
+        let barred = self
+            .toolbarBackground(.bar, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
         if #available(iOS 26.0, *) {
-            scrollEdgeEffectStyle(.soft, for: .all)
+            barred
+                .scrollEdgeEffectStyle(.hard, for: .top)
+                .scrollEdgeEffectStyle(.soft, for: .bottom)
         } else {
-            self
+            barred
         }
     }
 }

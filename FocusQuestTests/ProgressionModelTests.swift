@@ -203,11 +203,85 @@ final class ProgressionModelTests: XCTestCase {
 
     func testShopGearReplacesTheClassMarkInItsSlot() {
         var appearance = AvatarAppearance()
-        appearance.equip("viking-helmet", in: .head)
+        appearance.equip("excalibur", in: .weapon)
         let ids = AvatarSprite.layers(for: appearance, heroClass: .warrior).map(\.id)
-        XCTAssertFalse(ids.contains("class-helmet"))
-        XCTAssertTrue(ids.contains("class-shield"))
-        XCTAssertTrue(ids.contains("viking-helmet-dome"))
+        XCTAssertFalse(ids.contains("class-axe-handle"), "A shop weapon replaces the class weapon")
+        XCTAssertTrue(ids.contains("class-pauldron"), "The class accessory stays")
+        XCTAssertTrue(ids.contains("excalibur-blade"))
+    }
+
+    /// O1/H3: tridy nemaji pokryvku hlavy a ucesy jsou bez pokryvky z obchodu cele videt
+    /// (zadna vrstva nakreslena po vlasech je neprekryje). Tridu odlisi zbran a doplnek.
+    func testClassesWearNoHeadwearAndHairIsAlwaysWhole() throws {
+        let expected: [HeroClass: Set<String>] = [
+            .warrior: ["class-axe-handle", "class-axe-blade", "class-pauldron"],
+            .mage: ["class-staff", "class-gem", "class-cape"],
+            .archer: ["class-bow", "class-string", "class-quiver", "class-fletching"],
+            .rogue: ["class-dagger", "class-hilt", "class-scarf"]
+        ]
+        for heroClass in HeroClass.allCases {
+            XCTAssertEqual(Set(AvatarSprite.classMarks(heroClass).map(\.layer.id)), expected[heroClass], "\(heroClass)")
+            XCTAssertFalse(AvatarSprite.classMarks(heroClass).contains { $0.slot == .head }, "\(heroClass) has headwear")
+            for style in HairStyle.allCases where style != .bald {
+                var look = AvatarAppearance()
+                look.hairStyle = style
+                let layers = AvatarSprite.layers(for: look, heroClass: heroClass)
+                let hairIndex = try XCTUnwrap(layers.firstIndex { $0.id == "hair" })
+                let full = try XCTUnwrap(AvatarSprite.hairRows(style, under: nil))
+                XCTAssertEqual(layers[hairIndex].rows, full, "\(heroClass) \(style): hair is cut")
+                for layer in layers[(hairIndex + 1)...] {
+                    for (y, row) in layer.rows.enumerated() {
+                        for (x, cell) in row.enumerated() where cell == "#" {
+                            XCTAssertNotEqual(Array(full[y])[x], "#", "\(heroClass) \(style): \(layer.id) covers hair at \(x),\(y)")
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// O1/H3: kazda kombinace 4 tridy x vsechny ucesy x kazda pokryvka z obchodu. Vlasy nikdy netrci pres
+    /// pokryvku: nad jejim okrajem ani pod jejimi pixely zadne nejsou. Long nechava jen praminky po stranach,
+    /// Spiky a Mohawk jsou schovane cele, Short a Bald podle tvaru.
+    func testHeadwearMasksEveryHairstyleForEveryClass() throws {
+        let hats = EquipmentItem.catalog.filter { $0.slot == .head }
+        XCTAssertEqual(hats.count, 3)
+        for hat in hats {
+            let brim = try XCTUnwrap(hat.hairBrimRow, "\(hat.name) has no hair mask")
+            for heroClass in HeroClass.allCases {
+                for style in HairStyle.allCases {
+                    var look = AvatarAppearance()
+                    look.hairStyle = style
+                    look.equip(hat.id, in: .head)
+                    let layers = AvatarSprite.layers(for: look, heroClass: heroClass)
+                    let label = "\(heroClass) \(style) \(hat.name)"
+                    let hatIndex = try XCTUnwrap(layers.firstIndex { $0.id.hasPrefix(hat.id + "-") }, "\(label): hat missing")
+                    guard let hairIndex = layers.firstIndex(where: { $0.id == "hair" }) else {
+                        XCTAssertTrue([.bald, .spiky, .mohawk].contains(style), "\(label): hair vanished")
+                        continue
+                    }
+                    XCTAssertFalse([.spiky, .mohawk, .bald].contains(style), "\(label): should be fully hidden")
+                    XCTAssertLessThan(hairIndex, hatIndex, "\(label): hat is drawn over the hair")
+                    for (y, row) in layers[hairIndex].rows.enumerated() {
+                        for (x, cell) in row.enumerated() where cell == "#" {
+                            XCTAssertGreaterThan(y, brim, "\(label): hair above the brim at \(x),\(y)")
+                            XCTAssertFalse(hat.layers.contains { Array($0.rows[y])[x] == "#" }, "\(label): hair under the hat at \(x),\(y)")
+                            if style == .long { XCTAssertTrue(x <= 4 || x >= 11, "\(label): long hair only as side strands") }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// O1/H2: odmena (mince, XP; nahravka reward-chime) hraje na 37 % (asi −9 dB), ostatni efekty beze zmeny.
+    @MainActor
+    func testRewardSoundIsQuieterThanOtherEffects() {
+        XCTAssertEqual(EffectSounds.Effect.coin.gain, 0.37, accuracy: 0.001)
+        XCTAssertEqual(EffectSounds.Effect.xp.gain, 0.37, accuracy: 0.001)
+        for effect in EffectSounds.Effect.allCases where effect != .coin && effect != .xp {
+            XCTAssertEqual(effect.gain, 1, "\(effect)")
+        }
     }
 
     func testUnknownEquipmentIsIgnored() {

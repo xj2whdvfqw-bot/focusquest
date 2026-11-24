@@ -10,7 +10,7 @@ enum HeroAttack: Equatable, Sendable {
     case arrow
     /// Zlodej: dve rychla bodnuti dykou.
     case stab
-    /// Valecnik bez mece: vypad se stitem.
+    /// Vypad se stitem (od O1/H3 nepouzivany: Warrior ma misto stitu sekeru).
     case bash
 
     static func of(appearance: AvatarAppearance, heroClass: HeroClass) -> HeroAttack {
@@ -20,7 +20,8 @@ enum HeroAttack: Equatable, Sendable {
         default: break
         }
         return switch heroClass {
-        case .warrior: .bash
+        // O1/H3: Warrior ma sekeru v prave ruce, utoci svihem.
+        case .warrior: .slash
         case .mage: .spell
         case .archer: .arrow
         case .rogue: .stab
@@ -51,8 +52,8 @@ extension AvatarSprite {
             weaponIDs = switch heroClass {
             case .rogue: ["class-dagger", "class-hilt"]
             case .archer: ["class-bow", "class-string"]
-            case .mage: ["class-orb", "class-spark"]
-            case .warrior: ["class-shield", "class-crest"]
+            case .mage: ["class-staff", "class-gem"]
+            case .warrior: ["class-axe-handle", "class-axe-blade"]
             }
         }
         return (all.filter { !weaponIDs.contains($0.id) }, all.filter { weaponIDs.contains($0.id) })

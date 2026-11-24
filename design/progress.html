@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-24T18:28:00+01:00",
-  "current": "N1 hotovo: build #81 prošel",
-  "nextStep": "Otestovat na iPhonu průchod 14 kroků tutoriálu: přechody na stejné obrazovce v jedné animaci, při změně obrazovky schování a objevení na cíli (1→2, 4→5, 6→7, 7→8, 8→9, 11→12, 12→13)",
+  "updated": "2026-11-24T20:04:00+01:00",
+  "current": "O1 (H1–H3: Settings footer a hlavička, tišší odměna, účesy vs. pokrývky hlavy): kód hotový, commit a build",
+  "nextStep": "Commitnout O1, pustit build; mezitím začít P1 (obchod jako kupecký stánek)",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -913,6 +913,22 @@
       "commit": "13d53c1",
       "build": { "number": 81, "runId": 45443860852, "result": "úspěch" },
       "note": "Build #81 prošel (IPA, Release, testy včetně nových testů typu přechodu a odhadu polohy po odrolování). Skutečné animace ověří až iPhone. Na iPhonu otestuj (Settings › Help › Replay tutorial) všech 14 kroků jen přes Next: na stejné obrazovce (5→6, 2→3, 3→4, 9→10, 10→11, 12→13, 13→14) se bublina, výřez a text pohnou současně v jedné animaci bez půlsekundového čekání; při změně obrazovky (1→2, 4→5, 6→7, 7→8, 8→9, 11→12) ztmavení, výřez i bublina rychle zmizí, Skip zůstane, panel dojede / tab se přepne a overlay se objeví rovnou na správném cíli s novým textem (hlavně 1→2: žádný skok na Sound). Kdyby se overlay po změně obrazovky do 1 s neobjevil u cíle, je bublina uprostřed a Next funguje. S Reduce Motion jen prolínání. Kdyby se u 12→13 nebo na SE výřez po dojetí ještě jednou posunul, napiš (odhad polohy po odrolování nesedí)."
+    },
+    {
+      "id": "O1",
+      "title": "Settings footer, tišší odměna, účesy vs. pokrývky hlavy (H1–H3)",
+      "status": "pracuje",
+      "items": [
+        { "text": "H1 Footer Settings na střed: verze, odkazy Privacy Policy · Terms of Use · Support na jednom řádku (.footnote, bez zalomení), na úzkém displeji pod sebou; credit na střed, stejné odstupy", "done": true },
+        { "text": "H1 Hlavička „Settings“ má pozadí (materiál jako systémová navigace), obsah pod ní mizí", "done": true },
+        { "text": "H2 Zvuk odměny (mince, XP, `reward-chime.mp3`) na 37 % (asi −8,6 dB), ostatní efekty beze změny", "done": true },
+        { "text": "H3 Třídy bez pokrývek hlavy: Warrior sekera + nárameník, Mage hůl + krátký plášť, Archer luk + toulec, Rogue dýka + šátek", "done": true },
+        { "text": "H3 Pokrývky z obchodu s maskou účesu (Long jen pramínky, Spiky/Mohawk schované, Short/Bald podle tvaru); test 4 třídy × 5 účesů × 3 pokrývky", "done": true },
+        { "text": "DECISIONS.md", "done": false }
+      ],
+      "commit": null,
+      "build": { "number": null, "runId": null, "result": null },
+      "note": "Kód hotový, build ještě neběžel."
     }
   ]
 }

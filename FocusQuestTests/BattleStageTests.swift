@@ -16,7 +16,7 @@ final class BattleStageTests: XCTestCase {
 
     func testAttackWithoutWeaponFollowsTheHeroClass() {
         let look = AvatarAppearance()
-        XCTAssertEqual(HeroAttack.of(appearance: look, heroClass: .warrior), .bash)
+        XCTAssertEqual(HeroAttack.of(appearance: look, heroClass: .warrior), .slash, "O1/H3: the warrior swings an axe")
         XCTAssertEqual(HeroAttack.of(appearance: look, heroClass: .mage), .spell)
         XCTAssertEqual(HeroAttack.of(appearance: look, heroClass: .archer), .arrow)
         XCTAssertEqual(HeroAttack.of(appearance: look, heroClass: .rogue), .stab)
