@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-24T17:03:32+01:00",
-  "current": "M1: kód F1–F2 hotový, commit a build",
-  "nextStep": "Spustit build na phase3-duolingo a opravit případné chyby kompilace nebo testů",
+  "updated": "2026-11-24T17:04:10+01:00",
+  "current": "M1: build #80 běží",
+  "nextStep": "Počkat na výsledek buildu #80 a opravit případné chyby",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -888,7 +888,7 @@
     {
       "id": "M1",
       "title": "Tutoriál: Fight setup v krocích 2–4, Hero ve 2 krocích (14 kroků)",
-      "status": "pracuje",
+      "status": "build",
       "items": [
         { "text": "F1 Next v kroku 1 otevře Fight setup; kroky 2–4 spotlight na Focusing, Sound a Start Battle; Next v kroku 4 panel zavře a krok 5 je na Home", "done": true },
         { "text": "F1 Cíle hlásí frame v .global do sdíleného CoachMarkStore (bez anchorPreference), overlay ve vlastním UIWindow nad sheety", "done": true },
@@ -896,9 +896,9 @@
         { "text": "F2 Hero ve 2 krocích: 12 Your hero (karta hrdiny), 13 Daily focus target (kroužek a slider), 14 Settings s Finish; čítač X of 14 a test 14 kroků", "done": true },
         { "text": "DECISIONS.md", "done": true }
       ],
-      "commit": null,
-      "build": null,
-      "note": "Kód F1 a F2 je hotový a čeká na build. Lokálně se nedá zkompilovat (Windows), ověří to až CI."
+      "commit": "7325bac",
+      "build": { "number": 80, "runId": 45432766084, "result": "běží" },
+      "note": "Kód F1 a F2 je hotový, build #80 běží. Lokálně se nedá zkompilovat (Windows), ověří to až CI."
     }
   ]
 }
