@@ -3,8 +3,9 @@ import SwiftUI
 import UIKit
 @testable import FocusQuest
 
-/// L1: tutorial projde vsech 13 kroku jen pres Next a kazdy krok ukaze bublinu (s prvkem i bez nej),
-/// Skip stoji v bezpecne zone ve vysce ozubeneho kola a Home se vejde nad listu zalozek bez rolovani.
+/// L1, M1: tutorial projde vsech 14 kroku jen pres Next a kazdy krok ukaze bublinu (s prvkem i bez nej),
+/// cile hlasi ramecky v `.global` a prvky ve Fight setupu cekaji na dojety list, Skip stoji v bezpecne
+/// zone ve vysce ozubeneho kola a Home se vejde nad listu zalozek bez rolovani.
 @MainActor
 final class CoachMarkTests: XCTestCase {
     private func freshDefaults(_ name: String = #function) -> UserDefaults {
@@ -20,7 +21,7 @@ final class CoachMarkTests: XCTestCase {
         CoachSpace(size: CGSize(width: 375, height: 667), safeTop: 20, safeBottom: 0),
     ]
 
-    /// Ramecky prvku zhruba tam, kde v appce jsou (Home, lista zalozek, Stats, Hero).
+    /// Ramecky prvku zhruba tam, kde v appce jsou (Home, Fight setup, lista zalozek, Stats, Hero).
     private func sampleFrames(in space: CoachSpace) -> [CoachTarget: CGRect] {
         let width = space.size.width
         let tabTop = space.size.height - FQTabBarMetrics.bottom - FQTabBarMetrics.height
@@ -29,7 +30,15 @@ final class CoachMarkTests: XCTestCase {
             CGRect(x: FQTabBarMetrics.sideInset + 5 + CGFloat(index) * tabWidth, y: tabTop + 5, width: tabWidth - 10, height: 52)
         }
         let contentTop = space.safeTop + FQSpace.sm
+        // Fight setup ~470 bodu vysoky: nadpis, Focusing (chipy ve 2 radcich), Sound, Start Battle.
+        let sheetTop = space.size.height - 470
+        let focusing = CGRect(x: 20, y: sheetTop + 78, width: width - 40, height: 106)
+        let sound = CGRect(x: 20, y: focusing.maxY + 20, width: width - 40, height: 92)
         return [
+            .focusing: focusing,
+            .sound: sound,
+            .start: CGRect(x: 20, y: sound.maxY + 24, width: width - 40, height: 72),
+            .heroCard: CGRect(x: 16, y: contentTop + CoachMetrics.skipClearance + 56 + 24, width: width - 32, height: 120),
             .fight: CGRect(x: 16, y: tabTop - 24 - 44 - 12 - 52, width: width - 32, height: 52),
             .quick: CGRect(x: width / 2 - 110, y: tabTop - 24 - 44, width: 220, height: 44),
             .streak: CGRect(x: 16, y: contentTop + CoachMetrics.skipClearance + 56 + 16, width: 130, height: 64),
@@ -52,9 +61,9 @@ final class CoachMarkTests: XCTestCase {
         XCTAssertLessThanOrEqual(layout.bubble.maxX, space.size.width - FQSpace.lg + 0.5, "\(label): bubble off the right edge", file: file, line: line)
     }
 
-    /// E1: 13 kroku jen pres Next. Kazdy krok ma bublinu u prvku (prvek nalezen) i uprostred (prvek
+    /// E1, M1: 14 kroku jen pres Next. Kazdy krok ma bublinu u prvku (prvek nalezen) i uprostred (prvek
     /// chybi), nic se nepreskoci a po Finish tutorial skonci.
-    func testNextWalksAllThirteenStepsAndEveryStepShowsABubble() {
+    func testNextWalksAllFourteenStepsAndEveryStepShowsABubble() {
         let store = CoachMarkStore(defaults: freshDefaults())
         store.finishOnboarding()
         store.startTutorial()
@@ -82,7 +91,68 @@ final class CoachMarkTests: XCTestCase {
             store.next(from: step)
         }
         XCTAssertEqual(visited, CoachStep.allCases, "Next goes through every step in order, none skipped")
+        XCTAssertEqual(visited.count, 14)
         XCTAssertNil(store.step, "Finish ends the tutorial")
+    }
+
+    /// M1/F1: cile hlasi ramecky v `.global`. Sonda korene je prevede do okna (v hlavnim okne posun 0,
+    /// v listu i kdyby `.global` pocital od horni hrany listu). Prvek v listu se ukaze az po dojeti listu,
+    /// po zavreni listu zmizi; nulovy ramecek se nebere.
+    func testGlobalFramesMapToTheWindowAndPanelTargetsWaitForThePanel() throws {
+        let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first,
+                                  "The test host app has no window scene")
+        let window = UIWindow(windowScene: scene)
+        window.isHidden = false
+        defer { window.isHidden = true }
+        let store = CoachMarkStore(defaults: freshDefaults())
+        store.finishOnboarding()
+        store.startTutorial()
+
+        // Hlavni okno: `.global` = souradnice okna.
+        let home = UUID()
+        let homeProbe = CoachRootProbeView(frame: window.bounds)
+        window.addSubview(homeProbe)
+        store.attachRoot(home, probe: homeProbe, isSheet: false)
+        store.updateRoot(home, globalOrigin: .zero, isSheet: false)
+        let fight = CGRect(x: 16, y: 600, width: 300, height: 52)
+        store.report(UUID(), target: .fight, frame: fight, root: home)
+        XCTAssertEqual(store.frames[.fight], fight)
+        XCTAssertFalse(store.sheetOnScreen)
+        store.report(UUID(), target: .quick, frame: .zero, root: home)
+        XCTAssertNil(store.frames[.quick], "An unmeasured target is ignored")
+
+        // Fight setup 300 bodu od horni hrany; `.global` v nem pocita od horni hrany listu.
+        let sheet = UUID()
+        let sheetProbe = CoachRootProbeView(frame: CGRect(x: 0, y: 300, width: window.bounds.width, height: 400))
+        sheetProbe.waitsForPresentation = true
+        window.addSubview(sheetProbe)
+        store.attachRoot(sheet, probe: sheetProbe, isSheet: true)
+        store.updateRoot(sheet, globalOrigin: .zero, isSheet: true)
+        let chipsReporter = UUID()
+        let chips = CGRect(x: 20, y: 80, width: 300, height: 100)
+        store.report(chipsReporter, target: .focusing, frame: chips, root: sheet)
+        XCTAssertTrue(store.sheetOnScreen)
+        XCTAssertNil(store.frames[.focusing], "The spotlight waits until the panel has arrived")
+        RunLoop.main.run(until: Date().addingTimeInterval(CoachMetrics.sheetSettleFallback + 0.3))
+        store.refreshFrames()
+        XCTAssertEqual(store.frames[.focusing], chips.offsetBy(dx: 0, dy: 300), "Sheet-relative .global is moved into the window")
+        XCTAssertEqual(store.frames[.fight], fight)
+
+        // `.global` uz v souradnicich okna: posun 0, ramecek stejny.
+        store.updateRoot(sheet, globalOrigin: CGPoint(x: 0, y: 300), isSheet: true)
+        store.report(chipsReporter, target: .focusing, frame: chips.offsetBy(dx: 0, dy: 300), root: sheet)
+        XCTAssertEqual(store.frames[.focusing], chips.offsetBy(dx: 0, dy: 300), "Window-based .global stays as it is")
+
+        // List zavreny: jeho prvky zmizi a Home se zase muze zvyraznit.
+        sheetProbe.removeFromSuperview()
+        store.refreshFrames()
+        XCTAssertFalse(store.sheetOnScreen)
+        XCTAssertNil(store.frames[.focusing])
+        XCTAssertEqual(store.frames[.fight], fight)
+        // Skryta zalozka (sonda mimo okno): jeji prvky se vynechaji.
+        homeProbe.removeFromSuperview()
+        store.refreshFrames()
+        XCTAssertNil(store.frames[.fight])
     }
 
     /// E1: bublina je videt vzdy. Bez predchozi bubliny hned uprostred, jinak se na prvek ceka nejdeleji 1 s.
@@ -134,7 +204,8 @@ final class CoachMarkTests: XCTestCase {
                 let window = UIWindow(windowScene: scene)
                 let space = CoachSpace(size: window.bounds.size, safeTop: insets.top, safeBottom: insets.bottom)
                 let frames = sampleFrames(in: space)
-                store.setFramesForTesting(withTarget ? frames : [:])
+                // M1/F1: kroky 2–4 stoji v dojetem Fight setupu.
+                store.setFramesForTesting(withTarget ? frames : [:], sheetOnScreen: step.isInFightSheet)
                 window.windowLevel = .alert + 1
                 window.overrideUserInterfaceStyle = .dark
                 window.backgroundColor = .clear
@@ -155,7 +226,7 @@ final class CoachMarkTests: XCTestCase {
                 let yellow = try yellowPixels(in: image, outside: hole)
                 XCTAssertGreaterThan(yellow, 400, "\(step) \(withTarget ? "with" : "without") target: no Next button visible")
                 rendered += 1
-                if (step == .battle && withTarget) || (step == .settings && !withTarget) {
+                if ([.focusing, .battle, .hero].contains(step) && withTarget) || (step == .settings && !withTarget) {
                     attach(image, name: "coach-\(step)-\(withTarget ? "target" : "centered")")
                 }
             }

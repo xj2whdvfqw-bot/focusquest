@@ -3,7 +3,7 @@
 Doplňuje `design/CHANGES.md` (zadání sekcí 0–15) a `design/progress.html` (stav, buildy, co otestovat).
 Tady je to, co v nich není: rozhodnutí, která padla během práce, otevřené body a známé pasti.
 
-Stav k 24. 11. 2026: větev `phase3-duolingo`; L1 (opravy E1–E5 po testu #76: tutoriál bez sheetů, Skip v safe area, plynulé přechody, Home bez scrollu, Break panel) prošel jako build #79, viz progress.html. Předtím zelený build #76 (K1: onboarding karta, tutoriál ve vlastním okně, Shop Supplies, sdílecí karty, zvuky) a #74 (J1: Habits, widget, freeze, Focus, zkratky, úkoly, poznámky, příprava iCloud); dříve #70 (I1), #69 (H1), #67 (G1); dříve #65 (F1); E1 (opravy z testu po D1) prošel jako build #62; F1 (Habits, mapa, easter eggy) prošel jako build #65; F2 (nový onboarding a coach marks) prošel jako build #66. Všechny sekce z CHANGES.md
+Stav k 24. 11. 2026: větev `phase3-duolingo`; M1 (tutoriál: kroky 2–4 v otevřeném Fight setupu, cíle měřené v `.global`, Hero ve dvou krocích, celkem 14) je v práci, viz progress.html. Předtím L1 (opravy E1–E5 po testu #76: Skip v safe area, plynulé přechody, Home bez scrollu, Break panel) prošel jako build #79. Předtím zelený build #76 (K1: onboarding karta, tutoriál ve vlastním okně, Shop Supplies, sdílecí karty, zvuky) a #74 (J1: Habits, widget, freeze, Focus, zkratky, úkoly, poznámky, příprava iCloud); dříve #70 (I1), #69 (H1), #67 (G1); dříve #65 (F1); E1 (opravy z testu po D1) prošel jako build #62; F1 (Habits, mapa, easter eggy) prošel jako build #65; F2 (nový onboarding a coach marks) prošel jako build #66. Všechny sekce z CHANGES.md
 a všechny opravy z auditu jsou hotové.
 
 ## 1. Rozhodnutí
@@ -373,17 +373,35 @@ a všechny opravy z auditu jsou hotové.
   Od H1 ani Privacy a Support na webu ani komentáře neříkají „subject“ (stránka správy je „Your focus list“, tlačítko „Edit focus list“).
   Názvy bossů a skladba „Study flow“ se nemění.
 - **Tutoriál jako coach marks místo TipKitu** (od F2, `Views/Onboarding/CoachMarks.swift`). TipKit je pryč (FQTips, popover tipy, Reset tips).
-  - Celá obrazovka ztmavne (72 %), zvýrazněný prvek je vyříznutý zaobleným výřezem podle tvaru (kapsle/kruh, karty 20 pt)
-    se žlutou pulzující září; vedle bublina (titulek, max 2 věty, „3 of 13“, Next), nahoře vlevo „Skip tutorial“.
-  - **Tutoriál nikdy neotvírá listy** (od L1/E1). Dřív Next na kroku 1 otevřel Fight sheet; cíle kroků 2–4 byly v listu,
-    overlay je nenašel, ~8 s blokoval appku bez bubliny a pak kroky 2–4 tiše přeskočil. Teď kroky 2–4 (Focusing, Sound,
-    Phone down) stojí na Home se spotlightem na Fight a text popíše, co v panelu hráč najde. Fight sheet žádnou výjimku
-    pro tutoriál nemá (detenty, zavírání tahem).
-  - **Overlay je ve vlastním `UIWindow`** (od K1, `CoachOverlayWindow`, úroveň `.normal + 5`) nad hlavním oknem.
-    Okno je vidět jen během tutoriálu a pohlcuje všechna klepnutí; projde jen Next a Skip.
-    Rámečky prvků jsou v souřadnicích okna: každý `.coachMarkHost()` pošle lokální rámečky a neviditelnou UIKit sondu
-    (`CoachWindowProbe`), která je převede `convert(_:to: nil)`. `.global` ze SwiftUI se nepoužívá.
-    Hostitel mimo okno (skrytá záložka) se vynechá.
+  - Celá obrazovka ztmavne (72 %), zvýrazněný prvek je vyříznutý zaobleným výřezem podle tvaru (kapsle/kruh, karty 20 pt,
+    Start Battle rohy tlačítka + 8) se žlutou pulzující září; vedle bublina (titulek, max 2 věty, „3 of 14“, Next),
+    nahoře vlevo „Skip tutorial“.
+  - **Kroky 2–4 stojí v otevřeném Fight setupu** (od M1/F1; ruší L1/E1 „tutoriál nikdy neotvírá listy“). Next v kroku 1
+    posune krok a zároveň otevře Fight setup s bossem na řadě (`syncTutorialFightSheet` v `MainTabView`); text bubliny
+    se hned prolne, bublina počká na místě a jakmile list dojede, odjede i s výřezem na sekci Focusing (krok 2).
+    Krok 3 = sekce Sound, krok 4 = tlačítko Start Battle (`CoachTarget.focusing/.sound/.start`). Next v kroku 4 list
+    zavře a krok 5 („Not feeling it?“) počká, až list zmizí. Skip během kroků 2–4 list taky zavře; list, který otevřel
+    hráč, tutoriál nezavírá (`tutorialOwnsFightSheet`). Obnovený krok 2–4 po pádu list při spuštění znovu otevře.
+    Ve Fight setupu během tutoriálu (`coach.step != nil`): `allowsHitTesting(false)`, zavření tahem zablokované
+    (`fqSheetDismissal(blocked:)`, VoiceOver escape nic neudělá), jen výška podle obsahu (bez `.large`), krok s prvkem
+    mimo zorné pole list odroluje (`scrollTo(target, anchor: nil)`).
+    **Minulá chyba (L1)**: overlay prvky v listu nenašel. Pravděpodobná příčina: `.environment(coach)` v `MainTabView`
+    stojí pod modifikátorem `.sheet`, takže ho obsah listu nedostal (`coach` byl nil a list nic nehlásil). Teď ho
+    `FightSheetView` dostává přímo v `.sheet { … .environment(coach) }`.
+  - **Měření cílů v `.global`** (od M1/F1, bez anchorPreference): `.coachMark(target)` má v pozadí `GeometryReader`
+    a hlásí `frame(in: .global)` do sdíleného `CoachMarkStore` (`report`: `onAppear` a každá změna včetně rolování;
+    `onDisappear` = `withdraw`; nulový rámeček se nebere). `CoachMarkStore` je ten sdílený „TutorialController“ (@Observable).
+    **Pojistka pro list**: není jisté, jestli `.global` v listu počítá od okna, nebo od horní hrany listu. Každý kořen
+    hierarchie (`.coachRoot()`: stránka záložky, lišta, `.coachRoot(sheet: true)` ve Fight setupu) má neviditelnou UIKit
+    sondu (`CoachRootProbeView`): rozdíl její polohy v okně (`convert(.zero, to: nil)`) a `.global` počátku kořene se
+    přičte k rámečkům cílů pod ním (v hlavním okně 0). Kořen mimo okno (skrytá záložka) se vynechá.
+  - **Spotlight čeká na dojetý list**: sonda listu po vstupu do okna čeká na konec prezentace (transition coordinator,
+    pojistka 0,9 s; bez coordinatoru 0,5 s, `CoachMetrics.sheetSettle*`). Do té doby cíle listu nemají rámeček.
+    `sheetOnScreen` (sonda listu je v okně) zároveň drží cíle Home a lišty, dokud se list nezavře, takže výřez nehoní
+    jedoucí list. Pojistka 1 s platí dál: cíl, který do 1 s není, = bublina uprostřed bez výřezu, Next funguje vždy.
+  - **Overlay je ve vlastním `UIWindow`** (od K1, `CoachOverlayWindow`, úroveň `.normal + 5`) nad hlavním oknem,
+    tedy i nad listy (prezentují se v hlavním okně). Okno je vidět jen během tutoriálu a pohlcuje všechna klepnutí
+    i tahy (ani list nejde stáhnout); projde jen Next a Skip.
   - **Bublina je vidět vždy, když tutoriál běží** (L1/E1): bez předchozí bubliny hned uprostřed, jinak se na prvek čeká
     nejdéle 1 s (`CoachMetrics.fallbackSeconds`, `CoachLayout.resolve`). Prvek, který se do 1 s nenajde (nebo je mimo
     obrazovku), = bublina uprostřed bez výřezu. Next funguje vždy, **kroky se nikdy nepřeskakují**, přeskočit jde jen celý
@@ -402,8 +420,8 @@ a všechny opravy z auditu jsou hotové.
     Overlay měří rámečky průběžně (50 ms první 1,5 s, pak 150 ms), dokud krok trvá. Reduce Motion: bublina neodjede,
     stará a nová se prolnou, stejně výřez; záře nepulzuje. VoiceOver čte bublinu (modální, fokus na ni).
   - **Postup jen přes Next** (od K1): každý krok má Next, poslední Finish. Zvýrazněné prvky nejsou interaktivní.
-    **Krok stojí na své záložce** (`CoachStep.screen`): kroky 1–6 Home, Path na Path, Shop na Shop, Stats na Stats,
-    Daily focus target a Nastavení na Hero. Lišta je během tutoriálu úplně zamčená (`userSwitchTab`).
+    **Krok stojí na své záložce** (`CoachStep.screen`): kroky 1–6 Home (2–4 ve Fight setupu nad ní), Path na Path,
+    Shop na Shop, Stats na Stats, Your hero, Daily focus target a Nastavení na Hero. Lišta je během tutoriálu úplně zamčená (`userSwitchTab`).
     Výřez sedí jen na správné záložce (`CoachMarkStore.screen`; ikony lišty jsou vidět všude).
     Obrazovka s rolováním (`ScreenScaffold`) odroluje prvek kroku do zorného pole (`scrollTo(target, anchor: nil)`,
     `.coachMark` dává prvku `id`), po konci tutoriálu se vrátí nahoru.
@@ -413,20 +431,25 @@ a všechny opravy z auditu jsou hotové.
 
   | # | Kde (spotlight) | Text |
   |---|---|---|
-  | 1 | Home: Fight | boss = jedna session, Fight otevře nastavení |
-  | 2 | Home: Fight | v nastavení vybereš, na co se soustředíš (Stats počítá čas) |
-  | 3 | Home: Fight | hudba nebo ticho, hraje i se zamčenou obrazovkou |
-  | 4 | Home: Fight + animace telefonu | po Start telefon dolů, zvednutí = útěk za 10 s, pauza zdarma |
+  | 1 | Home: Fight | boss = jedna session, Fight otevře nastavení; Next otevře Fight setup |
+  | 2 | Fight setup: sekce Focusing (nadpis + chipy) | vyber, na co je session (Stats počítá čas) |
+  | 3 | Fight setup: sekce Sound | hudba nebo ticho, hraje i se zamčenou obrazovkou |
+  | 4 | Fight setup: Start Battle + animace telefonu | po Start telefon dolů, zvednutí = útěk za 10 s, pauza zdarma; Next panel zavře |
   | 5 | Home: odkaz „Not feeling it? Just 5 minutes“ (jen text, ne celý řádek) | |
   | 6 | Home: plamínek série | |
   | 7–9 | lišta: Path, Shop (gear, pozadí, supplies), Stats, každý na své záložce | záložku přepne tutoriál |
   | 10 | Stats: graf Habits (čtverečky = dny od prvního dne, řádky Po–Ne, dnešek s rámečkem, barva = minuty) | |
   | 11 | Stats: Win rate, Bosses beaten, Longest streak, Focus hours | |
-  | 12 | Hero: Daily focus target (vzhled hrdiny na této záložce, kroužek v barvě třídy, posuvník cíle) | |
-  | 13 | Hero: ozubené kolo Nastavení | Finish |
+  | 12 | Hero: karta hrdiny nahoře („Your hero“) | vzhled (štětec = úprava), level a XP |
+  | 13 | Hero: karta Daily focus target (kroužek a posuvník) | kroužek se během dne plní barvou třídy, posuvník = denní cíl |
+  | 14 | Hero: ozubené kolo Nastavení | Finish |
 
-  Všude Next, poslední Finish. Testy: `CoachMarkTests` projde všech 13 kroků jen přes Next a ověří bublinu u prvku i uprostřed
-  (iPhone 17 i SE) a každý krok ukáže ve skutečném okně (snímek `drawHierarchy`) se žlutým tlačítkem Next/Finish.
+  Od M1/F2 má Hero dva kroky (dřív jeden společný „Your hero“ na kartě Daily focus target), celkem 14. Uložený krok
+  od 12 výš se u rozběhnutého tutoriálu posune o jeden (neškodné). Výchozí jméno „Hero“ bez vyplněného jména je správně.
+  Všude Next, poslední Finish. Testy: `CoachMarkTests` projde všech 14 kroků jen přes Next a ověří bublinu u prvku i uprostřed
+  (iPhone 17 i SE, včetně prvků ve Fight setupu), každý krok ukáže ve skutečném okně (snímek `drawHierarchy`) se žlutým
+  tlačítkem Next/Finish a `testGlobalFramesMapToTheWindowAndPanelTargetsWaitForThePanel` ověří převod `.global` do okna
+  (i pro list počítající od své hrany), čekání na dojetý list a zmizení po jeho zavření.
 
   - Settings › Help › „Replay tutorial“; Debug „Reset onboarding“ (1A i 1B).
   - CI screenshoty (`-initialTab`) onboarding ani tutoriál neukazují.
@@ -642,8 +665,12 @@ Shop má od K1 tři záložky: **Gear** (jen vybavení hrdiny), **Backgrounds** 
 - **`ImageRenderer` nevykreslil bublinu tutoriálu vůbec** (buildy #77 a #78: ztmavení, výřez a Skip ano, bublina ani
   s plnou výplní místo skla ne). Test overlaye proto běží ve skutečném `UIWindow` testovací appky a snímá ho
   `drawHierarchy` (`testEveryStepShowsABubbleInARealWindow`). Sdílecí karty ImageRenderer používají dál (bez materiálů).
-- **Cíle tutoriálu nedávat do listů (sheetů).** Overlay je v jiném okně a list se animuje; rámečky prvků v listu
-  se hledaly špatně (L1/E1). Tutoriál list nikdy neotevírá.
+- **Prostředí a listy:** `.environment(x)` platí jen pro obsah pod ním. Modifikátor `.sheet`, který stojí nad ním
+  (v řetězci za ním), ho listu nepředá; list ho musí dostat přímo (`.sheet { Obsah().environment(x) }`). Volitelné
+  `@Environment(Typ.self) var x: Typ?` pak tiše dá nil (tak se v L1 nejspíš ztratily cíle tutoriálu ve Fight sheetu).
+- **Cíle tutoriálu v listu** (od M1): rámečky v `.global` + posun z kořenové sondy (`.coachRoot(sheet: true)`).
+  UIKit i SwiftUI hlásí cílovou polohu listu hned na začátku prezentace, proto se na dojetí listu čeká zvlášť
+  (transition coordinator). Nový cíl v listu = `.coachMark` uvnitř kořene listu, jinak ho overlay nenajde.
 - **`containerShape` na iOS 17:**
   - iOS 26 přetížení se nesmí volat mimo `#available(iOS 26.0, *)`, proto `fqContainer` vrací na starších iOS jen `self`,
   - `AnyShape` neumí `strokeBorder`, použít `stroke` + `padding(lineWidth / 2)`.

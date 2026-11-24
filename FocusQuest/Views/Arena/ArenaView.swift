@@ -389,7 +389,7 @@ struct ArenaView: View {
                 .buttonStyle(.fqPress)
                 .disabled(!model.isBetweenBattles)
             } else {
-                // Vsechny svety dobyte: kroky 1–4 tutorialu ukazuji tohle tlacitko misto Fight.
+                // Vsechny svety dobyte: krok 1 tutorialu ukazuje tohle tlacitko misto Fight.
                 Button(action: openPath) { ctaLabel("Pick a world", symbol: "map.fill") }
                     .buttonStyle(.fqPress)
                     .coachMark(.fight)

@@ -17,6 +17,11 @@ struct FightSheetView: View {
     /// Rozepsany novy predmet: tah dolu okno nezavre, nejdriv se zepta.
     @State private var hasSubjectDraft = false
     @State private var asksDiscardDraft = false
+    /// M1/F1: tutorial (kroky 2–4 jsou v tomto listu).
+    @Environment(CoachMarkStore.self) private var coach: CoachMarkStore?
+
+    /// Behem tutorialu list jen ukazuje: prvky nereaguji, nejde stahnout ani roztahnout (zavira ho Next v kroku 4 nebo Skip).
+    private var inTutorial: Bool { coach?.step != nil }
 
     private enum Layout {
         static let sheetBackground = Color(red: 22 / 255, green: 20 / 255, blue: 34 / 255)
@@ -40,30 +45,41 @@ struct FightSheetView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: Layout.sectionGap) {
-                header
-                studyingSection
-                soundSection
-                startButton
+        ScrollViewReader { reader in
+            ScrollView {
+                VStack(alignment: .leading, spacing: Layout.sectionGap) {
+                    header
+                    studyingSection
+                    soundSection
+                    startButton
+                }
+                .padding(.horizontal, FQSpace.gutter)
+                .padding(.top, FQSpace.xl)
+                .padding(.bottom, FQSpace.xl)
+                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { contentHeight = $0 }
             }
-            .padding(.horizontal, FQSpace.gutter)
-            .padding(.top, FQSpace.xl)
-            .padding(.bottom, FQSpace.xl)
-            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { contentHeight = $0 }
+            // M1/F1: koren cilu tutorialu v listu; vyrez se ukaze az po dojeti listu.
+            .coachRoot(sheet: true)
+            // Krok tutorialu s prvkem mimo zorne pole (male displeje): odroluje jen tolik, aby byl cely videt.
+            .onChange(of: coach?.step, initial: true) { _, step in
+                guard let step, step.isInFightSheet else { return }
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) { reader.scrollTo(step.target, anchor: nil) }
+            }
         }
         .scrollBounceBehavior(.basedOnSize)
         .scrollDismissesKeyboard(.interactively)
         .pixelToast($toast)
-        // L1/E1: tutorial list nikdy neotvira, proto tu zadna vyjimka pro tutorial neni.
-        .presentationDetents([.height(min(contentHeight, 720)), .large])
+        // Tutorial: prvky v listu nereaguji (klepnuti stejne pohlti overlay ve vlastnim okne).
+        .allowsHitTesting(!inTutorial)
+        // Behem tutorialu jen vyska podle obsahu (bez .large), at list stoji a vyrez sedi.
+        .presentationDetents(inTutorial ? [.height(min(contentHeight, 720))] : [.height(min(contentHeight, 720)), .large])
         .presentationDragIndicator(.visible)
         .presentationBackground(Layout.sheetBackground)
         .presentationCornerRadius(FQRadius.card)
         .preferredColorScheme(.dark)
         .sheet(isPresented: $showsManager) { SubjectManagerView(model: model) }
-        // Zavreni tahem dolu; ne behem potvrzeni smazani a ne s rozepsanym predmetem.
-        .fqSheetDismissal(blocked: pendingDelete != nil || hasSubjectDraft, onBlockedAttempt: blockedCloseAttempt, close: onClose)
+        // Zavreni tahem dolu; ne behem potvrzeni smazani, ne s rozepsanym predmetem a ne v tutorialu.
+        .fqSheetDismissal(blocked: pendingDelete != nil || hasSubjectDraft || inTutorial, onBlockedAttempt: blockedCloseAttempt, close: onClose)
         .confirmationDialog("Discard the new focus?", isPresented: $asksDiscardDraft, titleVisibility: .visible) {
             Button("Discard", role: .destructive) { FQFeedback.shared.tap(); onClose() }
             Button("Keep editing", role: .cancel) { FQFeedback.shared.tap() }
@@ -89,11 +105,13 @@ struct FightSheetView: View {
 
     /// Zavreni pres VoiceOver: stejna pravidla jako tah dolu.
     private func requestClose() {
-        if pendingDelete != nil || hasSubjectDraft { blockedCloseAttempt() } else { onClose() }
+        if pendingDelete != nil || hasSubjectDraft || inTutorial { blockedCloseAttempt() } else { onClose() }
     }
 
     /// Pokus zavrit zablokovane okno: rozepsany predmet se zepta, potvrzeni smazani se zrusi.
+    /// V tutorialu se nedeje nic (list zavre Next v kroku 4 nebo Skip).
     private func blockedCloseAttempt() {
+        guard !inTutorial else { return }
         if hasSubjectDraft { asksDiscardDraft = true } else { pendingDelete = nil }
     }
 
@@ -138,6 +156,9 @@ struct FightSheetView: View {
                     .foregroundStyle(FQColor.textSecondary)
             }
         }
+        // M1/F1: krok 2 tutorialu zvyrazni celou sekci (nadpis a chipy).
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .coachMark(.focusing)
     }
 
     private func subjectChip(_ subject: StudySubject) -> some View {
@@ -204,6 +225,9 @@ struct FightSheetView: View {
                 }
             }
         }
+        // M1/F1: krok 3 tutorialu.
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .coachMark(.sound)
     }
 
     private func select(_ choice: BattleSound) {
@@ -234,6 +258,8 @@ struct FightSheetView: View {
         .disabled(!canStart)
         .opacity(canStart ? 1 : 0.35)
         .accessibilityHint(model.selectedSubject == nil ? "Add what you're focusing on first" : "")
+        // M1/F1: krok 4 tutorialu (Phone down) zvyrazni Start Battle.
+        .coachMark(.start)
         .padding(.top, FQSpace.xs)
     }
 

@@ -3,23 +3,42 @@ import UIKit
 
 // Tutorial v appce (F2, 1B): coach marks misto TipKitu. Cela obrazovka ztmavne, zvyrazneny prvek je
 // z tmy "vyrizly" (zaobleny vyrez s jemnou pulzujici zari) a vedle je bublina s textem.
-// Pozice prvku se zjistuje pres anchorPreference (`.coachMark(_:)`), nikdy natvrdo:
-// hostitel (`.coachMarkHost()`) kotvy prevede na ramecky v souradnicich okna a ulozi je do CoachMarkStore.
-// Pres hranici TabView preference nemusi projit, proto ma kazda zalozka a lista vlastniho hostitele.
-// L1/E1: tutorial nikdy neotvira listy. Kroky o Fight sheetu (Focusing, Sound, Phone down) stoji na Home
-// s vyrezem na tlacitku Fight a text popise, co v listu hrac najde.
+// M1/F1: pozice prvku se meri v souradnicich `.global` (`.coachMark(_:)`, GeometryReader), nikdy natvrdo
+// a bez anchorPreference. Kazdy cil hlasi svuj ramecek sdilenemu CoachMarkStore; `.global` plati i v listu.
+// Pojistka: kazdy koren hierarchie (zalozka, lista, Fight setup) ma neviditelnou UIKit sondu, ktera zna
+// svou polohu v okne. Rozdil proti `.global` se k rameckum pricte (v hlavnim okne je 0), takze vyrez sedi
+// v okne overlaye, i kdyby `.global` v listu pocital od horni hrany listu.
+// Kroky 2–4 (Focusing, Sound, Start Battle) stoji ve Fight setupu: Next v kroku 1 ho otevre,
+// Next v kroku 4 ho zavre. Vyrez na prvek v listu ceka, az list dojede.
 
 /// Prvky, ktere tutorial umi zvyraznit.
 enum CoachTarget: String, Hashable, Sendable {
     case fight, quick, streak, tabPath, tabShop, tabStats, tabHero, gear
     /// A4: graf Habits, karta s cisly ve Stats a Daily focus target v Hero.
     case habits, statNumbers, dailyTarget
+    /// M1/F1: sekce Focusing a Sound a tlacitko Start Battle ve Fight setupu.
+    case focusing, sound, start
+    /// M1/F2: karta hrdiny nahore na zalozce Hero.
+    case heroCard
+
+    /// Zaobleni vyrezu kolem karet a tlacitka Start; nil = kulaty vyrez (kapsle, kruh).
+    var cornerRadius: CGFloat? {
+        switch self {
+        case .habits, .statNumbers, .dailyTarget, .heroCard, .focusing, .sound: 20
+        // Start Battle ma rohy soustredne s displejem; vyrez je o odsazeni vetsi.
+        case .start: FQRadius.sheetBottomButton + CoachMetrics.holePadding
+        default: nil
+        }
+    }
 
     /// Kulate a kapslove prvky maji kulaty vyrez, karty zaobleny obdelnik.
-    var isRound: Bool {
+    var isRound: Bool { cornerRadius == nil }
+
+    /// M1/F1: prvek je ve Fight setupu (listu nad Home).
+    var isInFightSheet: Bool {
         switch self {
-        case .habits, .statNumbers, .dailyTarget: false
-        default: true
+        case .focusing, .sound, .start: true
+        default: false
         }
     }
 
@@ -40,20 +59,25 @@ enum CoachScreen: Sendable {
 
 /// Kroky tutorialu v poradi, jak appku hrac poprve pouzije.
 /// K1/D3: kazdy krok se posune jen tlacitkem Next (posledni Finish). Zvyraznene prvky nejsou interaktivni.
-/// L1/E1: zadny krok neotvira list; kazdy stoji na sve zalozce a zalozku prepina tutorial sam.
+/// Kazdy krok stoji na sve zalozce a zalozku prepina tutorial sam. M1/F1: kroky 2–4 jsou ve Fight setupu
+/// nad Home (Next v kroku 1 ho otevre, Next v kroku 4 zavre). M1/F2: Hero ma dva kroky (karta hrdiny,
+/// Daily focus target), celkem 14.
 enum CoachStep: Int, CaseIterable, Sendable {
-    case fight, focusing, sound, battle, quick, streak, path, shop, stats, habits, statNumbers, dailyTarget, settings
+    case fight, focusing, sound, battle, quick, streak, path, shop, stats, habits, statNumbers, hero, dailyTarget, settings
 
     /// Pocet kroku pro hrace.
     static let total = CoachStep.allCases.count
 
-    /// Cislo kroku pro hrace ("3 of 13").
+    /// Cislo kroku pro hrace ("3 of 14").
     var number: Int { rawValue + 1 }
 
     var target: CoachTarget {
         switch self {
-        // E1: kroky o Fight sheetu ukazuji tlacitko Fight na Home, list se neotvira.
-        case .fight, .focusing, .sound, .battle: .fight
+        case .fight: .fight
+        // F1: Fight setup je otevreny, vyrez sedi primo na sekci nebo tlacitku v nem.
+        case .focusing: .focusing
+        case .sound: .sound
+        case .battle: .start
         case .quick: .quick
         case .streak: .streak
         case .path: .tabPath
@@ -61,19 +85,24 @@ enum CoachStep: Int, CaseIterable, Sendable {
         case .stats: .tabStats
         case .habits: .habits
         case .statNumbers: .statNumbers
+        case .hero: .heroCard
         case .dailyTarget: .dailyTarget
         case .settings: .gear
         }
     }
 
+    /// M1/F1: krok stoji ve Fight setupu (list nad Home).
+    var isInFightSheet: Bool { target.isInFightSheet }
+
     /// Zalozka, na ktere krok stoji. Po Next ji tutorial prepne sam ve stejne animaci jako bublinu (E3).
+    /// Kroky ve Fight setupu stoji na Home (list je nad ni).
     var screen: CoachScreen {
         switch self {
         case .fight, .focusing, .sound, .battle, .quick, .streak: .home
         case .path: .path
         case .shop: .shop
         case .stats, .habits, .statNumbers: .stats
-        case .dailyTarget, .settings: .hero
+        case .hero, .dailyTarget, .settings: .hero
         }
     }
 
@@ -90,7 +119,8 @@ enum CoachStep: Int, CaseIterable, Sendable {
         case .stats: "Your progress"
         case .habits: "Your habits"
         case .statNumbers: "Your numbers"
-        case .dailyTarget: "Your hero"
+        case .hero: "Your hero"
+        case .dailyTarget: "Daily focus target"
         case .settings: "Settings"
         }
     }
@@ -99,8 +129,8 @@ enum CoachStep: Int, CaseIterable, Sendable {
     var text: String {
         switch self {
         case .fight: "Every boss is one focus session. Fight opens the setup for the next one."
-        case .focusing: "In that setup you pick what the session is for. Stats tracks your time for each one."
-        case .sound: "You also pick music or quiet there. It keeps playing when the screen is locked."
+        case .focusing: "Pick what this session is for. Stats tracks your time for each one."
+        case .sound: "Choose music or quiet for the battle. It keeps playing when the screen is locked."
         case .battle: "After Start, lay your phone face down and your hero fights. Lift it and the boss escapes in 10 seconds, unless you use your free pause."
         case .quick: "Start with just 5 minutes. Small wins still count."
         case .streak: "Focus a little every day to keep the flame going."
@@ -109,7 +139,8 @@ enum CoachStep: Int, CaseIterable, Sendable {
         case .stats: "Focus time, streaks and habits live on this tab."
         case .habits: "Each square is one day, starting from your first day: rows are Monday to Sunday, every week adds a column. Today has a white frame, and brighter squares mean more focus."
         case .statNumbers: "Win rate is the share of battles you won, next to bosses beaten. Longest streak counts days in a row, focus hours add up all your time."
-        case .dailyTarget: "Change your hero's look on this tab any time. The ring fills with your class color as you focus today, slide to set a goal that fits you."
+        case .hero: "This is your hero. The brush changes their look, and the ring shows your level and the XP you need for the next one."
+        case .dailyTarget: "The ring fills with your class color as you focus during the day. Use the slider to set your daily goal."
         case .settings: "Sounds, music and notifications are behind the gear. You're all set!"
         }
     }
@@ -132,10 +163,15 @@ final class CoachMarkStore {
     private(set) var onboardingDone: Bool
     /// Aktualni krok tutorialu; nil = tutorial nebezi.
     private(set) var step: CoachStep?
-    /// Zmerene ramecky prvku (souradnice okna) od vsech hostitelu.
+    /// Zmerene ramecky prvku v souradnicich okna (= okna overlaye). Jen prvky, ktere jsou prave videt.
     private(set) var frames: [CoachTarget: CGRect] = [:]
-    @ObservationIgnored private var hostFrames: [UUID: [CoachTarget: CGRect]] = [:]
-    @ObservationIgnored private var hostProbes: [UUID: WeakView] = [:]
+    /// M1/F1: Fight setup je v okne (od zacatku prezentace do konce zavirani). Prvky pod nim (Home, lista)
+    /// se do te doby nezvyraznuji, prvky v nem az po dojeti listu.
+    private(set) var sheetOnScreen = false
+    /// Ramecky, ktere cile nahlasily v `.global` (klic = jeden cil na obrazovce).
+    @ObservationIgnored private var reports: [UUID: CoachReport] = [:]
+    /// Koreny hierarchii (zalozky, lista, Fight setup) se sondou v okne.
+    @ObservationIgnored private var roots: [UUID: CoachRoot] = [:]
     /// Zalozka, ktera je prave videt (nastavuje MainTabView). Vyrez kroku sedi jen na jeho zalozce (A2).
     var screen: CoachScreen = .home
     /// Next v bubline: MainTabView posune krok a prepne zalozku ve stejne animaci (E3).
@@ -190,72 +226,132 @@ final class CoachMarkStore {
     private func set(_ value: CoachStep?) {
         step = value
         if let value { defaults.set(value.rawValue, forKey: Keys.tutorialStep) } else { defaults.removeObject(forKey: Keys.tutorialStep) }
+        // Mimo tutorial se ramecky neprepocitavaji; na zacatku je overlay potrebuje hned.
+        if value != nil { refreshFrames() }
     }
 
     // MARK: - Ramecky prvku
 
-    /// K1/D2: overlay je ve vlastnim okne nad hlavnim oknem, proto ramecky prvku jsou v souradnicich okna
-    /// (UIKit), ne v `.global` SwiftUI. Kazdy hostitel posle ramecky ve svem lokalnim prostoru a malou
-    /// UIKit sondu, ktera je prevede do okna.
-    func updateFrames(_ rects: [CoachTarget: CGRect], host: UUID) {
-        guard hostFrames[host] != rects else { return }
-        hostFrames[host] = rects
-        refreshFrames()
+    /// M1/F1: cil nahlasi svuj ramecek v `.global` (pri objeveni a pri kazde zmene, i pri rolovani).
+    /// Nezmereny prvek (nulovy ramecek) se nebere.
+    func report(_ reporter: UUID, target: CoachTarget, frame: CGRect, root: UUID?) {
+        guard frame.width > 0, frame.height > 0 else {
+            withdraw(reporter)
+            return
+        }
+        let report = CoachReport(target: target, frame: frame, root: root)
+        guard reports[reporter] != report else { return }
+        reports[reporter] = report
+        if step != nil { refreshFrames() }
     }
 
-    func attachProbe(_ view: UIView, host: UUID) {
-        hostProbes[host] = WeakView(view: view)
-        refreshFrames()
+    /// Cil zmizel (zavreny list, skryta zalozka).
+    func withdraw(_ reporter: UUID) {
+        guard reports.removeValue(forKey: reporter) != nil else { return }
+        if step != nil { refreshFrames() }
     }
 
-    func removeHost(_ host: UUID) {
-        hostProbes.removeValue(forKey: host)
-        guard hostFrames.removeValue(forKey: host) != nil else { return }
-        refreshFrames()
+    /// Sonda korene je v okne (zalozka se ukazala, list se zacal prezentovat).
+    func attachRoot(_ id: UUID, probe: CoachRootProbeView, isSheet: Bool) {
+        var root = roots[id] ?? CoachRoot(isSheet: isSheet)
+        root.probe = probe
+        root.wasAttached = true
+        roots[id] = root
+        if step != nil { refreshFrames() }
     }
 
-    /// Prepocet do souradnic okna. Overlay ho vola pravidelne, dokud tutorial bezi: zalozka nebo scroll
-    /// se mohly posunout a sonda o tom zpravu nedostane. Hostitel mimo okno (skryta zalozka) se vynecha.
+    /// Poloha korene v `.global` (SwiftUI); spolu s polohou sondy v okne dava posun do souradnic okna.
+    func updateRoot(_ id: UUID, globalOrigin: CGPoint, isSheet: Bool) {
+        var root = roots[id] ?? CoachRoot(isSheet: isSheet)
+        guard root.globalOrigin != globalOrigin else { return }
+        root.globalOrigin = globalOrigin
+        roots[id] = root
+        if step != nil { refreshFrames() }
+    }
+
+    /// Prepocet do souradnic okna. Overlay ho vola pravidelne, dokud tutorial bezi (list dojel, zavrel se,
+    /// zalozka se schovala: o tom SwiftUI zpravu neposle). Cil, jehoz koren neni v okne (skryta zalozka)
+    /// nebo jeste nedojel (list), se vynecha.
     func refreshFrames() {
         guard !framesFixedForTesting else { return }
+        // Koren, jehoz sonda uz neexistuje (zavreny list), se zapomene.
+        roots = roots.filter { !($0.value.wasAttached && $0.value.probe == nil) }
+        var offsets: [UUID: CGVector] = [:]
+        var sheetUp = false
+        for (id, root) in roots {
+            guard let probe = root.probe, probe.window != nil else { continue }
+            if root.isSheet {
+                sheetUp = true
+                guard probe.isSettled else { continue }
+            }
+            guard let origin = root.globalOrigin else { continue }
+            // V hlavnim okne je `.global` = okno a posun 0; kdyby list pocital `.global` od sve horni hrany,
+            // pricte se jeho poloha v okne.
+            let inWindow = probe.windowOrigin
+            offsets[id] = CGVector(dx: inWindow.x - origin.x, dy: inWindow.y - origin.y)
+        }
         var merged: [CoachTarget: CGRect] = [:]
-        for (host, rects) in hostFrames {
-            guard let probe = hostProbes[host]?.view, probe.window != nil else { continue }
-            for (target, rect) in rects { merged[target] = probe.convert(rect, to: nil) }
+        for report in reports.values {
+            var offset = CGVector.zero
+            if let root = report.root {
+                guard let known = offsets[root] else { continue }
+                offset = known
+            }
+            merged[report.target] = report.frame.offsetBy(dx: offset.dx, dy: offset.dy)
         }
         if merged != frames { frames = merged }
+        if sheetUp != sheetOnScreen { sheetOnScreen = sheetUp }
     }
 
-    /// Jen pro testy: ramecky prvku bez UIKit sond (sledovani v overlayi je pak neprepise).
-    func setFramesForTesting(_ rects: [CoachTarget: CGRect]) {
+    /// Jen pro testy: ramecky prvku bez sond (sledovani v overlayi je pak neprepise).
+    func setFramesForTesting(_ rects: [CoachTarget: CGRect], sheetOnScreen: Bool = false) {
         framesFixedForTesting = true
         frames = rects
+        self.sheetOnScreen = sheetOnScreen
     }
     @ObservationIgnored private var framesFixedForTesting = false
 }
 
-private struct WeakView {
-    weak var view: UIView?
+/// Ramecek jednoho cile v `.global` a koren, pod kterym je.
+private struct CoachReport: Equatable {
+    let target: CoachTarget
+    let frame: CGRect
+    let root: UUID?
 }
 
-// MARK: - Kotvy
+/// Koren hierarchie s cili: sonda v okne a poloha v `.global`.
+private struct CoachRoot {
+    weak var probe: CoachRootProbeView?
+    var wasAttached = false
+    var globalOrigin: CGPoint?
+    let isSheet: Bool
 
-struct CoachAnchorKey: PreferenceKey {
-    static let defaultValue: [CoachTarget: Anchor<CGRect>] = [:]
-    static func reduce(value: inout [CoachTarget: Anchor<CGRect>], nextValue: () -> [CoachTarget: Anchor<CGRect>]) {
-        value.merge(nextValue()) { $1 }
+    init(isSheet: Bool) { self.isSheet = isSheet }
+}
+
+// MARK: - Cile a koreny
+
+private struct CoachRootKey: EnvironmentKey {
+    static let defaultValue: UUID? = nil
+}
+
+extension EnvironmentValues {
+    /// Koren hierarchie, pod kterym cil lezi (posun `.global` → okno).
+    fileprivate var coachRoot: UUID? {
+        get { self[CoachRootKey.self] }
+        set { self[CoachRootKey.self] = newValue }
     }
 }
 
 extension View {
-    /// Prvek, ktery tutorial muze zvyraznit. `id` dovoli obrazovce s rolovanim prvek odrolovat do zorneho pole.
+    /// Prvek, ktery tutorial muze zvyraznit: hlasi svuj ramecek v `.global`. `id` dovoli obrazovce
+    /// s rolovanim prvek odrolovat do zorneho pole.
     func coachMark(_ target: CoachTarget) -> some View {
-        anchorPreference(key: CoachAnchorKey.self, value: .bounds) { [target: $0] }
-            .id(target)
+        modifier(CoachMarkReporter(target: target)).id(target)
     }
 
-    /// Prevede kotvy prvku pod sebou na ramecky pro tutorial.
-    func coachMarkHost() -> some View { modifier(CoachMarkHost()) }
+    /// Koren hierarchie s cili tutorialu (zalozka, lista, Fight setup). `sheet`: cile se ukazou az po dojeti listu.
+    func coachRoot(sheet: Bool = false) -> some View { modifier(CoachRootModifier(isSheet: sheet)) }
 
     /// E2: nadpis vlevo nahore uhne behem tutorialu dolu pod "Skip tutorial". Ozubene kolo vpravo zustava,
     /// Skip stoji ve stejne vysce jako ono.
@@ -284,57 +380,125 @@ private struct CoachSkipClearanceModifier: ViewModifier {
     }
 }
 
-private struct CoachMarkHost: ViewModifier {
+/// M1/F1: cil hlasi svuj ramecek v `.global` (GeometryReader) pri objeveni a pri kazde zmene
+/// (rolovani, prijezd zalozky, zmena vysky listu). Zmizeni (zavreny list, skryta zalozka) ho odhlasi.
+private struct CoachMarkReporter: ViewModifier {
+    let target: CoachTarget
     @Environment(CoachMarkStore.self) private var coach: CoachMarkStore?
+    @Environment(\.coachRoot) private var root
     @State private var id = UUID()
 
     func body(content: Content) -> some View {
-        content.backgroundPreferenceValue(CoachAnchorKey.self) { anchors in
+        content.background {
             GeometryReader { proxy in
-                // Ramecky v lokalnim prostoru hostitele; sonda vyplnuje presne tentyz prostor.
-                let rects = anchors.mapValues { proxy[$0] }
-                CoachWindowProbe { view in coach?.attachProbe(view, host: id) }
-                    .allowsHitTesting(false)
-                    .accessibilityHidden(true)
-                    .onAppear { coach?.updateFrames(rects, host: id) }
-                    .onChange(of: rects) { _, new in coach?.updateFrames(new, host: id) }
-                    .onDisappear { coach?.removeHost(id) }
+                let frame = proxy.frame(in: .global)
+                Color.clear
+                    .onAppear { coach?.report(id, target: target, frame: frame, root: root) }
+                    .onChange(of: frame) { _, new in coach?.report(id, target: target, frame: new, root: root) }
+                    .onDisappear { coach?.withdraw(id) }
             }
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
         }
     }
 }
 
-/// Neviditelny UIView v miste hostitele: umi prevest lokalni ramecek do souradnic okna.
-private struct CoachWindowProbe: UIViewRepresentable {
-    let onWindow: (UIView) -> Void
+/// Koren hierarchie: neviditelna sonda pres cely koren (poloha v okne, u listu konec prezentace)
+/// a poloha korene v `.global`. Cile pod nim dostanou jeho id v prostredi.
+private struct CoachRootModifier: ViewModifier {
+    let isSheet: Bool
+    @Environment(CoachMarkStore.self) private var coach: CoachMarkStore?
+    @State private var id = UUID()
 
-    func makeUIView(context: Context) -> ProbeView {
-        let view = ProbeView()
+    func body(content: Content) -> some View {
+        content
+            .environment(\.coachRoot, id)
+            .background {
+                CoachRootProbe(waitsForPresentation: isSheet) { view in coach?.attachRoot(id, probe: view, isSheet: isSheet) }
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+            }
+            .onGeometryChange(for: CGPoint.self) { $0.frame(in: .global).origin } action: { origin in
+                coach?.updateRoot(id, globalOrigin: origin, isSheet: isSheet)
+            }
+    }
+}
+
+private struct CoachRootProbe: UIViewRepresentable {
+    let waitsForPresentation: Bool
+    let onWindow: (CoachRootProbeView) -> Void
+
+    func makeUIView(context: Context) -> CoachRootProbeView {
+        let view = CoachRootProbeView()
         view.isUserInteractionEnabled = false
         view.backgroundColor = .clear
+        view.waitsForPresentation = waitsForPresentation
         view.onWindow = onWindow
         return view
     }
 
-    func updateUIView(_ view: ProbeView, context: Context) {
+    func updateUIView(_ view: CoachRootProbeView, context: Context) {
         view.onWindow = onWindow
     }
+}
 
-    final class ProbeView: UIView {
-        var onWindow: ((UIView) -> Void)?
+/// Neviditelny UIView pres cely koren. Zna svou polohu v okne a u listu i to, kdy list dojel:
+/// konec animace prezentace (transition coordinator), jinak nejpozdeji po `CoachMetrics.sheetSettleFallback`.
+final class CoachRootProbeView: UIView {
+    var onWindow: ((CoachRootProbeView) -> Void)?
+    /// List: cile v nem se zvyrazni az po dojeti prezentace.
+    var waitsForPresentation = false
+    /// List dojel (u ostatnich korenu vzdy true).
+    private(set) var isSettled = true
+    private var settleRound = 0
 
-        override func didMoveToWindow() {
-            super.didMoveToWindow()
-            if window != nil { onWindow?(self) }
+    /// Levy horni roh v souradnicich okna.
+    var windowOrigin: CGPoint { convert(CGPoint.zero, to: nil) }
+
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        guard window != nil else { return }
+        if waitsForPresentation { waitForPresentation() }
+        onWindow?(self)
+    }
+
+    private func waitForPresentation() {
+        settleRound += 1
+        let round = settleRound
+        isSettled = false
+        // Prezentace bezi: konec hlasi coordinator a cas je jen pojistka. Bez coordinatoru rozhodne cas.
+        let coordinated = owningController?.transitionCoordinator?.animate(alongsideTransition: nil, completion: { [weak self] _ in
+            Task { @MainActor [weak self] in self?.settle(round) }
+        }) ?? false
+        let limit = coordinated ? CoachMetrics.sheetSettleLimit : CoachMetrics.sheetSettleFallback
+        Task { [weak self] in
+            try? await Task.sleep(for: .seconds(limit))
+            self?.settle(round)
         }
+    }
+
+    private func settle(_ round: Int) {
+        guard round == settleRound else { return }
+        isSettled = true
+    }
+
+    /// Controller listu (prvni view controller v responder chain).
+    private var owningController: UIViewController? {
+        var responder: UIResponder? = next
+        while let current = responder {
+            if let controller = current as? UIViewController { return controller }
+            responder = current.next
+        }
+        return nil
     }
 }
 
 // MARK: - Vlastni okno
 
 /// K1/D2: overlay tutorialu ve vlastnim UIWindow nad hlavnim oknem, takze ho nic neprekryje
-/// a "Skip tutorial" je vzdy na stejnem miste. Okno je videt jen behem tutorialu
-/// a pohlcuje vsechna klepnuti (zvyraznene prvky nejsou interaktivni, D3); projdou jen Next a Skip.
+/// (ani listy: Fight setup se prezentuje v hlavnim okne, overlay je o uroven vys) a "Skip tutorial"
+/// je vzdy na stejnem miste. Okno je videt jen behem tutorialu a pohlcuje vsechna klepnuti i tahy
+/// (zvyraznene prvky ani list nejsou interaktivni, list nejde stahnout); projdou jen Next a Skip.
 struct CoachOverlayWindow: UIViewRepresentable {
     let coach: CoachMarkStore
     let isActive: Bool
@@ -427,6 +591,10 @@ enum CoachMetrics {
     static let bubbleEstimate: CGFloat = 168
     /// E1: prvek, ktery se do 1 s nenajde, = bublina uprostred bez vyrezu.
     static let fallbackSeconds: TimeInterval = 1
+    /// M1/F1: list bez transition coordinatoru se bere jako dojety po teto dobe (bezna prezentace ~0,5 s).
+    static let sheetSettleFallback: TimeInterval = 0.5
+    /// Pojistka, kdyby coordinator konec prezentace nenahlasil.
+    static let sheetSettleLimit: TimeInterval = 0.9
 }
 
 /// Plocha overlaye: cela obrazovka (souradnice okna) a jeji bezpecna zona.
@@ -482,7 +650,8 @@ struct CoachLayout: Equatable, Sendable {
     /// vodorovne u prvku, ale cela na obrazovce.
     static func anchored(to frame: CGRect, target: CoachTarget, bubbleHeight: CGFloat, in space: CoachSpace) -> CoachLayout {
         let hole = frame.insetBy(dx: -CoachMetrics.holePadding, dy: -CoachMetrics.holePadding)
-        let radius = target.isRound ? min(hole.width, hole.height) / 2 : 20
+        let round = min(hole.width, hole.height) / 2
+        let radius = target.cornerRadius.map { min($0, round) } ?? round
         let width = space.bubbleWidth
         let top = space.bubbleTop
         let bottom = space.bubbleBottom
@@ -656,8 +825,12 @@ struct CoachMarkOverlay: View {
     }
 
     /// Prvek kroku, kdyz je zmereny na spravne zalozce (lista zalozek je videt vsude).
+    /// M1/F1: prvek ve Fight setupu az po dojeti listu (do te doby ho `frames` nema), prvek pod listem
+    /// (Home, lista) az po jeho zavreni, takze vyrez nehoni jedouci list.
     private func visibleFrame(for step: CoachStep, in space: CoachSpace) -> CGRect? {
-        guard step.target.isInTabBar || step.screen == coach.screen, let frame = coach.frames[step.target] else { return nil }
+        guard step.target.isInTabBar || step.screen == coach.screen,
+              step.isInFightSheet == coach.sheetOnScreen,
+              let frame = coach.frames[step.target] else { return nil }
         return space.isUsable(frame) ? frame : nil
     }
 
@@ -720,7 +893,7 @@ struct CoachMarkOverlay: View {
     }
 }
 
-/// Obsah bubliny jednoho kroku: titulek, "3 of 13", nejvys dve vety a Next (posledni Finish).
+/// Obsah bubliny jednoho kroku: titulek, "3 of 14", nejvys dve vety a Next (posledni Finish).
 struct CoachBubbleContent: View {
     let step: CoachStep
     let onNext: () -> Void

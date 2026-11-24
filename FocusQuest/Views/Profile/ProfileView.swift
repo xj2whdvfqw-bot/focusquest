@@ -16,7 +16,8 @@ struct ProfileView: View {
     var body: some View {
         ScreenScaffold(scene: .enchantedForest) {
             ScreenHeader(eyebrow: "Hero", title: "Hero profile", gearMark: .gear)
-            heroCard
+            // M1/F2: krok 12 tutorialu (vzhled, level, XP), krok 13 Daily focus target.
+            heroCard.coachMark(.heroCard)
             ScreenSection(title: "Daily focus target") { dailyTargetCard.coachMark(.dailyTarget) }
             ScreenSection(title: "Identity") { identityCard }
             if let error = model.errorMessage {

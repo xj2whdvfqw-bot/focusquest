@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-24T15:15:41+01:00",
-  "current": "L1 hotovo: build #79 prošel",
-  "nextStep": "Otestovat na iPhonu tutoriál 1–13, Skip, plynulé přechody, Home bez scrollu a Break panel s probuzením hrdiny",
+  "updated": "2026-11-24T17:03:32+01:00",
+  "current": "M1: kód F1–F2 hotový, commit a build",
+  "nextStep": "Spustit build na phase3-duolingo a opravit případné chyby kompilace nebo testů",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -884,6 +884,21 @@
       "commit": "41cf3eb",
       "build": { "number": 79, "runId": 45405420430, "result": "úspěch" },
       "note": "Build #79 prošel (IPA, Release, 119 testů). #77 a #78 spadly jen na novém testu bubliny: ImageRenderer bublinu nenakreslil, test teď fotí skutečné okno a všech 13 kroků (s cílem i bez) ukáže bublinu s Next. Na iPhonu otestuj: celý tutoriál 1–13 jen přes Next (kroky 2–4 na Home se spotlightem na Fight, žádný sheet se neotevře, nic nezamrzne); bublina plynule odjede a výřez se přesune, text se prolne, tab se přepne během animace (a s Reduce Motion jen prolnutí); Skip vlevo nahoře ve výšce ozubeného kola na Home, Path, Shop, Stats a Hero, nadpisy pod ním; krok 5 zvýrazní odkaz Not feeling it?; Home se nedá posunout a Fight i odkaz jsou nad tab barem; Break panel v malé výšce celý (BREAK, odpočet, Next boss, Same again, Change boss, Done for today), ve velké navíc oheň; klepnutí na hrdinu ho probudí a po 3 s usne. Settings › Help › Replay tutorial."
+    },
+    {
+      "id": "M1",
+      "title": "Tutoriál: Fight setup v krocích 2–4, Hero ve 2 krocích (14 kroků)",
+      "status": "pracuje",
+      "items": [
+        { "text": "F1 Next v kroku 1 otevře Fight setup; kroky 2–4 spotlight na Focusing, Sound a Start Battle; Next v kroku 4 panel zavře a krok 5 je na Home", "done": true },
+        { "text": "F1 Cíle hlásí frame v .global do sdíleného CoachMarkStore (bez anchorPreference), overlay ve vlastním UIWindow nad sheety", "done": true },
+        { "text": "F1 Panel během tutoriálu neinteraktivní a nejde stáhnout; spotlight čeká na změřený cíl a dojetý panel, pojistka 1 s = bublina uprostřed", "done": true },
+        { "text": "F2 Hero ve 2 krocích: 12 Your hero (karta hrdiny), 13 Daily focus target (kroužek a slider), 14 Settings s Finish; čítač X of 14 a test 14 kroků", "done": true },
+        { "text": "DECISIONS.md", "done": true }
+      ],
+      "commit": null,
+      "build": null,
+      "note": "Kód F1 a F2 je hotový a čeká na build. Lokálně se nedá zkompilovat (Windows), ověří to až CI."
     }
   ]
 }

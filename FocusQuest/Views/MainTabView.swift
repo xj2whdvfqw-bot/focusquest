@@ -59,6 +59,8 @@ struct MainTabView: View {
     @State private var showsOnboarding = false
     /// Tutorial zacne az po zavreni onboardingu, kdyz je Home opravdu videt.
     @State private var startsTutorialAfterOnboarding = false
+    /// M1/F1: Fight setup otevrel tutorial (kroky 2–4), takze ho tutorial taky zavre (Next v kroku 4, Skip).
+    @State private var tutorialOwnsFightSheet = false
 
     /// CI screenshoty (`-initialTab`) onboarding ani tutorial neukazuji.
     private var isScripted: Bool { FocusQuestTab.launchArgument != nil }
@@ -78,7 +80,7 @@ struct MainTabView: View {
             }
             // K1/D2: tutorial se kresli ve vlastnim okne nad vsemi listy (Skip je vzdy na stejnem miste).
             .background {
-                CoachOverlayWindow(coach: coach, isActive: coach.onboardingDone && !isScripted && !showsOnboarding && coach.step != nil)
+                CoachOverlayWindow(coach: coach, isActive: isTutorialShowing)
                     .frame(width: 0, height: 0)
                     .accessibilityHidden(true)
             }
@@ -107,13 +109,19 @@ struct MainTabView: View {
                 }
                     .presentationDragIndicator(.visible)
             }
-            .sheet(isPresented: Binding(get: { battlePresenter.showsFightSheet }, set: { battlePresenter.showsFightSheet = $0 }), onDismiss: { startBattleAfterFightSheet() }) {
+            .sheet(isPresented: Binding(get: { battlePresenter.showsFightSheet }, set: { battlePresenter.showsFightSheet = $0 }), onDismiss: {
+                tutorialOwnsFightSheet = false
+                startBattleAfterFightSheet()
+            }) {
                 FightSheetView(model: container.arenaViewModel) {
                     battlePresenter.startsAfterSheet = true
                     battlePresenter.showsFightSheet = false
                 } onClose: {
                     battlePresenter.showsFightSheet = false
                 }
+                // .environment(coach) vys stoji pod timto .sheet, takze by ho list nedostal (coach = nil
+                // a cile kroku 2–4 by nic nehlasily). List ho proto dostava primo.
+                .environment(coach)
             }
             .fullScreenCover(isPresented: Binding(get: { battlePresenter.isPresented }, set: { battlePresenter.isPresented = $0 }), onDismiss: { openAfterBattle() }) {
                 BattleView(model: container.arenaViewModel, profileModel: container.profileViewModel, onExit: { battlePresenter.isPresented = false }, onExitTo: { destination in
@@ -136,13 +144,16 @@ struct MainTabView: View {
                 if FocusQuestTab.launchArgument == "fight" { battlePresenter.openFightSheet() }
                 await prepareOnLaunch()
             }
-            // Tutorial (K1/D3): zalozku prepina jen tutorial sam po Next. L1/E1: zadne listy, vyrez sleduje
-            // prvek sam (CoachMarkOverlay meri ramecky, dokud krok trva).
+            // Tutorial (K1/D3): zalozku prepina jen tutorial sam po Next; vyrez sleduje prvek sam
+            // (CoachMarkOverlay meri ramecky, dokud krok trva). M1/F1: kroky 2–4 maji otevreny Fight setup.
             .onChange(of: selectedTab) { _, tab in
                 coach.screen = tab.coachScreen
                 enforceTutorialTab()
             }
-            .onChange(of: coach.step) { _, _ in enforceTutorialTab() }
+            .onChange(of: coach.step) { _, _ in
+                enforceTutorialTab()
+                syncTutorialFightSheet()
+            }
             .fullScreenCover(isPresented: $showsOnboarding, onDismiss: {
                 guard startsTutorialAfterOnboarding else { return }
                 startsTutorialAfterOnboarding = false
@@ -209,7 +220,12 @@ struct MainTabView: View {
     /// L1/E2: behem tutorialu nadpisy zalozek uhnou dolu pod "Skip tutorial" (vlevo nahore ve vysce
     /// ozubeneho kola). Ozubene kolo a obsah pod nadpisem zustavaji, zadny pas pres celou sirku.
     private var tutorialSkipClearance: CGFloat {
-        coach.onboardingDone && !isScripted && !showsOnboarding && coach.step != nil ? CoachMetrics.skipClearance : 0
+        isTutorialShowing ? CoachMetrics.skipClearance : 0
+    }
+
+    /// Tutorial je prave videt (ne v onboardingu ani v CI screenshotech).
+    private var isTutorialShowing: Bool {
+        coach.onboardingDone && !isScripted && !showsOnboarding && coach.step != nil
     }
 
     /// Systemovy TabView drzi stav kazde zalozky; jeho vlastni lista je skryta, kreslime FocusQuestTabBar.
@@ -246,7 +262,7 @@ struct MainTabView: View {
             .padding(.horizontal, FQTabBarMetrics.sideInset)
             .padding(.bottom, FQTabBarMetrics.bottom)
         }
-        .coachMarkHost()
+        .coachRoot()
         .frame(maxHeight: .infinity, alignment: .bottom)
         .ignoresSafeArea(edges: .bottom)
     }
@@ -312,6 +328,8 @@ struct MainTabView: View {
         await container.profileViewModel.refresh()
         await container.profileViewModel.refreshProgress()
         await maintainSubjects()
+        // M1/F1: tutorial obnoveny v kroku 2–4 (po padu) znovu otevre Fight setup.
+        syncTutorialFightSheet()
         // C4: prikaz, ktery prisel jeste pred vykreslenim (studeny start ze Zkratek nebo widgetu).
         if let pending = AppCommandCenter.shared.pending { perform(pending) }
         guard !isScripted, !coach.onboardingDone else { return }
@@ -376,9 +394,10 @@ struct MainTabView: View {
         }
     }
 
-    /// Next v bubline. L1/E1: tutorial nikdy neotvira listy (kroky o Fight sheetu stoji na Home u Fight).
-    /// E3: krok se posune a zalozka dalsiho kroku se prepne ve stejne animaci, ve ktere bublina odjede
-    /// a vyrez se presune. Reduce Motion: jen prolnuti.
+    /// Next v bubline. E3: krok se posune a zalozka dalsiho kroku se prepne ve stejne animaci, ve ktere
+    /// bublina odjede a vyrez se presune. Reduce Motion: jen prolnuti.
+    /// M1/F1: Next v kroku 1 zaroven otevre Fight setup (text bubliny se prolne, bublina a vyrez odjedou,
+    /// az list dojede), Next v kroku 4 ho zavre a krok 5 pocka na Home.
     private func performTutorialNext(_ step: CoachStep) {
         let animation: Animation = reduceMotion ? .easeInOut(duration: 0.25) : .spring(response: 0.35, dampingFraction: 0.86)
         withAnimation(animation) {
@@ -388,6 +407,24 @@ struct MainTabView: View {
                 if tab != selectedTab { switchTab(to: tab) }
             }
         }
+        syncTutorialFightSheet()
+    }
+
+    /// M1/F1: kroky 2–4 stoji ve Fight setupu. Tutorial ho otevre s bossem na rade (bez bitvy se nic
+    /// nespusti, Start je behem tutorialu neaktivni) a zavre, jakmile krok ve Fight setupu skonci
+    /// (Next v kroku 4, Skip). List, ktery otevrel hrac, tutorial nezavira.
+    private func syncTutorialFightSheet() {
+        let wantsSheet = isTutorialShowing && coach.step?.isInFightSheet == true
+        if wantsSheet {
+            guard !battlePresenter.showsFightSheet, !battlePresenter.isPresented, !settingsPresenter.isPresented else { return }
+            let arena = container.arenaViewModel
+            if let boss = arena.currentMapBoss { arena.selectBoss(boss) }
+            tutorialOwnsFightSheet = true
+            battlePresenter.openFightSheet()
+        } else if tutorialOwnsFightSheet {
+            tutorialOwnsFightSheet = false
+            battlePresenter.showsFightSheet = false
+        }
     }
 }
 
@@ -396,8 +433,8 @@ private extension View {
     func tabPage(reserve: CGFloat) -> some View {
         toolbar(.hidden, for: .tabBar)
             .safeAreaInset(edge: .bottom, spacing: 0) { Color.clear.frame(height: reserve) }
-            // Kotvy tutorialu z teto zalozky (preference nemusi projit pres TabView).
-            .coachMarkHost()
+            // Koren cilu tutorialu na teto zalozce (skryta zalozka neni v okne a jeji cile se vynechaji).
+            .coachRoot()
     }
 }
 

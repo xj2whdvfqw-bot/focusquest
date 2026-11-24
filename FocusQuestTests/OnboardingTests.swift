@@ -21,24 +21,38 @@ final class OnboardingTests: XCTestCase {
         XCTAssertNil(UserProfile.cleanName("--"), "Needs a letter or digit")
     }
 
-    func testTutorialHasThirteenStepsInUsageOrder() {
+    func testTutorialHasFourteenStepsInUsageOrder() {
         XCTAssertEqual(CoachStep.allCases.first, .fight)
         XCTAssertEqual(CoachStep.allCases.last?.number, CoachStep.total)
-        XCTAssertEqual(CoachStep.total, 13)
-        XCTAssertEqual(CoachStep.allCases.map(\.number), Array(1...13), "Every step has its own number")
+        XCTAssertEqual(CoachStep.total, 14)
+        XCTAssertEqual(CoachStep.allCases.map(\.number), Array(1...14), "Every step has its own number")
         XCTAssertEqual(CoachStep.habits.screen, .stats)
         XCTAssertEqual(CoachStep.path.screen, .path, "K1: tab steps stand on their own tab")
         XCTAssertEqual(CoachStep.shop.screen, .shop)
         XCTAssertEqual(CoachStep.stats.screen, .stats)
-        XCTAssertEqual(CoachStep.dailyTarget.screen, .hero)
-        // L1/E1: tutorial neotvira listy. Kroky o Fight sheetu stoji na Home a ukazuji tlacitko Fight.
-        for step in [CoachStep.fight, .focusing, .sound, .battle] {
-            XCTAssertEqual(step.screen, .home, "\(step) must stay on Home")
-            XCTAssertEqual(step.target, .fight, "\(step) highlights Fight")
+        // M1/F2: Hero ve dvou krocich (karta hrdiny, Daily focus target), pak Settings.
+        XCTAssertEqual(Array(CoachStep.allCases.suffix(3)), [.hero, .dailyTarget, .settings])
+        XCTAssertEqual(CoachStep.hero.number, 12)
+        XCTAssertEqual(CoachStep.dailyTarget.number, 13)
+        XCTAssertEqual(CoachStep.settings.number, 14)
+        for step in [CoachStep.hero, .dailyTarget, .settings] { XCTAssertEqual(step.screen, .hero) }
+        XCTAssertEqual(CoachStep.hero.target, .heroCard)
+        XCTAssertEqual(CoachStep.dailyTarget.target, .dailyTarget)
+        XCTAssertEqual(CoachStep.settings.target, .gear)
+        XCTAssertEqual(CoachStep.hero.title, "Your hero")
+        XCTAssertEqual(CoachStep.dailyTarget.title, "Daily focus target")
+        // M1/F1: krok 1 ukaze Fight na Home, kroky 2–4 stoji v otevrenem Fight setupu (nad Home).
+        XCTAssertEqual(CoachStep.fight.target, .fight)
+        XCTAssertEqual([CoachStep.focusing, .sound, .battle].map(\.target), [.focusing, .sound, .start])
+        for step in CoachStep.allCases {
+            XCTAssertEqual(step.isInFightSheet, [.focusing, .sound, .battle].contains(step), "\(step)")
+        }
+        for step in [CoachStep.fight, .focusing, .sound, .battle, .quick, .streak] {
+            XCTAssertEqual(step.screen, .home, "\(step) stands on Home")
         }
         XCTAssertEqual(CoachStep.quick.target, .quick, "Step 5 highlights the link itself")
         // K1/D3: vsude Next, posledni krok Finish, zadne "Got it".
-        XCTAssertEqual(CoachStep.allCases.dropLast().map(\.buttonTitle), Array(repeating: "Next", count: 12))
+        XCTAssertEqual(CoachStep.allCases.dropLast().map(\.buttonTitle), Array(repeating: "Next", count: 13))
         XCTAssertEqual(CoachStep.settings.buttonTitle, "Finish")
         for step in CoachStep.allCases {
             XCTAssertFalse(step.text.contains("Tap "), "\(step) still asks to tap the highlighted element")
@@ -69,7 +83,7 @@ final class OnboardingTests: XCTestCase {
         XCTAssertEqual(reopened.step, .streak)
     }
 
-    /// L1/E1: kroky o Fight sheetu uz v listu nejsou, takze se po spusteni vrati presne tam, kde hrac skoncil.
+    /// Krok se po spusteni vrati presne tam, kde hrac skoncil (M1/F1: v kroku 2–4 MainTabView znovu otevre Fight setup).
     func testEveryStepResumesWhereItStopped() {
         let defaults = freshDefaults()
         let store = CoachMarkStore(defaults: defaults)
