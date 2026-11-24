@@ -39,6 +39,7 @@ struct WeeklyQuestsCard: View {
     private func row(_ quest: WeeklyQuest, progress: Int) -> some View {
         let complete = progress >= quest.target
         let claimed = profile.isClaimed(quest)
+        let fraction: CGFloat = CGFloat(min(progress, quest.target)) / CGFloat(max(1, quest.target))
         return HStack(spacing: FQSpace.md) {
             Image(systemName: quest.symbol)
                 .font(.system(size: 15, weight: .semibold))
@@ -57,7 +58,7 @@ struct WeeklyQuestsCard: View {
                             Capsule().fill(Color.white.opacity(0.12))
                             Capsule()
                                 .fill(complete ? FQColor.accent : FQColor.textSecondary)
-                                .frame(width: proxy.size.width * min(1, Double(progress) / Double(max(1, quest.target))))
+                                .frame(width: proxy.size.width * fraction)
                         }
                     }
                     .frame(height: 5)

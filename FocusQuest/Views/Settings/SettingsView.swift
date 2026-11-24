@@ -112,23 +112,7 @@ struct SettingsView: View {
                 }
 
                 // C7: pripravene, skryte, dokud neni FeatureFlags.iCloudSync (placeny ucet, viz DEVELOPER_ACCOUNT_TODO.md).
-                if FeatureFlags.iCloudSync {
-                    Section {
-                        Toggle(isOn: Binding(get: { iCloudSyncEnabled }, set: { value in
-                            iCloudSyncEnabled = value
-                            // Po zapnuti se hned nahraje mistni stav; stav z iCloudu se slouci pri dalsim spusteni.
-                            if value { CloudSync.scheduleUpload() }
-                        }).fqTapFeedback()) {
-                            SettingsRow(title: "Sync with iCloud", symbol: "icloud.fill", color: .blue)
-                        }
-                        .settingsToggleTint()
-                        SettingsRow(title: "Last synced", symbol: "clock.arrow.circlepath", color: .gray, value: CloudSync.lastSync.map { $0.formatted(date: .abbreviated, time: .shortened) } ?? "Never")
-                    } header: {
-                        Text("iCloud sync")
-                    } footer: {
-                        Text("Keeps your hero, progress and stats the same on all your devices with this Apple ID. Changes from another device show up the next time you open FocusQuest.")
-                    }
-                }
+                if FeatureFlags.iCloudSync { iCloudSection }
 
                 #if DEBUG
                 DebugSettingsSections(model: model, profile: profile, notifications: $notifications, onResetOnboarding: onResetOnboarding)
@@ -166,6 +150,25 @@ struct SettingsView: View {
         // Navrat z Nastaveni iPhonu: prepinace ukazi skutecny stav.
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { Task { notifications = await NotificationPermission.current() } }
+        }
+    }
+
+    /// C7: iCloud sync (jen se zapnutym FeatureFlags.iCloudSync).
+    private var iCloudSection: some View {
+        Section {
+            Toggle(isOn: Binding(get: { iCloudSyncEnabled }, set: { value in
+                iCloudSyncEnabled = value
+                // Po zapnuti se hned nahraje mistni stav; stav z iCloudu se slouci pri dalsim spusteni.
+                if value { CloudSync.scheduleUpload() }
+            }).fqTapFeedback()) {
+                SettingsRow(title: "Sync with iCloud", symbol: "icloud.fill", color: .blue)
+            }
+            .settingsToggleTint()
+            SettingsRow(title: "Last synced", symbol: "clock.arrow.circlepath", color: .gray, value: CloudSync.lastSync.map { $0.formatted(date: .abbreviated, time: .shortened) } ?? "Never")
+        } header: {
+            Text("iCloud sync")
+        } footer: {
+            Text("Keeps your hero, progress and stats the same on all your devices with this Apple ID. Changes from another device show up the next time you open FocusQuest.")
         }
     }
 
@@ -661,12 +664,19 @@ private struct DebugSettingsSections: View {
             .padding(.vertical, FQSpace.sm)
             SettingsRow(title: "App Group", symbol: "square.stack.3d.up.fill", color: .purple, value: WidgetSnapshot.isSharingAvailable ? "Shared with widget" : "Not available")
             // C7: kolik mista zabira ulozeny stav (iCloud KVS ma limit 1 MB).
-            SettingsRow(title: "Saved data", symbol: "internaldrive.fill", color: .gray, value: ByteCountFormatter.string(fromByteCount: Int64(AppStateStore.byteSizes(in: .standard).reduce(0) { $0 + $1.bytes }), countStyle: .file))
+            SettingsRow(title: "Saved data", symbol: "internaldrive.fill", color: .gray, value: Self.savedDataText())
         } header: {
             Text("Debug widget")
         } footer: {
             Text("The same views as the Home Screen widget, with live data. Without an App Group (free Apple ID) the real widget shows Open FocusQuest.")
         }
+    }
+
+    /// C7: velikost ulozeneho stavu ("12 KB").
+    private static func savedDataText() -> String {
+        var total = 0
+        for entry in AppStateStore.byteSizes(in: .standard) { total += entry.bytes }
+        return ByteCountFormatter.string(fromByteCount: Int64(total), countStyle: .file)
     }
 
     private func widgetPreview(_ snapshot: WidgetSnapshot, family: WidgetFamily, width: CGFloat) -> some View {

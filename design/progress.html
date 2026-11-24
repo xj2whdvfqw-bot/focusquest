@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-24T03:12:00+01:00",
-  "current": "J1: build #73 běží",
-  "nextStep": "Počkat na výsledek posledního buildu",
+  "updated": "2026-11-24T03:15:00+01:00",
+  "current": "J1: build #73 spadl (runner ztratil spojení během sestavení IPA), zjednodušené výrazy, nový build",
+  "nextStep": "Commit a nový build",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -836,7 +836,7 @@
     {
       "id": "J1",
       "title": "Habits, widget, streak freeze, Focus Filter, zkratky, úkoly, poznámky, iCloud příprava",
-      "status": "build",
+      "status": "spadl",
       "items": [
         { "text": "C0 Habits: pevná mřížka od prvního dne (řádky Po–Ne, sloupce týdny), dnešek s rámečkem, vodorovný posun, nový popisek a tutoriál", "done": true },
         { "text": "C1 Widget malý a střední (série, další boss, dnešní minuty vs. cíl), deep link na výběr bitvy; App Group připravená za flagem", "done": true },
@@ -849,8 +849,8 @@
         { "text": "design/DEVELOPER_ACCOUNT_TODO.md, DECISIONS.md", "done": true }
       ],
       "commit": "0ad6016",
-      "build": { "number": 73, "runId": 45298944689, "result": "běží" },
-      "note": ""
+      "build": { "number": 73, "runId": 45298944689, "result": "spadl" },
+      "note": "Build #73: runner po 45 min ztratil spojení se serverem během sestavení IPA (výpadek GitHubu, nebo zaseknutý type-checker). Pro jistotu zjednodušené výrazy ve WeeklyQuestsCard a Nastavení."
     }
   ]
 }
