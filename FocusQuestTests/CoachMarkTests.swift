@@ -115,27 +115,42 @@ final class CoachMarkTests: XCTestCase {
         }
     }
 
-    /// E1 + E3: kazdy krok se opravdu vykresli s bublinou (zlute tlacitko Next/Finish), s nalezenym prvkem
-    /// i bez nej. Bez spusteneho sledovani (ImageRenderer nespousti task) = prvni snimek po Next.
-    func testEveryStepRendersAVisibleBubble() throws {
+    /// E1 + E3: kazdy krok se opravdu ukaze s bublinou (zlute tlacitko Next/Finish), s nalezenym prvkem
+    /// i bez nej. Overlay bezi ve skutecnem okne jako v appce (vcetne sledovani prvku a skla) a okno
+    /// se vyfoti pres drawHierarchy. ImageRenderer bublinu nevykreslil vubec (buildy #77 a #78),
+    /// ani s plnou vyplni, proto se nepouziva.
+    func testEveryStepShowsABubbleInARealWindow() throws {
+        let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first,
+                                  "The test host app has no window scene")
+        let screen = scene.windows.first(where: \.isKeyWindow) ?? scene.windows.first
+        let insets = screen?.safeAreaInsets ?? .zero
         let store = CoachMarkStore(defaults: freshDefaults())
         store.finishOnboarding()
         store.startTutorial()
-        let space = CoachSpace(size: CGSize(width: 402, height: 874), safeTop: 0, safeBottom: 0)
-        let frames = sampleFrames(in: space)
         var rendered = 0
         while let step = store.step, rendered < 40 {
             store.screen = step.screen
             for withTarget in [true, false] {
+                let window = UIWindow(windowScene: scene)
+                let space = CoachSpace(size: window.bounds.size, safeTop: insets.top, safeBottom: insets.bottom)
+                let frames = sampleFrames(in: space)
                 store.setFramesForTesting(withTarget ? frames : [:])
-                // ImageRenderer neumi materialy: bublina se sklem by se nevykreslila vubec (build #77),
-                // proto plna vypln stejneho tvaru. Overlay je v appce vzdy tmavy (okno .dark).
-                let renderer = ImageRenderer(content: CoachMarkOverlay(plainBubbleForSnapshot: true)
-                    .environment(store)
-                    .environment(\.colorScheme, .dark)
-                    .frame(width: space.size.width, height: space.size.height))
-                renderer.scale = 1
-                let image = try XCTUnwrap(renderer.uiImage, "\(step): nothing rendered")
+                window.windowLevel = .alert + 1
+                window.overrideUserInterfaceStyle = .dark
+                window.backgroundColor = .clear
+                let host = UIHostingController(rootView: CoachMarkOverlay().environment(store))
+                host.view.backgroundColor = .clear
+                window.rootViewController = host
+                window.isHidden = false
+                // Overlay se vykresli a jeho sledovani prvku probehne jako v appce.
+                RunLoop.main.run(until: Date().addingTimeInterval(0.5))
+                let format = UIGraphicsImageRendererFormat()
+                format.scale = 1
+                let image = UIGraphicsImageRenderer(bounds: window.bounds, format: format).image { _ in
+                    _ = window.drawHierarchy(in: window.bounds, afterScreenUpdates: true)
+                }
+                window.isHidden = true
+                window.rootViewController = nil
                 let hole = withTarget ? frames[step.target]?.insetBy(dx: -40, dy: -40) : nil
                 let yellow = try yellowPixels(in: image, outside: hole)
                 XCTAssertGreaterThan(yellow, 400, "\(step) \(withTarget ? "with" : "without") target: no Next button visible")
@@ -148,6 +163,12 @@ final class CoachMarkTests: XCTestCase {
         }
         XCTAssertEqual(rendered, CoachStep.total * 2)
         XCTAssertNil(store.step)
+        // Diagnostika (bez kontroly): samotny obsah bubliny pres ImageRenderer.
+        if let image = ImageRenderer(content: CoachBubbleContent(step: .battle) {}
+            .frame(width: 340)
+            .environment(\.colorScheme, .dark)).uiImage {
+            attach(image, name: "coach-bubble-content-imagerenderer")
+        }
     }
 
     /// E4: Home se vejde nad listu zalozek bez rolovani na iPhonu SE, 17 i Pro Max, i behem tutorialu

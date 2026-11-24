@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-24T13:47:00+01:00",
-  "current": "L1: build #78 běží (oprava testu vykreslení bubliny)",
-  "nextStep": "Počkat na výsledek buildu #78",
+  "updated": "2026-11-24T14:37:48+01:00",
+  "current": "L1: build #78 spadl na testu vykreslení bubliny, test předělaný na skutečné okno",
+  "nextStep": "Commit a build #79",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -872,7 +872,7 @@
     {
       "id": "L1",
       "title": "Opravy z testu #76: tutoriál, Skip, přechody, Home bez scrollu, Break panel",
-      "status": "build",
+      "status": "spadl",
       "items": [
         { "text": "E1 Tutoriál neotvírá sheety: kroky 2–4 na Home se spotlightem na Fight, pojistka bubliny uprostřed do 1 s, kroky se nepřeskakují, test 13 kroků přes Next", "done": true },
         { "text": "E2 Skip tutorial v safe area vlevo nahoře, ve výšce ozubeného kola, ve všech krocích stejně, nic nepřekrývá", "done": true },
@@ -882,8 +882,8 @@
         { "text": "DECISIONS.md", "done": true }
       ],
       "commit": "918cab6",
-      "build": { "number": 78, "runId": 45396642441, "result": "běží" },
-      "note": "Build #77: kompilace, IPA i Release prošly, spadl jen nový test vykreslení bubliny (0 žlutých pixelů). Příloha testu ukázala ztmavení, výřez i Skip, ale ne bublinu: ImageRenderer neumí materiály (sklo bubliny), stejně jako u sdílecích karet. V appce se bublina se sklem kreslí (krok 1 byla vidět i dřív). Oprava: test kreslí bublinu s plnou výplní stejného tvaru. Ostatní nové testy (13 kroků přes Next, pojistka 1 s, Skip, Home na SE/17/Pro Max) prošly."
+      "build": { "number": 78, "runId": 45396642441, "result": "spadl" },
+      "note": "Buildy #77 a #78: kompilace, IPA i Release prošly, spadl jen nový test vykreslení bubliny. ImageRenderer bublinu nenakreslil vůbec (ani s plnou výplní místo skla), ztmavení, výřez a Skip ano. Test teď dá overlay do skutečného okna testovací appky a vyfotí ho (drawHierarchy), tedy přesně to, co ukáže iPhone. Ostatní nové testy (13 kroků přes Next, pojistka 1 s, Skip, Home na SE/17/Pro Max) prošly."
     }
   ]
 }
