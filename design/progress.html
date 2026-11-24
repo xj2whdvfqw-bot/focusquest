@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-24T03:17:00+01:00",
-  "current": "J1: build #74 běží",
-  "nextStep": "Počkat na výsledek buildu #74",
+  "updated": "2026-11-24T04:10:00+01:00",
+  "current": "J1 hotovo: build #74 prošel",
+  "nextStep": "Otestovat na iPhonu Habits, widget, Streak freeze, Focus Filter, zkratky, týdenní úkoly a poznámky",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -836,7 +836,7 @@
     {
       "id": "J1",
       "title": "Habits, widget, streak freeze, Focus Filter, zkratky, úkoly, poznámky, iCloud příprava",
-      "status": "build",
+      "status": "hotovo",
       "items": [
         { "text": "C0 Habits: pevná mřížka od prvního dne (řádky Po–Ne, sloupce týdny), dnešek s rámečkem, vodorovný posun, nový popisek a tutoriál", "done": true },
         { "text": "C1 Widget malý a střední (série, další boss, dnešní minuty vs. cíl), deep link na výběr bitvy; App Group připravená za flagem", "done": true },
@@ -849,8 +849,8 @@
         { "text": "design/DEVELOPER_ACCOUNT_TODO.md, DECISIONS.md", "done": true }
       ],
       "commit": "b5122be",
-      "build": { "number": 74, "runId": 45305000580, "result": "běží" },
-      "note": "Build #73: runner po 45 min ztratil spojení se serverem během sestavení IPA (výpadek GitHubu, nebo zaseknutý type-checker). Pro jistotu zjednodušené výrazy ve WeeklyQuestsCard a Nastavení."
+      "build": { "number": 74, "runId": 45305000580, "result": "úspěch" },
+      "note": "Build #74 prošel (IPA, Release, testy). #72 prošel s C0–C4 a C6; #71 zrušen (chyběl FocusModeState), #73 spadl na ztrátě spojení runneru. Na iPhonu otestuj: Habits (řádky Po–Ne, první den ve sloupci 1, dnešek s rámečkem, posun na dnešek); widget na ploše (bez App Group ukáže Open FocusQuest, klepnutí otevře Fight sheet; skutečná data v Debug › Debug widget); Shop › Streak freeze 150, Debug +1 streak freeze, vynechaný den → vločka u série a led v Habits; notifikace Streak in danger ve 20:00; iPhone Nastavení › Focus › Add Filter › FocusQuest (Suggest a battle → karta na Home, Mute reminders); Siri „Start a battle in FocusQuest“, „Show my FocusQuest streak“, Zkratky Start battle s délkou, Action button; Stats › Weekly quests a Open chest; poznámka na Victory a Battle log s filtrem. iCloud a App Group čekají na placený účet (design/DEVELOPER_ACCOUNT_TODO.md)."
     }
   ]
 }
