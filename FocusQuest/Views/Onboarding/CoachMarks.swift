@@ -138,7 +138,7 @@ enum CoachStep: Int, CaseIterable, Sendable {
         case .quick: "Start with just 5 minutes. Small wins still count."
         case .streak: "Focus a little every day to keep the flame going."
         case .path: "Worlds full of bosses wait on the map. Each win moves you along the path."
-        case .shop: "Coins from battles buy gear, backgrounds and supplies. Tap a sign to switch, tap an item to try it on."
+        case .shop: "Coins from battles buy gear, backgrounds and supplies. Each sign opens one corner of the stall, and your hero tries things on."
         case .stats: "Focus time, streaks and habits live on this tab."
         case .habits: "Each square is one day, starting from your first day: rows are Monday to Sunday, every week adds a column. Today has a white frame, and brighter squares mean more focus."
         case .statNumbers: "Win rate is the share of battles you won, next to bosses beaten. Longest streak counts days in a row, focus hours add up all your time."
