@@ -3,7 +3,7 @@
 Doplňuje `design/CHANGES.md` (zadání sekcí 0–15) a `design/progress.html` (stav, buildy, co otestovat).
 Tady je to, co v nich není: rozhodnutí, která padla během práce, otevřené body a známé pasti.
 
-Stav k 24. 11. 2026: větev `phase3-duolingo`; M1 (tutoriál: kroky 2–4 v otevřeném Fight setupu, cíle měřené v `.global`, Hero ve dvou krocích, celkem 14) prošel jako build #80, viz progress.html. Předtím L1 (opravy E1–E5 po testu #76: Skip v safe area, plynulé přechody, Home bez scrollu, Break panel) prošel jako build #79. Předtím zelený build #76 (K1: onboarding karta, tutoriál ve vlastním okně, Shop Supplies, sdílecí karty, zvuky) a #74 (J1: Habits, widget, freeze, Focus, zkratky, úkoly, poznámky, příprava iCloud); dříve #70 (I1), #69 (H1), #67 (G1); dříve #65 (F1); E1 (opravy z testu po D1) prošel jako build #62; F1 (Habits, mapa, easter eggy) prošel jako build #65; F2 (nový onboarding a coach marks) prošel jako build #66. Všechny sekce z CHANGES.md
+Stav k 24. 11. 2026: větev `phase3-duolingo`; N1 (G1: plynulé přechody tutoriálu, A na stejné obrazovce v jedné animaci, B při změně obrazovky se schováním a objevením na stabilním cíli) je stav buildu v progress.html. Předtím M1 (tutoriál: kroky 2–4 v otevřeném Fight setupu, cíle měřené v `.global`, Hero ve dvou krocích, celkem 14) prošel jako build #80, viz progress.html. Předtím L1 (opravy E1–E5 po testu #76: Skip v safe area, plynulé přechody, Home bez scrollu, Break panel) prošel jako build #79. Předtím zelený build #76 (K1: onboarding karta, tutoriál ve vlastním okně, Shop Supplies, sdílecí karty, zvuky) a #74 (J1: Habits, widget, freeze, Focus, zkratky, úkoly, poznámky, příprava iCloud); dříve #70 (I1), #69 (H1), #67 (G1); dříve #65 (F1); E1 (opravy z testu po D1) prošel jako build #62; F1 (Habits, mapa, easter eggy) prošel jako build #65; F2 (nový onboarding a coach marks) prošel jako build #66. Všechny sekce z CHANGES.md
 a všechny opravy z auditu jsou hotové.
 
 ## 1. Rozhodnutí
@@ -377,8 +377,8 @@ a všechny opravy z auditu jsou hotové.
     Start Battle rohy tlačítka + 8) se žlutou pulzující září; vedle bublina (titulek, max 2 věty, „3 of 14“, Next),
     nahoře vlevo „Skip tutorial“.
   - **Kroky 2–4 stojí v otevřeném Fight setupu** (od M1/F1; ruší L1/E1 „tutoriál nikdy neotvírá listy“). Next v kroku 1
-    posune krok a zároveň otevře Fight setup s bossem na řadě (`syncTutorialFightSheet` v `MainTabView`); text bubliny
-    se hned prolne, bublina počká na místě a jakmile list dojede, odjede i s výřezem na sekci Focusing (krok 2).
+    posune krok a zároveň otevře Fight setup s bossem na řadě (`syncTutorialFightSheet` v `MainTabView`); overlay
+    mezitím zmizí a objeví se, až list dojede, rovnou na sekci Focusing (krok 2; od N1/G1, přechod typu B níže).
     Krok 3 = sekce Sound, krok 4 = tlačítko Start Battle (`CoachTarget.focusing/.sound/.start`). Next v kroku 4 list
     zavře a krok 5 („Not feeling it?“) počká, až list zmizí. Skip během kroků 2–4 list taky zavře; list, který otevřel
     hráč, tutoriál nezavírá (`tutorialOwnsFightSheet`). Obnovený krok 2–4 po pádu list při spuštění znovu otevře.
@@ -412,13 +412,30 @@ a všechny opravy z auditu jsou hotové.
     (viz Známé pasti). Nic nepřekrývá: během tutoriálu nadpis vlevo nahoře na každé záložce uhne o 52 bodů dolů
     (`coachSkipClearance()`, prostředí `coachSkipClearance`: `ScreenHeader`, hlavička Path, štítek Shop); ozubené kolo,
     mince a tlačítka vpravo zůstávají. Pás přes celou šířku (`safeAreaInset` 56 pt) je pryč. Bublina nikdy nezajede do řádku Skip.
-  - **Plynulé přechody** (L1/E3): jedna stálá bublina. Po Next se text hned prolne (0,22 s) a bublina i výřez
-    (pozice, velikost, zaoblení, `CoachDimShape.animatableData`) odjedou pružinou 0,35 s na nový prvek; žádná prázdná pauza.
-    Bublina nad prvkem drží spodní hranu, pod prvkem horní (při změně výšky nikdy nezajede do výřezu).
-    Přepnutí záložky proběhne ve stejné animaci (`performTutorialNext`: posun kroku + `switchTab` v jednom `withAnimation`).
-    Výřez se přesune, až prvek stojí (dvě měření po sobě 50 ms na stejném místě), takže nehoní přijíždějící záložku.
-    Overlay měří rámečky průběžně (50 ms první 1,5 s, pak 150 ms), dokud krok trvá. Reduce Motion: bublina neodjede,
-    stará a nová se prolnou, stejně výřez; záře nepulzuje. VoiceOver čte bublinu (modální, fokus na ni).
+  - **Dva typy přechodů** (od N1/G1, ruší L1/E3 „text se prolne hned a bublina dojede, až prvek stojí“; tím
+    bublina na stejné obrazovce stála ~0,5 s se starým místem a novým textem a při otevření panelu výřez skočil
+    na Sound). Typ určí `CoachStep.transition(to:)`: stejná záložka a stejný stav Fight setupu = A, jinak B.
+    Next 5→6, 2→3, 3→4, 9→10, 10→11, 12→13, 13→14 = A; 1→2, 4→5, 6→7, 7→8, 8→9, 11→12 = B.
+    - **A, stejná obrazovka**: cíle se hlásí už při zobrazení (`.coachMark`, i mimo aktivní krok), takže rámeček
+      nového cíle je v `CoachMarkStore` předem. Overlay v obsluze Next (`CoachMarkOverlay.next`) hned v jednom
+      `withAnimation` (pružina 0,35 s) nastaví nový text i rozvržení: bublina odjede, výřez změní pozici, velikost
+      a zaoblení (`CoachDimShape.animatableData`) a text se prolne, vše současně. Obrazovka, která cíl odroluje
+      (`scrollTo(target, anchor: nil)` ve stejné pružině), hlásí svou viditelnou plochu (`.coachViewport()` na
+      ScrollView v `ScreenScaffold` a ve Fight setupu) a overlay jede rovnou tam, kde cíl po odrolování bude
+      (`CoachLayout.scrolledIntoView`, `CoachMarkStore.settledFrame`). Kdyby odhad nesedl (konec obsahu),
+      sledování výřez po dojetí doladí. Chybějící cíl = jen prolnutí textu a čekání (pojistka 1 s).
+    - **B, změna obrazovky** (Fight setup se otevře/zavře, přepnutí záložky): ztmavení, výřez i bublina zmizí za 0,15 s
+      (`CoachMetrics.hideDuration`), Skip zůstává a vrstva pod ním dál pohlcuje klepnutí. Po schování se neviditelně
+      přepne text (bublina se přeměří) a čeká se na cíl: na své obrazovce, panel dojel (transition coordinator,
+      `sheetOnScreen`) a dvě měření po sobě (50 ms) na stejném místě; po přepnutí záložky nejdřív za 0,3 s
+      (`tabSwitchDuration`, příjezd obsahu). Rámeček změřený během animace se nikdy nepoužije. Pak se rozvržení
+      nastaví bez animace a overlay se objeví za 0,2 s se zvětšením bubliny a záře z 0,96 (`revealDuration/Scale`).
+      Cíl, který do 1 s od Next není, = bublina uprostřed, Next funguje; když se cíl objeví později, výřez k němu dojede.
+      Během schování Next nejde (bublina není vidět).
+    - Bublina nad prvkem drží spodní hranu, pod prvkem horní (při změně výšky nikdy nezajede do výřezu).
+      Overlay dál měří rámečky průběžně (50 ms první 1,5 s, pak 150 ms), dokud krok trvá, a výřez se po dojetí
+      rolování nebo záložky přesune, až prvek stojí. Reduce Motion: A = stará a nová bublina i výřez se prolnou,
+      B = jen prolnutí bez zvětšení; záře nepulzuje. VoiceOver čte bublinu (modální, fokus na ni).
   - **Postup jen přes Next** (od K1): každý krok má Next, poslední Finish. Zvýrazněné prvky nejsou interaktivní.
     **Krok stojí na své záložce** (`CoachStep.screen`): kroky 1–6 Home (2–4 ve Fight setupu nad ní), Path na Path,
     Shop na Shop, Stats na Stats, Your hero, Daily focus target a Nastavení na Hero. Lišta je během tutoriálu úplně zamčená (`userSwitchTab`).
@@ -671,6 +688,10 @@ Shop má od K1 tři záložky: **Gear** (jen vybavení hrdiny), **Backgrounds** 
 - **Cíle tutoriálu v listu** (od M1): rámečky v `.global` + posun z kořenové sondy (`.coachRoot(sheet: true)`).
   UIKit i SwiftUI hlásí cílovou polohu listu hned na začátku prezentace, proto se na dojetí listu čeká zvlášť
   (transition coordinator). Nový cíl v listu = `.coachMark` uvnitř kořene listu, jinak ho overlay nenajde.
+- **Přechod tutoriálu se nesmí rozhodovat až v `.task(id: step)`** (N1/G1): task běží až po vykreslení nového kroku,
+  takže text a poloha se rozjely (L1/E3). Typ A se nastavuje synchronně v obsluze Next, typ B se schová v ní.
+  Nový rolovací ScrollView s cíli tutoriálu potřebuje `.coachViewport()` (uvnitř `.coachRoot`), jinak overlay
+  jede na polohu před odrolováním a pak dojede druhou animací.
 - **`containerShape` na iOS 17:**
   - iOS 26 přetížení se nesmí volat mimo `#available(iOS 26.0, *)`, proto `fqContainer` vrací na starších iOS jen `self`,
   - `AnyShape` neumí `strokeBorder`, použít `stroke` + `padding(lineWidth / 2)`.

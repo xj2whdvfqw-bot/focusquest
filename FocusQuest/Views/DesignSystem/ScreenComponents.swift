@@ -34,6 +34,8 @@ struct ScreenScaffold<Content: View>: View {
                                 .modifier(TabSwitchEntrance())
                         }
                         .scrollIndicators(.hidden)
+                        // G1: viditelna plocha pro odhad polohy cile po odrolovani (prechod bez cekani).
+                        .coachViewport()
                         .onChange(of: coach?.step) { _, step in scrollForTutorial(to: step, with: reader) }
                     }
                 }

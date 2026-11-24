@@ -396,8 +396,8 @@ struct MainTabView: View {
 
     /// Next v bubline. E3: krok se posune a zalozka dalsiho kroku se prepne ve stejne animaci, ve ktere
     /// bublina odjede a vyrez se presune. Reduce Motion: jen prolnuti.
-    /// M1/F1: Next v kroku 1 zaroven otevre Fight setup (text bubliny se prolne, bublina a vyrez odjedou,
-    /// az list dojede), Next v kroku 4 ho zavre a krok 5 pocka na Home.
+    /// M1/F1: Next v kroku 1 zaroven otevre Fight setup, Next v kroku 4 ho zavre. G1: pri zmene obrazovky
+    /// (list, zalozka) overlay mezitim schova ztmaveni, vyrez i bublinu a objevi je az na stabilnim cili.
     private func performTutorialNext(_ step: CoachStep) {
         let animation: Animation = reduceMotion ? .easeInOut(duration: 0.25) : .spring(response: 0.35, dampingFraction: 0.86)
         withAnimation(animation) {

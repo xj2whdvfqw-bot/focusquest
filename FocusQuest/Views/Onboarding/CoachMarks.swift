@@ -147,6 +147,21 @@ enum CoachStep: Int, CaseIterable, Sendable {
 
     /// Popisek tlacitka: vsude Next, posledni krok Finish.
     var buttonTitle: String { self == CoachStep.allCases.last ? "Finish" : "Next" }
+
+    /// G1: jak overlay prejde na dalsi krok. Stejna zalozka a stejny stav Fight setupu = cil uz je vykresleny
+    /// (jedna spolecna animace); jinak se meni obrazovka (overlay zmizi, prechod probehne, objevi se na cili).
+    func transition(to next: CoachStep) -> CoachTransition {
+        screen == next.screen && isInFightSheet == next.isInFightSheet ? .sameScreen : .screenChange
+    }
+}
+
+/// G1: dva typy prechodu mezi kroky tutorialu.
+enum CoachTransition: Equatable, Sendable {
+    /// A: cil je na stejne obrazovce a uz zmereny. Bublina, vyrez a text se pohnou v jedne animaci.
+    case sameScreen
+    /// B: otevreni/zavreni Fight setupu nebo prepnuti zalozky. Overlay zmizi (Skip zustava),
+    /// po prechodu se objevi rovnou na stabilnim cili.
+    case screenChange
 }
 
 /// Stav onboardingu a tutorialu. Uklada se po kazdem kroku, takze po padu nebo zavreni appky
@@ -172,6 +187,10 @@ final class CoachMarkStore {
     @ObservationIgnored private var reports: [UUID: CoachReport] = [:]
     /// Koreny hierarchii (zalozky, lista, Fight setup) se sondou v okne.
     @ObservationIgnored private var roots: [UUID: CoachRoot] = [:]
+    /// G1: viditelne plochy rolovacich obrazovek (ScrollView), pod kterymi cile lezi, v `.global`.
+    @ObservationIgnored private var viewportReports: [UUID: CoachViewportReport] = [:]
+    /// G1: viditelna plocha rolovaci obrazovky kazdeho cile v souradnicich okna (odhad polohy po odrolovani).
+    @ObservationIgnored private(set) var viewports: [CoachTarget: CGRect] = [:]
     /// Zalozka, ktera je prave videt (nastavuje MainTabView). Vyrez kroku sedi jen na jeho zalozce (A2).
     var screen: CoachScreen = .home
     /// Next v bubline: MainTabView posune krok a prepne zalozku ve stejne animaci (E3).
@@ -251,6 +270,25 @@ final class CoachMarkStore {
         if step != nil { refreshFrames() }
     }
 
+    /// G1: rolovaci obrazovka nahlasi svou viditelnou plochu (`.global`, bez bezpecne zony).
+    func reportViewport(_ reporter: UUID, rect: CGRect, root: UUID?) {
+        let report = CoachViewportReport(rect: rect, root: root)
+        guard viewportReports[reporter] != report else { return }
+        viewportReports[reporter] = report
+    }
+
+    func withdrawViewport(_ reporter: UUID) {
+        viewportReports.removeValue(forKey: reporter)
+    }
+
+    /// G1: kde prvek bude, az ho obrazovka odroluje do zorneho pole (`scrollTo(target, anchor: nil)`
+    /// roluje jen tolik, aby byl cely videt). Bez rolovaci obrazovky = zmereny ramecek.
+    func settledFrame(for target: CoachTarget) -> CGRect? {
+        guard let frame = frames[target] else { return nil }
+        guard let viewport = viewports[target] else { return frame }
+        return CoachLayout.scrolledIntoView(frame, viewport: viewport)
+    }
+
     /// Sonda korene je v okne (zalozka se ukazala, list se zacal prezentovat).
     func attachRoot(_ id: UUID, probe: CoachRootProbeView, isSheet: Bool) {
         var root = roots[id] ?? CoachRoot(isSheet: isSheet)
@@ -290,23 +328,32 @@ final class CoachMarkStore {
             let inWindow = probe.windowOrigin
             offsets[id] = CGVector(dx: inWindow.x - origin.x, dy: inWindow.y - origin.y)
         }
+        var rootViewports: [UUID: CGRect] = [:]
+        for report in viewportReports.values {
+            guard let root = report.root, let offset = offsets[root], report.rect.height > 1 else { continue }
+            rootViewports[root] = report.rect.offsetBy(dx: offset.dx, dy: offset.dy)
+        }
         var merged: [CoachTarget: CGRect] = [:]
+        var mergedViewports: [CoachTarget: CGRect] = [:]
         for report in reports.values {
             var offset = CGVector.zero
             if let root = report.root {
                 guard let known = offsets[root] else { continue }
                 offset = known
+                if let viewport = rootViewports[root] { mergedViewports[report.target] = viewport }
             }
             merged[report.target] = report.frame.offsetBy(dx: offset.dx, dy: offset.dy)
         }
+        viewports = mergedViewports
         if merged != frames { frames = merged }
         if sheetUp != sheetOnScreen { sheetOnScreen = sheetUp }
     }
 
     /// Jen pro testy: ramecky prvku bez sond (sledovani v overlayi je pak neprepise).
-    func setFramesForTesting(_ rects: [CoachTarget: CGRect], sheetOnScreen: Bool = false) {
+    func setFramesForTesting(_ rects: [CoachTarget: CGRect], sheetOnScreen: Bool = false, viewports: [CoachTarget: CGRect] = [:]) {
         framesFixedForTesting = true
         frames = rects
+        self.viewports = viewports
         self.sheetOnScreen = sheetOnScreen
     }
     @ObservationIgnored private var framesFixedForTesting = false
@@ -316,6 +363,12 @@ final class CoachMarkStore {
 private struct CoachReport: Equatable {
     let target: CoachTarget
     let frame: CGRect
+    let root: UUID?
+}
+
+/// Viditelna plocha jedne rolovaci obrazovky v `.global` a koren, pod kterym je.
+private struct CoachViewportReport: Equatable {
+    let rect: CGRect
     let root: UUID?
 }
 
@@ -352,6 +405,10 @@ extension View {
 
     /// Koren hierarchie s cili tutorialu (zalozka, lista, Fight setup). `sheet`: cile se ukazou az po dojeti listu.
     func coachRoot(sheet: Bool = false) -> some View { modifier(CoachRootModifier(isSheet: sheet)) }
+
+    /// G1: rolovaci obrazovka (ScrollView, ktery cile odroluje do zorneho pole) hlasi svou viditelnou plochu,
+    /// aby overlay vedel predem, kam prvek po odrolovani dojede. Musi stat uvnitr `.coachRoot`.
+    func coachViewport() -> some View { modifier(CoachViewportReporter()) }
 
     /// E2: nadpis vlevo nahore uhne behem tutorialu dolu pod "Skip tutorial". Ozubene kolo vpravo zustava,
     /// Skip stoji ve stejne vysce jako ono.
@@ -400,6 +457,27 @@ private struct CoachMarkReporter: ViewModifier {
             .allowsHitTesting(false)
             .accessibilityHidden(true)
         }
+    }
+}
+
+/// G1: viditelna plocha ScrollView v `.global` (ramecek bez bezpecne zony a spodni rezervy pro listu).
+private struct CoachViewportReporter: ViewModifier {
+    @Environment(CoachMarkStore.self) private var coach: CoachMarkStore?
+    @Environment(\.coachRoot) private var root
+    @State private var id = UUID()
+
+    func body(content: Content) -> some View {
+        content
+            .onGeometryChange(for: CGRect.self) { proxy in
+                let frame = proxy.frame(in: .global)
+                let insets = proxy.safeAreaInsets
+                return CGRect(x: frame.minX + insets.leading, y: frame.minY + insets.top,
+                              width: max(0, frame.width - insets.leading - insets.trailing),
+                              height: max(0, frame.height - insets.top - insets.bottom))
+            } action: { rect in
+                coach?.reportViewport(id, rect: rect, root: root)
+            }
+            .onDisappear { coach?.withdrawViewport(id) }
     }
 }
 
@@ -595,6 +673,15 @@ enum CoachMetrics {
     static let sheetSettleFallback: TimeInterval = 0.5
     /// Pojistka, kdyby coordinator konec prezentace nenahlasil.
     static let sheetSettleLimit: TimeInterval = 0.9
+    /// G1/B: overlay (ztmaveni, vyrez, bublina) pri zmene obrazovky zmizi za 0,15 s ...
+    static let hideDuration: TimeInterval = 0.15
+    /// ... a po prechodu se objevi za 0,2 s se zvetsenim z 0,96.
+    static let revealDuration: TimeInterval = 0.2
+    static let revealScale: CGFloat = 0.96
+    /// Prepnuti zalozky (`TabSwitchEntrance`) trva 0,3 s; overlay se drive neobjevi.
+    static let tabSwitchDuration: TimeInterval = 0.3
+    /// Interval mereni ramecku cile.
+    static let measureInterval: Duration = .milliseconds(50)
 }
 
 /// Plocha overlaye: cela obrazovka (souradnice okna) a jeji bezpecna zona.
@@ -677,6 +764,19 @@ struct CoachLayout: Equatable, Sendable {
         return CoachLayout(hole: CGRect(origin: center, size: .zero), radius: 0, bubble: bubble, bubbleAbove: false, isCentered: true)
     }
 
+    /// G1: poloha prvku po `scrollTo(id, anchor: nil)`: obrazovka roluje jen tolik, aby byl prvek cely
+    /// videt (vyssi nez plocha = horni hrana nahoru). Viditelny prvek se nehne.
+    static func scrolledIntoView(_ frame: CGRect, viewport: CGRect) -> CGRect {
+        guard viewport.height > 1 else { return frame }
+        var dy: CGFloat = 0
+        if frame.minY < viewport.minY || frame.height >= viewport.height {
+            dy = viewport.minY - frame.minY
+        } else if frame.maxY > viewport.maxY {
+            dy = viewport.maxY - frame.maxY
+        }
+        return frame.offsetBy(dx: 0, dy: dy)
+    }
+
     func isClose(to other: CoachLayout) -> Bool {
         isCentered == other.isCentered && bubbleAbove == other.bubbleAbove
             && hole.coachIsClose(to: other.hole) && bubble.coachIsClose(to: other.bubble)
@@ -699,9 +799,13 @@ fileprivate extension CGRect {
 // MARK: - Overlay
 
 /// Ztmaveni s vyrezem, zare, bublina a "Skip tutorial". Kresli se ve vlastnim okne (`CoachOverlayWindow`).
-/// L1/E3: jedna stala bublina. Po Next se text hned prolne a bublina i vyrez (pozice, velikost, zaobleni)
-/// odjedou pruzinou ~0,35 s na novy prvek; zadna prazdna pauza. E1: bublina je videt vzdy, kdyz tutorial bezi;
-/// prvek, ktery se do 1 s nenajde, = bublina uprostred bez vyrezu. Reduce Motion: jen prolnuti.
+/// G1: dva typy prechodu po Next (`CoachStep.transition(to:)`):
+/// A) stejna obrazovka: cil je zmereny predem (cile se hlasi uz pri zobrazeni), takze bublina, vyrez
+///    (pozice, velikost, zaobleni) a prolnuti textu jedou v jedne pruzine ~0,35 s, bez cekani.
+/// B) zmena obrazovky (Fight setup, zalozka): ztmaveni, vyrez i bublina zmizi za 0,15 s (Skip zustava),
+///    prechod probehne, overlay pocka na stabilni ramecek cile (2 stejna mereni po sobe, list dojel)
+///    a objevi se za 0,2 s (se zvetsenim z 0,96) rovnou na nem s textem noveho kroku.
+/// E1 pojistka: cil, ktery do 1 s neni, = bublina uprostred bez vyrezu. Reduce Motion: jen prolnuti.
 struct CoachMarkOverlay: View {
     @Environment(CoachMarkStore.self) private var coach
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -712,6 +816,10 @@ struct CoachMarkOverlay: View {
     /// Krok, jehoz text bublina ukazuje (po Next se prolne).
     @State private var shownStep: CoachStep?
     @State private var bubbleHeight: CGFloat = 0
+    /// G1/B: overlay je schovany behem zmeny obrazovky (Skip zustava).
+    @State private var hidden = false
+    /// Kdy se overlay pri zmene obrazovky zacal schovavat (Next).
+    @State private var hiddenSince: Date?
     @AccessibilityFocusState private var bubbleFocused: Bool
 
     var body: some View {
@@ -738,9 +846,19 @@ struct CoachMarkOverlay: View {
         ZStack(alignment: .topLeading) {
             if let step = coach.step {
                 let shown = layout ?? firstLayout(for: step, in: space)
-                dim(shown)
-                if shown.hasHole { glow(shown) }
-                bubble(step: shownStep ?? step, layout: shown, in: space)
+                // Klepnuti kamkoli se zahodi i ve chvili, kdy je ztmaveni schovane (zmena obrazovky).
+                Color.clear
+                    .contentShape(Rectangle())
+                    .onTapGesture { }
+                    .accessibilityHidden(true)
+                Group {
+                    dim(shown)
+                    if shown.hasHole { glow(shown) }
+                    bubble(step: shownStep ?? step, layout: shown, in: space)
+                }
+                .opacity(hidden ? 0 : 1)
+                .allowsHitTesting(!hidden)
+                .accessibilityHidden(hidden)
                 skipButton
                     .padding(.top, space.safeTop + CoachMetrics.skipTop)
                     .padding(.leading, max(space.safeLeading, FQSpace.lg))
@@ -749,6 +867,9 @@ struct CoachMarkOverlay: View {
         }
         .frame(width: space.size.width, height: space.size.height, alignment: .topLeading)
     }
+
+    /// G1/B: zvetseni bubliny a zare pri objeveni (Reduce Motion bez nej).
+    private var revealScale: CGFloat { hidden && !reduceMotion ? CoachMetrics.revealScale : 1 }
 
     // MARK: Vrstvy
 
@@ -766,7 +887,7 @@ struct CoachMarkOverlay: View {
     }
 
     private func glow(_ layout: CoachLayout) -> some View {
-        CoachGlow(rect: layout.hole, radius: layout.radius, pulsing: !reduceMotion)
+        CoachGlow(rect: layout.hole, radius: layout.radius, pulsing: !reduceMotion, scale: revealScale)
             .id(reduceMotion ? AnyHashable(layout.hole.coachKey) : AnyHashable("glow"))
             .transition(.opacity)
     }
@@ -782,6 +903,7 @@ struct CoachMarkOverlay: View {
         // Stejne sklo jako vysledky bitvy a karty v Shop › Backgrounds (2B).
         .fqGlassPanel(radius: FQRadius.smallCard)
         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { bubbleHeight = $0 }
+        .scaleEffect(revealScale)
         .accessibilityElement(children: .contain)
         .accessibilityFocused($bubbleFocused)
         // Nad prvkem drzi bublina spodni hranu, jinak horni; pri zmene vysky (prolnuti textu) tak
@@ -820,18 +942,52 @@ struct CoachMarkOverlay: View {
         reduceMotion ? .easeInOut(duration: 0.25) : .spring(response: 0.35, dampingFraction: 0.86)
     }
 
+    /// Next v bubline. G1: typ prechodu se urci predem.
+    /// A: novy cil je zmereny, takze text, bublina i vyrez se zmeni v jedne animaci hned v tomto klepnuti.
+    /// B: overlay se schova (Skip zustava); objevi ho `track`, az cil po prechodu stoji.
     private func next(_ step: CoachStep) {
+        guard coach.step == step, !hidden else { return }
+        let transition = CoachStep(rawValue: step.rawValue + 1).map(step.transition(to:))
+        if transition == .screenChange {
+            hiddenSince = Date()
+            withAnimation(.easeOut(duration: CoachMetrics.hideDuration)) { hidden = true }
+        }
         coach.next(from: step)
+        if coach.step == step {
+            // Krok se neposunul: overlay se hned vrati.
+            hiddenSince = nil
+            withAnimation(.easeOut(duration: CoachMetrics.revealDuration)) { hidden = false }
+            return
+        }
+        guard transition == .sameScreen, let new = coach.step, let space else { return }
+        coach.refreshFrames()
+        if let frame = settledFrame(for: new, in: space) {
+            withAnimation(moveAnimation) {
+                shownStep = new
+                layout = .anchored(to: frame, target: new.target, bubbleHeight: currentBubbleHeight, in: space)
+            }
+        } else {
+            // Cil jeste neni (nemel by chybet): text se prolne, bublina pocka (nejdeleji 1 s).
+            withAnimation(.easeInOut(duration: 0.22)) { shownStep = new }
+        }
     }
 
     /// Prvek kroku, kdyz je zmereny na spravne zalozce (lista zalozek je videt vsude).
     /// M1/F1: prvek ve Fight setupu az po dojeti listu (do te doby ho `frames` nema), prvek pod listem
     /// (Home, lista) az po jeho zavreni, takze vyrez nehoni jedouci list.
     private func visibleFrame(for step: CoachStep, in space: CoachSpace) -> CGRect? {
-        guard step.target.isInTabBar || step.screen == coach.screen,
-              step.isInFightSheet == coach.sheetOnScreen,
-              let frame = coach.frames[step.target] else { return nil }
+        guard isOnItsScreen(step), let frame = coach.frames[step.target] else { return nil }
         return space.isUsable(frame) ? frame : nil
+    }
+
+    /// G1/A: kde prvek bude po odrolovani do zorneho pole (obrazovka roluje ve stejne pruzine).
+    private func settledFrame(for step: CoachStep, in space: CoachSpace) -> CGRect? {
+        guard isOnItsScreen(step), let frame = coach.settledFrame(for: step.target) else { return nil }
+        return space.isUsable(frame) ? frame : nil
+    }
+
+    private func isOnItsScreen(_ step: CoachStep) -> Bool {
+        (step.target.isInTabBar || step.screen == coach.screen) && step.isInFightSheet == coach.sheetOnScreen
     }
 
     private var currentBubbleHeight: CGFloat { bubbleHeight > 0 ? bubbleHeight : CoachMetrics.bubbleEstimate }
@@ -844,17 +1000,24 @@ struct CoachMarkOverlay: View {
         return .centered(bubbleHeight: currentBubbleHeight, in: space)
     }
 
-    /// Sleduje prvek aktualniho kroku: text se prolne hned, bublina a vyrez odjedou, jakmile prvek stoji.
-    /// Bezi, dokud krok trva, takze vyrez sedi i po odrolovani nebo prijezdu zalozky.
+    /// Sleduje prvek aktualniho kroku, dokud krok trva (vyrez sedi i po odrolovani). Po zmene obrazovky (B)
+    /// nejdriv pocka, az cil stoji, a overlay na nem objevi.
     private func track() async {
         guard let step = coach.step else {
             withAnimation(.easeOut(duration: 0.25)) { shownStep = nil }
             layout = nil
+            hidden = false
+            hiddenSince = nil
             return
         }
-        withAnimation(.easeInOut(duration: 0.22)) { shownStep = step }
-        let started = Date()
+        let started = hiddenSince ?? Date()
         var lastFrame: CGRect?
+        if hidden {
+            guard let revealed = await revealOnStableTarget(of: step, since: started) else { return }
+            lastFrame = revealed.frame
+        } else if shownStep != step {
+            withAnimation(.easeInOut(duration: 0.22)) { shownStep = step }
+        }
         var focused = false
         while !Task.isCancelled {
             if let space {
@@ -880,11 +1043,56 @@ struct CoachMarkOverlay: View {
                     focused = true
                     bubbleFocused = true
                 }
-                try? await Task.sleep(for: .milliseconds(elapsed < 1.5 ? 50 : 150))
+                try? await Task.sleep(for: elapsed < 1.5 ? CoachMetrics.measureInterval : .milliseconds(150))
             } else {
-                try? await Task.sleep(for: .milliseconds(50))
+                try? await Task.sleep(for: CoachMetrics.measureInterval)
             }
         }
+    }
+
+    /// Na cem se overlay po zmene obrazovky objevil (nil ramecek = pojistka uprostred).
+    private struct Revealed {
+        let frame: CGRect?
+    }
+
+    /// G1/B: overlay je schovany. Az dobehne schovani, prepne se text (neviditelne, bublina se premeri),
+    /// pak se ceka na cil: na sve obrazovce, list dojel (`frames` ho do te doby nemaji) a dve mereni po sobe
+    /// na stejnem miste (nikdy ramecek zmereny behem animace). Pak se overlay objevi rovnou na nem.
+    /// Cil, ktery do 1 s od Next neni, = bublina uprostred. nil = krok se mezitim zmenil.
+    private func revealOnStableTarget(of step: CoachStep, since started: Date) async -> Revealed? {
+        try? await Task.sleep(for: .seconds(CoachMetrics.hideDuration))
+        guard !Task.isCancelled else { return nil }
+        shownStep = step
+        // Prepnuti zalozky ma vlastni prijezd obsahu; overlay se objevi az po nem.
+        let minimumHidden = step.screen == .home ? CoachMetrics.hideDuration : CoachMetrics.tabSwitchDuration
+        var last: CGRect?
+        while !Task.isCancelled {
+            if let space {
+                coach.refreshFrames()
+                let frame = visibleFrame(for: step, in: space)
+                let elapsed = Date().timeIntervalSince(started)
+                if let frame, let last, last.coachIsClose(to: frame, tolerance: 0.5), elapsed >= minimumHidden {
+                    reveal(.anchored(to: frame, target: step.target, bubbleHeight: currentBubbleHeight, in: space))
+                    return Revealed(frame: frame)
+                }
+                if elapsed >= CoachMetrics.fallbackSeconds {
+                    reveal(.centered(bubbleHeight: currentBubbleHeight, in: space))
+                    return Revealed(frame: nil)
+                }
+                last = frame
+            }
+            try? await Task.sleep(for: CoachMetrics.measureInterval)
+        }
+        return nil
+    }
+
+    /// G1/B: rozvrzeni se nastavi bez animace (overlay je schovany) a overlay se prolne se zvetsenim z 0,96.
+    private func reveal(_ new: CoachLayout) {
+        var instant = Transaction()
+        instant.disablesAnimations = true
+        withTransaction(instant) { layout = new }
+        withAnimation(.easeOut(duration: CoachMetrics.revealDuration)) { hidden = false }
+        hiddenSince = nil
     }
 
     private func apply(_ new: CoachLayout) {
@@ -961,6 +1169,8 @@ private struct CoachGlow: View {
     let rect: CGRect
     let radius: CGFloat
     let pulsing: Bool
+    /// G1/B: zvetseni pri objeveni overlaye po zmene obrazovky (0,96 → 1).
+    var scale: CGFloat = 1
 
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
@@ -980,6 +1190,7 @@ private struct CoachGlow: View {
             }
         }
         .frame(width: rect.width, height: rect.height)
+        .scaleEffect(scale)
         .position(x: rect.midX, y: rect.midY)
         .allowsHitTesting(false)
         .accessibilityHidden(true)

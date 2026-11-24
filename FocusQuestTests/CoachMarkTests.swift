@@ -171,6 +171,45 @@ final class CoachMarkTests: XCTestCase {
         XCTAssertTrue(space.isUsable(CGRect(x: 342, y: 70, width: 44, height: 44)), "The gear sits beside Skip and is usable")
     }
 
+    /// G1: typ prechodu pro kazdy Next. Stejna obrazovka (A) = jedna spolecna animace, zmena obrazovky (B)
+    /// = overlay zmizi a objevi se na stabilnim cili.
+    func testEveryNextHasTheRightTransition() {
+        let screenChanges: Set<CoachStep> = [.fight, .battle, .streak, .path, .shop, .statNumbers]
+        for step in CoachStep.allCases.dropLast() {
+            let next = CoachStep(rawValue: step.rawValue + 1)!
+            let expected: CoachTransition = screenChanges.contains(step) ? .screenChange : .sameScreen
+            XCTAssertEqual(step.transition(to: next), expected, "\(step.number) → \(next.number)")
+        }
+        // Vyslovne z G1: 1→2 a 4→5 (Fight setup), 6→7, 7→8, 8→9, 11→12 (zalozky), 12→13 a 5→6 na miste.
+        XCTAssertEqual(CoachStep.fight.transition(to: .focusing), .screenChange)
+        XCTAssertEqual(CoachStep.battle.transition(to: .quick), .screenChange)
+        XCTAssertEqual(CoachStep.quick.transition(to: .streak), .sameScreen)
+        XCTAssertEqual(CoachStep.streak.transition(to: .path), .screenChange)
+        XCTAssertEqual(CoachStep.hero.transition(to: .dailyTarget), .sameScreen)
+        XCTAssertEqual(CoachMetrics.hideDuration, 0.15)
+        XCTAssertEqual(CoachMetrics.revealDuration, 0.2)
+        XCTAssertEqual(CoachMetrics.revealScale, 0.96)
+    }
+
+    /// G1/A: overlay zna predem, kam cil po odrolovani dojede (`scrollTo(anchor: nil)` roluje jen tolik,
+    /// aby byl cely videt), takze bublina a vyrez jedou rovnou tam ve stejne pruzine jako obrazovka.
+    func testSameScreenTargetIsPredictedWhereScrollingLeavesIt() {
+        let viewport = CGRect(x: 0, y: 62, width: 402, height: 700)
+        let visible = CGRect(x: 16, y: 300, width: 370, height: 150)
+        XCTAssertEqual(CoachLayout.scrolledIntoView(visible, viewport: viewport), visible, "A visible target does not move")
+        let below = CGRect(x: 16, y: 700, width: 370, height: 150)
+        XCTAssertEqual(CoachLayout.scrolledIntoView(below, viewport: viewport).maxY, viewport.maxY, "Scrolled up just enough")
+        let above = CGRect(x: 16, y: 10, width: 370, height: 150)
+        XCTAssertEqual(CoachLayout.scrolledIntoView(above, viewport: viewport).minY, viewport.minY, "Scrolled down just enough")
+        XCTAssertEqual(CoachLayout.scrolledIntoView(below, viewport: .zero), below, "No scroll view: measured frame")
+
+        let store = CoachMarkStore(defaults: freshDefaults())
+        store.setFramesForTesting([.dailyTarget: below, .gear: visible], viewports: [.dailyTarget: viewport])
+        XCTAssertEqual(store.settledFrame(for: .dailyTarget)?.maxY, viewport.maxY)
+        XCTAssertEqual(store.settledFrame(for: .gear), visible)
+        XCTAssertNil(store.settledFrame(for: .habits))
+    }
+
     /// E2: Skip je v bezpecne zone (pod stavovym radkem) ve vysce ozubeneho kola a nadpisy pod nim uhnou.
     func testSkipSitsInTheSafeAreaBesideTheGear() {
         for space in phones {

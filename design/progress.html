@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-24T17:38:41+01:00",
-  "current": "M1 hotovo: build #80 prošel",
-  "nextStep": "Otestovat na iPhonu tutoriál 1–14: Fight setup v krocích 2–4 (spotlight na Focusing, Sound, Start Battle), zavření po kroku 4, Hero ve dvou krocích",
+  "updated": "2026-11-24T18:01:00+01:00",
+  "current": "N1 (G1 plynulé přechody tutoriálu): kód hotový, commit a build",
+  "nextStep": "Commitnout N1 spolu s progress.html, pushnout a pustit build",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -899,6 +899,20 @@
       "commit": "7325bac",
       "build": { "number": 80, "runId": 45432766084, "result": "úspěch" },
       "note": "Build #80 prošel na první pokus (IPA, Release, 120 testů včetně nového testu převodu .global do okna a čekání na dojetý panel). Testy běží na rámečcích a v okně simulátoru; skutečný sheet ověří až iPhone. Na iPhonu otestuj: Settings › Help › Replay tutorial; Next v kroku 1 plynule otevře Fight setup, bublina počká a po dojetí panelu odjede s výřezem na Focusing (chipy), krok 3 Sound, krok 4 Start Battle (s animací telefonu); výřez sedí přesně na sekcích (kdyby byl posunutý o výšku panelu, napiš); během kroků 2–4 nejde na nic v panelu klepnout ani ho stáhnout dolů, Skip panel zavře; Next v kroku 4 panel zavře a krok 5 zvýrazní Not feeling it? až po zavření; kroky 12 Your hero (karta hrdiny), 13 Daily focus target (kroužek a slider), 14 Settings s Finish, čítač X of 14; na SE se v kroku 4 panel případně odroluje ke Start Battle. Kdyby se cíl v panelu nenašel, bublina je do 1 s uprostřed a Next funguje (nic nezamrzne)."
+    },
+    {
+      "id": "N1",
+      "title": "Tutoriál: plynulé přechody mezi kroky (G1)",
+      "status": "pracuje",
+      "items": [
+        { "text": "G1/A Stejná obrazovka: cíle změřené předem, po Next jedna pružina 0,35 s (bublina, výřez a prolnutí textu současně), poloha po odrolování spočítaná předem (`coachViewport`)", "done": true },
+        { "text": "G1/B Změna obrazovky (Fight setup, tab): overlay zmizí za 0,15 s (Skip zůstává), čeká na stabilní cíl (2 stejná měření, panel dojel), objeví se za 0,2 s se zvětšením z 0,96", "done": true },
+        { "text": "G1 Pojistka 1 s (bublina uprostřed), Reduce Motion jen prolnutí; testy typu přechodu pro všech 13 Next a odhadu polohy po odrolování", "done": true },
+        { "text": "DECISIONS.md", "done": true }
+      ],
+      "commit": null,
+      "build": { "number": null, "runId": null, "result": null },
+      "note": "Kód hotový, build ještě neběžel."
     }
   ]
 }

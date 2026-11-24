@@ -58,6 +58,8 @@ struct FightSheetView: View {
                 .padding(.bottom, FQSpace.xl)
                 .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { contentHeight = $0 }
             }
+            // G1: viditelna plocha listu pro odhad polohy cile po odrolovani (kroky 2–4 bez cekani).
+            .coachViewport()
             // M1/F1: koren cilu tutorialu v listu; vyrez se ukaze az po dojeti listu.
             .coachRoot(sheet: true)
             // Krok tutorialu s prvkem mimo zorne pole (male displeje): odroluje jen tolik, aby byl cely videt.
