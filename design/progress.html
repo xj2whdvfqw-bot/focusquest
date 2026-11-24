@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-24T14:37:48+01:00",
-  "current": "L1: build #78 spadl na testu vykreslení bubliny, test předělaný na skutečné okno",
-  "nextStep": "Commit a build #79",
+  "updated": "2026-11-24T14:23:00+01:00",
+  "current": "L1: build #79 běží (test bubliny ve skutečném okně)",
+  "nextStep": "Počkat na výsledek buildu #79",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -872,7 +872,7 @@
     {
       "id": "L1",
       "title": "Opravy z testu #76: tutoriál, Skip, přechody, Home bez scrollu, Break panel",
-      "status": "spadl",
+      "status": "build",
       "items": [
         { "text": "E1 Tutoriál neotvírá sheety: kroky 2–4 na Home se spotlightem na Fight, pojistka bubliny uprostřed do 1 s, kroky se nepřeskakují, test 13 kroků přes Next", "done": true },
         { "text": "E2 Skip tutorial v safe area vlevo nahoře, ve výšce ozubeného kola, ve všech krocích stejně, nic nepřekrývá", "done": true },
@@ -881,8 +881,8 @@
         { "text": "E5 Break panel: malý detent celý (BREAK, odpočet, Next boss, Same again, Change boss, Done for today), velký + oheň; tap na hrdinu ho probudí", "done": true },
         { "text": "DECISIONS.md", "done": true }
       ],
-      "commit": "918cab6",
-      "build": { "number": 78, "runId": 45396642441, "result": "spadl" },
+      "commit": "41cf3eb",
+      "build": { "number": 79, "runId": 45405420430, "result": "běží" },
       "note": "Buildy #77 a #78: kompilace, IPA i Release prošly, spadl jen nový test vykreslení bubliny. ImageRenderer bublinu nenakreslil vůbec (ani s plnou výplní místo skla), ztmavení, výřez a Skip ano. Test teď dá overlay do skutečného okna testovací appky a vyfotí ho (drawHierarchy), tedy přesně to, co ukáže iPhone. Ostatní nové testy (13 kroků přes Next, pojistka 1 s, Skip, Home na SE/17/Pro Max) prošly."
     }
   ]
