@@ -309,7 +309,7 @@ a všechny opravy z auditu jsou hotové.
     „You hold the maximum of 5“.
   - **Kvalita** (I6): VoiceOver u každé věci název, stav (cena, Owned, Equipped, In use, počet) a nápověda; cenovky,
     cedule a popisky mají `lineLimit(1)` + `minimumScaleFactor`, takže je velké písmo nerozbije. Test
-    `ShopStallTests` vykreslí stánek ve skutečném okně na SE i Pro Max s největším písmem a Reduce Motion.
+    `ShopStallTests` vykreslí stánek ve skutečném okně na SE i Pro Max s největším písmem (Reduce Motion se v testu nastavit nedá, ověří iPhone).
 - **Připnutá hlavička (`pinnedTopHeader`)**: přechod do průhledna (24 pt) je součástí odsazení obsahu,
   takže na začátku nic nepodjíždí pod hlavičku. Dřív přesahoval 60 pt a zakrýval nadpis první sekce.
 - **Settings nemají tlačítko Done**, zavírá se jen tahem dolů (VoiceOver gestem escape).

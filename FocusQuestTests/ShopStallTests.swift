@@ -57,7 +57,7 @@ final class ShopStallTests: XCTestCase {
     }
 
     /// I6: stanek s hrdinou, ceduli a policemi se vykresli ve skutecnem okne na SE i Pro Max (bez padu,
-    /// nic neni nulove velikosti) i s nejvetsim pismem a s Reduce Motion.
+    /// nic neni nulove velikosti) i s nejvetsim pismem. (Reduce Motion v prostredi nastavit nejde, je jen pro cteni.)
     func testStallRendersOnSmallAndLargePhones() throws {
         let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
         for size in [CGSize(width: 375, height: 667), CGSize(width: 440, height: 956)] {
@@ -90,7 +90,6 @@ final class ShopStallTests: XCTestCase {
                     HStack { PriceTag(label: .price(150)); PriceTag(label: .owned); PriceTag(label: .free) }
                 }
                 .environment(\.dynamicTypeSize, big ? .accessibility3 : .large)
-                .environment(\.accessibilityReduceMotion, big)
                 let host = UIHostingController(rootView: content)
                 window.rootViewController = host
                 window.isHidden = false
