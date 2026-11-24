@@ -3,7 +3,7 @@
 Doplňuje `design/CHANGES.md` (zadání sekcí 0–15) a `design/progress.html` (stav, buildy, co otestovat).
 Tady je to, co v nich není: rozhodnutí, která padla během práce, otevřené body a známé pasti.
 
-Stav k 24. 11. 2026: větev `phase3-duolingo`; P1 (I1–I6: obchod jako pixelový kupecký stánek s cedulemi, policemi, obrazy a pultem) a O1 (H1–H3: footer a hlavička Settings, tišší odměna, třídy bez pokrývek hlavy s maskou účesu), prošly jako build #85 (#82 zrušen startem #83, #83 a #84 spadly na testech obchodu). Předtím N1 (G1: plynulé přechody tutoriálu, A na stejné obrazovce v jedné animaci, B při změně obrazovky se schováním a objevením na stabilním cíli) prošel jako build #81. Předtím M1 (tutoriál: kroky 2–4 v otevřeném Fight setupu, cíle měřené v `.global`, Hero ve dvou krocích, celkem 14) prošel jako build #80, viz progress.html. Předtím L1 (opravy E1–E5 po testu #76: Skip v safe area, plynulé přechody, Home bez scrollu, Break panel) prošel jako build #79. Předtím zelený build #76 (K1: onboarding karta, tutoriál ve vlastním okně, Shop Supplies, sdílecí karty, zvuky) a #74 (J1: Habits, widget, freeze, Focus, zkratky, úkoly, poznámky, příprava iCloud); dříve #70 (I1), #69 (H1), #67 (G1); dříve #65 (F1); E1 (opravy z testu po D1) prošel jako build #62; F1 (Habits, mapa, easter eggy) prošel jako build #65; F2 (nový onboarding a coach marks) prošel jako build #66. Všechny sekce z CHANGES.md
+Stav k 24. 11. 2026: větev `phase3-duolingo`; rozpracovaná Q1 (J1: stánek Shopu jako sbalovací hlavička nad rolovacím obsahem, kompaktní panel věci; J2: nadpis Settings jako v systémovém Nastavení), viz progress.html. Předtím P1 (I1–I6: obchod jako pixelový kupecký stánek s cedulemi, policemi, obrazy a pultem) a O1 (H1–H3: footer a hlavička Settings, tišší odměna, třídy bez pokrývek hlavy s maskou účesu), prošly jako build #85 (#82 zrušen startem #83, #83 a #84 spadly na testech obchodu). Předtím N1 (G1: plynulé přechody tutoriálu, A na stejné obrazovce v jedné animaci, B při změně obrazovky se schováním a objevením na stabilním cíli) prošel jako build #81. Předtím M1 (tutoriál: kroky 2–4 v otevřeném Fight setupu, cíle měřené v `.global`, Hero ve dvou krocích, celkem 14) prošel jako build #80, viz progress.html. Předtím L1 (opravy E1–E5 po testu #76: Skip v safe area, plynulé přechody, Home bez scrollu, Break panel) prošel jako build #79. Předtím zelený build #76 (K1: onboarding karta, tutoriál ve vlastním okně, Shop Supplies, sdílecí karty, zvuky) a #74 (J1: Habits, widget, freeze, Focus, zkratky, úkoly, poznámky, příprava iCloud); dříve #70 (I1), #69 (H1), #67 (G1); dříve #65 (F1); E1 (opravy z testu po D1) prošel jako build #62; F1 (Habits, mapa, easter eggy) prošel jako build #65; F2 (nový onboarding a coach marks) prošel jako build #66. Všechny sekce z CHANGES.md
 a všechny opravy z auditu jsou hotové.
 
 ## 1. Rozhodnutí
@@ -21,8 +21,16 @@ a všechny opravy z auditu jsou hotové.
   a footer textem, řádky s ikonou v barevném zaobleném čtverečku (`SettingsRow`, `SettingsIcon`), šedá hodnota vpravo
   a šipka u podstránek (Sounds & haptics, Music, Notifications). Nativní `Toggle` se systémovou zelenou. **Systémová modrá v appce není** (od E1): tint Nastavení je bílý (chevron zpět, fajfky,
   posuvníky), zelené zůstávají jen přepínače (`settingsToggleTint`).
-  Liquid Glass lišta a měkký scroll edge efekt nahoře i dole (`scrollEdgeEffectStyle(.soft)` na iOS 26, jinak standard).
   Zpět chevronem i tahem od levého okraje dává `NavigationStack` (vlastní gesto zpět je pryč). Zavření tahem dolů jako dřív.
+- **Nadpis Settings jako systémové Nastavení** (od Q1/J2): systémový velký nadpis (`.navigationBarTitleDisplayMode(.large)`)
+  se v listu na iOS 26 s viditelným pozadím lišty (O1) nekreslil: nahoře velký prázdný tmavý blok a „Settings“ až po odrolování.
+  Proto vlastní řešení jen na kořeni: navigační lišta je skrytá (`.toolbar(.hidden)`), velký nadpis „Settings“
+  (`.largeTitle` tučně, vlevo) je hlavička první sekce hned pod grabberem a roluje s obsahem. Při rolování se během 40 bodů
+  zmenší a zprůhlední a nahoře se prolne malý nadpis na středu s materiálem `.bar` a dělicí čarou
+  (`SettingsCompactTitleBar`, postup z `onScrollGeometryChange`, na iOS 17 velký nadpis jen odroluje).
+  **Podstránky** (Sounds & haptics, Music, Notifications, Focus, Shortcuts) mají systémovou lištu s malým nadpisem
+  (`.inline`) a zpět; lišta je v klidu průhledná, po odrolování má materiál (iOS 26: tvrdý scroll edge efekt nahoře,
+  měkký dole; `settingsScrollEdges`). Pozadí lišty už není vynucené (`.visible`).
 - **Reset progress** je v sekci „Your data“ s potvrzovacím dialogem. Smaže:
   - hrdinu, level, mince, statistiky, předměty a nastavení,
   - zálohy nečitelných dat (`.unreadable-backup`),
@@ -282,10 +290,20 @@ a všechny opravy z auditu jsou hotové.
 - **Shop je pixelový kupecký stánek** (od P1/I, `ShopView.swift` + `ShopStallArt.swift`; ruší seznam karet, podtržené
   záložky, náhled hrdiny v kartě a Preview pozadí přes celou appku). Vše je kreslené po pixelech (Canvas, mřížky znaků,
   pixel stánku 3 body) stejně jako sprity; žádné cizí assety, žlutá jen pro hlavní akci, žádná tyrkysová ani systémová modrá.
-  - **Hlavička (připnutá)**: štítek „Shop“, mince (pixelová mince + číslo) a ozubené kolo; pod nimi stánek: pruhovaná
-    stříška (žlutá a krémová, obloučky), dřevěné sloupky, v okně mezi nimi obloha a krajina (`StallScene`: scéna pozadí
-    zmenšená na šířku okna, horizont dole, 12 snímků/s, s Reduce Motion stojí), hrdina velký (104 bodů, na nízkém
-    displeji pod 640 bodů 76) na kamenném podstavci, pod stánkem pult (prkno), z něj visí cedule.
+  - **Hlavička** (od Q1/J1 vlastní rozvržení místo `pinnedTopHeader`, který na iOS 26 dělal kolem hrdiny velké tmavé
+    rozmazané plochy a police scrollovaly pod stánek): nahoře řádek se štítkem „Shop“, mincemi (pixelová mince + číslo)
+    a ozubeným kolem, pod ním stánek: pruhovaná stříška (žlutá a krémová, obloučky), dřevěné sloupky, v okně mezi nimi
+    obloha a krajina přes celé okno (`StallScene`: scéna pozadí zvětšená tak, aby okno vyplnila, horizont dole,
+    12 snímků/s, s Reduce Motion stojí), hrdina velký na kamenném podstavci, pod stánkem pult (prkno), z něj visí cedule.
+  - **Rozměry stánku** (`StallHeaderMetrics`): stříška + okno + pult = 35 % celé výšky displeje (SE okno 185 bodů,
+    Pro Max 287). Hrdina s podstavcem zabírá asi 84 % okna (SE 140 bodů, Pro Max 210, strop 210), podstavec má
+    pixel 3–6 bodů podle okna. Bez pozadí hlavičky, bez materiálu a rozmazání.
+  - **Sbalování při rolování**: obsah záložky je ve vlastním `ScrollView` pod hlavičkou. Prvních N bodů rolování
+    (N = 60 % okna) zužuje okno až na 40 % jeho výšky; hrdina s podstavcem se zmenšuje ke spodní hraně okna
+    (`scaleEffect`), stříška a pult zůstávají. Pak cedule zůstanou přilepené nahoře a obsah mizí pod nimi
+    (maska s přechodem 14 bodů; nikdy se nekreslí přes stánek). Viditelná plocha `ScrollView` začíná pod zmenšeným
+    stánkem a cedulemi (`safeAreaPadding`), obsah má nahoře navíc rozsah sbalení. Přetažení nahoru stánek nezvětší.
+    Stánek nemá tlačítka a `allowsHitTesting(false)`, takže tah po něm roluje obsah jako tah po policích.
   - **Cedule** (I2): Gear / Backgrounds / Supplies jako dřevěné desky na dvou řetízcích s pixelovou ikonou (meč, obraz,
     lahvička) a nápisem. Aktivní je světlejší se zlatým lemem a při výběru se zhoupne (keyframe kolem horní hrany;
     Reduce Motion bez zhoupnutí). Klik a vibrace výběru přes `FQFeedback`.
@@ -293,9 +311,12 @@ a všechny opravy z auditu jsou hotové.
     policí; věci stojí na prkně jen jako sprity (`ItemSprite`: vrstvy předmětu oříznuté na obrys, pixel 3–6 bodů),
     pod prknem visí papírová cenovka na provázku (pixelová mince + cena, vlastněné „Owned“), nasazená věc má hvězdičku
     a bílou záři, vybraná žlutou záři a zvedne se o 4 body. Klepnutí = hrdina si věc hned vyzkouší (poskok a 8 jisker,
-    ne když ji už má nasazenou) a dole vyjede kompaktní panel (sklo `fqGlassPanel`): název, popis, žluté
-    „Buy · 150“ / žluté „Equip“ / vedlejší „Unequip“, bez mincí šedé „Need 40 more“. Panel zavře druhé klepnutí na věc,
-    tah dolů nebo VoiceOver escape (žádný křížek); přepnutí cedule nebo odchod ze Shopu ho zavře i se zkoušením.
+    ne když ji už má nasazenou) a dole nad lištou vyjede kompaktní panel (sklo `fqGlassPanel`, od Q1/J1 v jednom řádku:
+    vlevo název a popis na nejvýš 2 řádky, vpravo žluté „Buy · 150“ / žluté „Equip“ / vedlejší „Unequip“, bez mincí
+    šedé „Need 40 more“; s velkým písmem pod sebou, tlačítko přes celou šířku). Panel je jen ve spodní bezpečné zóně
+    obsahu, cedule ani stánek nepřekryje; po výběru se celá police s věcí (u Supplies pult) odroluje nad panel
+    (`scrollTo` s `anchor: nil`, jen o potřebný kus). Panel zavře druhé klepnutí na věc, tah dolů nebo VoiceOver
+    escape (žádný křížek); přepnutí cedule nebo odchod ze Shopu ho zavře i se zkoušením.
   - **Backgrounds jako obrazy na zadní stěně** (I4): stěna ze svislých prken, obrazy v pixelovém zlatém rámu
     (`PixelFrame`, `PaintingScene`), vodorovný karusel se snapem na střed (`scrollTargetBehavior(.viewAligned)`,
     `scrollPosition(id:)`), sousední obrazy zmenšené na 0,8 vykukují po stranách. Visačka na rámu: „Free“, cena
@@ -306,7 +327,7 @@ a všechny opravy z auditu jsou hotové.
   - **Supplies na pultu** (I5): dřevěný pult s přední stěnou; Extra pause = přesýpací hodiny (písek se přesýpá
     ve 4 fázích), Streak freeze = ledový krystal (třpyt), s Reduce Motion stojí. Odznak „×2“ u předmětu, na přední
     stěně pultu název a limit „2 / 5“. Popis až v panelu (stejný jako u Gear) s „Buy · 40“ / „Need N more“ /
-    „You hold the maximum of 5“.
+    „Max 5 held“ (VoiceOver „You hold the maximum of 5“).
   - **Kvalita** (I6): VoiceOver u každé věci název, stav (cena, Owned, Equipped, In use, počet) a nápověda; cenovky,
     cedule a popisky mají `lineLimit(1)` + `minimumScaleFactor`, takže je velké písmo nerozbije. Test
     `ShopStallTests` vykreslí stánek ve skutečném okně na SE i Pro Max s největším písmem (Reduce Motion se v testu nastavit nedá, ověří iPhone).
@@ -316,8 +337,8 @@ a všechny opravy z auditu jsou hotové.
 - **Footer Settings na střed** (od O1/H1): „FocusQuest version …“, odkazy a credit na středu se stejnými odstupy (8 bodů).
   Privacy Policy · Terms of Use · Support jsou `.footnote` na jednom řádku a žádný se nezalomí; když se nevejdou
   (úzký iPhone, velké písmo), `ViewThatFits` je dá pod sebe, každý na střed.
-- **Hlavička Settings má pozadí** (od O1/H1): `toolbarBackground(.bar)` + `.visible` na všech stránkách Settings
-  (`settingsScrollEdges`), na iOS 26 nahoře tvrdý okraj, dole dál měkký. Dřív se velký nadpis při rolování kreslil přes obsah.
+- **Hlavička Settings** (O1/H1 → Q1/J2): O1 vynutil `toolbarBackground(.visible)`, aby se velký nadpis nekreslil přes obsah,
+  ale na iOS 26 tím velký nadpis zmizel. Od Q1 viz „Nadpis Settings jako systémové Nastavení“ výše.
 - **Skeletony místo spinnerů**: pro načítání obsahu se používá skeleton ve tvaru obsahu (redacted + jemný lesk),
   ne `ProgressView`. Teď se v appce nic nenačítá (všechna data jsou v telefonu), takže žádný skeleton zatím není.
   Jediné kolečko je u Reset progress a to značí probíhající akci, ne načítání.

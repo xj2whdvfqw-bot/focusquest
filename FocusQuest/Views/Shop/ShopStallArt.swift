@@ -288,8 +288,44 @@ struct StallAwning: View {
     }
 }
 
+/// Q1/J1: rozmery stanku podle vysky displeje. Stanek (striska, okno, pult) zabira asi 35 % vysky,
+/// pri rolovani obsahu se okno s hrdinou plynule zuzi az na 40 % sve vysky (striska a pult zustanou).
+struct StallHeaderMetrics: Equatable {
+    /// Podil vysky displeje pro cely stanek.
+    static let screenShare: CGFloat = 0.35
+    /// Zmensene okno = 40 % roztazeneho.
+    static let collapsedShare: CGFloat = 0.4
+    /// Striska nad oknem a pult (prkno 5 px) pod nim.
+    static var chrome: CGFloat { CGFloat(StallAwning.heightInPixels + 5) * StallMetrics.pixel }
+
+    /// Cela vyska displeje v bodech.
+    let screenHeight: CGFloat
+
+    var expandedWindow: CGFloat { max(110, (screenHeight * Self.screenShare - Self.chrome).rounded()) }
+    var collapsedWindow: CGFloat { (expandedWindow * Self.collapsedShare).rounded() }
+    /// O kolik bodu odrolovani se okno zmensuje.
+    var collapseRange: CGFloat { expandedWindow - collapsedWindow }
+    var expandedStallHeight: CGFloat { expandedWindow + Self.chrome }
+    var collapsedStallHeight: CGFloat { collapsedWindow + Self.chrome }
+
+    /// Vyska okna po odrolovani o `offset` bodu; pretazeni nahoru (zaporny offset) okno nezvetsuje.
+    func window(scrolledBy offset: CGFloat) -> CGFloat {
+        expandedWindow - min(max(offset, 0), collapseRange)
+    }
+
+    /// Podstavec: pixel 3–6 bodu podle velikosti okna, aby k velkemu hrdinovi sedel.
+    var pedestalPixel: CGFloat { min(6, max(3, (expandedWindow / 50).rounded(.down))) }
+    /// Hrdina s podstavcem vyplni vetsinu okna (nad hlavou zbyde misto na poskok pri zkouseni).
+    var heroSize: CGFloat {
+        min(210, ((expandedWindow - CGFloat(StallPedestal.heightInPixels) * pedestalPixel) * 0.84).rounded())
+    }
+}
+
 /// Maly kamenny podstavec pod hrdinou.
 struct StallPedestal: View {
+    static let heightInPixels = 6
+    var pixel: CGFloat = StallMetrics.pixel
+
     var body: some View {
         PixelGridView(rows: [
             "..llllllllllllllllll..",
@@ -299,7 +335,8 @@ struct StallPedestal: View {
             ".dddddddddddddddddddd.",
             "dddddddddddddddddddddd"
         ].map { String($0.prefix(22)) },
-        palette: ["l": StallPalette.stoneLight, "s": StallPalette.stone, "d": StallPalette.stoneDark])
+        palette: ["l": StallPalette.stoneLight, "s": StallPalette.stone, "d": StallPalette.stoneDark],
+        pixel: pixel)
     }
 }
 

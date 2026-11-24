@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-24T21:47:00+01:00",
-  "current": "O1 a P1 hotovo: build #85 prošel",
-  "nextStep": "Otestovat na iPhonu: footer a hlavička Settings, hlasitost odměny, hrdina bez pokrývek hlavy a s klobouky z obchodu, celý nový Shop (stánek, cedule, police, obrazy, pult) na SE i Pro Max",
+  "updated": "2026-11-24T23:20:00+01:00",
+  "current": "Q1 (J1–J2): kód hotový, commit a spuštění buildu",
+  "nextStep": "Commit, push a build na větvi phase3-duolingo",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -946,6 +946,23 @@
       "commit": "2f42092",
       "build": { "number": 85, "runId": 45478252874, "result": "úspěch" },
       "note": "Build #85 prošel (130 testů včetně `ShopStallTests`: sprity, karusel, krok tutoriálu, vykreslení na SE a Pro Max s největším písmem). #83 spadl na překladu testu (Reduce Motion v prostředí jen pro čtení), #84 na textu kroku Shop („Tap“ v tutoriálu nesmí být). Vzhled ověří až iPhone. Otestuj: stánek nahoře (stříška, sloupky, krajina za hrdinou, hrdina na podstavci, mince vpravo nahoře); tři cedule na řetízcích, aktivní světlejší a zhoupne se, klik a vibrace; Gear – police se sprity a cenovkami, klepnutí = hrdina si věc vyzkouší s poskokem a jiskrami (ne u nasazené), dole panel Buy · cena / Equip / Unequip / Need N more, zavření druhým klepnutím nebo tahem dolů; Backgrounds – obrazy v rámech, swipe se snapem, sousední vykukují, krajina za stánkem se prolne na vycentrovaný obraz, celá appka se nemění, Use / In use / cena, po odchodu z obchodu se vrátí používané; Supplies – přesýpací hodiny a krystal na pultu, ×počet, limit, Buy · 40 v panelu; Reduce Motion (bez poskoku, zhoupnutí a animací spritů); velké písmo (štítky se zmenší, nerozbijí); VoiceOver čte název, cenu a stav; tutoriál krok 8 zvýrazní cedule. Na SE je stánek menší (hrdina 76 bodů); kdyby bylo pod stánkem málo místa nebo se karusel nevešel, napiš."
+    },
+    {
+      "id": "Q1",
+      "title": "Shop: stánek jako sbalovací hlavička, Settings: nadpis (J1–J2)",
+      "status": "pracuje",
+      "items": [
+        { "text": "J1 Stánek jako hlavička ~35 % výšky obrazovky: stříška, okno s krajinou a hrdinou na podstavci přes celé okno, bez tmavých rozmazaných ploch", "done": true },
+        { "text": "J1 Cedule Gear / Backgrounds / Supplies hned pod oknem, pod nimi viditelné police / obrazy / pult; obsah nikdy nezajede pod stánek", "done": true },
+        { "text": "J1 Scroll dolů plynule zmenší okno s hrdinou až na 40 %, cedule zůstanou nahoře; scroll zpět ho roztáhne", "done": true },
+        { "text": "J1 Kompaktní panel věci nad tab barem, nepřekrývá cedule ani vybranou věc (odscrolluje k ní), zavření tahem dolů nebo druhým tapem", "done": true },
+        { "text": "J2 Settings: velký nadpis „Settings“ vlevo hned pod grabberem, při scrollu plynule malý nadpis uprostřed s materiálem", "done": true },
+        { "text": "J2 Podstránky Settings: malý nadpis + zpět", "done": true },
+        { "text": "DECISIONS.md", "done": true }
+      ],
+      "commit": "",
+      "build": { "number": null, "runId": null, "result": "" },
+      "note": "Kód hotový, čeká na build. Ověří až iPhone (SE i Pro Max, všechny tři záložky Shopu, Settings a podstránky)."
     }
   ]
 }

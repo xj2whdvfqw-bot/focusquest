@@ -19,10 +19,15 @@ struct ShopView: View {
     @State private var swings: [ShopSection: Int] = [:]
     /// Obraz uprostred karuselu (id `ShopView.backgroundID`).
     @State private var centeredBackground: String?
-    /// Vyska obrazovky obchodu: na nizkem displeji (iPhone SE) je stanek mensi.
-    @State private var height: CGFloat = 800
+    /// Cela vyska displeje (vcetne stavoveho radku a listy): stanek zabira asi 35 % (Q1/J1).
+    @State private var screenHeight: CGFloat = 844
+    /// Vyska radku ceduli (meri se), aby obsah zacinal hned pod nimi.
+    @State private var signsHeight: CGFloat = 76
+    /// O kolik je obsah pod cedulemi odrolovany (0 = nahore); zmensuje okno stanku.
+    @State private var scrollOffset: CGFloat = 0
     @State private var carouselWidth: CGFloat = 360
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     /// K1/D4: Gear = jen vybaveni hrdiny, Supplies = spotrebni veci (Extra pause, Streak freeze).
     enum ShopSection: String, CaseIterable, Identifiable {
@@ -49,9 +54,15 @@ struct ShopView: View {
         case supply(Supply)
     }
 
-    private var isCompact: Bool { height < 640 }
-    private var heroSize: CGFloat { isCompact ? 76 : 104 }
-    private var windowHeight: CGFloat { heroSize + 32 }
+    /// Nizky displej (iPhone SE): mensi obrazy na stene.
+    private var isCompact: Bool { screenHeight < 700 }
+    private var metrics: StallHeaderMetrics { StallHeaderMetrics(screenHeight: screenHeight) }
+    /// Okno stanku a cedule, kdyz je hlavicka uplne zmensena: odsud zacina viditelny obsah.
+    private var collapsedHeaderHeight: CGFloat { metrics.collapsedStallHeight + signsHeight }
+    /// Odrolovani obsahu (id rolovaci plochy).
+    private static let scrollSpace = "fq.shop.scroll"
+    /// Mekky prechod obsahu pod cedulemi (obsah se tam nikdy nekresli pres stanek).
+    private static let contentFade: CGFloat = 14
 
     private var tryOn: EquipmentItem? { tryOnID.flatMap(EquipmentItem.item(withID:)) }
 
@@ -62,27 +73,43 @@ struct ShopView: View {
         return appearance
     }
 
+    /// Q1/J1: nahore radek se stitkem, mincemi a ozubenym kolem, pod nim stanek jako hlavicka (~35 % vysky)
+    /// a hned pod oknem cedule. Pod cedulemi roluje obsah zalozky; nikdy nezajede pod stanek (je oriznuty
+    /// pod cedulemi). Pri rolovani dolu se okno s hrdinou plynule zuzi az na 40 %, cedule zustanou nahore.
     var body: some View {
-        ScreenScaffold(scene: .lanternGrove, spacing: FQSpace.lg) {
-            switch section {
-            case .gear: gearShelves
-            case .backgrounds: backgroundWall
-            case .supplies: suppliesCounter
-            }
-        }
-        .pinnedTopHeader { header }
-        // Kompaktni panel vybrane veci vyjede dole nad listou zalozek; obsah nad nim zustava dostupny.
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            ZStack {
-                if let pick {
-                    detailPanel(pick)
-                        .id(pick)
-                        .transition(reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity))
+        ZStack {
+            FocusQuestBackdrop(scene: .lanternGrove)
+            VStack(spacing: 0) {
+                topBar
+                    .padding(.horizontal, FQSpace.lg)
+                    .padding(.top, FQSpace.sm)
+                    .frame(maxWidth: 640)
+                    .frame(maxWidth: .infinity)
+                    .modifier(BrightTextShadow())
+                ZStack(alignment: .top) {
+                    shelves
+                    stallHeader
+                }
+                // Kompaktni panel vybrane veci vyjede dole nad listou zalozek; obsah nad nim zustava dostupny
+                // a stanek s cedulemi zustava nad nim.
+                .safeAreaInset(edge: .bottom, spacing: 0) {
+                    ZStack {
+                        if let pick {
+                            detailPanel(pick)
+                                .id(pick)
+                                .transition(reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity))
+                        }
+                    }
+                    .animation(FQMotion.spring(reduceMotion: reduceMotion), value: pick)
                 }
             }
-            .animation(FQMotion.spring(reduceMotion: reduceMotion), value: pick)
+            StatusBarFade()
         }
-        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { height = $0 }
+        // Krajina je vzdy nocni (jako ScreenScaffold).
+        .preferredColorScheme(.dark)
+        .onGeometryChange(for: CGFloat.self) { proxy in
+            proxy.size.height + proxy.safeAreaInsets.top + proxy.safeAreaInsets.bottom
+        } action: { screenHeight = $0 }
         .onChange(of: section) { _, new in
             closePanel()
             centeredBackground = new == .backgrounds ? Self.backgroundID(model.selectedBackground) : nil
@@ -106,34 +133,44 @@ struct ShopView: View {
 
     // MARK: - Hlavicka a stanek
 
-    private var header: some View {
-        VStack(spacing: FQSpace.sm) {
-            // Vsechno ve vysce 44 a zarovnane nahoru: behem tutorialu stitek uhne pod "Skip tutorial" (E2),
-            // mince a ozubene kolo zustavaji ve stejne vysce jako Skip.
-            HStack(alignment: .top, spacing: FQSpace.md) {
-                Text("Shop")
-                    .font(.fqLabel)
-                    .foregroundStyle(FQColor.textSecondary)
-                    .accessibilityAddTraits(.isHeader)
-                    .frame(minHeight: 44)
-                    .coachSkipClearance()
-                Spacer(minLength: FQSpace.sm)
-                coinsLabel
-                    .frame(minHeight: 44)
-                SettingsGearButton()
-            }
-            VStack(spacing: 0) {
-                stall
-                signboards
-                    // I6: krok tutorialu o Shopu zvyrazni cedule stanku.
-                    .coachMark(.shopStall)
-            }
+    /// Vsechno ve vysce 44 a zarovnane nahoru: behem tutorialu stitek uhne pod "Skip tutorial" (E2),
+    /// mince a ozubene kolo zustavaji ve stejne vysce jako Skip.
+    private var topBar: some View {
+        HStack(alignment: .top, spacing: FQSpace.md) {
+            Text("Shop")
+                .font(.fqLabel)
+                .foregroundStyle(FQColor.textSecondary)
+                .accessibilityAddTraits(.isHeader)
+                .frame(minHeight: 44)
+                .coachSkipClearance()
+            Spacer(minLength: FQSpace.sm)
+            coinsLabel
+                .frame(minHeight: 44)
+            SettingsGearButton()
         }
     }
 
-    /// I1: striska, sloupky, okno s oblohou a krajinou (I4: vycentrovany obraz) a hrdina na podstavci.
-    private var stall: some View {
+    /// J1: stanek a cedule nad rolovacim obsahem. Okno se zuzuje podle odrolovani; stanek nema zadna tlacitka,
+    /// takze tah po nem projde do obsahu pod nim (roluje stejne jako tah po policich).
+    private var stallHeader: some View {
         VStack(spacing: 0) {
+            stall(window: metrics.window(scrolledBy: scrollOffset))
+                .allowsHitTesting(false)
+            signboards
+                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { signsHeight = $0 }
+                // I6: krok tutorialu o Shopu zvyrazni cedule stanku.
+                .coachMark(.shopStall)
+        }
+        .padding(.horizontal, FQSpace.lg)
+        .frame(maxWidth: 640)
+        .frame(maxWidth: .infinity)
+    }
+
+    /// I1: striska, sloupky, okno s oblohou a krajinou (I4: vycentrovany obraz) a hrdina na podstavci.
+    /// Krajina vyplnuje cele okno; hrdina s podstavcem se pri zuzeni okna zmensuje k jeho spodni hrane.
+    private func stall(window: CGFloat) -> some View {
+        let scale = window / max(1, metrics.expandedWindow)
+        return VStack(spacing: 0) {
             StallAwning()
             HStack(spacing: 0) {
                 StallPost()
@@ -144,13 +181,14 @@ struct ShopView: View {
                             .transition(.opacity)
                     }
                     .animation(.easeInOut(duration: reduceMotion ? 0.2 : 0.45), value: Self.backgroundID(displayedBackground))
-                    VStack(spacing: -StallMetrics.pixel) {
+                    VStack(spacing: -metrics.pedestalPixel) {
                         hero
-                        StallPedestal()
+                        StallPedestal(pixel: metrics.pedestalPixel)
                     }
+                    .scaleEffect(scale, anchor: .bottom)
                 }
                 .frame(maxWidth: .infinity)
-                .frame(height: windowHeight)
+                .frame(height: window)
                 .clipped()
                 StallPost()
             }
@@ -161,11 +199,80 @@ struct ShopView: View {
         .accessibilityLabel(stallAccessibilityLabel)
     }
 
+    /// J1: obsah zalozky (police, obrazy, pult). Zacina hned pod cedulemi; pri odrolovani se nejdriv zmensuje
+    /// stanek, pak obsah mizi pod cedulemi (oriznuty, nikdy neni videt pres stanek).
+    private var shelves: some View {
+        ScrollViewReader { reader in
+            ScrollView {
+                VStack(alignment: .leading, spacing: FQSpace.lg) {
+                    switch section {
+                    case .gear: gearShelves
+                    case .backgrounds: backgroundWall
+                    case .supplies: suppliesCounter
+                    }
+                }
+                .modifier(BrightTextShadow())
+                .padding(.horizontal, FQSpace.lg)
+                // Nahore je stanek roztazeny: obsah zacina pod jeho cedulemi.
+                .padding(.top, metrics.collapseRange + FQSpace.md)
+                .padding(.bottom, FQSpace.xxl)
+                .frame(maxWidth: 640)
+                .frame(maxWidth: .infinity)
+                .modifier(TabSwitchEntrance())
+                .onGeometryChange(for: CGFloat.self) { proxy in
+                    proxy.frame(in: .named(Self.scrollSpace)).minY
+                } action: { top in
+                    scrollOffset = collapsedHeaderHeight - top
+                }
+            }
+            .scrollIndicators(.hidden)
+            .coordinateSpace(.named(Self.scrollSpace))
+            // Viditelna plocha zacina pod zmensenym stankem a cedulemi (i pro odrolovani k vybrane veci).
+            .safeAreaPadding(.top, collapsedHeaderHeight)
+            .mask {
+                VStack(spacing: 0) {
+                    Color.clear.frame(height: collapsedHeaderHeight)
+                    LinearGradient(colors: [.clear, .black], startPoint: .top, endPoint: .bottom)
+                        .frame(height: Self.contentFade)
+                    Color.black
+                }
+                // Dole obsah dal podjizdi pod plovouci listu (ScrollView kresli i do spodni bezpecne zony).
+                .padding(.bottom, -400)
+            }
+            .onChange(of: pick) { _, new in reveal(new, with: reader) }
+        }
+    }
+
+    /// J1: vybrana vec (cela police, popr. pult) se odroluje nad panel, aby ji panel ani cedule nezakryvaly.
+    private func reveal(_ pick: ShopPick?, with reader: ScrollViewProxy) {
+        guard let pick else { return }
+        let target: String
+        switch pick {
+        case let .gear(id):
+            guard let slot = EquipmentItem.item(withID: id)?.slot else { return }
+            target = Self.shelfID(slot)
+        case .supply:
+            target = Self.counterID
+        }
+        // Panel uz zabral misto dole (safe area); odroluje se jen tolik, kolik je potreba.
+        let animation = FQMotion.spring(reduceMotion: reduceMotion)
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(60))
+            withAnimation(animation) { reader.scrollTo(target, anchor: nil) }
+        }
+    }
+
+    static func shelfID(_ slot: EquipmentSlot) -> String { "fq.shop.shelf.\(slot)" }
+    static let counterID = "fq.shop.counter"
+
     private var stallAccessibilityLabel: String {
         if let tryOn { return "Your hero trying on \(tryOn.name)" }
         if section == .backgrounds { return "Preview of \(Self.backgroundName(displayedBackground)) behind the shop" }
         return "Your hero, \(model.profile.heroClass.displayName)"
     }
+
+    /// J1: hrdina vyplnuje okno stanku (velikost podle vysky displeje).
+    private var heroSize: CGFloat { metrics.heroSize }
 
     /// I1: hrdina s vyzkousenou veci. Kazde vyzkouseni = poskok a jiskry (Reduce Motion jen prolnuti).
     private var hero: some View {
@@ -251,6 +358,8 @@ struct ShopView: View {
                 }
                 .padding(.horizontal, FQSpace.sm)
             }
+            // J1: cil odrolovani, kdyz se vybere vec z teto police.
+            .id(Self.shelfID(slot))
         }
     }
 
@@ -321,7 +430,7 @@ struct ShopView: View {
     static func background(forID id: String) -> ShopBackground? { ShopBackground(rawValue: id) }
     static func backgroundName(_ background: ShopBackground?) -> String { background?.name ?? ShopBackground.worldName }
 
-    private var paintingWidth: CGFloat { min(isCompact ? 170 : 220, carouselWidth * 0.58) }
+    private var paintingWidth: CGFloat { min(isCompact ? 150 : 200, carouselWidth * 0.58) }
 
     private var backgroundWall: some View {
         let centered = centeredBackground.flatMap(Self.background(forID:)) ?? (centeredBackground == nil ? model.selectedBackground : nil)
@@ -470,6 +579,7 @@ struct ShopView: View {
             .padding(.vertical, FQSpace.md)
             .background { CounterFront() }
         }
+        .id(Self.counterID)
     }
 
     private func supplyItem(_ supply: Supply) -> some View {
@@ -565,20 +675,27 @@ struct ShopView: View {
 
     // MARK: - Panel (I3, I5)
 
+    /// J1: kompaktni panel nad listou: vlevo nazev a popis (nejvys 2 radky), vpravo akce. S velkym pismem
+    /// je akce pod textem pres celou sirku.
     private func detailPanel(_ pick: ShopPick) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
+        let wide = dynamicTypeSize.isAccessibilitySize
+        let layout = wide
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: FQSpace.sm))
+            : AnyLayout(HStackLayout(alignment: .center, spacing: FQSpace.md))
+        return layout {
             switch pick {
             case let .gear(id):
                 if let item = EquipmentItem.item(withID: id) {
                     panelText(title: item.name, detail: item.summary)
-                    gearAction(item)
+                    gearAction(item, wide: wide).layoutPriority(1)
                 }
             case let .supply(supply):
                 panelText(title: title(supply), detail: detail(supply))
-                supplyAction(supply)
+                supplyAction(supply, wide: wide).layoutPriority(1)
             }
         }
-        .padding(FQSpace.lg)
+        .padding(.horizontal, FQSpace.lg)
+        .padding(.vertical, FQSpace.md)
         .frame(maxWidth: 640, alignment: .leading)
         .fqGlassPanel(radius: FQRadius.smallCard)
         .padding(.horizontal, FQSpace.lg)
@@ -599,13 +716,15 @@ struct ShopView: View {
             Text(detail)
                 .font(.fqMeta)
                 .foregroundStyle(FQColor.textSecondary)
-                .lineLimit(3)
+                .lineLimit(dynamicTypeSize.isAccessibilitySize ? 4 : 2)
                 .fixedSize(horizontal: false, vertical: true)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)
     }
 
-    @ViewBuilder private func gearAction(_ item: EquipmentItem) -> some View {
+    /// `wide`: tlacitko pres celou sirku panelu (velke pismo), jinak kompaktni vpravo.
+    @ViewBuilder private func gearAction(_ item: EquipmentItem, wide: Bool) -> some View {
         if model.owns(item), model.isEquipped(item) {
             Button {
                 withAnimation(.easeOut(duration: 0.2)) {
@@ -613,9 +732,9 @@ struct ShopView: View {
                     tryOnID = nil
                 }
             } label: {
-                Text("Unequip").frame(maxWidth: .infinity)
+                Text("Unequip").frame(maxWidth: wide ? .infinity : nil)
             }
-            .buttonStyle(ShopButtonStyle(fullWidth: true))
+            .buttonStyle(ShopButtonStyle(fullWidth: wide))
             .accessibilityLabel("Unequip \(item.name)")
         } else if model.owns(item) {
             Button {
@@ -625,9 +744,9 @@ struct ShopView: View {
                 }
                 hop += 1
             } label: {
-                Text("Equip").frame(maxWidth: .infinity)
+                Text("Equip").frame(maxWidth: wide ? .infinity : nil)
             }
-            .buttonStyle(ShopCTAButtonStyle(fullWidth: true))
+            .buttonStyle(ShopCTAButtonStyle(fullWidth: wide))
             .accessibilityLabel("Equip \(item.name)")
         } else if model.canAfford(item) {
             Button {
@@ -637,37 +756,40 @@ struct ShopView: View {
                 }
                 hop += 1
             } label: {
-                buyLabel(item.price).frame(maxWidth: .infinity)
+                buyLabel(item.price).frame(maxWidth: wide ? .infinity : nil)
             }
-            .buttonStyle(ShopCTAButtonStyle(fullWidth: true))
+            .buttonStyle(ShopCTAButtonStyle(fullWidth: wide))
             .accessibilityLabel("Buy \(item.name) for \(item.price) coins")
         } else {
             needMore(item.price - model.profile.coins)
-                .frame(maxWidth: .infinity)
+                .frame(maxWidth: wide ? .infinity : nil)
                 .accessibilityLabel("\(item.name) costs \(item.price) coins. You need \(item.price - model.profile.coins) more.")
         }
     }
 
-    @ViewBuilder private func supplyAction(_ supply: Supply) -> some View {
+    @ViewBuilder private func supplyAction(_ supply: Supply, wide: Bool) -> some View {
         let count = owned(supply)
         let limit = maximum(supply)
         let cost = price(supply)
         if count >= limit {
-            Text("You hold the maximum of \(limit)")
+            Text("Max \(limit) held")
                 .fqFont(size: 15, weight: .semibold, design: .rounded)
                 .foregroundStyle(FQColor.textSecondary)
-                .frame(maxWidth: .infinity, minHeight: 44)
+                .lineLimit(1)
+                .fixedSize()
+                .frame(maxWidth: wide ? .infinity : nil, minHeight: 44)
+                .accessibilityLabel("You hold the maximum of \(limit)")
         } else if model.profile.coins >= cost {
             Button {
                 withAnimation(.easeOut(duration: 0.2)) { buy(supply) }
             } label: {
-                buyLabel(cost).frame(maxWidth: .infinity)
+                buyLabel(cost).frame(maxWidth: wide ? .infinity : nil)
             }
-            .buttonStyle(ShopCTAButtonStyle(fullWidth: true))
+            .buttonStyle(ShopCTAButtonStyle(fullWidth: wide))
             .accessibilityLabel("Buy \(title(supply)) for \(cost) coins. You have \(count) of \(limit).")
         } else {
             needMore(cost - model.profile.coins)
-                .frame(maxWidth: .infinity)
+                .frame(maxWidth: wide ? .infinity : nil)
         }
     }
 
@@ -684,6 +806,8 @@ struct ShopView: View {
         Text("Need \(short) more")
             .fqFont(size: 15, weight: .semibold, design: .rounded)
             .monospacedDigit()
+            .lineLimit(1)
+            .fixedSize()
             .foregroundStyle(FQColor.textSecondary)
             .frame(minHeight: 44)
     }

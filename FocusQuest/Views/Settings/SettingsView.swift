@@ -28,6 +28,8 @@ struct SettingsView: View {
     @State private var isResetting = false
     /// Skutecny stav povoleni notifikaci v iOS.
     @State private var notifications = NotificationPermission.notDetermined
+    /// Q1/J2: 0 = velky nadpis "Settings" vlevo nahore, 1 = odrolovano, nahore maly nadpis na stredu s materialem.
+    @State private var titleProgress: CGFloat = 0
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.openURL) private var openURL
 
@@ -44,6 +46,9 @@ struct SettingsView: View {
                     NavigationLink(value: SettingsPage.notifications) {
                         SettingsRow(title: "Notifications", symbol: "bell.badge.fill", color: .red, value: notificationSummary)
                     }
+                } header: {
+                    // Q1/J2: velky nadpis hned pod grabberem (jako systemove Nastaveni), roluje s obsahem.
+                    SettingsLargeTitle(title: "Settings", progress: titleProgress)
                 } footer: {
                     Text("Music plays during battles. Sounds and haptics apply to the whole app.")
                 }
@@ -124,9 +129,15 @@ struct SettingsView: View {
                 }
             }
             .listStyle(.insetGrouped)
+            // Q1/J2: systemovy velky nadpis se v listu na iOS 26 nekreslil (prazdny tmavy blok, "Settings" az
+            // po odrolovani). Koren proto nema navigacni listu: velky nadpis je hlavicka prvni sekce a po odrolovani
+            // se nahore plynule objevi maly nadpis na stredu s materialem (SettingsCompactTitleBar).
             .navigationTitle("Settings")
-            .navigationBarTitleDisplayMode(.large)
-            .settingsScrollEdges()
+            .toolbar(.hidden, for: .navigationBar)
+            .modifier(SettingsTitleScrollTracker(progress: $titleProgress))
+            .overlay(alignment: .top) {
+                SettingsCompactTitleBar(title: "Settings", progress: titleProgress)
+            }
             .navigationDestination(for: SettingsPage.self) { page in
                 switch page {
                 case .sounds: SoundsSettingsPage(model: model)
@@ -347,7 +358,7 @@ private struct SoundsSettingsPage: View {
         }
         .listStyle(.insetGrouped)
         .navigationTitle("Sounds & haptics")
-        .navigationBarTitleDisplayMode(.large)
+        .navigationBarTitleDisplayMode(.inline)
         .settingsScrollEdges()
         .animation(reduceMotion ? nil : .default, value: prefs)
     }
@@ -448,7 +459,7 @@ private struct MusicSettingsPage: View {
         }
         .listStyle(.insetGrouped)
         .navigationTitle("Music")
-        .navigationBarTitleDisplayMode(.large)
+        .navigationBarTitleDisplayMode(.inline)
         .settingsScrollEdges()
         .onDisappear { preview.stop() }
     }
@@ -524,7 +535,7 @@ private struct NotificationSettingsPage: View {
         }
         .listStyle(.insetGrouped)
         .navigationTitle("Notifications")
-        .navigationBarTitleDisplayMode(.large)
+        .navigationBarTitleDisplayMode(.inline)
         .settingsScrollEdges()
     }
 
@@ -771,18 +782,95 @@ private extension View {
     /// Nativni prepinac se systemovou zelenou, jako v Nastaveni iPhonu.
     func settingsToggleTint() -> some View { tint(Color(uiColor: .systemGreen)) }
 
-    /// O1/H1: hlavicka ma vlastni pozadi (material jako systemova navigace), takze obsah pod ni pri rolovani
-    /// mizi a nadpis "Settings" se nekresli pres radky. Dole zustava mekky scroll edge efekt (iOS 26).
+    /// Q1/J2: podstranky maji systemovou listu s malym nadpisem a zpet. V klidu je lista pruhledna, po odrolovani
+    /// je pod ni material (iOS 26: tvrdy scroll edge efekt nahore, dole mekky), obsah pod ni mizi.
+    /// Driv (O1) bylo pozadi listy vzdy viditelne a na iOS 26 zakrylo velky nadpis.
     @ViewBuilder func settingsScrollEdges() -> some View {
-        let barred = self
+        let bar = self
+            .toolbar(.visible, for: .navigationBar)
             .toolbarBackground(.bar, for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
         if #available(iOS 26.0, *) {
-            barred
+            bar
                 .scrollEdgeEffectStyle(.hard, for: .top)
                 .scrollEdgeEffectStyle(.soft, for: .bottom)
         } else {
-            barred
+            bar
+        }
+    }
+}
+
+// MARK: - Nadpis korene (Q1/J2)
+
+/// Velky nadpis vlevo (hlavicka prvni sekce). Pri odrolovani se zmensi a zpruhledni,
+/// nahore ho vystrida maly nadpis na stredu.
+private struct SettingsLargeTitle: View {
+    let title: String
+    let progress: CGFloat
+
+    var body: some View {
+        Text(title)
+            .font(.largeTitle.weight(.bold))
+            .foregroundStyle(.primary)
+            .textCase(nil)
+            .lineLimit(1)
+            .minimumScaleFactor(0.7)
+            .scaleEffect(1 - 0.12 * progress, anchor: .bottomLeading)
+            .opacity(1 - progress)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .listRowInsets(EdgeInsets(top: 0, leading: 4, bottom: FQSpace.sm, trailing: 0))
+            .accessibilityAddTraits(.isHeader)
+    }
+}
+
+/// Maly nadpis na stredu nahore s materialem pod sebou (jako navigacni lista po odrolovani).
+/// V klidu je neviditelny; bez zachytavani dotyku.
+private struct SettingsCompactTitleBar: View {
+    /// Vyska listy pod grabberem (jako systemova lista v listu).
+    static let height: CGFloat = 54
+    let title: String
+    let progress: CGFloat
+
+    var body: some View {
+        Text(title)
+            .font(.headline)
+            .foregroundStyle(.primary)
+            .lineLimit(1)
+            .padding(.top, 8)
+            .frame(maxWidth: .infinity)
+            .frame(height: Self.height)
+            .background {
+                Rectangle().fill(.bar)
+                    .overlay(alignment: .bottom) { Divider() }
+                    .ignoresSafeArea(edges: .top)
+            }
+            .opacity(progress)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+    }
+}
+
+/// Sleduje, o kolik je seznam odrolovany, a prevadi to na prechod velkeho nadpisu v maly
+/// (0 v klidu, 1 po odrolovani o vysku velkeho nadpisu). Na iOS 18+ z rolovaci plochy;
+/// na iOS 17 velky nadpis jen odroluje s obsahem (maly se neukaze).
+private struct SettingsTitleScrollTracker: ViewModifier {
+    @Binding var progress: CGFloat
+    /// O kolik bodu se nadpis prolne (zhruba vyska velkeho nadpisu).
+    static let distance: CGFloat = 40
+
+    static func progress(forOffset offset: CGFloat) -> CGFloat {
+        min(1, max(0, offset / distance))
+    }
+
+    func body(content: Content) -> some View {
+        if #available(iOS 18.0, *) {
+            content.onScrollGeometryChange(for: CGFloat.self) { geometry in
+                geometry.contentOffset.y + geometry.contentInsets.top
+            } action: { _, offset in
+                let value = Self.progress(forOffset: offset)
+                if abs(value - progress) > 0.001 { progress = value }
+            }
+        } else {
+            content
         }
     }
 }
@@ -820,6 +908,7 @@ private struct FocusFilterGuidePage: View {
         .listStyle(.insetGrouped)
         .navigationTitle("Use with iPhone Focus")
         .navigationBarTitleDisplayMode(.inline)
+        .settingsScrollEdges()
         .onReceive(NotificationCenter.default.publisher(for: FocusModeState.didChange)) { _ in state = FocusModeState.load() }
     }
 
@@ -862,6 +951,7 @@ private struct ShortcutsGuidePage: View {
         .listStyle(.insetGrouped)
         .navigationTitle("Siri & Shortcuts")
         .navigationBarTitleDisplayMode(.inline)
+        .settingsScrollEdges()
     }
 
     private func phrase(_ text: String, _ detail: String) -> some View {
