@@ -389,11 +389,12 @@ struct HabitGrid: Equatable, Sendable {
         return HabitGrid(weeks: weeks, todayWeek: todayWeek)
     }
 
-    /// Poslednich `count` tydnu az po tyden s dneskem (mini Habits na obrazku ke sdileni).
+    /// Vzdy `count` celych tydnu (mini Habits na obrazku ke sdileni, K1/D5): posledni tydny az po tyden
+    /// s dneskem; kdyz jich od prvniho dne jeste tolik neubehlo, doplni se budouci tydny jako ve Stats.
     func recentWeeks(_ count: Int) -> HabitGrid {
-        let end = min(weeks.count, todayWeek + 1)
-        let start = max(0, end - count)
-        return HabitGrid(weeks: Array(weeks[start..<end]), rowLetters: rowLetters, todayWeek: end - start - 1)
+        let start = max(0, todayWeek + 1 - count)
+        let end = min(weeks.count, start + count)
+        return HabitGrid(weeks: Array(weeks[start..<end]), rowLetters: rowLetters, todayWeek: todayWeek - start)
     }
 }
 

@@ -33,7 +33,7 @@ struct StatsView: View {
         .task { await model.load() }
         .sheet(isPresented: $showsSubjectManager) { SubjectManagerView(model: arena) }
         .sheet(isPresented: $showsShare) {
-            StatsShareSheet(snapshot: ShareSnapshot.make(stats: model.stats, profile: profile.profile, greetingName: profile.greetingName, frozenDayKeys: profile.frozenDayKeys)) {
+            StatsShareSheet(snapshot: ShareSnapshot.make(stats: model.stats, profile: profile.profile, frozenDayKeys: profile.frozenDayKeys)) {
                 showsShare = false
             }
             .presentationDragIndicator(.visible)

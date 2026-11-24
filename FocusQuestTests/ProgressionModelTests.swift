@@ -842,10 +842,16 @@ final class ProgressionModelTests: XCTestCase {
         XCTAssertEqual(tomorrow.weeks[1][4].date, grid.weeks[1][4].date)
         XCTAssertTrue(tomorrow.weeks[1][5].isToday)
         XCTAssertEqual(grid.focusDays, 2)
-        // Mini Habits ke sdileni konci tydnem s dneskem.
+        // Mini Habits ke sdileni: vzdy 5 celych tydnu (7 × 5), dnesek ve druhem sloupci, dal budouci tydny.
         let recent = grid.recentWeeks(5)
-        XCTAssertEqual(recent.weeks.count, 2)
+        XCTAssertEqual(recent.weeks.count, 5)
+        XCTAssertTrue(recent.weeks.allSatisfy { $0.count == 7 })
         XCTAssertEqual(recent.todayWeek, 1)
+        XCTAssertTrue(recent.weeks[1][4].isToday)
+        // Po dlouhem pouzivani konci tydnem s dneskem.
+        let long = HabitGrid.make(history: [], firstDay: day(2026, 1, 5), now: day(2026, 11, 20), calendar: utcCalendar).recentWeeks(5)
+        XCTAssertEqual(long.weeks.count, 5)
+        XCTAssertEqual(long.todayWeek, 4)
     }
 
     func testHabitGridGrowsPastTheMinimumWeeks() {

@@ -154,7 +154,7 @@ struct ArenaView: View {
         }
         .sheet(isPresented: Binding(get: { milestoneShare != nil }, set: { if !$0 { milestoneShare = nil } })) {
             StatsShareSheet(
-                snapshot: ShareSnapshot.make(stats: profileModel.stats, profile: profileModel.profile, greetingName: profileModel.greetingName, frozenDayKeys: profileModel.frozenDayKeys),
+                snapshot: ShareSnapshot.make(stats: profileModel.stats, profile: profileModel.profile, frozenDayKeys: profileModel.frozenDayKeys),
                 initialTemplate: .streak,
                 headline: "\(milestoneShare ?? 0)-day streak!"
             ) { milestoneShare = nil }
