@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-24T04:10:00+01:00",
-  "current": "J1 hotovo: build #74 prošel",
-  "nextStep": "Otestovat na iPhonu Habits, widget, Streak freeze, Focus Filter, zkratky, týdenní úkoly a poznámky",
+  "updated": "2026-11-24T10:07:20+01:00",
+  "current": "K1: D1–D3 v kódu (onboarding karta, tutoriál v UIWindow, jen Next)",
+  "nextStep": "D4 Shop Supplies, D5 sdílecí karty, D6 zvuky",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -851,6 +851,23 @@
       "commit": "b5122be",
       "build": { "number": 74, "runId": 45305000580, "result": "úspěch" },
       "note": "Build #74 prošel (IPA, Release, testy). #72 prošel s C0–C4 a C6; #71 zrušen (chyběl FocusModeState), #73 spadl na ztrátě spojení runneru. Na iPhonu otestuj: Habits (řádky Po–Ne, první den ve sloupci 1, dnešek s rámečkem, posun na dnešek); widget na ploše (bez App Group ukáže Open FocusQuest, klepnutí otevře Fight sheet; skutečná data v Debug › Debug widget); Shop › Streak freeze 150, Debug +1 streak freeze, vynechaný den → vločka u série a led v Habits; notifikace Streak in danger ve 20:00; iPhone Nastavení › Focus › Add Filter › FocusQuest (Suggest a battle → karta na Home, Mute reminders); Siri „Start a battle in FocusQuest“, „Show my FocusQuest streak“, Zkratky Start battle s délkou, Action button; Stats › Weekly quests a Open chest; poznámka na Victory a Battle log s filtrem. iCloud a App Group čekají na placený účet (design/DEVELOPER_ACCOUNT_TODO.md)."
+    },
+    {
+      "id": "K1",
+      "title": "Opravy z testu: onboarding karta, tutoriál, Shop Supplies, sdílecí karty, zvuky",
+      "status": "pracuje",
+      "items": [
+        { "text": "D1 Onboarding: karta Create your hero s čistým zaobleným horním rohem, obsah scrolluje, Continue samostatně pod kartou", "done": true },
+        { "text": "D2 Tutoriál: Skip tutorial vždy vlevo nahoře v safe area, overlay ve vlastním UIWindow nad sheety", "done": true },
+        { "text": "D3 Tutoriál: postup jen přes Next/Finish, zvýrazněné prvky neinteraktivní, tab přepíná tutoriál sám", "done": true },
+        { "text": "D4 Shop: záložka Supplies (Extra pause, Streak freeze), Gear jen vybavení", "done": false },
+        { "text": "D5 Sdílecí karty: bezpečné okraje, varianta na šířku, celá mřížka Habits 7×5, jméno z profilu", "done": false },
+        { "text": "D6 Zvuky: výchozí vše zapnuté (Battle sounds, Tap sounds, Haptics)", "done": false },
+        { "text": "DECISIONS.md", "done": false }
+      ],
+      "commit": "",
+      "build": { "number": null, "runId": null, "result": "" },
+      "note": ""
     }
   ]
 }

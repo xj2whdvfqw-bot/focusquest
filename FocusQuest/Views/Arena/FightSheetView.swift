@@ -55,13 +55,12 @@ struct FightSheetView: View {
             .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { contentHeight = $0 }
         }
         .scrollBounceBehavior(.basedOnSize)
+        // Kotvy kroku 2–4; samotny tutorial se kresli ve vlastnim okne nad listem (K1/D2).
         .coachMarkHost()
-        .overlay {
-            if let coach { CoachMarkOverlay(placement: .fightSheet, closeSheet: onClose).environment(coach) }
-        }
         .scrollDismissesKeyboard(.interactively)
         .pixelToast($toast)
-        .presentationDetents([.height(min(contentHeight, 720)), .large])
+        // Behem tutorialu jen vyska podle obsahu (bez .large), at horni okraj listu nezajede pod "Skip tutorial".
+        .presentationDetents(isTutorialStep ? [.height(min(contentHeight, 600))] : [.height(min(contentHeight, 720)), .large])
         .presentationDragIndicator(.visible)
         .presentationBackground(Layout.sheetBackground)
         .presentationCornerRadius(FQRadius.card)

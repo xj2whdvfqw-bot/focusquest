@@ -74,10 +74,13 @@ struct MainTabView: View {
                     tabs(reserve: reserve)
                         .environment(\.fqTabMotion, tabMotion)
                     tabChrome
-                    if coach.onboardingDone && !isScripted && !showsOnboarding {
-                        CoachMarkOverlay(placement: .main)
-                    }
                 }
+            }
+            // K1/D2: tutorial se kresli ve vlastnim okne nad vsemi listy (Skip je vzdy na stejnem miste).
+            .background {
+                CoachOverlayWindow(coach: coach, isActive: coach.onboardingDone && !isScripted && !showsOnboarding && coach.step != nil)
+                    .frame(width: 0, height: 0)
+                    .accessibilityHidden(true)
             }
             // Prepnuti zalozky: prechod obsahu a jemna haptika.
             .fqHaptic(.selection, trigger: selectedTab)
@@ -111,7 +114,6 @@ struct MainTabView: View {
                 } onClose: {
                     battlePresenter.showsFightSheet = false
                 }
-                .environment(coach)
             }
             .fullScreenCover(isPresented: Binding(get: { battlePresenter.isPresented }, set: { battlePresenter.isPresented = $0 }), onDismiss: { openAfterBattle() }) {
                 BattleView(model: container.arenaViewModel, profileModel: container.profileViewModel, onExit: { battlePresenter.isPresented = false }, onExitTo: { destination in
@@ -134,10 +136,9 @@ struct MainTabView: View {
                 if FocusQuestTab.launchArgument == "fight" { battlePresenter.openFightSheet() }
                 await prepareOnLaunch()
             }
-            // Tutorial: akcni kroky se posunou, az hrac klepne na zvyrazneny prvek (otevre Fight sheet, prepne zalozku).
+            // Tutorial (K1/D3): zalozku prepina jen tutorial sam po Next; vyrez se po prepnuti zmeri znovu.
             .onChange(of: selectedTab) { _, tab in
                 coach.screen = tab.coachScreen
-                advanceTutorial(for: tab)
                 enforceTutorialTab()
                 coach.layoutChanged()
             }
@@ -186,12 +187,10 @@ struct MainTabView: View {
         Binding(get: { selectedTab }, set: { userSwitchTab(to: $0) })
     }
 
-    /// Prepnuti zalozky hracem (lista, odkaz na mapu). Behem tutorialu je lista zamcena (A2):
-    /// projde jen klepnuti na zalozku, kterou akcni krok prave zvyraznuje.
+    /// Prepnuti zalozky hracem (lista, odkaz na mapu). Behem tutorialu je lista zamcena (K1/D3):
+    /// zalozky prepina jen tutorial po Next.
     private func userSwitchTab(to tab: FocusQuestTab) {
-        if let step = coach.step {
-            guard step.isAction, let target = tab.coachTarget, step.target == target else { return }
-        }
+        guard coach.step == nil else { return }
         switchTab(to: tab)
     }
 
@@ -213,27 +212,32 @@ struct MainTabView: View {
 
     private func index(of tab: FocusQuestTab) -> Int { FocusQuestTab.allCases.firstIndex(of: tab) ?? 0 }
 
+    /// K1/D2: behem tutorialu se obsah zalozek odsune pod pas "Skip tutorial", aby Skip neprekryl nadpis.
+    private var tutorialTopReserve: CGFloat {
+        coach.onboardingDone && !isScripted && !showsOnboarding && coach.step != nil ? CoachMarkOverlay.skipBand : 0
+    }
+
     /// Systemovy TabView drzi stav kazde zalozky; jeho vlastni lista je skryta, kreslime FocusQuestTabBar.
     private func tabs(reserve: CGFloat) -> some View {
         TabView(selection: tabSelection) {
             ArenaView(model: container.arenaViewModel, profileModel: container.profileViewModel) { userSwitchTab(to: .path) }
-                .tabPage(reserve: reserve)
+                .tabPage(reserve: reserve, top: tutorialTopReserve)
                 .tag(FocusQuestTab.arena)
             PathTabView(model: container.arenaViewModel, profileModel: container.profileViewModel)
-                .tabPage(reserve: reserve)
+                .tabPage(reserve: reserve, top: tutorialTopReserve)
                 .tag(FocusQuestTab.path)
             ShopView(model: container.profileViewModel, section: $shopSection)
-                .tabPage(reserve: reserve)
+                .tabPage(reserve: reserve, top: tutorialTopReserve)
                 .tag(FocusQuestTab.shop)
             StatsView(model: container.statsViewModel, arena: container.arenaViewModel, profile: container.profileViewModel) {
                 guard coach.step == nil else { return }
                 switchTab(to: .arena)
                 battlePresenter.openFightSheet()
             }
-                .tabPage(reserve: reserve)
+                .tabPage(reserve: reserve, top: tutorialTopReserve)
                 .tag(FocusQuestTab.stats)
             ProfileView(model: container.profileViewModel)
-                .tabPage(reserve: reserve)
+                .tabPage(reserve: reserve, top: tutorialTopReserve)
                 .tag(FocusQuestTab.profile)
         }
     }
@@ -306,7 +310,7 @@ struct MainTabView: View {
     /// Start appky: nacte profil a statistiky. Novy hrac (bez odehranych bitev) uvidi onboarding;
     /// hrac, ktery appku uz pouziva, ho preskoci (a tutorial taky).
     private func prepareOnLaunch() async {
-        coach.performAction = { step in performTutorialAction(step) }
+        coach.performNext = { step in performTutorialNext(step) }
         coach.screen = selectedTab.coachScreen
         if !isScripted { enforceTutorialTab() }
         await container.profileViewModel.refresh()
@@ -376,39 +380,39 @@ struct MainTabView: View {
         }
     }
 
-    /// Klepnuti na zvyraznenou zalozku posune akcni krok tutorialu.
-    private func advanceTutorial(for tab: FocusQuestTab) {
-        switch (coach.step, tab) {
-        case (.path, .path): coach.advance(from: .path)
-        case (.shop, .shop): coach.advance(from: .shop)
-        case (.stats, .stats): coach.advance(from: .stats)
-        case (.hero, .profile): coach.advance(from: .hero)
-        default: break
-        }
-    }
-
-    /// VoiceOver: tlacitko Open v bubline udela totez co klepnuti na zvyrazneny prvek.
-    private func performTutorialAction(_ step: CoachStep) {
+    /// Next v bubline (K1/D3). Fight otevre Fight sheet s dalsim bossem (krok se posune pri otevreni),
+    /// battle list zavre (bitva se nespusti). Ostatni kroky se jen posunou; zalozku pak prepne
+    /// `enforceTutorialTab` s beznou animaci prechodu.
+    private func performTutorialNext(_ step: CoachStep) {
         switch step {
         case .fight:
             let arena = container.arenaViewModel
-            guard let boss = arena.currentMapBoss, arena.isBetweenBattles else { coach.advance(from: .fight); return }
+            guard let boss = arena.currentMapBoss, arena.isBetweenBattles else {
+                // Bez bosse se kroky ve Fight sheetu preskoci.
+                withAnimation(.easeOut(duration: 0.2)) { coach.advance(from: .fight) }
+                coach.advance(from: .focusing)
+                coach.advance(from: .sound)
+                coach.advance(from: .battle)
+                return
+            }
             arena.selectBoss(boss)
             battlePresenter.openFightSheet()
-        case .path: switchTab(to: .path)
-        case .shop: switchTab(to: .shop)
-        case .stats: switchTab(to: .stats)
-        case .hero: switchTab(to: .profile)
-        default: coach.advance(from: step)
+        case .battle:
+            withAnimation(.easeOut(duration: 0.2)) { coach.advance(from: .battle) }
+            battlePresenter.showsFightSheet = false
+        default:
+            withAnimation(.easeOut(duration: 0.2)) { coach.advance(from: step) }
         }
     }
 }
 
 private extension View {
     /// Skryje systemovou listu a necha dole misto, aby posledni karta nekoncila pod plovouci listou.
-    func tabPage(reserve: CGFloat) -> some View {
+    func tabPage(reserve: CGFloat, top: CGFloat) -> some View {
         toolbar(.hidden, for: .tabBar)
             .safeAreaInset(edge: .bottom, spacing: 0) { Color.clear.frame(height: reserve) }
+            .safeAreaInset(edge: .top, spacing: 0) { Color.clear.frame(height: top) }
+            .animation(.easeInOut(duration: 0.3), value: top)
             // Kotvy tutorialu z teto zalozky (preference nemusi projit pres TabView).
             .coachMarkHost()
     }

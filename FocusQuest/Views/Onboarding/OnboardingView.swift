@@ -307,6 +307,8 @@ struct OnboardingView: View {
                 }
                 .frame(height: 124)
                 .accessibilityHidden(true)
+            // K1/D1: karta stoji pevne (cisty zaobleny roh nahore i dole, bez masky) a roluje jen jeji obsah.
+            // Continue je mimo stranky pod kartou, takze kartu nikdy neprekryje.
             ScrollView {
                 VStack(alignment: .leading, spacing: FQSpace.md) {
                     VStack(alignment: .leading, spacing: FQSpace.xs) {
@@ -324,22 +326,21 @@ struct OnboardingView: View {
                     }
                     HairlineDivider()
                     HeroLookEditor(appearance: draft.avatar) { draft.avatar = $0 }
+                    Text("You can change all of this later on the Hero tab.")
+                        .font(.fqMeta)
+                        .foregroundStyle(FQColor.textSecondary)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, FQSpace.sm)
                 }
                 .padding(FQSpace.lg)
-                .fqCard()
-                .padding(.horizontal, FQSpace.gutter)
-                .padding(.bottom, FQSpace.lg)
-                Text("You can change all of this later on the Hero tab.")
-                    .font(.fqMeta)
-                    .foregroundStyle(FQColor.textSecondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.bottom, FQSpace.lg)
+                .padding(.bottom, FQSpace.xl)
             }
             .scrollIndicators(.hidden)
-            // Obsah pod hrdinou mizi do ztracena, ne ostrou hranou.
-            .mask {
-                LinearGradient(stops: [.init(color: .clear, location: 0), .init(color: .black, location: 0.04), .init(color: .black, location: 1)], startPoint: .top, endPoint: .bottom)
-            }
+            .clipShape(RoundedRectangle(cornerRadius: FQRadius.smallCard, style: .continuous))
+            .fqCard()
+            .padding(.horizontal, FQSpace.gutter)
+            .padding(.bottom, FQSpace.md)
         }
         .frame(maxWidth: 560)
     }

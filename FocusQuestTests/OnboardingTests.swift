@@ -25,13 +25,19 @@ final class OnboardingTests: XCTestCase {
         XCTAssertEqual(CoachStep.allCases.first, .fight)
         XCTAssertEqual(CoachStep.allCases.last?.number, CoachStep.total)
         XCTAssertEqual(CoachStep.total, 13)
-        XCTAssertEqual(CoachStep.hero.number, CoachStep.dailyTarget.number, "Hero tab and its daily target are one step")
+        XCTAssertEqual(CoachStep.allCases.map(\.number), Array(1...13), "Every step has its own number")
         XCTAssertEqual(CoachStep.habits.screen, .stats)
-        XCTAssertEqual(CoachStep.shop.screen, .path, "Tab steps wait on the previous tab")
+        XCTAssertEqual(CoachStep.path.screen, .path, "K1: tab steps stand on their own tab")
+        XCTAssertEqual(CoachStep.shop.screen, .shop)
+        XCTAssertEqual(CoachStep.stats.screen, .stats)
         XCTAssertEqual(CoachStep.dailyTarget.screen, .hero)
         XCTAssertEqual(CoachStep.allCases.filter(\.isInFightSheet), [.focusing, .sound, .battle])
-        XCTAssertTrue(CoachStep.fight.isAction)
-        XCTAssertFalse(CoachStep.battle.isAction, "Battle is explained, not played")
+        // K1/D3: vsude Next, posledni krok Finish, zadne "Got it".
+        XCTAssertEqual(CoachStep.allCases.dropLast().map(\.buttonTitle), Array(repeating: "Next", count: 12))
+        XCTAssertEqual(CoachStep.settings.buttonTitle, "Finish")
+        for step in CoachStep.allCases {
+            XCTAssertFalse(step.text.contains("Tap "), "\(step) still asks to tap the highlighted element")
+        }
         for step in CoachStep.allCases {
             let sentences = step.text.split(whereSeparator: { ".!?".contains($0) }).filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
             XCTAssertLessThanOrEqual(sentences.count, 2, "\(step) has more than two sentences")
