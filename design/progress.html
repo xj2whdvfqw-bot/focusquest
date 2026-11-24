@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-24T20:17:00+01:00",
-  "current": "O1 build #82 a P1 build #83 běží",
-  "nextStep": "Počkat na výsledky buildů #82 (O1) a #83 (P1); při pádu opravit a pustit znovu",
+  "updated": "2026-11-24T20:20:00+01:00",
+  "current": "Build #83 běží pro O1 i P1 (#82 zrušen)",
+  "nextStep": "Počkat na build #83; ověří O1 i P1 najednou",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -927,8 +927,8 @@
         { "text": "DECISIONS.md", "done": true }
       ],
       "commit": "c950f6c",
-      "build": { "number": 82, "runId": 45466069265, "result": "běží" },
-      "note": "Build #82 běží."
+      "build": { "number": 83, "runId": 45468084279, "result": "běží" },
+      "note": "Build #82 (O1) byl zrušen: workflow má `cancel-in-progress`, takže ho zrušil start buildu #83 na stejné větvi (stihl zkompilovat a běžel testy). O1 ověří build #83, který obsahuje i P1."
     },
     {
       "id": "P1",
