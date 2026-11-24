@@ -3,7 +3,7 @@
 Doplňuje `design/CHANGES.md` (zadání sekcí 0–15) a `design/progress.html` (stav, buildy, co otestovat).
 Tady je to, co v nich není: rozhodnutí, která padla během práce, otevřené body a známé pasti.
 
-Stav k 24. 11. 2026: větev `phase3-duolingo`; K1 (opravy D1–D6: onboarding karta, tutoriál ve vlastním okně, Shop Supplies, sdílecí karty, zvuky) je v buildu, viz progress.html. Předtím zelený build #74 (J1: Habits, widget, freeze, Focus, zkratky, úkoly, poznámky, příprava iCloud); dříve #70 (I1), #69 (H1), #67 (G1); dříve #65 (F1); E1 (opravy z testu po D1) prošel jako build #62; F1 (Habits, mapa, easter eggy) prošel jako build #65; F2 (nový onboarding a coach marks) prošel jako build #66. Všechny sekce z CHANGES.md
+Stav k 24. 11. 2026: větev `phase3-duolingo`; L1 (opravy E1–E5 po testu #76: tutoriál bez sheetů, Skip v safe area, plynulé přechody, Home bez scrollu, Break panel) je v buildu, viz progress.html. Předtím zelený build #76 (K1: onboarding karta, tutoriál ve vlastním okně, Shop Supplies, sdílecí karty, zvuky) a #74 (J1: Habits, widget, freeze, Focus, zkratky, úkoly, poznámky, příprava iCloud); dříve #70 (I1), #69 (H1), #67 (G1); dříve #65 (F1); E1 (opravy z testu po D1) prošel jako build #62; F1 (Habits, mapa, easter eggy) prošel jako build #65; F2 (nový onboarding a coach marks) prošel jako build #66. Všechny sekce z CHANGES.md
 a všechny opravy z auditu jsou hotové.
 
 ## 1. Rozhodnutí
@@ -254,12 +254,18 @@ a všechny opravy z auditu jsou hotové.
 - **Výsledková okna jsou skleněná** (`ResultDialog` v `Views/DesignSystem/Motion.swift`): útěk bosse, vítězství,
   Battle stopped a Call ended.
   - Jemné ztmavení scény 28 % a skleněná karta (`fqGlassPanel`, od testu #66 stejné sklo jako karta bitvy), panel přestávky má stejné ztmavení.
-- **Panel přestávky je sheet se dvěma výškami** (od I1, `BreakPanel` v `BattleView.swift`): `presentationDetents`
-  kompaktní 330 pt (BREAK, odpočet, Next boss) a roztažená 640 pt (navíc Same again, Change boss, Done for today
-  a scéna `RestingHeroScene`: hrdina dýchá u pixelového ohně, nad ním „z“; Reduce Motion = stojí). Mezi výškami plynulý
-  tah systémovým madlem, `interactiveDismissDisabled`: úplně stáhnout nejde, zavírá se jen tlačítky. Při odchodu
-  (Same again, Change boss, Done) se nejdřív zavře sheet a po 0,38 s celá bitva (dvě prezentace naráz se zasekávaly).
-  Když už není další boss, kompaktní výška ukáže Same again.
+- **Panel přestávky je sheet se dvěma výškami** (od I1, `BreakPanel` v `BattleView.swift`). **Od L1/E5** ukazuje
+  kompaktní výška všechno potřebné: BREAK, odpočet, Next boss, Same again + Change boss a Done for today. Roztažená
+  výška přidá jen scénu `RestingHeroScene` (hrdina spí u pixelového ohně, nad ním „z“). Obě výšky se **měří z obsahu**
+  (spodek Done for today, resp. scény + okraj + spodní bezpečná zóna), takže nic není oříznuté ani s větším písmem
+  nebo na SE; vybraná výška se při přeměření posune s nimi. Scéna je v kompaktní výšce průhledná (nekouká proužek).
+  Mezi výškami plynulý tah systémovým madlem, `interactiveDismissDisabled`: úplně stáhnout nejde, zavírá se jen tlačítky.
+  Při odchodu (Same again, Change boss, Done) se nejdřív zavře sheet a po 0,38 s celá bitva (dvě prezentace naráz
+  se zasekávaly). Když už není další boss, hlavní akce je Same again.
+  - **Klepnutí na spícího hrdinu** (L1/E5, jen kosmetické): protáhne se (0–0,45 s), „z“ zmizí, malý poskok (do 10 bodů),
+    oheň vyšlehne s pixelovými jiskrami (0,9 s), klik (Tap sounds) a lehká vibrace (Haptics); po 3 s zase usne
+    (další klepnutí čas prodlouží). Probuzení běží 30 snímků/s, spánek 8. Reduce Motion: bez pohybu, „z“ a záře
+    ohně se jen prolnou. VoiceOver: tlačítko „Your hero sleeps by the fire“ s nápovědou „Wakes your hero up“.
   - Pod výsledkem se karta bitvy schová, aby neprosvítala (dřív bylo vidět „Begin Battle“).
   - Karta se objeví pružinou (0,92 → 1), s Reduce Motion jen prolnutím.
 - **Shop nemá velké pixelové nadpisy** („Gear up“, „Change the scenery“ jsou pryč). Hlavička je kompaktní:
@@ -367,61 +373,81 @@ a všechny opravy z auditu jsou hotové.
   Od H1 ani Privacy a Support na webu ani komentáře neříkají „subject“ (stránka správy je „Your focus list“, tlačítko „Edit focus list“).
   Názvy bossů a skladba „Study flow“ se nemění.
 - **Tutoriál jako coach marks místo TipKitu** (od F2, `Views/Onboarding/CoachMarks.swift`). TipKit je pryč (FQTips, popover tipy, Reset tips).
-  - Celá obrazovka ztmavne (72 %), zvýrazněný prvek je vyříznutý zaobleným výřezem podle tvaru (kapsle/kruh, sekce 20 pt)
+  - Celá obrazovka ztmavne (72 %), zvýrazněný prvek je vyříznutý zaobleným výřezem podle tvaru (kapsle/kruh, karty 20 pt)
     se žlutou pulzující září; vedle bublina (titulek, max 2 věty, „3 of 13“, Next), nahoře vlevo „Skip tutorial“.
-  - **Overlay je ve vlastním `UIWindow`** (od K1, `CoachOverlayWindow`, úroveň `.normal + 5`) nad hlavním oknem i všemi listy.
+  - **Tutoriál nikdy neotvírá listy** (od L1/E1). Dřív Next na kroku 1 otevřel Fight sheet; cíle kroků 2–4 byly v listu,
+    overlay je nenašel, ~8 s blokoval appku bez bubliny a pak kroky 2–4 tiše přeskočil. Teď kroky 2–4 (Focusing, Sound,
+    Phone down) stojí na Home se spotlightem na Fight a text popíše, co v panelu hráč najde. Fight sheet žádnou výjimku
+    pro tutoriál nemá (detenty, zavírání tahem).
+  - **Overlay je ve vlastním `UIWindow`** (od K1, `CoachOverlayWindow`, úroveň `.normal + 5`) nad hlavním oknem.
     Okno je vidět jen během tutoriálu a pohlcuje všechna klepnutí; projde jen Next a Skip.
     Rámečky prvků jsou v souřadnicích okna: každý `.coachMarkHost()` pošle lokální rámečky a neviditelnou UIKit sondu
-    (`CoachWindowProbe`), která je převede `convert(_:to: nil)`; overlay je před ukázáním kroku přepočítá (`refreshFrames`),
-    protože list nebo záložka mohly dojet animací. `.global` ze SwiftUI se nepoužívá (v listu může být vztažené k listu).
-  - **„Skip tutorial“** je samostatná pilulka (plné tmavé pozadí, okraj, stín) **vždy na stejném místě**: vlevo nahoře
-    v safe area, v každém kroku i mezi kroky, i s otevřeným Fight sheetem (od K1; dřív se kreslila uvnitř listu a skákala).
-    Nic nepřekrývá: obsah záložek se během tutoriálu odsune pod pás Skip (`safeAreaInset` 56 pt, `CoachMarkOverlay.skipBand`),
-    bublina do pásu nikdy nezajede a Fight sheet má během kroků 2–4 jen výšku podle obsahu (bez `.large`, max 600 pt).
-  - **Postup jen přes Next** (od K1, ruší „akční kroky“ z F2/H1): každý krok má Next, poslední Finish, žádné „Got it“/„Done“.
-    Zvýrazněné prvky (Fight, Start, záložky) nejsou interaktivní. Next na kroku 1 otevře Fight sheet sám, Next na kroku 4
-    ho zavře (bitva se nespustí). **Krok záložky stojí na své záložce** (`CoachStep.screen`): Path na Path, Shop na Shop,
-    Stats na Stats, Daily focus target a Nastavení na Hero. Po Next tutoriál přepne záložku sám (`enforceTutorialTab`,
-    běžný přechod záložek) a výřez počká, až je prvek vykreslený a dvakrát po sobě změřený na stejném místě.
-    Lišta je během tutoriálu úplně zamčená (`userSwitchTab`). Výřez se ukáže jen na správné záložce
-    (`CoachMarkStore.screen`) a při změně záložky, otevření/zavření listu a změně velikosti (`layoutVersion`) se schová
-    a změří znovu až po vykreslení. Dřív šlo hned na začátku přepnout na Path a výřez Fight seděl na prázdné mapě.
-  - Pozice z `anchorPreference` (`.coachMark(_:)`); hostitel (`.coachMarkHost()`) na každé záložce, liště a ve Fight sheetu
-    kotvy převede na globální rámečky v `CoachMarkStore` (preference nemusí projít přes TabView a listy).
-  - Mezi kroky se výřez zavře do bodu u dalšího prvku a pak se z něj pružně otevře (jedna stálá vrstva ztmavení, nic nebliká).
-  - Výřez mezi prvky přejíždí pružinou; Reduce Motion = jen prolnutí, záře nepulzuje. VoiceOver čte bublinu (modální, fokus na ni).
-  - Tutoriál začne až po zavření onboardingu (`onDismiss`) a krok se ukáže až po ~0,4 s ustálení, takže výřez neproblikne
-    na špatném místě. Prvek, který se do ~2 s nenajde, se tiše přeskočí.
-  - Krok se ukládá (`focusquest.tutorial.step`), po pádu pokračuje od posledního; kroky ve Fight sheetu od kroku 1.
+    (`CoachWindowProbe`), která je převede `convert(_:to: nil)`. `.global` ze SwiftUI se nepoužívá.
+    Hostitel mimo okno (skrytá záložka) se vynechá.
+  - **Bublina je vidět vždy, když tutoriál běží** (L1/E1): bez předchozí bubliny hned uprostřed, jinak se na prvek čeká
+    nejdéle 1 s (`CoachMetrics.fallbackSeconds`, `CoachLayout.resolve`). Prvek, který se do 1 s nenajde (nebo je mimo
+    obrazovku), = bublina uprostřed bez výřezu. Next funguje vždy, **kroky se nikdy nepřeskakují**, přeskočit jde jen celý
+    tutoriál přes Skip. Rozvržení (výřez + bublina) počítá čistá funkce `CoachLayout.anchored/centered` v `CoachSpace`.
+  - **„Skip tutorial“** (od L1/E2) je samostatná pilulka (plné tmavé pozadí, okraj, stín) **vlevo nahoře v safe area
+    ve výšce ozubeného kola** (horní hrana 8 bodů pod bezpečnou zónou, řádek 44 bodů, `CoachMetrics.skipTop/skipRowHeight`),
+    ve všech krocích na stejném místě. Dřív byl přes hodiny: `GeometryReader` s `.ignoresSafeArea()` hlásí bezpečnou zónu 0
+    (viz Známé pasti). Nic nepřekrývá: během tutoriálu nadpis vlevo nahoře na každé záložce uhne o 52 bodů dolů
+    (`coachSkipClearance()`, prostředí `coachSkipClearance`: `ScreenHeader`, hlavička Path, štítek Shop); ozubené kolo,
+    mince a tlačítka vpravo zůstávají. Pás přes celou šířku (`safeAreaInset` 56 pt) je pryč. Bublina nikdy nezajede do řádku Skip.
+  - **Plynulé přechody** (L1/E3): jedna stálá bublina. Po Next se text hned prolne (0,22 s) a bublina i výřez
+    (pozice, velikost, zaoblení, `CoachDimShape.animatableData`) odjedou pružinou 0,35 s na nový prvek; žádná prázdná pauza.
+    Bublina nad prvkem drží spodní hranu, pod prvkem horní (při změně výšky nikdy nezajede do výřezu).
+    Přepnutí záložky proběhne ve stejné animaci (`performTutorialNext`: posun kroku + `switchTab` v jednom `withAnimation`).
+    Výřez se přesune, až prvek stojí (dvě měření po sobě 50 ms na stejném místě), takže nehoní přijíždějící záložku.
+    Overlay měří rámečky průběžně (50 ms první 1,5 s, pak 150 ms), dokud krok trvá. Reduce Motion: bublina neodjede,
+    stará a nová se prolnou, stejně výřez; záře nepulzuje. VoiceOver čte bublinu (modální, fokus na ni).
+  - **Postup jen přes Next** (od K1): každý krok má Next, poslední Finish. Zvýrazněné prvky nejsou interaktivní.
+    **Krok stojí na své záložce** (`CoachStep.screen`): kroky 1–6 Home, Path na Path, Shop na Shop, Stats na Stats,
+    Daily focus target a Nastavení na Hero. Lišta je během tutoriálu úplně zamčená (`userSwitchTab`).
+    Výřez sedí jen na správné záložce (`CoachMarkStore.screen`; ikony lišty jsou vidět všude).
+    Obrazovka s rolováním (`ScreenScaffold`) odroluje prvek kroku do zorného pole (`scrollTo(target, anchor: nil)`,
+    `.coachMark` dává prvku `id`), po konci tutoriálu se vrátí nahoru.
+  - Tutoriál začne až po zavření onboardingu (`onDismiss`), ztmavení se prolne.
+  - Krok se ukládá (`focusquest.tutorial.step`), po pádu pokračuje přesně od posledního.
+  - Na Home během tutoriálu nezačne oslava série ani nabídka sdílení milníku.
 
-  | # | Kde | Typ |
+  | # | Kde (spotlight) | Text |
   |---|---|---|
-  | 1 | Home: Fight | Next (otevře Fight sheet) |
-  | 2 | Fight sheet: Focusing | Next |
-  | 3 | Fight sheet: hudba/zvuk | Next |
-  | 4 | Fight sheet: Start + vysvětlení bitvy (telefon dolů, zvednutí = útěk za 10 s, pauza zdarma, animace telefonu) | Next, list se zavře, bitva se nespustí |
-  | 5 | Home: Just 5 minutes | Next |
-  | 6 | Home: plamínek série | Next |
-  | 7–9 | lišta: Path, Shop (gear, pozadí, supplies), Stats, každý na své záložce | Next (záložku přepne tutoriál) |
-  | 10 | Stats: graf Habits (čtverečky = dny od prvního dne, řádky Po–Ne, dnešek s rámečkem, barva = minuty) | Next |
-  | 11 | Stats: Win rate, Bosses beaten, Longest streak, Focus hours | Next |
-  | 12 | Hero: Daily focus target (vzhled hrdiny na této záložce, kroužek v barvě třídy, posuvník cíle) | Next |
+  | 1 | Home: Fight | boss = jedna session, Fight otevře nastavení |
+  | 2 | Home: Fight | v nastavení vybereš, na co se soustředíš (Stats počítá čas) |
+  | 3 | Home: Fight | hudba nebo ticho, hraje i se zamčenou obrazovkou |
+  | 4 | Home: Fight + animace telefonu | po Start telefon dolů, zvednutí = útěk za 10 s, pauza zdarma |
+  | 5 | Home: odkaz „Not feeling it? Just 5 minutes“ (jen text, ne celý řádek) | |
+  | 6 | Home: plamínek série | |
+  | 7–9 | lišta: Path, Shop (gear, pozadí, supplies), Stats, každý na své záložce | záložku přepne tutoriál |
+  | 10 | Stats: graf Habits (čtverečky = dny od prvního dne, řádky Po–Ne, dnešek s rámečkem, barva = minuty) | |
+  | 11 | Stats: Win rate, Bosses beaten, Longest streak, Focus hours | |
+  | 12 | Hero: Daily focus target (vzhled hrdiny na této záložce, kroužek v barvě třídy, posuvník cíle) | |
   | 13 | Hero: ozubené kolo Nastavení | Finish |
 
-  Uložené číslo kroku je `rawValue`; po aktualizaci z 10 kroků může rozběhnutý tutoriál pokračovat o krok vedle (neškodné).
+  Všude Next, poslední Finish. Testy: `CoachMarkTests` projde všech 13 kroků jen přes Next a ověří bublinu u prvku i uprostřed
+  (iPhone 17 i SE) a každý krok vykreslí (`ImageRenderer`) se žlutým tlačítkem Next/Finish.
 
-  - Fight sheet se během kroků 2–4 nedá zavřít tahem. Settings › Help › „Replay tutorial“; Debug „Reset onboarding“ (1A i 1B).
+  - Settings › Help › „Replay tutorial“; Debug „Reset onboarding“ (1A i 1B).
   - CI screenshoty (`-initialTab`) onboarding ani tutoriál neukazují.
 - **Oprávnění k notifikacím se žádá kontextově** (od F1): až po první dokončené (vyhrané) bitvě, nikdy v onboardingu ani tutoriálu. Plánování notifikací
   se už neptá (bez povolení nic nenaplánuje); ptá se jen kontextová žádost a Debug „Test notifications“.
 - **Návrat v Settings tahem od levého okraje**: podstránka Sounds & notifications nemá NavigationStack, proto vlastní gesto
   (začátek do 32 pt od okraje, stránka jde s prstem, zpět po ~100 pt nebo švihu). Tlačítko ‹ Settings zůstává.
-- Home: volné místo nad a pod bossem v poměru 1 : 2, boss je blíž středu a nad Fight je vzduch.
+- **Home je pevné rozvržení bez scrollu** (od L1/E4, `ScreenScaffold(fixed: true)` + `ArenaLayout` v `ArenaView.swift`).
+  Dřív byla Arena ve `ScrollView`: dala se posunout a zůstala posunutá a s pásem tutoriálu byl odkaz „Not feeling it?“
+  pod tab barem (spotlight kroku 5 pak zvýraznil lištu).
+  - Výška obrazovky nad lištou a změřené bloky (hlavička se sérií, texty u bosse, tlačítka) určí rámeček bosse:
+    nejvýš 26 % výšky, 84–220 bodů, sprite = 128/168 rámečku; s větším písmem nebo kartou Focus režimu se zmenší boss, ne tlačítka.
+  - Volné místo nad a pod bossem v poměru 1 : 2; pod 640 bodů (SE) menší mezery.
+  - Spodek „Not feeling it?“ je 24 bodů nad lištou (SE 12): bezpečná zóna Home končí 8 bodů pod horní hranou lišty
+    (`ArenaLayout.tabBarOverlap`). Test `testHomeFitsAboveTheTabBarWithoutScrolling` (SE, 17, Pro Max, s tutoriálem i bez).
+  - Ostatní taby rolují dál (Stats, Shop, Hero jsou dlouhé seznamy) se standardním odpružením: obsah, který se vejde,
+    se vždy vrátí. Po konci tutoriálu se obrazovky vrátí nahoru.
 - Dynamic Type:
   - texty s pevnou velikostí používají `fqFont(size:weight:design:)` a rostou nejvýš 1,5×,
   - aplikace má strop `accessibility2`,
   - ikony, časovače a pixelové bubliny mají velikost pevnou.
-- Na nízkých displejích (iPhone SE, výška pod 620 bodů) má Arena kompaktní rozložení, aby Fight nebyl pod lištou.
 - Aplikace je jen pro iPhone (`TARGETED_DEVICE_FAMILY = 1`).
 - Dočasná ikona je Warm-up Wisp na tmavém pozadí (`FocusQuest/Resources/Assets.xcassets`).
 
@@ -610,6 +636,11 @@ Shop má od K1 tři záložky: **Gear** (jen vybavení hrdiny), **Backgrounds** 
   - v Release je za `#if DEBUG` skrytá,
   - Debug obsahuje „Unlock all worlds“ / „Lock them back“ (`debugUnlockAllWorlds`, v Release se ignoruje)
     a v běžící bitvě malé tlačítko „Win now“ vlevo dole (`debugWinNow`): bitva hned skončí výhrou včetně odměn a posunu cesty.
+- **`GeometryReader` s `.ignoresSafeArea()` hlásí `safeAreaInsets` = 0.** Kdo potřebuje velikost bezpečné zóny
+  a zároveň kreslit přes celou obrazovku, potřebuje dva readery: vnější (respektuje safe area) dá `safeAreaInsets`,
+  vnitřní s `.ignoresSafeArea()` dá celou plochu (viz `CoachMarkOverlay`). Kvůli tomu byl Skip tutoriálu přes hodiny.
+- **Cíle tutoriálu nedávat do listů (sheetů).** Overlay je v jiném okně a list se animuje; rámečky prvků v listu
+  se hledaly špatně (L1/E1). Tutoriál list nikdy neotevírá.
 - **`containerShape` na iOS 17:**
   - iOS 26 přetížení se nesmí volat mimo `#available(iOS 26.0, *)`, proto `fqContainer` vrací na starších iOS jen `self`,
   - `AnyShape` neumí `strokeBorder`, použít `stroke` + `padding(lineWidth / 2)`.

@@ -125,7 +125,7 @@ struct PathTabView: View {
     /// Tlacitka maji neinteraktivni sklo: interaktivni Liquid Glass nad UIKit mapou pohlcoval klepnuti
     /// a zustaval rozsviceny. Stisk ukazuje styl .fqPress (zmenseni a ztmaveni).
     private var header: some View {
-        HStack(spacing: FQSpace.sm) {
+        HStack(alignment: .top, spacing: FQSpace.sm) {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Path").font(.fqLabel).foregroundStyle(FQColor.textSecondary)
                 Text(current?.world.title ?? "Every world conquered")
@@ -134,8 +134,11 @@ struct PathTabView: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
             }
+            .frame(minHeight: 44)
             .accessibilityElement(children: .combine)
             .accessibilityAddTraits(.isHeader)
+            // E2: behem tutorialu uhne pod "Skip tutorial", tlacitka vpravo zustavaji.
+            .coachSkipClearance()
             Spacer(minLength: FQSpace.sm)
             headerButton("scope", label: "Go to the current boss") { focusCurrent(intro: false) }
             headerButton("list.bullet", label: "Show worlds and bosses as a list") {

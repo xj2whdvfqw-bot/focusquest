@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-24T11:49:04+01:00",
-  "current": "K1 hotovo: build #76 prošel",
-  "nextStep": "Otestovat na iPhonu onboarding kartu, celý tutoriál 1–13 a Replay tutorial, Shop Supplies, sdílecí karty Story/Wide a zvuky",
+  "updated": "2026-11-24T13:04:00+01:00",
+  "current": "L1: kód E1–E5 hotový, commit a build",
+  "nextStep": "Spustit build na phase3-duolingo a opravit případné chyby kompilace nebo testů",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -868,6 +868,22 @@
       "commit": "abea248",
       "build": { "number": 76, "runId": 45372565792, "result": "úspěch" },
       "note": "Build #76 prošel (IPA, Release, testy včetně renderu sdílecích karet). #75 spadl jen na 2 starých testech zvuků (čekaly Battle sounds OFF), opraveno. Na iPhonu otestuj: onboarding › Create your hero (čistý horní roh karty, obsah roluje uvnitř, Continue pod kartou, hrdina vidět); celý tutoriál 1–13 jen přes Next/Finish (Skip vždy vlevo nahoře i s otevřeným Fight sheetem, nic nepřekrývá; taby ani Start nereagují; Next přepne záložku sám a spotlight nesedí na prázdném místě) a Settings › Help › Replay tutorial; Shop › Supplies (Extra pause, Streak freeze), Gear jen vybavení; Stats › Share: Story i Wide, okraje, mřížka 7×5, jméno (Hero jen když v onboardingu nebylo vyplněné); Settings › Sounds: Battle sounds, Tap sounds a Haptics zapnuté. Starý uložený krok tutoriálu se může posunout o krok (neškodné)."
+    },
+    {
+      "id": "L1",
+      "title": "Opravy z testu #76: tutoriál, Skip, přechody, Home bez scrollu, Break panel",
+      "status": "pracuje",
+      "items": [
+        { "text": "E1 Tutoriál neotvírá sheety: kroky 2–4 na Home se spotlightem na Fight, pojistka bubliny uprostřed do 1 s, kroky se nepřeskakují, test 13 kroků přes Next", "done": true },
+        { "text": "E2 Skip tutorial v safe area vlevo nahoře, ve výšce ozubeného kola, ve všech krocích stejně, nic nepřekrývá", "done": true },
+        { "text": "E3 Plynulé přechody: jedna bublina odjede pružinou ~0,35 s, výřez animuje pozici, velikost a zaoblení, text se prolne, tab se přepne během animace; Reduce Motion jen prolnutí", "done": true },
+        { "text": "E4 Home pevný layout bez scrollu (SE až Pro Max), Fight a „Not feeling it?“ nad tab barem; ostatní taby se vrací bouncem; krok 5 zvýrazní odkaz", "done": true },
+        { "text": "E5 Break panel: malý detent celý (BREAK, odpočet, Next boss, Same again, Change boss, Done for today), velký + oheň; tap na hrdinu ho probudí", "done": true },
+        { "text": "DECISIONS.md", "done": true }
+      ],
+      "commit": null,
+      "build": null,
+      "note": "Kód hotový, čeká na build. Tutoriál už neotevírá Fight sheet (kroky 2–4 na Home u Fight), bublina je vidět vždy (bez cíle do 1 s uprostřed), Skip ve výšce ozubeného kola, Home bez scrollu, Break panel celý v malé výšce + probuzení hrdiny."
     }
   ]
 }

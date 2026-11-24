@@ -47,13 +47,18 @@ struct ShopView: View {
         // pod tim zalozky obchodu a u vybaveni pripnuty nahled hrdiny (vyzkouseni je videt i pri rolovani).
         .pinnedTopHeader {
             VStack(alignment: .leading, spacing: FQSpace.sm) {
-                HStack(spacing: FQSpace.md) {
+                // Vsechno ve vysce 44 a zarovnane nahoru: behem tutorialu stitek uhne pod "Skip tutorial" (E2),
+                // mince a ozubene kolo zustavaji ve stejne vysce jako Skip.
+                HStack(alignment: .top, spacing: FQSpace.md) {
                     Text("Shop")
                         .font(.fqLabel)
                         .foregroundStyle(FQColor.textSecondary)
                         .accessibilityAddTraits(.isHeader)
+                        .frame(minHeight: 44)
+                        .coachSkipClearance()
                     Spacer(minLength: FQSpace.sm)
                     coinsLabel
+                        .frame(minHeight: 44)
                     SettingsGearButton()
                 }
                 sectionTabs

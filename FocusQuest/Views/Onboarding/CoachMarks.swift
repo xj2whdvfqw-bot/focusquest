@@ -4,33 +4,43 @@ import UIKit
 // Tutorial v appce (F2, 1B): coach marks misto TipKitu. Cela obrazovka ztmavne, zvyrazneny prvek je
 // z tmy "vyrizly" (zaobleny vyrez s jemnou pulzujici zari) a vedle je bublina s textem.
 // Pozice prvku se zjistuje pres anchorPreference (`.coachMark(_:)`), nikdy natvrdo:
-// hostitel (`.coachMarkHost()`) kotvy prevede na globalni ramecky a ulozi je do CoachMarkStore.
-// Pres hranici TabView a listu preference nemusi projit, proto ma kazda zalozka, lista
-// a Fight sheet vlastniho hostitele.
+// hostitel (`.coachMarkHost()`) kotvy prevede na ramecky v souradnicich okna a ulozi je do CoachMarkStore.
+// Pres hranici TabView preference nemusi projit, proto ma kazda zalozka a lista vlastniho hostitele.
+// L1/E1: tutorial nikdy neotvira listy. Kroky o Fight sheetu (Focusing, Sound, Phone down) stoji na Home
+// s vyrezem na tlacitku Fight a text popise, co v listu hrac najde.
 
 /// Prvky, ktere tutorial umi zvyraznit.
 enum CoachTarget: String, Hashable, Sendable {
-    case fight, quick, streak, focusing, sound, start, tabPath, tabShop, tabStats, tabHero, gear
+    case fight, quick, streak, tabPath, tabShop, tabStats, tabHero, gear
     /// A4: graf Habits, karta s cisly ve Stats a Daily focus target v Hero.
     case habits, statNumbers, dailyTarget
 
-    /// Kulate a kapslove prvky maji kulaty vyrez, karty a sekce Fight sheetu zaobleny obdelnik.
+    /// Kulate a kapslove prvky maji kulaty vyrez, karty zaobleny obdelnik.
     var isRound: Bool {
         switch self {
-        case .focusing, .sound, .habits, .statNumbers, .dailyTarget: false
+        case .habits, .statNumbers, .dailyTarget: false
         default: true
+        }
+    }
+
+    /// Ikony v liste zalozek jsou videt na kazde zalozce, takze vyrez na ne muze jet hned,
+    /// jeste behem prepnuti zalozky (E3).
+    var isInTabBar: Bool {
+        switch self {
+        case .tabPath, .tabShop, .tabStats, .tabHero: true
+        default: false
         }
     }
 }
 
-/// Zalozka, na ktere krok tutorialu stoji (A2). Kroky ve Fight sheetu maji `nil`.
+/// Zalozka, na ktere krok tutorialu stoji (A2).
 enum CoachScreen: Sendable {
     case home, path, shop, stats, hero
 }
 
 /// Kroky tutorialu v poradi, jak appku hrac poprve pouzije.
-/// K1/D3: kazdy krok se posune jen tlacitkem Next (posledni Finish). Zvyraznene prvky nejsou interaktivni;
-/// zalozku a Fight sheet prepina tutorial sam a vyrez pocka, az je cilovy prvek vykresleny.
+/// K1/D3: kazdy krok se posune jen tlacitkem Next (posledni Finish). Zvyraznene prvky nejsou interaktivni.
+/// L1/E1: zadny krok neotvira list; kazdy stoji na sve zalozce a zalozku prepina tutorial sam.
 enum CoachStep: Int, CaseIterable, Sendable {
     case fight, focusing, sound, battle, quick, streak, path, shop, stats, habits, statNumbers, dailyTarget, settings
 
@@ -42,10 +52,8 @@ enum CoachStep: Int, CaseIterable, Sendable {
 
     var target: CoachTarget {
         switch self {
-        case .fight: .fight
-        case .focusing: .focusing
-        case .sound: .sound
-        case .battle: .start
+        // E1: kroky o Fight sheetu ukazuji tlacitko Fight na Home, list se neotvira.
+        case .fight, .focusing, .sound, .battle: .fight
         case .quick: .quick
         case .streak: .streak
         case .path: .tabPath
@@ -58,20 +66,16 @@ enum CoachStep: Int, CaseIterable, Sendable {
         }
     }
 
-    /// Zalozka, na ktere krok stoji. Kroky zalozek stoji na sve zalozce: po Next ji tutorial prepne sam.
-    var screen: CoachScreen? {
+    /// Zalozka, na ktere krok stoji. Po Next ji tutorial prepne sam ve stejne animaci jako bublinu (E3).
+    var screen: CoachScreen {
         switch self {
-        case .fight, .quick, .streak: .home
-        case .focusing, .sound, .battle: nil
+        case .fight, .focusing, .sound, .battle, .quick, .streak: .home
         case .path: .path
         case .shop: .shop
         case .stats, .habits, .statNumbers: .stats
         case .dailyTarget, .settings: .hero
         }
     }
-
-    /// Kroky uvnitr Fight sheetu: list otevre a zavre tutorial sam (Next na kroku Fight, Next na kroku battle).
-    var isInFightSheet: Bool { screen == nil }
 
     var title: String {
         switch self {
@@ -95,8 +99,8 @@ enum CoachStep: Int, CaseIterable, Sendable {
     var text: String {
         switch self {
         case .fight: "Every boss is one focus session. Fight opens the setup for the next one."
-        case .focusing: "Pick what this session is for. Stats tracks your time for each one."
-        case .sound: "Choose music or quiet for the battle. It keeps playing when the screen is locked."
+        case .focusing: "In that setup you pick what the session is for. Stats tracks your time for each one."
+        case .sound: "You also pick music or quiet there. It keeps playing when the screen is locked."
         case .battle: "After Start, lay your phone face down and your hero fights. Lift it and the boss escapes in 10 seconds, unless you use your free pause."
         case .quick: "Start with just 5 minutes. Small wins still count."
         case .streak: "Focus a little every day to keep the flame going."
@@ -115,7 +119,7 @@ enum CoachStep: Int, CaseIterable, Sendable {
 }
 
 /// Stav onboardingu a tutorialu. Uklada se po kazdem kroku, takze po padu nebo zavreni appky
-/// tutorial pokracuje od posledniho kroku (kroky uvnitr Fight sheetu od kroku 1).
+/// tutorial pokracuje od posledniho kroku.
 @Observable
 @MainActor
 final class CoachMarkStore {
@@ -128,28 +132,20 @@ final class CoachMarkStore {
     private(set) var onboardingDone: Bool
     /// Aktualni krok tutorialu; nil = tutorial nebezi.
     private(set) var step: CoachStep?
-    /// Zmerene ramecky prvku (globalni souradnice) od vsech hostitelu.
+    /// Zmerene ramecky prvku (souradnice okna) od vsech hostitelu.
     private(set) var frames: [CoachTarget: CGRect] = [:]
     @ObservationIgnored private var hostFrames: [UUID: [CoachTarget: CGRect]] = [:]
     @ObservationIgnored private var hostProbes: [UUID: WeakView] = [:]
-    /// Zalozka, ktera je prave videt (nastavuje MainTabView). Vyrez kroku se ukaze jen na jeho zalozce (A2).
+    /// Zalozka, ktera je prave videt (nastavuje MainTabView). Vyrez kroku sedi jen na jeho zalozce (A2).
     var screen: CoachScreen = .home
-    /// Zmena rozvrzeni (zalozka, otevreni/zavreni listu, otoceni): overlay vyrez schova a po vykresleni
-    /// znovu zmeri, takze nikdy nesedi na starem miste.
-    private(set) var layoutVersion = 0
-
-    func layoutChanged() { layoutVersion &+= 1 }
-    /// Next v bubline (K1/D3): kroky, ktere neco otviraji nebo zaviraji (Fight sheet), resi MainTabView;
-    /// ostatni se jen posunou. Prepnuti zalozky udela MainTabView podle `screen` noveho kroku.
+    /// Next v bubline: MainTabView posune krok a prepne zalozku ve stejne animaci (E3).
     @ObservationIgnored var performNext: (@MainActor (CoachStep) -> Void)?
     @ObservationIgnored private let defaults: UserDefaults
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         onboardingDone = defaults.bool(forKey: Keys.onboardingDone)
-        let saved = (defaults.object(forKey: Keys.tutorialStep) as? Int).flatMap(CoachStep.init(rawValue:))
-        // Fight sheet po spusteni neni otevreny: kroky v nem zacnou znovu od Fight.
-        step = saved?.isInFightSheet == true ? .fight : saved
+        step = (defaults.object(forKey: Keys.tutorialStep) as? Int).flatMap(CoachStep.init(rawValue:))
     }
 
     /// Konec onboardingu; tutorial se spusti az po zavreni obrazovky onboardingu (`startTutorial`).
@@ -165,19 +161,24 @@ final class CoachMarkStore {
 
     func startTutorial() { set(.fight) }
 
-    /// Posun dal, jen kdyz krok jeste plati (dvojite klepnuti ho neposune dvakrat).
+    /// Posun o jeden krok, jen kdyz krok jeste plati (dvojite klepnuti ho neposune dvakrat).
+    /// E1: kroky se nikdy nepreskakuji; preskocit jde jen celym tutorialem pres Skip.
     func advance(from current: CoachStep) {
         guard step == current else { return }
         set(CoachStep(rawValue: current.rawValue + 1))
     }
 
-    func skipTutorial() { set(nil) }
-
-    /// Fight sheet se zavrel uprostred kroku v nem: tutorial pokracuje na Home ("Just 5 minutes").
-    func leaveFightSheet() {
-        guard step?.isInFightSheet == true else { return }
-        set(.quick)
+    /// Tlacitko Next (posledni krok Finish) v bubline.
+    func next(from current: CoachStep) {
+        guard step == current else { return }
+        if let performNext {
+            performNext(current)
+        } else {
+            advance(from: current)
+        }
     }
+
+    func skipTutorial() { set(nil) }
 
     /// Debug "Reset onboarding": znovu 1A i 1B od zacatku.
     func resetOnboarding() {
@@ -193,9 +194,9 @@ final class CoachMarkStore {
 
     // MARK: - Ramecky prvku
 
-    /// K1/D2: overlay je ve vlastnim okne nad vsemi listy, proto ramecky prvku jsou v souradnicich okna
-    /// (UIKit), ne v `.global` SwiftUI (v listu muze byt `.global` vztazene k listu). Kazdy hostitel
-    /// posle ramecky ve svem lokalnim prostoru a malou UIKit sondu, ktera je prevede do okna.
+    /// K1/D2: overlay je ve vlastnim okne nad hlavnim oknem, proto ramecky prvku jsou v souradnicich okna
+    /// (UIKit), ne v `.global` SwiftUI. Kazdy hostitel posle ramecky ve svem lokalnim prostoru a malou
+    /// UIKit sondu, ktera je prevede do okna.
     func updateFrames(_ rects: [CoachTarget: CGRect], host: UUID) {
         guard hostFrames[host] != rects else { return }
         hostFrames[host] = rects
@@ -213,8 +214,8 @@ final class CoachMarkStore {
         refreshFrames()
     }
 
-    /// Prepocet do souradnic okna. Overlay ho vola i pred ukazanim kroku, protoze list nebo zalozka
-    /// se mohly mezitim posunout animaci (sonda o tom nedostane zpravu).
+    /// Prepocet do souradnic okna. Overlay ho vola pravidelne, dokud tutorial bezi: zalozka nebo scroll
+    /// se mohly posunout a sonda o tom zpravu nedostane. Hostitel mimo okno (skryta zalozka) se vynecha.
     func refreshFrames() {
         var merged: [CoachTarget: CGRect] = [:]
         for (host, rects) in hostFrames {
@@ -223,6 +224,9 @@ final class CoachMarkStore {
         }
         if merged != frames { frames = merged }
     }
+
+    /// Jen pro testy: ramecky prvku bez UIKit sond.
+    func setFramesForTesting(_ rects: [CoachTarget: CGRect]) { frames = rects }
 }
 
 private struct WeakView {
@@ -239,13 +243,40 @@ struct CoachAnchorKey: PreferenceKey {
 }
 
 extension View {
-    /// Prvek, ktery tutorial muze zvyraznit.
+    /// Prvek, ktery tutorial muze zvyraznit. `id` dovoli obrazovce s rolovanim prvek odrolovat do zorneho pole.
     func coachMark(_ target: CoachTarget) -> some View {
         anchorPreference(key: CoachAnchorKey.self, value: .bounds) { [target: $0] }
+            .id(target)
     }
 
-    /// Prevede kotvy prvku pod sebou na globalni ramecky pro tutorial.
+    /// Prevede kotvy prvku pod sebou na ramecky pro tutorial.
     func coachMarkHost() -> some View { modifier(CoachMarkHost()) }
+
+    /// E2: nadpis vlevo nahore uhne behem tutorialu dolu pod "Skip tutorial". Ozubene kolo vpravo zustava,
+    /// Skip stoji ve stejne vysce jako ono.
+    func coachSkipClearance() -> some View { modifier(CoachSkipClearanceModifier()) }
+}
+
+private struct CoachSkipClearanceKey: EnvironmentKey {
+    static let defaultValue: CGFloat = 0
+}
+
+extension EnvironmentValues {
+    /// E2: o kolik nadpis zalozky uhne dolu, dokud bezi tutorial (jinak 0).
+    var coachSkipClearance: CGFloat {
+        get { self[CoachSkipClearanceKey.self] }
+        set { self[CoachSkipClearanceKey.self] = newValue }
+    }
+}
+
+private struct CoachSkipClearanceModifier: ViewModifier {
+    @Environment(\.coachSkipClearance) private var clearance
+
+    func body(content: Content) -> some View {
+        content
+            .padding(.top, clearance)
+            .animation(.easeInOut(duration: 0.3), value: clearance)
+    }
 }
 
 private struct CoachMarkHost: ViewModifier {
@@ -296,8 +327,8 @@ private struct CoachWindowProbe: UIViewRepresentable {
 
 // MARK: - Vlastni okno
 
-/// K1/D2: overlay tutorialu ve vlastnim UIWindow nad hlavnim oknem, takze ho zadny list (Fight sheet)
-/// neprekryje ani neposune a "Skip tutorial" je vzdy na stejnem miste. Okno je videt jen behem tutorialu
+/// K1/D2: overlay tutorialu ve vlastnim UIWindow nad hlavnim oknem, takze ho nic neprekryje
+/// a "Skip tutorial" je vzdy na stejnem miste. Okno je videt jen behem tutorialu
 /// a pohlcuje vsechna klepnuti (zvyraznene prvky nejsou interaktivni, D3); projdou jen Next a Skip.
 struct CoachOverlayWindow: UIViewRepresentable {
     let coach: CoachMarkStore
@@ -372,84 +403,325 @@ struct CoachOverlayWindow: UIViewRepresentable {
     }
 }
 
+// MARK: - Rozvrzeni (ciste vypocty, testuji se)
+
+/// Rozmery overlaye mimo View, aby sly pouzit v cistych vypoctech i v testech.
+enum CoachMetrics {
+    /// "Skip tutorial" stoji vlevo nahore ve stejne vysce jako ozubene kolo zalozek:
+    /// horni hrana 8 bodu pod bezpecnou zonou, vyska 44 (E2).
+    static let skipTop: CGFloat = FQSpace.sm
+    static let skipRowHeight: CGFloat = 44
+    /// O tolik nadpis zalozky behem tutorialu uhne dolu, aby ho Skip neprekryl.
+    static let skipClearance: CGFloat = skipRowHeight + FQSpace.sm
+    /// Vyrez je o 8 bodu vetsi nez prvek.
+    static let holePadding: CGFloat = 8
+    /// Mezera mezi vyrezem a bublinou.
+    static let bubbleGap: CGFloat = FQSpace.md
+    static let bubbleMaxWidth: CGFloat = 340
+    /// Odhad vysky bubliny, nez se zmeri.
+    static let bubbleEstimate: CGFloat = 168
+    /// E1: prvek, ktery se do 1 s nenajde, = bublina uprostred bez vyrezu.
+    static let fallbackSeconds: TimeInterval = 1
+}
+
+/// Plocha overlaye: cela obrazovka (souradnice okna) a jeji bezpecna zona.
+struct CoachSpace: Equatable, Sendable {
+    var size: CGSize
+    var safeTop: CGFloat
+    var safeBottom: CGFloat
+    var safeLeading: CGFloat = 0
+
+    /// Spodni hrana radku se "Skip tutorial".
+    var skipRowBottom: CGFloat { safeTop + CoachMetrics.skipTop + CoachMetrics.skipRowHeight }
+    /// Bublina nikdy nezajede do radku se Skip ani pod domovsky indikator.
+    var bubbleTop: CGFloat { skipRowBottom + FQSpace.sm }
+    var bubbleBottom: CGFloat { size.height - max(safeBottom, FQSpace.lg) }
+    var bubbleWidth: CGFloat { max(0, min(CoachMetrics.bubbleMaxWidth, size.width - 2 * FQSpace.lg)) }
+
+    /// Prvek je zmereny a aspon zcasti na obrazovce pod stavovym radkem.
+    func isUsable(_ frame: CGRect) -> Bool {
+        frame.width > 1 && frame.height > 1
+            && frame.maxY > safeTop + 1 && frame.minY < size.height
+            && frame.maxX > 0 && frame.minX < size.width
+    }
+}
+
+/// Co overlay ukazuje: vyrez (prazdny = bez vyrezu) a obdelnik bubliny.
+struct CoachLayout: Equatable, Sendable {
+    var hole: CGRect
+    var radius: CGFloat
+    var bubble: CGRect
+    /// Bublina je nad prvkem: drzi spodni hranu (pri prolnuti textu roste nahoru, ne do prvku).
+    var bubbleAbove: Bool
+    var isCentered: Bool
+
+    var hasHole: Bool { hole.width > 1 && hole.height > 1 }
+
+    enum Resolution: Equatable {
+        /// Prvek je zmereny: vyrez a bublina u nej.
+        case anchored(CGRect)
+        /// Prvek jeste neni (prave se prepina zalozka): bublina zustane, kde je, s novym textem.
+        case waiting
+        /// E1 pojistka: prvek se do 1 s nenasel (nebo jeste nic neni videt): bublina uprostred bez vyrezu.
+        case centered
+    }
+
+    /// Bublina je videt vzdy: bez predchoziho rozvrzeni rovnou uprostred, jinak nejdeleji 1 s ceka na prvek.
+    static func resolve(frame: CGRect?, elapsed: TimeInterval, hasLayout: Bool) -> Resolution {
+        if let frame { return .anchored(frame) }
+        if !hasLayout || elapsed >= CoachMetrics.fallbackSeconds { return .centered }
+        return .waiting
+    }
+
+    /// Vyrez kolem prvku a bublina pod nim (kdyz se tam vejde nebo je tam vic mista), jinak nad nim;
+    /// vodorovne u prvku, ale cela na obrazovce.
+    static func anchored(to frame: CGRect, target: CoachTarget, bubbleHeight: CGFloat, in space: CoachSpace) -> CoachLayout {
+        let hole = frame.insetBy(dx: -CoachMetrics.holePadding, dy: -CoachMetrics.holePadding)
+        let radius = target.isRound ? min(hole.width, hole.height) / 2 : 20
+        let width = space.bubbleWidth
+        let top = space.bubbleTop
+        let bottom = space.bubbleBottom
+        let room = CoachMetrics.bubbleGap
+        let spaceBelow = bottom - hole.maxY - room
+        let spaceAbove = hole.minY - room - top
+        let below = spaceBelow >= bubbleHeight || spaceBelow >= spaceAbove
+        var y = below ? hole.maxY + room : hole.minY - room - bubbleHeight
+        y = min(max(y, top), max(top, bottom - bubbleHeight))
+        let x = min(max(hole.midX - width / 2, FQSpace.lg), max(FQSpace.lg, space.size.width - FQSpace.lg - width))
+        return CoachLayout(hole: hole, radius: radius, bubble: CGRect(x: x, y: y, width: width, height: bubbleHeight),
+                           bubbleAbove: !below, isCentered: false)
+    }
+
+    /// E1 pojistka: bublina uprostred viditelne plochy, vyrez zavreny do bodu (`closingAt` = stred
+    /// predchoziho vyrezu, at se plynule zavre na miste).
+    static func centered(bubbleHeight: CGFloat, in space: CoachSpace, closingAt point: CGPoint? = nil) -> CoachLayout {
+        let width = space.bubbleWidth
+        let middle = (space.bubbleTop + space.bubbleBottom) / 2
+        let y = max(space.bubbleTop, middle - bubbleHeight / 2)
+        let bubble = CGRect(x: (space.size.width - width) / 2, y: y, width: width, height: bubbleHeight)
+        let center = point ?? CGPoint(x: bubble.midX, y: bubble.midY)
+        return CoachLayout(hole: CGRect(origin: center, size: .zero), radius: 0, bubble: bubble, bubbleAbove: false, isCentered: true)
+    }
+
+    func isClose(to other: CoachLayout) -> Bool {
+        isCentered == other.isCentered && bubbleAbove == other.bubbleAbove
+            && hole.coachIsClose(to: other.hole) && bubble.coachIsClose(to: other.bubble)
+            && abs(radius - other.radius) < 0.5
+    }
+}
+
+fileprivate extension CGRect {
+    func coachIsClose(to other: CGRect, tolerance: CGFloat = 0.5) -> Bool {
+        abs(minX - other.minX) < tolerance && abs(minY - other.minY) < tolerance
+            && abs(width - other.width) < tolerance && abs(height - other.height) < tolerance
+    }
+
+    /// Klic pro prolnuti s Reduce Motion (novy vyrez nebo pozice bubliny = nova vrstva).
+    var coachKey: String {
+        "\(Int(minX.rounded())),\(Int(minY.rounded())),\(Int(width.rounded())),\(Int(height.rounded()))"
+    }
+}
+
 // MARK: - Overlay
 
-/// Ztmaveni s vyrezem, zare, bublina a "Skip tutorial". Od K1 je jediny a kresli se ve vlastnim okne
-/// (`CoachOverlayWindow`) nad hlavni obrazovkou i Fight sheetem. Krok se ukaze az po ustaleni (prechod
-/// zalozky, otevreni listu) a az je cilovy prvek vykresleny; kdyz se do ~2 s nenajde, tise se preskoci.
+/// Ztmaveni s vyrezem, zare, bublina a "Skip tutorial". Kresli se ve vlastnim okne (`CoachOverlayWindow`).
+/// L1/E3: jedna stala bublina. Po Next se text hned prolne a bublina i vyrez (pozice, velikost, zaobleni)
+/// odjedou pruzinou ~0,35 s na novy prvek; zadna prazdna pauza. E1: bublina je videt vzdy, kdyz tutorial bezi;
+/// prvek, ktery se do 1 s nenajde, = bublina uprostred bez vyrezu. Reduce Motion: jen prolnuti.
 struct CoachMarkOverlay: View {
-    /// Vyska pasu pro "Skip tutorial" pod horni bezpecnou zonou. Bublina do nej nikdy nezasahne
-    /// a obsah zalozek se behem tutorialu odsune pod nej (`tutorialTopReserve`), takze Skip nic neprekryje.
-    static let skipBand: CGFloat = 56
-
     @Environment(CoachMarkStore.self) private var coach
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.accessibilityVoiceOverEnabled) private var voiceOver
-    /// Krok, jehoz prvek je zmereny a vyrez je videt.
-    @State private var shown: CoachStep?
+    /// Plocha overlaye zmerena v body (pro sledovani prvku mimo body).
+    @State private var space: CoachSpace?
+    /// Ukazane rozvrzeni. nil = jeste nic: body pak prvni rozvrzeni spocita samo, takze bublina je videt hned.
+    @State private var layout: CoachLayout?
+    /// Krok, jehoz text bublina ukazuje (po Next se prolne).
+    @State private var shownStep: CoachStep?
+    @State private var bubbleHeight: CGFloat = 0
     @AccessibilityFocusState private var bubbleFocused: Bool
 
     var body: some View {
-        GeometryReader { proxy in
-            let bounds = CGRect(origin: .zero, size: proxy.size)
-            let skipBottom = proxy.safeAreaInsets.top + Self.skipBand
-            let hole = currentHole(in: bounds)
-            ZStack(alignment: .topLeading) {
-                if coach.step != nil {
-                    // Jedna stala vrstva: mezi kroky je vyrez zavreny do bodu u dalsiho prvku a pri ukazani
-                    // kroku se z nej pruzne otevre. Klepnuti kamkoli (i do vyrezu) se zahodi: zvyraznene
-                    // prvky nejsou interaktivni (D3), projde jen Next a Skip.
-                    CoachDimShape(hole: hole.rect, radius: hole.radius)
-                        .fill(Color.black.opacity(0.72), style: FillStyle(eoFill: true))
-                        .contentShape(Rectangle())
-                        .onTapGesture { }
-                        .accessibilityHidden(true)
-                        .transition(.opacity)
-                    if let step = shown, hole.rect.width > 0 {
-                        CoachGlow(rect: hole.rect, radius: hole.radius, pulsing: !reduceMotion)
-                            .transition(.opacity)
-                        bubble(step: step, hole: hole.rect, bounds: bounds, skipBottom: skipBottom)
-                    }
-                    skipButton
-                        .padding(.top, proxy.safeAreaInsets.top + 6)
-                        .padding(.leading, max(proxy.safeAreaInsets.leading, FQSpace.lg))
-                }
+        // Vnejsi GeometryReader respektuje bezpecnou zonu a zna jeji velikost; vnitrni ji ignoruje a kresli
+        // pres celou obrazovku. (GeometryReader s .ignoresSafeArea() hlasi bezpecnou zonu 0: proto byl Skip
+        // driv pres hodiny ve stavovem radku.)
+        GeometryReader { safe in
+            let insets = safe.safeAreaInsets
+            GeometryReader { full in
+                let current = CoachSpace(size: full.size, safeTop: insets.top, safeBottom: insets.bottom, safeLeading: insets.leading)
+                overlay(in: current)
+                    .onAppear { space = current }
+                    .onChange(of: current) { _, new in space = new }
             }
-            .frame(width: bounds.width, height: bounds.height)
+            .ignoresSafeArea()
         }
-        .ignoresSafeArea()
         // VoiceOver cte jen bublinu a Skip, ne obrazovku pod ztmavenim.
         .accessibilityAddTraits(coach.step != nil ? .isModal : [])
-        // Otoceni nebo jina velikost: vyrez se prepocita.
-        .onGeometryChange(for: CGSize.self) { $0.size } action: { _ in coach.layoutChanged() }
-        // Novy krok, zmena zalozky nebo listu: vyrez se schova a zmeri znovu az po vykresleni (A2).
-        .task(id: ResolveKey(step: coach.step, layout: coach.layoutVersion, screen: coach.screen)) { await resolve() }
+        .task(id: coach.step) { await track() }
     }
 
-    private struct ResolveKey: Equatable {
-        let step: CoachStep?
-        let layout: Int
-        let screen: CoachScreen
-    }
-
-    // MARK: Rozvrzeni
-
-    /// Vyrez ukazaneho kroku; jinak bod (nulova velikost) uprostred prvku, na ktery se ceka.
-    private func currentHole(in bounds: CGRect) -> CoachHole {
-        if let step = shown, let frame = coach.frames[step.target] {
-            return Self.hole(for: frame, target: step.target)
+    @ViewBuilder
+    private func overlay(in space: CoachSpace) -> some View {
+        ZStack(alignment: .topLeading) {
+            if let step = coach.step {
+                let shown = layout ?? firstLayout(for: step, in: space)
+                dim(shown)
+                if shown.hasHole { glow(shown) }
+                bubble(step: shownStep ?? step, layout: shown, in: space)
+                skipButton
+                    .padding(.top, space.safeTop + CoachMetrics.skipTop)
+                    .padding(.leading, max(space.safeLeading, FQSpace.lg))
+                    .transition(.opacity)
+            }
         }
-        let center = coach.step.flatMap { coach.frames[$0.target] }.map { CGPoint(x: $0.midX, y: $0.midY) }
-            ?? CGPoint(x: bounds.midX, y: bounds.midY)
-        return CoachHole(rect: CGRect(origin: center, size: .zero), radius: 0)
+        .frame(width: space.size.width, height: space.size.height, alignment: .topLeading)
     }
 
-    private func bubble(step: CoachStep, hole: CGRect, bounds: CGRect, skipBottom: CGFloat) -> some View {
-        // Nad prvkem se pocita jen misto pod pasem Skip: bublina nikdy nezajede pod Skip.
-        let spaceAbove = hole.minY - skipBottom
-        let below = bounds.maxY - hole.maxY >= spaceAbove
-        let width = min(340, bounds.width - 2 * FQSpace.lg)
-        return VStack(alignment: .leading, spacing: FQSpace.sm) {
+    // MARK: Vrstvy
+
+    /// Jedna stala vrstva ztmaveni; vyrez se pruzne presouva. Klepnuti kamkoli (i do vyrezu) se zahodi:
+    /// zvyraznene prvky nejsou interaktivni (D3), projde jen Next a Skip.
+    private func dim(_ layout: CoachLayout) -> some View {
+        CoachDimShape(hole: layout.hole, radius: layout.radius)
+            .fill(Color.black.opacity(0.72), style: FillStyle(eoFill: true))
+            .contentShape(Rectangle())
+            .onTapGesture { }
+            .accessibilityHidden(true)
+            // Reduce Motion: vyrez se nepresouva, stary a novy se prolnou.
+            .id(reduceMotion ? AnyHashable(layout.hole.coachKey) : AnyHashable("dim"))
+            .transition(.opacity)
+    }
+
+    private func glow(_ layout: CoachLayout) -> some View {
+        CoachGlow(rect: layout.hole, radius: layout.radius, pulsing: !reduceMotion)
+            .id(reduceMotion ? AnyHashable(layout.hole.coachKey) : AnyHashable("glow"))
+            .transition(.opacity)
+    }
+
+    /// Jedna bublina pro vsechny kroky: obsah (text a Next) se prolne, ramecek odjede na nove misto.
+    private func bubble(step: CoachStep, layout: CoachLayout, in space: CoachSpace) -> some View {
+        ZStack(alignment: .topLeading) {
+            CoachBubbleContent(step: step) { next(step) }
+                .id(step)
+                .transition(.opacity)
+        }
+        .frame(width: layout.bubble.width, alignment: .topLeading)
+        // Stejne sklo jako vysledky bitvy a karty v Shop › Backgrounds (2B).
+        .fqGlassPanel(radius: FQRadius.smallCard)
+        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { bubbleHeight = $0 }
+        .accessibilityElement(children: .contain)
+        .accessibilityFocused($bubbleFocused)
+        // Nad prvkem drzi bublina spodni hranu, jinak horni; pri zmene vysky (prolnuti textu) tak
+        // nikdy nezajede do vyrezu.
+        .offset(x: layout.bubble.minX, y: layout.bubbleAbove ? layout.bubble.maxY - space.size.height : layout.bubble.minY)
+        .frame(width: space.size.width, height: space.size.height, alignment: layout.bubbleAbove ? .bottomLeading : .topLeading)
+        // Reduce Motion: bublina neodjede, na novem miste se objevi nova a stara zmizi (prolnuti).
+        .id(reduceMotion ? AnyHashable("\(step.rawValue)|\(layout.bubble.coachKey)") : AnyHashable("bubble"))
+        .transition(.opacity)
+    }
+
+    /// E2: samostatna pilulka vlevo nahore v bezpecne zone, ve vysce ozubeneho kola, vzdy na stejnem miste.
+    /// Nadpisy zalozek pod ni behem tutorialu uhnou (`coachSkipClearance`), takze nic neprekryva.
+    private var skipButton: some View {
+        let ink = Color(red: 10 / 255, green: 9 / 255, blue: 20 / 255)
+        return Button { withAnimation(.easeOut(duration: 0.25)) { coach.skipTutorial() } } label: {
+            Text("Skip tutorial")
+                .fqFont(size: 15, weight: .semibold, design: .rounded)
+                .foregroundStyle(FQColor.textPrimary)
+                .lineLimit(1)
+                .fixedSize()
+                .padding(.horizontal, FQSpace.lg)
+                .frame(height: 40)
+                .background(ink.opacity(0.94), in: Capsule())
+                .overlay { Capsule().stroke(Color.white.opacity(0.16), lineWidth: 1) }
+                .shadow(color: .black.opacity(0.5), radius: 10, y: 4)
+                .frame(height: CoachMetrics.skipRowHeight)
+                .contentShape(Capsule())
+        }
+        .buttonStyle(.fqPress)
+    }
+
+    // MARK: Logika
+
+    private var moveAnimation: Animation {
+        reduceMotion ? .easeInOut(duration: 0.25) : .spring(response: 0.35, dampingFraction: 0.86)
+    }
+
+    private func next(_ step: CoachStep) {
+        coach.next(from: step)
+    }
+
+    /// Prvek kroku, kdyz je zmereny na spravne zalozce (lista zalozek je videt vsude).
+    private func visibleFrame(for step: CoachStep, in space: CoachSpace) -> CGRect? {
+        guard step.target.isInTabBar || step.screen == coach.screen, let frame = coach.frames[step.target] else { return nil }
+        return space.isUsable(frame) ? frame : nil
+    }
+
+    private var currentBubbleHeight: CGFloat { bubbleHeight > 0 ? bubbleHeight : CoachMetrics.bubbleEstimate }
+
+    /// Prvni rozvrzeni (pred prvnim merenim v `track`): u prvku, nebo rovnou uprostred.
+    private func firstLayout(for step: CoachStep, in space: CoachSpace) -> CoachLayout {
+        if let frame = visibleFrame(for: step, in: space) {
+            return .anchored(to: frame, target: step.target, bubbleHeight: currentBubbleHeight, in: space)
+        }
+        return .centered(bubbleHeight: currentBubbleHeight, in: space)
+    }
+
+    /// Sleduje prvek aktualniho kroku: text se prolne hned, bublina a vyrez odjedou, jakmile prvek stoji.
+    /// Bezi, dokud krok trva, takze vyrez sedi i po odrolovani nebo prijezdu zalozky.
+    private func track() async {
+        guard let step = coach.step else {
+            withAnimation(.easeOut(duration: 0.25)) { shownStep = nil }
+            layout = nil
+            return
+        }
+        withAnimation(.easeInOut(duration: 0.22)) { shownStep = step }
+        let started = Date()
+        var lastFrame: CGRect?
+        var focused = false
+        while !Task.isCancelled {
+            if let space {
+                coach.refreshFrames()
+                let frame = visibleFrame(for: step, in: space)
+                let elapsed = Date().timeIntervalSince(started)
+                switch CoachLayout.resolve(frame: frame, elapsed: elapsed, hasLayout: layout != nil) {
+                case let .anchored(found):
+                    // Prvek musi stat: dve mereni po sobe na stejnem miste (zalozka nebo scroll dojely),
+                    // at vyrez nehoni prijizdejici obsah. Prvni ukazani bez cekani.
+                    if layout == nil || lastFrame.map({ $0.coachIsClose(to: found, tolerance: 1) }) == true {
+                        apply(.anchored(to: found, target: step.target, bubbleHeight: currentBubbleHeight, in: space))
+                    }
+                    lastFrame = found
+                case .waiting:
+                    lastFrame = nil
+                case .centered:
+                    lastFrame = nil
+                    let closing = layout.map { CGPoint(x: $0.hole.midX, y: $0.hole.midY) }
+                    apply(.centered(bubbleHeight: currentBubbleHeight, in: space, closingAt: closing))
+                }
+                if !focused, elapsed > 0.3 {
+                    focused = true
+                    bubbleFocused = true
+                }
+                try? await Task.sleep(for: .milliseconds(elapsed < 1.5 ? 50 : 150))
+            } else {
+                try? await Task.sleep(for: .milliseconds(50))
+            }
+        }
+    }
+
+    private func apply(_ new: CoachLayout) {
+        if let layout, layout.isClose(to: new) { return }
+        withAnimation(moveAnimation) { layout = new }
+    }
+}
+
+/// Obsah bubliny jednoho kroku: titulek, "3 of 13", nejvys dve vety a Next (posledni Finish).
+struct CoachBubbleContent: View {
+    let step: CoachStep
+    let onNext: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: FQSpace.sm) {
             HStack(spacing: FQSpace.sm) {
                 if step == .battle { PhoneFlipIcon() }
                 Text(step.title)
@@ -467,7 +739,7 @@ struct CoachMarkOverlay: View {
                 .fixedSize(horizontal: false, vertical: true)
             HStack {
                 Spacer()
-                Button { next(step) } label: {
+                Button(action: onNext) {
                     Text(step.buttonTitle)
                         .fqFont(size: 16, weight: .heavy, design: .rounded)
                         .foregroundStyle(FQColor.onCta)
@@ -479,113 +751,11 @@ struct CoachMarkOverlay: View {
             }
         }
         .padding(FQSpace.lg)
-        .frame(width: width)
-        // Stejne sklo jako vysledky bitvy a karty v Shop › Backgrounds (2B).
-        .fqGlassPanel(radius: FQRadius.smallCard)
-        .accessibilityElement(children: .contain)
-        .accessibilityFocused($bubbleFocused)
-        .id(step)
-        .transition(.opacity)
-        // Bublina pod prvkem, kdyz je tam vic mista, jinak nad nim (ale pod pasem Skip);
-        // vodorovne u prvku, ale cela na obrazovce.
-        .offset(x: min(max(hole.midX, width / 2 + FQSpace.lg), bounds.width - width / 2 - FQSpace.lg) - bounds.width / 2)
-        .padding(below ? Edge.Set.top : Edge.Set.bottom, below ? max(hole.maxY + FQSpace.md, skipBottom) : bounds.height - hole.minY + FQSpace.md)
-        .padding(.top, below ? 0 : skipBottom)
-        .frame(width: bounds.width, height: bounds.height, alignment: below ? .top : .bottom)
-    }
-
-    /// D2: samostatna pilulka vlevo nahore v bezpecne zone, vzdy na stejnem miste ve vsech krocich,
-    /// i kdyz je otevreny Fight sheet (overlay je ve vlastnim okne nad nim). Plne pozadi a stin.
-    private var skipButton: some View {
-        let ink = Color(red: 10 / 255, green: 9 / 255, blue: 20 / 255)
-        return Button { withAnimation(.easeOut(duration: 0.25)) { coach.skipTutorial() } } label: {
-            Text("Skip tutorial")
-                .fqFont(size: 15, weight: .semibold, design: .rounded)
-                .foregroundStyle(FQColor.textPrimary)
-                .lineLimit(1)
-                .fixedSize()
-                .padding(.horizontal, FQSpace.lg)
-                .frame(height: 40)
-                .background(ink.opacity(0.94), in: Capsule())
-                .overlay { Capsule().stroke(Color.white.opacity(0.16), lineWidth: 1) }
-                .shadow(color: .black.opacity(0.5), radius: 10, y: 4)
-                .frame(minHeight: 44)
-                .contentShape(Capsule())
-        }
-        .buttonStyle(.fqPress)
-    }
-
-    // MARK: Logika
-
-    private func next(_ step: CoachStep) {
-        guard step == coach.step else { return }
-        if let performNext = coach.performNext {
-            performNext(step)
-        } else {
-            withAnimation(.easeOut(duration: 0.2)) { coach.advance(from: step) }
-        }
-    }
-
-    /// Ceka, az se prvek kroku zmeri a obrazovka se ustali; pak vyrez ukaze. Nenalezeny prvek = krok se preskoci.
-    private func resolve() async {
-        guard let step = coach.step else {
-            withAnimation(.easeOut(duration: 0.2)) { shown = nil }
-            return
-        }
-        // Jina zalozka, nez krok potrebuje (MainTabView ji prave prepina), nebo zmena rozvrzeni:
-        // stary vyrez hned pryc, aby nesedel na prazdnem miste.
-        if let screen = step.screen, screen != coach.screen {
-            withAnimation(.easeOut(duration: 0.15)) { shown = nil }
-            return
-        }
-        if shown != nil {
-            withAnimation(.easeOut(duration: 0.15)) { shown = nil }
-        }
-        // Prechod zalozky, otevreni nebo zavreni listu: pockat, at vyrez nesedi na pohybujicim se prvku.
-        try? await Task.sleep(for: .milliseconds(step.isInFightSheet ? 600 : 480))
-        var lastFrame: CGRect?
-        for _ in 0..<14 {
-            guard !Task.isCancelled else { return }
-            if let screen = step.screen, screen != coach.screen { return }
-            coach.refreshFrames()
-            if let frame = coach.frames[step.target], frame.width > 1, frame.height > 1 {
-                // Prvek musi stat: dve mereni po sobe na stejnem miste (list nebo zalozka dojela).
-                if let lastFrame, abs(lastFrame.minY - frame.minY) < 1, abs(lastFrame.minX - frame.minX) < 1 {
-                    if reduceMotion {
-                        withAnimation(.easeIn(duration: 0.2)) { shown = step }
-                    } else {
-                        withAnimation(.spring(response: 0.45, dampingFraction: 0.82)) { shown = step }
-                    }
-                    try? await Task.sleep(for: .milliseconds(250))
-                    bubbleFocused = true
-                    return
-                }
-                lastFrame = frame
-            }
-            try? await Task.sleep(for: .milliseconds(140))
-        }
-        guard !Task.isCancelled else { return }
-        // Prvek neni (napr. vsechny svety dobyte, Fight chybi): krok se tise preskoci, appka nezamrzne.
-        // Fight a battle otviraji a zaviraji list, proto jdou pres MainTabView jako Next.
-        if let performNext = coach.performNext, step == .fight || step == .battle {
-            performNext(step)
-        } else {
-            coach.advance(from: step)
-        }
-    }
-
-    static func hole(for frame: CGRect, target: CoachTarget) -> CoachHole {
-        let rect = frame.insetBy(dx: -8, dy: -8)
-        return CoachHole(rect: rect, radius: target.isRound ? rect.height / 2 : 20)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
-struct CoachHole {
-    let rect: CGRect
-    let radius: CGFloat
-}
-
-/// Cela plocha minus zaobleny vyrez (vyplnuje se pravidlem even-odd). Vyrez se pruzne presouva.
+/// Cela plocha minus zaobleny vyrez (vyplnuje se pravidlem even-odd). Vyrez animuje pozici, velikost i zaobleni.
 struct CoachDimShape: Shape {
     var hole: CGRect
     var radius: CGFloat
@@ -600,8 +770,9 @@ struct CoachDimShape: Shape {
 
     nonisolated func path(in rect: CGRect) -> Path {
         var path = Path(rect.insetBy(dx: -400, dy: -400))
-        if hole.width > 0 {
-            path.addRoundedRect(in: hole, cornerSize: CGSize(width: radius, height: radius), style: .continuous)
+        if hole.width > 0, hole.height > 0 {
+            let corner = min(radius, hole.width / 2, hole.height / 2)
+            path.addRoundedRect(in: hole, cornerSize: CGSize(width: corner, height: corner), style: .continuous)
         }
         return path
     }

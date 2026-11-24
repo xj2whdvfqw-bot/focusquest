@@ -31,7 +31,12 @@ final class OnboardingTests: XCTestCase {
         XCTAssertEqual(CoachStep.shop.screen, .shop)
         XCTAssertEqual(CoachStep.stats.screen, .stats)
         XCTAssertEqual(CoachStep.dailyTarget.screen, .hero)
-        XCTAssertEqual(CoachStep.allCases.filter(\.isInFightSheet), [.focusing, .sound, .battle])
+        // L1/E1: tutorial neotvira listy. Kroky o Fight sheetu stoji na Home a ukazuji tlacitko Fight.
+        for step in [CoachStep.fight, .focusing, .sound, .battle] {
+            XCTAssertEqual(step.screen, .home, "\(step) must stay on Home")
+            XCTAssertEqual(step.target, .fight, "\(step) highlights Fight")
+        }
+        XCTAssertEqual(CoachStep.quick.target, .quick, "Step 5 highlights the link itself")
         // K1/D3: vsude Next, posledni krok Finish, zadne "Got it".
         XCTAssertEqual(CoachStep.allCases.dropLast().map(\.buttonTitle), Array(repeating: "Next", count: 12))
         XCTAssertEqual(CoachStep.settings.buttonTitle, "Finish")
@@ -64,17 +69,16 @@ final class OnboardingTests: XCTestCase {
         XCTAssertEqual(reopened.step, .streak)
     }
 
-    func testStepInsideFightSheetResumesAtFight() {
+    /// L1/E1: kroky o Fight sheetu uz v listu nejsou, takze se po spusteni vrati presne tam, kde hrac skoncil.
+    func testEveryStepResumesWhereItStopped() {
         let defaults = freshDefaults()
         let store = CoachMarkStore(defaults: defaults)
         store.finishOnboarding()
         store.startTutorial()
-        store.advance(from: .fight)
-        store.advance(from: .focusing)
+        store.next(from: .fight)
+        store.next(from: .focusing)
         XCTAssertEqual(store.step, .sound)
-        XCTAssertEqual(CoachMarkStore(defaults: defaults).step, .fight)
-        store.leaveFightSheet()
-        XCTAssertEqual(store.step, .quick)
+        XCTAssertEqual(CoachMarkStore(defaults: defaults).step, .sound)
     }
 
     func testSkipAndResetOnboarding() {

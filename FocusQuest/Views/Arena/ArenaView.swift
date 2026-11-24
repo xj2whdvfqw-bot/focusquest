@@ -78,15 +78,23 @@ struct ArenaView: View {
     @State private var pillBottom: CGFloat = 0
     @State private var bossFrameTop: CGFloat = 0
 
-    /// Ramecek bosse je 168 bodu, sprite 128, takze sprite zacina 20 bodu pod hornim okrajem.
-    /// Spodek bubliny je 2 body nad hlavou, spicka ocasku tak miri tesne nad bosse.
-    /// Na nizkem displeji (iPhone SE) je ramecek mensi, aby se Fight vesel nad listu zalozek.
-    private var bossFrame: CGFloat { isCompact ? 140 : 168 }
-    private var bubbleAnchor: CGFloat { (bossFrame - 128) / 2 - 2 }
-
-    /// Vyska obrazovky Areny (bez listy zalozek); pod 620 bodu se mezery zmensi (iPhone SE, velke pismo).
+    /// L1/E4: Home se neroluje. Vyska obrazovky (bez listy zalozek) a zmerene bloky (hlavicka se serii,
+    /// texty u bosse, tlacitka) urci velikost bosse a mezery, takze se vse vejde od iPhonu SE po Pro Max.
     @State private var availableHeight: CGFloat = 0
-    private var isCompact: Bool { availableHeight > 0 && availableHeight < 620 }
+    @State private var topBlockHeight: CGFloat = 0
+    @State private var bossTextHeight: CGFloat = 0
+    @State private var actionHeight: CGFloat = 0
+    @Environment(CoachMarkStore.self) private var coach: CoachMarkStore?
+
+    private var layout: ArenaLayout {
+        ArenaLayout(available: availableHeight, top: topBlockHeight, bossText: bossTextHeight, actions: actionHeight)
+    }
+
+    private var isCompact: Bool { layout.compact }
+    /// Ramecek bosse (sprite je 128/168 ramecku); spodek bubliny je 2 body nad hlavou, spicka ocasku
+    /// tak miri tesne nad bosse.
+    private var bossFrame: CGFloat { layout.bossFrame }
+    private var bubbleAnchor: CGFloat { (bossFrame - layout.spriteSize) / 2 - 2 }
 
     /// Vyska, kterou bublina smi zabrat: od hlavy bosse po pilulku serie.
     private var bubbleRoom: CGFloat? {
@@ -95,22 +103,29 @@ struct ArenaView: View {
     }
 
     var body: some View {
-        ScreenScaffold(scene: .lanternGrove, fillsHeight: true, spacing: isCompact ? FQSpace.sm : FQSpace.xl) {
-            // Pozdrav se jmenem z onboardingu.
-            ScreenHeader(eyebrow: profileModel.greetingName.map { "Hi, \($0)" }, title: "Ready to focus?")
-            streakPill
-                .coachMark(.streak)
-                .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).maxY } action: { pillBottom = $0 }
-            if focusMode.suggestsBattle, let node = nextNode, model.isBetweenBattles {
-                focusSuggestion(node)
+        ScreenScaffold(scene: .lanternGrove, fixed: true, spacing: 0) {
+            VStack(alignment: .leading, spacing: 0) {
+                // Pozdrav se jmenem z onboardingu.
+                ScreenHeader(eyebrow: profileModel.greetingName.map { "Hi, \($0)" }, title: "Ready to focus?")
+                streakPill
+                    .coachMark(.streak)
+                    .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).maxY } action: { pillBottom = $0 }
+                    .padding(.top, isCompact ? FQSpace.sm : FQSpace.lg)
+                if focusMode.suggestsBattle, let node = nextNode, model.isBetweenBattles {
+                    focusSuggestion(node)
+                        .padding(.top, FQSpace.sm)
+                }
             }
+            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { topBlockHeight = $0 }
             // Volne misto: 1 dil nad bossem, 2 dily pod nim. Boss tak sedi blizko stredu obrazovky
-            // a mezi nim a tlacitkem Fight je vzduch. Kdyz se obsah nevejde (SE, velke pismo),
-            // spacery maji jen minimum a obrazovka roluje.
-            Spacer(minLength: isCompact ? FQSpace.xs : FQSpace.md)
+            // a mezi nim a tlacitkem Fight je vzduch.
+            Spacer(minLength: layout.minGap)
             bossSection
-            Spacer(minLength: isCompact ? FQSpace.sm : FQSpace.lg)
-            Spacer(minLength: 0)
+                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { height in
+                    bossTextHeight = max(0, height - (nextNode == nil ? 0 : bossFrame))
+                }
+            Spacer(minLength: layout.minGap)
+            Spacer(minLength: layout.minGap)
             actionSection
         }
         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { availableHeight = $0 }
@@ -282,9 +297,9 @@ struct ArenaView: View {
 
     // MARK: - 2D: oslava serie
 
-    /// Home je videt a nic ho nezakryva (bitva, Fight sheet) a dnes je oslava na rade.
+    /// Home je videt a nic ho nezakryva (bitva, Fight sheet, tutorial) a dnes je oslava na rade.
     private var canCelebrateStreak: Bool {
-        isOnScreen && !battle.isPresented && !battle.showsFightSheet
+        isOnScreen && !battle.isPresented && !battle.showsFightSheet && coach?.step == nil
             && profileModel.stats.isStreakCelebrationDue(lastCelebratedDay: celebratedDay)
     }
 
@@ -352,7 +367,7 @@ struct ArenaView: View {
 
     /// Dole u palce: Fight a "Just 5 minutes" (nebo "Pick a world", kdyz je svet dobyty).
     private var actionSection: some View {
-        VStack(spacing: isCompact ? FQSpace.xs : FQSpace.lg) {
+        VStack(spacing: layout.actionSpacing) {
             if let node = nextNode {
                 fightButton(node)
                 Button {
@@ -364,21 +379,26 @@ struct ArenaView: View {
                         .fqFont(size: 15, weight: .semibold, design: .rounded)
                         .underline()
                         .foregroundStyle(FQColor.textSecondary)
-                        .frame(maxWidth: .infinity)
+                        .padding(.horizontal, FQSpace.md)
                         .frame(minHeight: 44)
+                        // Krok 5 tutorialu zvyrazni primo odkaz, ne celou sirku radku.
+                        .coachMark(.quick)
+                        .frame(maxWidth: .infinity)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.fqPress)
                 .disabled(!model.isBetweenBattles)
-                .coachMark(.quick)
             } else {
+                // Vsechny svety dobyte: kroky 1–4 tutorialu ukazuji tohle tlacitko misto Fight.
                 Button(action: openPath) { ctaLabel("Pick a world", symbol: "map.fill") }
                     .buttonStyle(.fqPress)
+                    .coachMark(.fight)
             }
         }
         .frame(maxWidth: .infinity)
-        // Fight a "Just 5 minutes" nesedi nalepene na liste zalozek (po testu #54 o 24 pt vys).
-        .padding(.bottom, isCompact ? FQSpace.sm : FQSpace.xl)
+        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { actionHeight = $0 }
+        // Fight a "Not feeling it?" cele nad listou zalozek s odstupem (E4).
+        .padding(.bottom, layout.bottomPadding)
     }
 
     private func fightButton(_ node: Boss) -> some View {
@@ -412,7 +432,7 @@ struct ArenaView: View {
     private func bossButton(_ node: Boss) -> some View {
         let angry = poke?.angry == true
         return Button { pokeBoss(node) } label: {
-            PixelArtAvatarView(sprite: .boss(node.pixelSpriteConfig), size: 128)
+            PixelArtAvatarView(sprite: .boss(node.pixelSpriteConfig), size: layout.spriteSize)
                 .saturation(angry ? 1.4 : 1)
                 .shadow(color: FQColor.danger.opacity(angry ? 0.8 : 0), radius: 10)
                 // Na svetlych pozadich stoji boss bez kruhu jen s vrzenym stinem (0 6 10 rgba(0,0,0,.35)).
@@ -447,7 +467,7 @@ struct ArenaView: View {
                             .init(color: FQColor.danger.opacity(0.06), location: 0.8),
                             .init(color: FQColor.danger.opacity(0), location: 1),
                         ],
-                        center: .center, startRadius: 0, endRadius: 84
+                        center: .center, startRadius: 0, endRadius: bossFrame / 2
                     )
                     .opacity(angry ? 1 : 0)
                     .animation(.easeOut(duration: 0.3), value: angry)
@@ -521,6 +541,63 @@ struct ArenaView: View {
         guard minutes >= 60 else { return "\(minutes) min" }
         let rest = minutes % 60
         return rest == 0 ? "\(minutes / 60) h" : "\(minutes / 60) h \(rest) min"
+    }
+}
+
+/// L1/E4: rozvrzeni Home bez rolovani. Z vysky obrazovky nad listou zalozek a zmerenych bloku (hlavicka
+/// se serii, texty u bosse, tlacitka) spocita velikost bosse a mezery tak, aby Fight i "Not feeling it?"
+/// byly cele nad listou s odstupem: od iPhonu SE (3. gen.) po Pro Max, i behem tutorialu, kdy nadpis
+/// uhne pod "Skip tutorial". Bloky se meri, takze s vetsim pismem se zmensi boss, ne tlacitka.
+struct ArenaLayout: Equatable {
+    /// Bezpecna zona Home konci 8 bodu pod horni hranou listy zalozek (FQTabBarMetrics.contentGap).
+    static let tabBarOverlap: CGFloat = max(0, -FQTabBarMetrics.contentGap)
+    static let minBoss: CGFloat = 84
+    static let maxBoss: CGFloat = 220
+    /// Boss zabere nejvys 26 % vysky; zbytek jsou mezery (1 dil nad bossem, 2 dily pod nim).
+    static let bossShare: CGFloat = 0.26
+    /// Odhady bloku, nez se zmeri (bezna velikost pisma).
+    static let topEstimate: CGFloat = 136
+    static let bossTextEstimate: CGFloat = 81
+    static let actionsEstimate: CGFloat = 108
+
+    /// Nizka obrazovka (iPhone SE, velke pismo): mensi mezery.
+    let compact: Bool
+    /// Ramecek bosse; sprite je 128/168 ramecku.
+    let bossFrame: CGFloat
+    /// Nejmensi mezera nad bossem a pod nim.
+    let minGap: CGFloat
+    /// Mezera mezi Fight a "Not feeling it?".
+    let actionSpacing: CGFloat
+    /// Od spodku "Not feeling it?" ke spodku bezpecne zony (8 bodu pod listou + odstup od listy).
+    let bottomPadding: CGFloat
+
+    init(available: CGFloat, top: CGFloat, bossText: CGFloat, actions: CGFloat) {
+        compact = available > 0 && available < 640
+        minGap = compact ? FQSpace.xs : FQSpace.md
+        actionSpacing = compact ? FQSpace.xs : FQSpace.md
+        bottomPadding = Self.tabBarOverlap + (compact ? FQSpace.md : FQSpace.xl)
+        guard available > 0 else {
+            bossFrame = 168
+            return
+        }
+        let fixed = Self.fixedHeight(top: top > 0 ? top : Self.topEstimate,
+                                     bossText: bossText > 0 ? bossText : Self.bossTextEstimate,
+                                     actions: actions > 0 ? actions : Self.actionsEstimate,
+                                     minGap: minGap, bottomPadding: bottomPadding)
+        let room = available - fixed
+        bossFrame = min(Self.maxBoss, max(Self.minBoss, min(available * Self.bossShare, room))).rounded(.down)
+    }
+
+    var spriteSize: CGFloat { (bossFrame * 128 / 168).rounded() }
+
+    /// Vyska vseho krome bosse a volnych mezer: horni okraj, bloky, tri nejmensi mezery, spodni odstup.
+    static func fixedHeight(top: CGFloat, bossText: CGFloat, actions: CGFloat, minGap: CGFloat, bottomPadding: CGFloat) -> CGFloat {
+        FQSpace.sm + top + bossText + actions + 3 * minGap + bottomPadding
+    }
+
+    /// Cely obsah Home s nejmensimi mezerami (test: musi se vejit do dostupne vysky).
+    func minimumHeight(top: CGFloat, bossText: CGFloat, actions: CGFloat) -> CGFloat {
+        Self.fixedHeight(top: top, bossText: bossText, actions: actions, minGap: minGap, bottomPadding: bottomPadding) + bossFrame
     }
 }
 

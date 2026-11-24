@@ -5,40 +5,68 @@ struct ScreenScaffold<Content: View>: View {
     var alert = false
     /// Ktera pixelova krajina je za obrazovkou.
     var scene: BackdropScene = .enchantedForest
-    /// Obsah je aspon tak vysoky jako obrazovka, takze Spacer v nem odsune
-    /// hlavni akci dolu k palci (Arena). Kdyz se obsah nevejde, normalne roluje.
-    var fillsHeight = false
+    /// L1/E4: pevne rozvrzeni bez rolovani (Home). Obsah dostane presne vysku obrazovky nad listou zalozek
+    /// a mezery si rozdeli sam (Spacer), takze nic nejde odrolovat a zustat posunute.
+    /// Ostatni obrazovky roluji se standardnim odpruzenim: co se vejde, vzdy se vrati na misto.
+    var fixed = false
     /// Svisla mezera mezi bloky obsahu.
     var spacing: CGFloat = FQSpace.xl
     @ViewBuilder let content: () -> Content
+    @Environment(CoachMarkStore.self) private var coach: CoachMarkStore?
+
+    /// Zacatek obsahu (navrat nahoru po konci tutorialu).
+    private static var topID: String { "fq.screen.top" }
 
     var body: some View {
         ZStack {
             FocusQuestBackdrop(alert: alert, scene: scene)
             GeometryReader { proxy in
-                ScrollView {
-                    VStack(alignment: .leading, spacing: spacing) {
-                        content()
+                if fixed {
+                    column(bottomPadding: 0)
+                        .frame(height: proxy.size.height, alignment: .top)
+                        // Po prepnuti zalozky se obsah plynule objevi (krajina za nim stoji).
+                        .modifier(TabSwitchEntrance())
+                } else {
+                    ScrollViewReader { reader in
+                        ScrollView {
+                            column(bottomPadding: FQSpace.xxl)
+                                .id(Self.topID)
+                                .modifier(TabSwitchEntrance())
+                        }
+                        .scrollIndicators(.hidden)
+                        .onChange(of: coach?.step) { _, step in scrollForTutorial(to: step, with: reader) }
                     }
-                    // Svetla pozadi: bily text dostane silny stin, aby byl citelny.
-                    .modifier(BrightTextShadow())
-                    .padding(.horizontal, FQSpace.lg)
-                    .padding(.top, FQSpace.sm)
-                    .padding(.bottom, fillsHeight ? FQSpace.lg : FQSpace.xxl)
-                    // Na iPadu drzi obsah v citelne sirce misto roztazeni pres cely displej.
-                    .frame(maxWidth: 640)
-                    .frame(maxWidth: .infinity)
-                    .frame(minHeight: fillsHeight ? proxy.size.height : nil, alignment: .top)
-                    // Po prepnuti zalozky se obsah plynule objevi (krajina za nim stoji).
-                    .modifier(TabSwitchEntrance())
                 }
-                .scrollIndicators(.hidden)
             }
             // Obsah roluje pod stavovy radek a Dynamic Island; tmavy prechod ho tam ztlumi.
             StatusBarFade()
         }
         // Krajina je vzdy nocni, takze text a sklo musi byt vzdy v tmavem rezimu (i v listech).
         .preferredColorScheme(.dark)
+    }
+
+    private func column(bottomPadding: CGFloat) -> some View {
+        VStack(alignment: .leading, spacing: spacing) {
+            content()
+        }
+        // Svetla pozadi: bily text dostane silny stin, aby byl citelny.
+        .modifier(BrightTextShadow())
+        .padding(.horizontal, FQSpace.lg)
+        .padding(.top, FQSpace.sm)
+        .padding(.bottom, bottomPadding)
+        // Na iPadu drzi obsah v citelne sirce misto roztazeni pres cely displej.
+        .frame(maxWidth: 640)
+        .frame(maxWidth: .infinity)
+    }
+
+    /// Krok tutorialu s prvkem na teto obrazovce: odroluje jen tolik, aby byl prvek cely videt (iPhone SE),
+    /// prvek jinde nic nezmeni. Po konci tutorialu se obrazovka vrati nahoru.
+    private func scrollForTutorial(to step: CoachStep?, with reader: ScrollViewProxy) {
+        if let step {
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) { reader.scrollTo(step.target, anchor: nil) }
+        } else {
+            reader.scrollTo(Self.topID, anchor: .top)
+        }
     }
 }
 
@@ -144,7 +172,9 @@ struct ScreenHeader: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: FQSpace.sm) {
+            // E2: behem tutorialu nadpis uhne pod "Skip tutorial"; kolo vpravo zustava ve stejne vysce jako Skip.
             ScreenTitle(eyebrow: eyebrow, title: title)
+                .coachSkipClearance()
             Spacer(minLength: FQSpace.sm)
             if let onShare {
                 Button(action: onShare) {

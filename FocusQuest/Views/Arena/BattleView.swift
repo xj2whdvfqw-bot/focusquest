@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// Bitva pres celou obrazovku (bez spodni listy): jedna plovouci karta uprostred
 /// s bossem, jmenem, obrim odpoctem a kulatymi tlacitky. Nic dalsiho behem bitvy nerusi.
@@ -1084,10 +1085,14 @@ private struct CountUpNumber: View, Animatable {
     var body: some View { Text("+\(Int(value.rounded()))") }
 }
 
-/// Prestavka po vyhre (B3): sheet se dvema vyskami. Kompaktni = BREAK, odpocet 5:00 (v 0:00 "Break's over",
-/// zluty cas a zvuk) a zlute tlacitko na dalsiho bosse. Vytazeni nahoru navic ukaze Same again, Change boss,
-/// Done for today a malou scenu odpocivajiciho hrdiny. Mezi vyskami se tahne plynule (systemove detenty);
-/// uplne stahnout panel nejde, zavre se jen tlacitky.
+/// Souradny prostor obsahu panelu prestavky (mereni vysek detentu).
+private let breakPanelSpace = "breakPanel"
+
+/// Prestavka po vyhre (B3): sheet se dvema vyskami. L1/E5: kompaktni vyska ukazuje vsechno potrebne:
+/// BREAK, odpocet 5:00 (v 0:00 "Break's over", zluty cas a zvuk), Next boss, Same again + Change boss
+/// a Done for today. Vytazeni nahoru navic ukaze scenu odpocivajiciho hrdiny u ohne. Obe vysky se meri
+/// z obsahu (nic se neoreze ani s vetsim pismem nebo na iPhonu SE). Mezi vyskami se tahne plynule
+/// (systemove detenty); uplne stahnout panel nejde, zavre se jen tlacitky.
 private struct BreakPanel: View {
     let nextBoss: Boss?
     let sameAgain: Boss
@@ -1101,17 +1106,22 @@ private struct BreakPanel: View {
     let onBreakOver: () -> Void
 
     static let breakSeconds = 5 * 60
-    /// Kompaktni vyska: madlo, BREAK, odpocet a Next boss.
-    static let compact = PresentationDetent.height(330)
-    /// Roztazena vyska: navic dlazdice, Done for today a scena hrdiny.
-    static let expanded = PresentationDetent.height(640)
+    /// Odhady vysek, nez se obsah zmeri.
+    static let compactEstimate: CGFloat = 480
+    static let expandedEstimate: CGFloat = 620
 
     /// Konec prestavky podle hodin, takze odpocet sedi i po navratu z pozadi.
     @State private var endsAt = Date().addingTimeInterval(TimeInterval(BreakPanel.breakSeconds))
-    @State private var detent = BreakPanel.compact
+    /// Kompaktni vyska = spodek "Done for today" + okraj; roztazena = spodek sceny s hrdinou + okraj.
+    @State private var compactHeight = BreakPanel.compactEstimate
+    @State private var expandedHeight = BreakPanel.expandedEstimate
+    @State private var detent = PresentationDetent.height(BreakPanel.compactEstimate)
+    @State private var bottomInset: CGFloat = 0
+    @State private var compactContent: CGFloat = 0
+    @State private var expandedContent: CGFloat = 0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    private var isExpanded: Bool { detent == Self.expanded }
+    private var isExpanded: Bool { detent == .height(expandedHeight) }
 
     var body: some View {
         // ScrollView jen kvuli zarovnani nahoru: obsah ma prirozenou vysku a sheet ho orizne podle detentu.
@@ -1145,22 +1155,34 @@ private struct BreakPanel: View {
                             .contentShape(Capsule())
                     }
                     .buttonStyle(.fqPress)
+                    .onGeometryChange(for: CGFloat.self) { $0.frame(in: .named(breakPanelSpace)).maxY } action: { bottom in
+                        updateHeights(compact: bottom + FQSpace.lg)
+                    }
+                    // Scena je jen ve vytazenem panelu; v kompaktni vysce by z ni pod okrajem koukal prouzek.
                     RestingHeroScene(hero: hero, heroClass: heroClass, accent: accent)
+                        .opacity(isExpanded ? 1 : 0)
+                        .animation(reduceMotion ? nil : .easeOut(duration: 0.25), value: isExpanded)
+                        .accessibilityHidden(!isExpanded)
+                        .onGeometryChange(for: CGFloat.self) { $0.frame(in: .named(breakPanelSpace)).maxY } action: { bottom in
+                            updateHeights(expanded: bottom + FQSpace.xl)
+                        }
                 }
-                // V kompaktni vysce je cast pod okrajem: prolne se, az se panel vytahne.
-                .opacity(isExpanded ? 1 : 0)
-                .animation(reduceMotion ? nil : .easeOut(duration: 0.25), value: isExpanded)
-                .accessibilityHidden(!isExpanded)
             }
             .padding(.horizontal, FQSpace.lg)
             .padding(.top, FQSpace.xl)
             .padding(.bottom, FQSpace.xl)
             .frame(maxWidth: 520)
             .frame(maxWidth: .infinity)
+            .coordinateSpace(.named(breakPanelSpace))
         }
         .scrollDisabled(true)
         .scrollIndicators(.hidden)
-        .presentationDetents([Self.compact, Self.expanded], selection: $detent)
+        // Spodni bezpecna zona (domovsky indikator) patri do vysky detentu.
+        .onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.bottom } action: { inset in
+            bottomInset = inset
+            updateHeights()
+        }
+        .presentationDetents([.height(compactHeight), .height(expandedHeight)], selection: $detent)
         .presentationDragIndicator(.visible)
         // Stahnout dolu nejde (jen mezi vyskami); zavreni jen tlacitky.
         .interactiveDismissDisabled()
@@ -1175,6 +1197,28 @@ private struct BreakPanel: View {
             guard !Task.isCancelled else { return }
             onBreakOver()
         }
+    }
+
+    /// Vysky detentu z obsahu + spodni bezpecna zona. Vybrana vyska se posune s nimi, at panel
+    /// neskoci na tu druhou.
+    private func updateHeights(compact: CGFloat? = nil, expanded: CGFloat? = nil) {
+        if let compact { compactContent = compact }
+        if let expanded { expandedContent = expanded }
+        guard compactContent > 0 else { return }
+        let inset = max(bottomInset, Self.windowBottomInset)
+        let newCompact = (compactContent + inset).rounded(.up)
+        let newExpanded = max(newCompact + 60, (expandedContent + inset).rounded(.up))
+        guard abs(newCompact - compactHeight) >= 1 || abs(newExpanded - expandedHeight) >= 1 else { return }
+        let wasExpanded = isExpanded
+        compactHeight = newCompact
+        expandedHeight = newExpanded
+        detent = .height(wasExpanded ? newExpanded : newCompact)
+    }
+
+    /// Spodni bezpecna zona okna (domovsky indikator), kdyby ji sheet nehlasil.
+    private static var windowBottomInset: CGFloat {
+        let windows = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.flatMap(\.windows)
+        return (windows.first(where: \.isKeyWindow) ?? windows.first)?.safeAreaInsets.bottom ?? 0
     }
 
     private func countdown(secondsLeft: Int) -> some View {
@@ -1265,19 +1309,28 @@ private struct BreakPanel: View {
     }
 }
 
-/// B3: mala scena v roztazenem panelu prestavky: hrdina odpociva u pixeloveho ohne a nad nim plujou "z".
-/// S Reduce Motion stoji (ohen neplapola, "z" stoji).
+/// B3: mala scena v roztazenem panelu prestavky: hrdina spi u pixeloveho ohne a nad nim plujou "z".
+/// L1/E5: klepnuti hrdinu probudi: protahne se, "z" zmizi, maly poskok, ohen vyslehne s jiskrami, klik
+/// a vibrace; po ~3 s zase usne. Jen kosmeticke (nic se nemeni). Reduce Motion: bez pohybu, "z" a zare
+/// ohne se jen prolnou.
 private struct RestingHeroScene: View {
     let hero: AvatarAppearance
     let heroClass: HeroClass
     let accent: Color
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// Kdy hrac hrdinu probudil; nil = spi.
+    @State private var wokeAt: Date?
+
+    static let awakeSeconds: TimeInterval = 3
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 8, paused: reduceMotion)) { context in
+        let awake = wokeAt != nil
+        // Probuzeni bezi 30 snimku/s, spanek 8 snimku/s (baterie).
+        TimelineView(.animation(minimumInterval: awake ? 1.0 / 30 : 1.0 / 8, paused: reduceMotion)) { context in
             let t = reduceMotion ? 0 : context.date.timeIntervalSinceReferenceDate
+            let wake = WakeMotion(since: reduceMotion ? nil : wokeAt.map { context.date.timeIntervalSince($0) })
             ZStack(alignment: .bottom) {
-                // Zem a jemna zare ohne.
+                // Zem a jemna zare ohne (vzhuru hrdina = ohen zari vic).
                 Capsule()
                     .fill(Color.black.opacity(0.25))
                     .frame(height: 14)
@@ -1285,12 +1338,16 @@ private struct RestingHeroScene: View {
                 Circle()
                     .fill(RadialGradient(colors: [Color(red: 1, green: 0.6, blue: 0.2).opacity(0.35), .clear], center: .center, startRadius: 0, endRadius: 70))
                     .frame(width: 140, height: 140)
+                    .scaleEffect(1 + 0.3 * wake.flare)
+                    .opacity(awake ? 1 : 0.75)
+                    .animation(.easeOut(duration: 0.3), value: awake)
                     .offset(x: 34, y: 40)
                 HStack(alignment: .bottom, spacing: FQSpace.lg) {
                     ZStack(alignment: .topTrailing) {
                         HeroAvatarView(appearance: hero, heroClass: heroClass, size: 72)
-                            // Pomale dychani.
-                            .scaleEffect(x: 1, y: 1 + 0.02 * sin(t * 1.6), anchor: .bottom)
+                            // Spanek = pomale dychani; probuzeni = protazeni a poskok.
+                            .scaleEffect(x: wake.stretchX, y: awake ? wake.stretchY : 1 + 0.02 * sin(t * 1.6), anchor: .bottom)
+                            .offset(y: -wake.hop)
                         ForEach(0..<3, id: \.self) { index in
                             let phase = (t * 0.45 + Double(index) / 3).truncatingRemainder(dividingBy: 1)
                             Text("z")
@@ -1300,9 +1357,20 @@ private struct RestingHeroScene: View {
                                 .offset(x: 6 + CGFloat(index) * 8 + (reduceMotion ? 0 : CGFloat(phase) * 6),
                                         y: -4 - CGFloat(index) * 10 - (reduceMotion ? 0 : CGFloat(phase) * 14))
                         }
+                        .opacity(awake ? 0 : 1)
+                        .animation(.easeOut(duration: 0.25), value: awake)
                     }
                     PixelCampfire(time: t)
                         .frame(width: 36, height: 42)
+                        .scaleEffect(1 + 0.4 * wake.flare, anchor: .bottom)
+                        .brightness(0.15 * wake.flare)
+                        .overlay(alignment: .bottom) {
+                            if let since = wake.since, since < WakeMotion.sparkSeconds {
+                                CampfireSparks(progress: since / WakeMotion.sparkSeconds)
+                                    .frame(width: 64, height: 96)
+                                    .allowsHitTesting(false)
+                            }
+                        }
                 }
                 .padding(.bottom, 6)
             }
@@ -1310,8 +1378,87 @@ private struct RestingHeroScene: View {
         .frame(height: 110)
         .frame(maxWidth: .infinity)
         .background(accent.opacity(0.08), in: FQRadius.shape(FQRadius.inBreakPanel))
+        .contentShape(FQRadius.shape(FQRadius.inBreakPanel))
+        .onTapGesture { wake() }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Your hero rests by the fire")
+        .accessibilityLabel(awake ? "Your hero is awake" : "Your hero sleeps by the fire")
+        .accessibilityHint("Wakes your hero up for a moment")
+        .accessibilityAddTraits(.isButton)
+        .accessibilityAction { wake() }
+        .task(id: wokeAt) {
+            // Po ~3 s hrdina zase usne (dalsi klepnuti cas prodlouzi).
+            guard let started = wokeAt else { return }
+            try? await Task.sleep(for: .seconds(Self.awakeSeconds))
+            guard !Task.isCancelled, wokeAt == started else { return }
+            withAnimation(.easeInOut(duration: 0.4)) { wokeAt = nil }
+        }
+    }
+
+    private func wake() {
+        // Klik (Tap sounds) a vibrace (Haptics).
+        FQFeedback.shared.play(.tap)
+        FQFeedback.shared.haptic(.light)
+        wokeAt = Date()
+    }
+}
+
+/// Probuzeni hrdiny v case `since` od klepnuti: protazeni 0–0,45 s, poskok 0,45–0,8 s (az 10 bodu),
+/// ohen hned vyslehne a do 0,9 s dohasne, jiskry 0,9 s. nil = spi nebo Reduce Motion (bez pohybu).
+private struct WakeMotion {
+    static let sparkSeconds: TimeInterval = 0.9
+
+    let since: TimeInterval?
+    var stretchX: CGFloat = 1
+    var stretchY: CGFloat = 1
+    var hop: CGFloat = 0
+    var flare: CGFloat = 0
+
+    init(since: TimeInterval?) {
+        self.since = since
+        guard let s = since, s >= 0 else { return }
+        if s < 0.45 {
+            let p = CGFloat(sin(.pi * s / 0.45))
+            stretchY = 1 + 0.12 * p
+            stretchX = 1 - 0.06 * p
+        } else if s < 0.8 {
+            let p = CGFloat((s - 0.45) / 0.35)
+            hop = 40 * p * (1 - p)
+        }
+        if s < 0.12 {
+            flare = CGFloat(s / 0.12)
+        } else if s < Self.sparkSeconds {
+            flare = CGFloat(1 - (s - 0.12) / (Self.sparkSeconds - 0.12))
+        }
+    }
+}
+
+/// Pixelove jiskry: pri vyslehnuti ohne vyletí nahoru, rozletí se do stran a zhasnou.
+private struct CampfireSparks: View {
+    /// 0 = vyleti, 1 = zhasle.
+    let progress: Double
+
+    private static let drift: [CGFloat] = [-16, -9, -3, 3, 8, 13, 18]
+    private static let rise: [CGFloat] = [40, 52, 36, 56, 46, 38, 50]
+
+    var body: some View {
+        let p = CGFloat(min(1, max(0, progress)))
+        let drift = Self.drift
+        let rise = Self.rise
+        Canvas { context, size in
+            // Jiskry startuji u vrsku plamene (42 bodu ohne nad spodkem).
+            let base = CGPoint(x: size.width / 2, y: size.height - 34)
+            let yellow = Color(red: 1.0, green: 0.88, blue: 0.40)
+            let orange = Color(red: 1.0, green: 0.60, blue: 0.20)
+            context.opacity = Double(1 - p)
+            for index in drift.indices {
+                let side: CGFloat = index.isMultiple(of: 3) ? 4 : 3
+                let x = base.x + drift[index] * p
+                let y = base.y - rise[index] * p
+                let rect = CGRect(x: (x - side / 2).rounded(), y: (y - side / 2).rounded(), width: side, height: side)
+                context.fill(Path(rect), with: .color(index.isMultiple(of: 2) ? yellow : orange))
+            }
+        }
+        .accessibilityHidden(true)
     }
 }
 
