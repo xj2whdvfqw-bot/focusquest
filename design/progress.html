@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-26T12:41:00+01:00",
-  "current": "S1 (M1–M5): build #89 běží",
-  "nextStep": "Počkat na výsledek buildu #89; při chybě opravit a pustit znovu",
+  "updated": "2026-11-26T13:13:00+01:00",
+  "current": "S1 hotovo: build #89 prošel",
+  "nextStep": "Otestovat na iPhonu obrysy, sloty výbavy, zbraně tříd a změnu třídy za Class Potion",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -982,7 +982,7 @@
     {
       "id": "S1",
       "title": "Shop a hrdina: obrysy, sloty výbavy, zbraně tříd, třída za Class Potion (M1–M5)",
-      "status": "build",
+      "status": "hotovo",
       "items": [
         { "text": "M1 Pryč hnědožlutá aura za vybranou věcí; všechny sprity v obchodě (police, pult, obrazy) mají 1px obrys #1a1a2e a malý vržený stín", "done": true },
         { "text": "M1 Vybraná věc: bílý 1px obrys + zvednutí o 3 pt (spring), žádná záře", "done": true },
@@ -998,8 +998,8 @@
         { "text": "DECISIONS.md", "done": true }
       ],
       "commit": "b307d55",
-      "build": { "number": 89, "runId": 45812176120, "result": "běží" },
-      "note": "Build #89 běží. Grafika polic, cenovek, cedulí a stávajících spritů beze změny (jen obrys, stín a nové sprity zbraní a lektvaru)."
+      "build": { "number": 89, "runId": 45812176120, "result": "úspěch" },
+      "note": "Build #89 prošel (IPA, unit testy včetně nového `EquipmentSlotTests`: všechny kombinace slotů × 4 třídy bez překryvu, snapshot try-onu, změna třídy jen lektvarem). Grafika polic, cenovek, cedulí a stávajících spritů beze změny, přibyl jen obrys, stín a nové sprity zbraní a lektvaru. Na iPhonu otestuj: v Shopu žádná aura, každá věc i obraz má tmavý obrys a stín, tenké zbraně jsou dobře vidět; vybraná věc bílý obrys a poskočí o 3 pt; hrdina má obrys ve stánku, Hero tabu i onboardingu. Nasaď kalkulačku + zbraň + sluchátka (kolem krku) + jetpack + boty + helmu najednou, nic se nesmí překrývat; Unequip zbraně vrátí výchozí zbraň třídy. Na polici Weapons nahoře vlastní třída, cizí ztlumené s „Mage only“ a neaktivním tlačítkem. Panel ukazuje slot a „replaces …“. Hero tab: třída se zámkem, odkaz otevře Shop › Supplies. Class Potion za 500 (max. 1): po koupi sheet, zrušení lektvar nechá, potvrzení „Become a Mage?“ ho spotřebuje, v ruce je výchozí zbraň nové třídy a kroužek má barvu nové třídy. Debug v Settings: „Change class (free)“. Pozor: luk je nově v pravé ruce, toulec na levém rameni a hole jsou kratší (kvůli slotům). Kdyby něco vypadalo posunuté nebo se překrývalo, napiš."
     }
   ]
 }
