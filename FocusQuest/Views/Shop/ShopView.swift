@@ -19,12 +19,8 @@ struct ShopView: View {
     @State private var swings: [ShopSection: Int] = [:]
     /// Obraz uprostred karuselu (id `ShopView.backgroundID`).
     @State private var centeredBackground: String?
-    /// Cela vyska displeje (vcetne stavoveho radku a listy): stanek zabira asi 35 % (Q1/J1).
+    /// Cela vyska displeje: na nizkem displeji (iPhone SE) jsou obrazy na stene mensi.
     @State private var screenHeight: CGFloat = 844
-    /// Vyska radku ceduli (meri se), aby obsah zacinal hned pod nimi.
-    @State private var signsHeight: CGFloat = 76
-    /// O kolik je obsah pod cedulemi odrolovany (0 = nahore); zmensuje okno stanku.
-    @State private var scrollOffset: CGFloat = 0
     @State private var carouselWidth: CGFloat = 360
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -56,13 +52,6 @@ struct ShopView: View {
 
     /// Nizky displej (iPhone SE): mensi obrazy na stene.
     private var isCompact: Bool { screenHeight < 700 }
-    private var metrics: StallHeaderMetrics { StallHeaderMetrics(screenHeight: screenHeight) }
-    /// Okno stanku a cedule, kdyz je hlavicka uplne zmensena: odsud zacina viditelny obsah.
-    private var collapsedHeaderHeight: CGFloat { metrics.collapsedStallHeight + signsHeight }
-    /// Odrolovani obsahu (id rolovaci plochy).
-    private static let scrollSpace = "fq.shop.scroll"
-    /// Mekky prechod obsahu pod cedulemi (obsah se tam nikdy nekresli pres stanek).
-    private static let contentFade: CGFloat = 14
 
     private var tryOn: EquipmentItem? { tryOnID.flatMap(EquipmentItem.item(withID:)) }
 
@@ -73,36 +62,27 @@ struct ShopView: View {
         return appearance
     }
 
-    /// Q1/J1: nahore radek se stitkem, mincemi a ozubenym kolem, pod nim stanek jako hlavicka (~35 % vysky)
-    /// a hned pod oknem cedule. Pod cedulemi roluje obsah zalozky; nikdy nezajede pod stanek (je oriznuty
-    /// pod cedulemi). Pri rolovani dolu se okno s hrdinou plynule zuzi az na 40 %, cedule zustanou nahore.
+    /// R1/L1: nahore radek se stitkem, mincemi a ozubenym kolem, 16 bodu pod nim pevny stanek (striska, sloupky,
+    /// spodni lista) a pod stankem visi cedule Gear / Backgrounds / Supplies 12 bodu nad listou zalozek.
+    /// Uvnitr stanku nahore stoji napevno hrdina na podstavci, pod nim pult a pod pultem roluji police,
+    /// obrazy nebo zasoby (R1/L2). Panel vybrane veci je ve stanku nad spodni listou (R1/L3).
     var body: some View {
         ZStack {
             FocusQuestBackdrop(scene: .lanternGrove)
             VStack(spacing: 0) {
                 topBar
-                    .padding(.horizontal, FQSpace.lg)
-                    .padding(.top, FQSpace.sm)
-                    .frame(maxWidth: 640)
-                    .frame(maxWidth: .infinity)
                     .modifier(BrightTextShadow())
-                ZStack(alignment: .top) {
-                    shelves
-                    stallHeader
-                }
-                // Kompaktni panel vybrane veci vyjede dole nad listou zalozek; obsah nad nim zustava dostupny
-                // a stanek s cedulemi zustava nad nim.
-                .safeAreaInset(edge: .bottom, spacing: 0) {
-                    ZStack {
-                        if let pick {
-                            detailPanel(pick)
-                                .id(pick)
-                                .transition(reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity))
-                        }
-                    }
-                    .animation(FQMotion.spring(reduceMotion: reduceMotion), value: pick)
-                }
+                stallFrame
+                    .padding(.top, StallLayout.topGap)
+                signboards
+                    // I6: krok tutorialu o Shopu zvyrazni cedule stanku.
+                    .coachMark(.shopStall)
+                    .padding(.bottom, StallLayout.signsBottomGap - FQTabBarMetrics.contentGap)
             }
+            .padding(.horizontal, FQSpace.lg)
+            .padding(.top, FQSpace.sm)
+            .frame(maxWidth: 640)
+            .frame(maxWidth: .infinity)
             StatusBarFade()
         }
         // Krajina je vzdy nocni (jako ScreenScaffold).
@@ -150,57 +130,50 @@ struct ShopView: View {
         }
     }
 
-    /// J1: stanek a cedule nad rolovacim obsahem. Okno se zuzuje podle odrolovani; stanek nema zadna tlacitka,
-    /// takze tah po nem projde do obsahu pod nim (roluje stejne jako tah po policich).
-    private var stallHeader: some View {
+    /// R1: stanek jako pevny ram: striska, sloupky po stranach, dole lista, ze ktere visi cedule.
+    private var stallFrame: some View {
         VStack(spacing: 0) {
-            stall(window: metrics.window(scrolledBy: scrollOffset))
-                .allowsHitTesting(false)
-            signboards
-                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { signsHeight = $0 }
-                // I6: krok tutorialu o Shopu zvyrazni cedule stanku.
-                .coachMark(.shopStall)
-        }
-        .padding(.horizontal, FQSpace.lg)
-        .frame(maxWidth: 640)
-        .frame(maxWidth: .infinity)
-    }
-
-    /// I1: striska, sloupky, okno s oblohou a krajinou (I4: vycentrovany obraz) a hrdina na podstavci.
-    /// Krajina vyplnuje cele okno; hrdina s podstavcem se pri zuzeni okna zmensuje k jeho spodni hrane.
-    private func stall(window: CGFloat) -> some View {
-        let scale = window / max(1, metrics.expandedWindow)
-        return VStack(spacing: 0) {
             StallAwning()
             HStack(spacing: 0) {
                 StallPost()
-                ZStack(alignment: .bottom) {
-                    ZStack {
-                        StallScene(background: displayedBackground)
-                            .id(Self.backgroundID(displayedBackground))
-                            .transition(.opacity)
-                    }
-                    .animation(.easeInOut(duration: reduceMotion ? 0.2 : 0.45), value: Self.backgroundID(displayedBackground))
-                    VStack(spacing: -metrics.pedestalPixel) {
-                        hero
-                        StallPedestal(pixel: metrics.pedestalPixel)
-                    }
-                    .scaleEffect(scale, anchor: .bottom)
+                VStack(spacing: 0) {
+                    heroWindow
+                    // Pult pod hrdinou (stejne prkno jako police); obsah roluje jen pod nim.
+                    WoodPlank(thickness: 4, nails: true)
+                    shelves
                 }
-                .frame(maxWidth: .infinity)
-                .frame(height: window)
                 .clipped()
                 StallPost()
             }
-            // Pult stanku; z nej visi cedule.
+            // Spodni lista stanku; z ni visi cedule.
             WoodPlank(thickness: 5, nails: true)
         }
+    }
+
+    /// R1/L2: okno s krajinou (I4: vycentrovany obraz) a hrdinou na podstavci. Pevna vyska, hrdina je vzdy
+    /// cely a stejne velky; nad hlavou je misto na poskok pri zkouseni.
+    private var heroWindow: some View {
+        ZStack(alignment: .bottom) {
+            ZStack {
+                StallScene(background: displayedBackground)
+                    .id(Self.backgroundID(displayedBackground))
+                    .transition(.opacity)
+            }
+            .animation(.easeInOut(duration: reduceMotion ? 0.2 : 0.45), value: Self.backgroundID(displayedBackground))
+            VStack(spacing: -StallMetrics.pixel) {
+                hero
+                StallPedestal()
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: StallLayout.heroWindowHeight)
+        .clipped()
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(stallAccessibilityLabel)
     }
 
-    /// J1: obsah zalozky (police, obrazy, pult). Zacina hned pod cedulemi; pri odrolovani se nejdriv zmensuje
-    /// stanek, pak obsah mizi pod cedulemi (oriznuty, nikdy neni videt pres stanek).
+    /// R1/L2: police, obrazy nebo zasoby na zadni stene stanku. Roluji jen pod pultem (orizle), nikdy pres hrdinu.
+    /// Panel vybrane veci je dole v teto plose (nad spodni listou stanku) a obsah se nad nej odroluje.
     private var shelves: some View {
         ScrollViewReader { reader in
             ScrollView {
@@ -212,38 +185,29 @@ struct ShopView: View {
                     }
                 }
                 .modifier(BrightTextShadow())
-                .padding(.horizontal, FQSpace.lg)
-                // Nahore je stanek roztazeny: obsah zacina pod jeho cedulemi.
-                .padding(.top, metrics.collapseRange + FQSpace.md)
-                .padding(.bottom, FQSpace.xxl)
-                .frame(maxWidth: 640)
-                .frame(maxWidth: .infinity)
+                .padding(.horizontal, FQSpace.sm)
+                .padding(.top, FQSpace.md)
+                .padding(.bottom, FQSpace.lg)
                 .modifier(TabSwitchEntrance())
-                .onGeometryChange(for: CGFloat.self) { proxy in
-                    proxy.frame(in: .named(Self.scrollSpace)).minY
-                } action: { top in
-                    scrollOffset = collapsedHeaderHeight - top
-                }
             }
             .scrollIndicators(.hidden)
-            .coordinateSpace(.named(Self.scrollSpace))
-            // Viditelna plocha zacina pod zmensenym stankem a cedulemi (i pro odrolovani k vybrane veci).
-            .safeAreaPadding(.top, collapsedHeaderHeight)
-            .mask {
-                VStack(spacing: 0) {
-                    Color.clear.frame(height: collapsedHeaderHeight)
-                    LinearGradient(colors: [.clear, .black], startPoint: .top, endPoint: .bottom)
-                        .frame(height: Self.contentFade)
-                    Color.black
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                ZStack {
+                    if let pick {
+                        detailPanel(pick)
+                            .id(pick)
+                            .transition(reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity))
+                    }
                 }
-                // Dole obsah dal podjizdi pod plovouci listu (ScrollView kresli i do spodni bezpecne zony).
-                .padding(.bottom, -400)
+                .animation(FQMotion.spring(reduceMotion: reduceMotion), value: pick)
             }
+            .frame(maxHeight: .infinity)
+            .background { PlankWall() }
             .onChange(of: pick) { _, new in reveal(new, with: reader) }
         }
     }
 
-    /// J1: vybrana vec (cela police, popr. pult) se odroluje nad panel, aby ji panel ani cedule nezakryvaly.
+    /// L3: vybrana vec (cela police, popr. pult) se odroluje nad panel, aby ji panel nezakryval.
     private func reveal(_ pick: ShopPick?, with reader: ScrollViewProxy) {
         guard let pick else { return }
         let target: String
@@ -271,8 +235,8 @@ struct ShopView: View {
         return "Your hero, \(model.profile.heroClass.displayName)"
     }
 
-    /// J1: hrdina vyplnuje okno stanku (velikost podle vysky displeje).
-    private var heroSize: CGFloat { metrics.heroSize }
+    /// R1/L2: hrdina ma vzdy stejnou velikost (postava ~110 bodu).
+    private var heroSize: CGFloat { StallLayout.heroSize }
 
     /// I1: hrdina s vyzkousenou veci. Kazde vyzkouseni = poskok a jiskry (Reduce Motion jen prolnuti).
     private var hero: some View {
@@ -430,7 +394,7 @@ struct ShopView: View {
     static func background(forID id: String) -> ShopBackground? { ShopBackground(rawValue: id) }
     static func backgroundName(_ background: ShopBackground?) -> String { background?.name ?? ShopBackground.worldName }
 
-    private var paintingWidth: CGFloat { min(isCompact ? 150 : 200, carouselWidth * 0.58) }
+    private var paintingWidth: CGFloat { min(isCompact ? 120 : 160, carouselWidth * 0.5) }
 
     private var backgroundWall: some View {
         let centered = centeredBackground.flatMap(Self.background(forID:)) ?? (centeredBackground == nil ? model.selectedBackground : nil)
@@ -465,7 +429,6 @@ struct ShopView: View {
             .contentMargins(.horizontal, max(0, (carouselWidth - paintingWidth) / 2), for: .scrollContent)
             .frame(height: paintingWidth * 1.3 + 16)
             .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { carouselWidth = $0 }
-            .background { PlankWall().padding(.vertical, -FQSpace.sm) }
             // Snap na dalsi obraz: jemna vibrace vyberu (podle prepinace Haptics).
             .fqHaptic(.selection, trigger: centeredBackground)
 
@@ -694,11 +657,20 @@ struct ShopView: View {
                 supplyAction(supply, wide: wide).layoutPriority(1)
             }
         }
-        .padding(.horizontal, FQSpace.lg)
-        .padding(.vertical, FQSpace.md)
-        .frame(maxWidth: 640, alignment: .leading)
-        .fqGlassPanel(radius: FQRadius.smallCard)
-        .padding(.horizontal, FQSpace.lg)
+        .padding(.horizontal, FQSpace.md)
+        .padding(.vertical, FQSpace.sm)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background {
+            RoundedRectangle(cornerRadius: FQRadius.smallCard, style: .continuous)
+                .fill(Color(red: 9 / 255, green: 8 / 255, blue: 24 / 255).opacity(0.82))
+                .overlay {
+                    RoundedRectangle(cornerRadius: FQRadius.smallCard, style: .continuous)
+                        .strokeBorder(Color.white.opacity(0.12), lineWidth: 1)
+                }
+        }
+        .fqContainer(radius: FQRadius.smallCard)
+        // Odsazeni od sloupku stanku a od spodni listy.
+        .padding(.horizontal, FQSpace.sm)
         .padding(.bottom, FQSpace.sm)
         // Zavreni tahem dolu (bez krizku) nebo druhym klepnutim na vec; VoiceOver gestem escape.
         .gesture(DragGesture(minimumDistance: 12).onEnded { value in

@@ -288,36 +288,20 @@ struct StallAwning: View {
     }
 }
 
-/// Q1/J1: rozmery stanku podle vysky displeje. Stanek (striska, okno, pult) zabira asi 35 % vysky,
-/// pri rolovani obsahu se okno s hrdinou plynule zuzi az na 40 % sve vysky (striska a pult zustanou).
-struct StallHeaderMetrics: Equatable {
-    /// Podil vysky displeje pro cely stanek.
-    static let screenShare: CGFloat = 0.35
-    /// Zmensene okno = 40 % roztazeneho.
-    static let collapsedShare: CGFloat = 0.4
-    /// Striska nad oknem a pult (prkno 5 px) pod nim.
-    static var chrome: CGFloat { CGFloat(StallAwning.heightInPixels + 5) * StallMetrics.pixel }
-
-    /// Cela vyska displeje v bodech.
-    let screenHeight: CGFloat
-
-    var expandedWindow: CGFloat { max(110, (screenHeight * Self.screenShare - Self.chrome).rounded()) }
-    var collapsedWindow: CGFloat { (expandedWindow * Self.collapsedShare).rounded() }
-    /// O kolik bodu odrolovani se okno zmensuje.
-    var collapseRange: CGFloat { expandedWindow - collapsedWindow }
-    var expandedStallHeight: CGFloat { expandedWindow + Self.chrome }
-    var collapsedStallHeight: CGFloat { collapsedWindow + Self.chrome }
-
-    /// Vyska okna po odrolovani o `offset` bodu; pretazeni nahoru (zaporny offset) okno nezvetsuje.
-    func window(scrolledBy offset: CGFloat) -> CGFloat {
-        expandedWindow - min(max(offset, 0), collapseRange)
-    }
-
-    /// Podstavec: pixel 3–6 bodu podle velikosti okna, aby k velkemu hrdinovi sedel.
-    var pedestalPixel: CGFloat { min(6, max(3, (expandedWindow / 50).rounded(.down))) }
-    /// Hrdina s podstavcem vyplni vetsinu okna (nad hlavou zbyde misto na poskok pri zkouseni).
-    var heroSize: CGFloat {
-        min(210, ((expandedWindow - CGFloat(StallPedestal.heightInPixels) * pedestalPixel) * 0.84).rounded())
+/// R1: pevne rozmery stanku. Hrdina je vzdy stejne velky a cely (postava ~110 bodu, 16 x 16 pixelu po 7 bodech),
+/// okno nad pultem ma nad hlavou misto na poskok pri zkouseni a pod nohama podstavec. Nic se pri rolovani nemeni.
+enum StallLayout {
+    /// Mezera mezi radkem Shop · mince · ozubene kolo a strisku stanku.
+    static let topGap: CGFloat = 16
+    /// Vzduch mezi spodkem ceduli a horni hranou listy zalozek.
+    static let signsBottomGap: CGFloat = 12
+    /// Ramecek hrdiny (sprite 16 x 16 pixelu, postava vcetne klobouku).
+    static let heroSize: CGFloat = 112
+    /// Misto nad hlavou (poskok pri zkouseni je 16 bodu).
+    static let heroHeadroom: CGFloat = 20
+    /// Okno s krajinou: misto nad hlavou + hrdina + podstavec (prekryva se s hrdinou o 1 pixel).
+    static var heroWindowHeight: CGFloat {
+        heroHeadroom + heroSize + CGFloat(StallPedestal.heightInPixels - 1) * StallMetrics.pixel
     }
 }
 

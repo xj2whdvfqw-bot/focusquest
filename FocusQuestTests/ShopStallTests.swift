@@ -56,22 +56,30 @@ final class ShopStallTests: XCTestCase {
         XCTAssertEqual(CoachTarget.shopStall.cornerRadius, 20)
     }
 
-    /// Q1/J1: stanek je hlavicka asi 35 % vysky displeje; rolovani zuzi okno az na 40 %, pretazeni nahoru
-    /// ho nezvetsi. Hrdina s podstavcem se do okna vejde a je velky (SE, bezny iPhone, Pro Max).
-    func testStallHeaderTakesAThirdOfTheScreenAndCollapsesToFortyPercent() {
-        for height in [667.0, 844.0, 956.0] as [CGFloat] {
-            let metrics = StallHeaderMetrics(screenHeight: height)
-            XCTAssertEqual(metrics.expandedStallHeight / height, 0.35, accuracy: 0.01, "\(height)")
-            XCTAssertEqual(metrics.collapsedWindow / metrics.expandedWindow, 0.4, accuracy: 0.01, "\(height)")
-            XCTAssertEqual(metrics.window(scrolledBy: -60), metrics.expandedWindow)
-            XCTAssertEqual(metrics.window(scrolledBy: 0), metrics.expandedWindow)
-            XCTAssertEqual(metrics.window(scrolledBy: metrics.collapseRange / 2), metrics.expandedWindow - metrics.collapseRange / 2)
-            XCTAssertEqual(metrics.window(scrolledBy: 10_000), metrics.collapsedWindow)
-            let pedestal = CGFloat(StallPedestal.heightInPixels) * metrics.pedestalPixel
-            XCTAssertLessThanOrEqual(metrics.heroSize + pedestal, metrics.expandedWindow, "Hero does not fit: \(height)")
-            XCTAssertGreaterThanOrEqual(metrics.heroSize, 120, "Hero too small: \(height)")
-        }
-        XCTAssertLessThan(StallHeaderMetrics(screenHeight: 667).heroSize, StallHeaderMetrics(screenHeight: 956).heroSize)
+    /// R1/L1–L2: hrdina je vzdy cely a stejne velky (postava ~110 bodu, misto na poskok, podstavec) a na iPhonu SE
+    /// zbyde pod pultem dost mista na polici (stanek 16 bodu pod hornim radkem, cedule 12 bodu nad listou).
+    func testFixedStallLeavesRoomForShelvesOnSmallPhone() {
+        XCTAssertEqual(StallLayout.heroSize, 112, accuracy: 8)
+        XCTAssertGreaterThanOrEqual(StallLayout.heroHeadroom, 16, "Room for the try-on hop")
+        XCTAssertEqual(StallLayout.heroWindowHeight,
+                       StallLayout.heroHeadroom + StallLayout.heroSize + CGFloat(StallPedestal.heightInPixels - 1) * StallMetrics.pixel)
+        XCTAssertEqual(StallLayout.topGap, 16)
+        XCTAssertEqual(StallLayout.signsBottomGap, 12)
+
+        let signs = UIHostingController(rootView: HStack(alignment: .top, spacing: FQSpace.sm) {
+            ForEach(ShopView.ShopSection.allCases) { section in
+                HangingSign(title: section.title, icon: section, active: section == .gear, swing: 0)
+            }
+        })
+        let signsHeight = signs.sizeThatFits(in: CGSize(width: 343, height: .infinity)).height
+        XCTAssertGreaterThan(signsHeight, 40)
+        // iPhone SE: displej 667, stavovy radek 20, horni radek 8 + 44, lista zalozek se svou rezervou.
+        let tabBar = FQTabBarMetrics.bottom + FQTabBarMetrics.height
+        let chrome = 20 + 52 + StallLayout.topGap
+            + CGFloat(StallAwning.heightInPixels) * StallMetrics.pixel
+            + StallLayout.heroWindowHeight + 4 * StallMetrics.pixel + 5 * StallMetrics.pixel
+            + signsHeight + StallLayout.signsBottomGap + tabBar
+        XCTAssertGreaterThanOrEqual(667 - chrome, 110, "Too little room for shelves under the counter on iPhone SE")
     }
 
     /// I6: stanek s hrdinou, ceduli a policemi se vykresli ve skutecnem okne na SE i Pro Max (bez padu,
@@ -82,21 +90,20 @@ final class ShopStallTests: XCTestCase {
             for big in [false, true] {
                 let window = UIWindow(windowScene: scene)
                 window.frame = CGRect(origin: .zero, size: size)
-                let metrics = StallHeaderMetrics(screenHeight: size.height)
                 let content = VStack(spacing: 0) {
                     StallAwning()
                     HStack(spacing: 0) {
                         StallPost()
                         ZStack(alignment: .bottom) {
                             StallScene(background: .farm)
-                            VStack(spacing: -metrics.pedestalPixel) {
-                                HeroAvatarView(appearance: AvatarAppearance(), heroClass: .archer, size: metrics.heroSize)
-                                StallPedestal(pixel: metrics.pedestalPixel)
+                            VStack(spacing: -StallMetrics.pixel) {
+                                HeroAvatarView(appearance: AvatarAppearance(), heroClass: .archer, size: StallLayout.heroSize)
+                                StallPedestal()
                             }
                         }
                         StallPost()
                     }
-                    .frame(height: metrics.expandedWindow)
+                    .frame(height: StallLayout.heroWindowHeight)
                     WoodPlank(thickness: 5, nails: true)
                     HStack {
                         ForEach(ShopView.ShopSection.allCases) { section in

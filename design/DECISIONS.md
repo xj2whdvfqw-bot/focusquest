@@ -3,7 +3,7 @@
 Doplňuje `design/CHANGES.md` (zadání sekcí 0–15) a `design/progress.html` (stav, buildy, co otestovat).
 Tady je to, co v nich není: rozhodnutí, která padla během práce, otevřené body a známé pasti.
 
-Stav k 24. 11. 2026: větev `phase3-duolingo`; Q1 prošla jako build #86 (J1: stánek Shopu jako sbalovací hlavička nad rolovacím obsahem, kompaktní panel věci; J2: nadpis Settings jako v systémovém Nastavení), viz progress.html. Předtím P1 (I1–I6: obchod jako pixelový kupecký stánek s cedulemi, policemi, obrazy a pultem) a O1 (H1–H3: footer a hlavička Settings, tišší odměna, třídy bez pokrývek hlavy s maskou účesu), prošly jako build #85 (#82 zrušen startem #83, #83 a #84 spadly na testech obchodu). Předtím N1 (G1: plynulé přechody tutoriálu, A na stejné obrazovce v jedné animaci, B při změně obrazovky se schováním a objevením na stabilním cíli) prošel jako build #81. Předtím M1 (tutoriál: kroky 2–4 v otevřeném Fight setupu, cíle měřené v `.global`, Hero ve dvou krocích, celkem 14) prošel jako build #80, viz progress.html. Předtím L1 (opravy E1–E5 po testu #76: Skip v safe area, plynulé přechody, Home bez scrollu, Break panel) prošel jako build #79. Předtím zelený build #76 (K1: onboarding karta, tutoriál ve vlastním okně, Shop Supplies, sdílecí karty, zvuky) a #74 (J1: Habits, widget, freeze, Focus, zkratky, úkoly, poznámky, příprava iCloud); dříve #70 (I1), #69 (H1), #67 (G1); dříve #65 (F1); E1 (opravy z testu po D1) prošel jako build #62; F1 (Habits, mapa, easter eggy) prošel jako build #65; F2 (nový onboarding a coach marks) prošel jako build #66. Všechny sekce z CHANGES.md
+Stav k 26. 11. 2026: větev `phase3-duolingo`; rozpracovaná R1 (L1–L3: pevný stánek s hrdinou nahoře, police rolují pod pultem uvnitř stánku, panel věci ve stánku, cedule pod stánkem nad lištou; ruší sbalovací hlavičku z Q1/J1), viz progress.html. Předtím Q1 prošla jako build #86 (J1: stánek Shopu jako sbalovací hlavička nad rolovacím obsahem, kompaktní panel věci; J2: nadpis Settings jako v systémovém Nastavení), viz progress.html. Předtím P1 (I1–I6: obchod jako pixelový kupecký stánek s cedulemi, policemi, obrazy a pultem) a O1 (H1–H3: footer a hlavička Settings, tišší odměna, třídy bez pokrývek hlavy s maskou účesu), prošly jako build #85 (#82 zrušen startem #83, #83 a #84 spadly na testech obchodu). Předtím N1 (G1: plynulé přechody tutoriálu, A na stejné obrazovce v jedné animaci, B při změně obrazovky se schováním a objevením na stabilním cíli) prošel jako build #81. Předtím M1 (tutoriál: kroky 2–4 v otevřeném Fight setupu, cíle měřené v `.global`, Hero ve dvou krocích, celkem 14) prošel jako build #80, viz progress.html. Předtím L1 (opravy E1–E5 po testu #76: Skip v safe area, plynulé přechody, Home bez scrollu, Break panel) prošel jako build #79. Předtím zelený build #76 (K1: onboarding karta, tutoriál ve vlastním okně, Shop Supplies, sdílecí karty, zvuky) a #74 (J1: Habits, widget, freeze, Focus, zkratky, úkoly, poznámky, příprava iCloud); dříve #70 (I1), #69 (H1), #67 (G1); dříve #65 (F1); E1 (opravy z testu po D1) prošel jako build #62; F1 (Habits, mapa, easter eggy) prošel jako build #65; F2 (nový onboarding a coach marks) prošel jako build #66. Všechny sekce z CHANGES.md
 a všechny opravy z auditu jsou hotové.
 
 ## 1. Rozhodnutí
@@ -290,20 +290,21 @@ a všechny opravy z auditu jsou hotové.
 - **Shop je pixelový kupecký stánek** (od P1/I, `ShopView.swift` + `ShopStallArt.swift`; ruší seznam karet, podtržené
   záložky, náhled hrdiny v kartě a Preview pozadí přes celou appku). Vše je kreslené po pixelech (Canvas, mřížky znaků,
   pixel stánku 3 body) stejně jako sprity; žádné cizí assety, žlutá jen pro hlavní akci, žádná tyrkysová ani systémová modrá.
-  - **Hlavička** (od Q1/J1 vlastní rozvržení místo `pinnedTopHeader`, který na iOS 26 dělal kolem hrdiny velké tmavé
-    rozmazané plochy a police scrollovaly pod stánek): nahoře řádek se štítkem „Shop“, mincemi (pixelová mince + číslo)
-    a ozubeným kolem, pod ním stánek: pruhovaná stříška (žlutá a krémová, obloučky), dřevěné sloupky, v okně mezi nimi
-    obloha a krajina přes celé okno (`StallScene`: scéna pozadí zvětšená tak, aby okno vyplnila, horizont dole,
-    12 snímků/s, s Reduce Motion stojí), hrdina velký na kamenném podstavci, pod stánkem pult (prkno), z něj visí cedule.
-  - **Rozměry stánku** (`StallHeaderMetrics`): stříška + okno + pult = 35 % celé výšky displeje (SE okno 185 bodů,
-    Pro Max 287). Hrdina s podstavcem zabírá asi 84 % okna (SE 140 bodů, Pro Max 210, strop 210), podstavec má
-    pixel 3–6 bodů podle okna. Bez pozadí hlavičky, bez materiálu a rozmazání.
-  - **Sbalování při rolování**: obsah záložky je ve vlastním `ScrollView` pod hlavičkou. Prvních N bodů rolování
-    (N = 60 % okna) zužuje okno až na 40 % jeho výšky; hrdina s podstavcem se zmenšuje ke spodní hraně okna
-    (`scaleEffect`), stříška a pult zůstávají. Pak cedule zůstanou přilepené nahoře a obsah mizí pod nimi
-    (maska s přechodem 14 bodů; nikdy se nekreslí přes stánek). Viditelná plocha `ScrollView` začíná pod zmenšeným
-    stánkem a cedulemi (`safeAreaPadding`), obsah má nahoře navíc rozsah sbalení. Přetažení nahoru stánek nezvětší.
-    Stánek nemá tlačítka a `allowsHitTesting(false)`, takže tah po něm roluje obsah jako tah po policích.
+  - **Rozvržení: pevný stánek** (od R1/L1–L2; ruší sbalovací hlavičku z Q1/J1, kde se hrdina při rolování
+    zmenšoval na drobečka a stánek sahal skoro k liště): nahoře řádek se štítkem „Shop“, mincemi (pixelová mince
+    + číslo) a ozubeným kolem; 16 bodů pod ním (`StallLayout.topGap`) stánek jako pevný rám přes zbytek výšky:
+    pruhovaná stříška (žlutá a krémová, obloučky), dřevěné sloupky po stranách a dole spodní lišta (prkno 5 px).
+    Z lišty visí cedule Gear / Backgrounds / Supplies a pod nimi je 12 bodů vzduchu nad lištou záložek
+    (`StallLayout.signsBottomGap`; rezerva záložky končí 8 bodů pod horní hranou lišty, proto odsazení 20).
+    Bez pozadí, materiálu a rozmazání kolem stánku. Grafika stánku, polic, cenovek, cedulí a obrazů je beze změny.
+  - **Uvnitř stánku nahoře napevno hrdina** (`heroWindow`): okno pevné výšky (`StallLayout.heroWindowHeight` =
+    20 bodů na poskok + hrdina 112 + podstavec) s oblohou a krajinou aktuálního pozadí (`StallScene`, při
+    Backgrounds vycentrovaný obraz; scéna vyplní okno, horizont dole, 12 snímků/s, s Reduce Motion stojí). Hrdina je
+    vždy celý (16 × 16 pixelů po 7 bodech, včetně klobouku) a stejně velký, nezmenšuje se ani neroluje.
+  - **Pult a obsah pod ním**: pod oknem dřevěný pult (stejné prkno jako police, 4 px s hřebíky) a pod ním
+    `ScrollView` se zadní stěnou ze svislých prken (`PlankWall`) a policemi / obrazy / pultem zásob. Obsah je
+    oříznutý na plochu pod pultem, takže nikdy nepřekryje hrdinu ani nezajede nad pult. Na iPhonu SE zbývá pod
+    pultem asi 210 bodů (test `testFixedStallLeavesRoomForShelvesOnSmallPhone`: aspoň 110).
   - **Cedule** (I2): Gear / Backgrounds / Supplies jako dřevěné desky na dvou řetízcích s pixelovou ikonou (meč, obraz,
     lahvička) a nápisem. Aktivní je světlejší se zlatým lemem a při výběru se zhoupne (keyframe kolem horní hrany;
     Reduce Motion bez zhoupnutí). Klik a vibrace výběru přes `FQFeedback`.
@@ -311,13 +312,14 @@ a všechny opravy z auditu jsou hotové.
     policí; věci stojí na prkně jen jako sprity (`ItemSprite`: vrstvy předmětu oříznuté na obrys, pixel 3–6 bodů),
     pod prknem visí papírová cenovka na provázku (pixelová mince + cena, vlastněné „Owned“), nasazená věc má hvězdičku
     a bílou záři, vybraná žlutou záři a zvedne se o 4 body. Klepnutí = hrdina si věc hned vyzkouší (poskok a 8 jisker,
-    ne když ji už má nasazenou) a dole nad lištou vyjede kompaktní panel (sklo `fqGlassPanel`, od Q1/J1 v jednom řádku:
+    ne když ji už má nasazenou) a vyjede kompaktní panel **uvnitř stánku nad jeho spodní lištou** (od R1/L3):
+    zaoblený, tmavý poloprůhledný (rgb 9,8,24 na 82 %, okraj bílá 12 %), 8 bodů od sloupků i lišty, v jednom řádku
     vlevo název a popis na nejvýš 2 řádky, vpravo žluté „Buy · 150“ / žluté „Equip“ / vedlejší „Unequip“, bez mincí
-    šedé „Need 40 more“; s velkým písmem pod sebou, tlačítko přes celou šířku). Panel je jen ve spodní bezpečné zóně
-    obsahu, cedule ani stánek nepřekryje; po výběru se celá police s věcí (u Supplies pult) odroluje nad panel
-    (`scrollTo` s `anchor: nil`, jen o potřebný kus). Panel zavře druhé klepnutí na věc, tah dolů nebo VoiceOver
+    šedé „Need 40 more“ (s velkým písmem pod sebou, tlačítko přes celou šířku). Je to spodní bezpečná zóna rolovací
+    plochy pod pultem, takže nepřekryje cedule, lištu záložek ani hrdinu; po výběru se celá police s věcí
+    (u Supplies pult) odroluje nad panel (`scrollTo` s `anchor: nil`, jen o potřebný kus). Panel zavře druhé klepnutí na věc, tah dolů nebo VoiceOver
     escape (žádný křížek); přepnutí cedule nebo odchod ze Shopu ho zavře i se zkoušením.
-  - **Backgrounds jako obrazy na zadní stěně** (I4): stěna ze svislých prken, obrazy v pixelovém zlatém rámu
+  - **Backgrounds jako obrazy na zadní stěně** (I4): stěna ze svislých prken (od R1 společná pro celou plochu pod pultem; obrazy 120 bodů na SE, jinak 160), obrazy v pixelovém zlatém rámu
     (`PixelFrame`, `PaintingScene`), vodorovný karusel se snapem na střed (`scrollTargetBehavior(.viewAligned)`,
     `scrollPosition(id:)`), sousední obrazy zmenšené na 0,8 vykukují po stranách. Visačka na rámu: „Free“, cena
     nebo „Owned“; používaný obraz má hvězdičku. Vycentrovaný obraz se plynule prolne do okna stánku (živý náhled),

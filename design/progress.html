@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-24T23:53:00+01:00",
-  "current": "Q1 hotovo: build #86 prošel",
-  "nextStep": "Otestovat na iPhonu: nový stánek Shopu (sbalování při rolování, panel věci) na SE i Pro Max a nadpis Settings včetně podstránek",
+  "updated": "2026-11-26T11:24:00+01:00",
+  "current": "R1 (L1–L3): kód hotový, commit a spuštění buildu",
+  "nextStep": "Commit, push a build na větvi phase3-duolingo",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -963,6 +963,21 @@
       "commit": "17d27b4",
       "build": { "number": 86, "runId": 45497037388, "result": "úspěch" },
       "note": "Build #86 prošel (IPA, Release, unit testy včetně nového testu rozměrů stánku `StallHeaderMetrics`, screenshot). Vzhled a rolování ověří až iPhone. Shop na SE i Pro Max ve všech třech záložkách (Gear, Backgrounds, Supplies): stánek zabírá asi třetinu výšky, krajina a hrdina na podstavci vyplní celé okno, nikde tmavé rozmazané plochy; cedule hned pod oknem, pod nimi vidět police / obrazy / pult; rolování dolů plynule zúží okno s hrdinou na 40 %, cedule zůstanou nahoře a obsah mizí pod nimi (nikdy přes stánek), rolování zpět okno roztáhne; tah po stánku roluje taky. Panel věci: jeden řádek (název a popis vlevo, tlačítko vpravo) nad tab barem, nepřekryje cedule, vybraná police se odroluje nad panel; zavření tahem dolů nebo druhým klepnutím; u plných zásob „Max 5 held“. Settings: hned pod grabberem velký nadpis „Settings“ vlevo, při rolování se zmenší a nahoře se prolne malý nadpis na středu s materiálem; podstránky (Sounds & haptics, Music, Notifications, Focus, Shortcuts) malý nadpis a zpět, lišta v klidu průhledná. Kdyby se okno při rolování cukalo nebo panel zakryl vybranou věc, napiš."
+    },
+    {
+      "id": "R1",
+      "title": "Shop: pevný stánek s hrdinou, police uvnitř, panel ve stánku (L1–L3)",
+      "status": "pracuje",
+      "items": [
+        { "text": "L1 Stánek kratší: 16 pt pod řádkem Shop · mince · ozubené kolo, dole končí výš; cedule Gear / Backgrounds / Supplies s řetízky pod ním, 12 pt nad tab barem, nic se nepřekrývá; za hrdinou aktuální pozadí", "done": true },
+        { "text": "L2 Hrdina napevno nahoře ve stánku na podstavci, vždy celý, stejná velikost (~110 pt), nezmenšuje se, nescrolluje; pod ním dřevěný pult", "done": true },
+        { "text": "L2 Police / obrazy / pult scrollují jen pod pultem, nikdy nepřekryjí hrdinu; try-on zůstává", "done": true },
+        { "text": "L3 Panel věci uvnitř stánku nad spodní lištou: zaoblený tmavý poloprůhledný, odsazený od sloupků, vlevo název + popis, vpravo žluté tlačítko; nepřekryje cedule, tab bar ani hrdinu; vybraná věc se odscrolluje do zorného pole", "done": true },
+        { "text": "DECISIONS.md", "done": true }
+      ],
+      "commit": "",
+      "build": { "number": null, "runId": null, "result": "" },
+      "note": "Kód hotový, čeká na build. Vzhled ověří až iPhone (SE i Pro Max, Gear, Backgrounds, Supplies)."
     }
   ]
 }
