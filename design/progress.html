@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-26T14:03:16+01:00",
-  "current": "T1: build #90 běží",
-  "nextStep": "Počkat na výsledek buildu #90",
+  "updated": "2026-11-26T14:51:02+01:00",
+  "current": "T1: build #90 spadl na výpadku runneru, běží znovu",
+  "nextStep": "Počkat na výsledek 2. pokusu buildu #90",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -1014,8 +1014,8 @@
         { "text": "DECISIONS.md", "done": true }
       ],
       "commit": "1035b6f",
-      "build": { "number": 90, "runId": 45825375996, "result": "běží" },
-      "note": "Build #90 běží."
+      "build": { "number": 90, "runId": 45825375996, "result": "běží (2. pokus)" },
+      "note": "1. pokus buildu #90 spadl na výpadku runneru GitHubu („The hosted runner lost communication with the server“) během sestavení IPA, ne na kódu. Běží znovu (2. pokus)."
     }
   ]
 }
