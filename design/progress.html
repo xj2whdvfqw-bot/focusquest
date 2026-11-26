@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-26T11:35:00+01:00",
-  "current": "R1: build #88 běží",
-  "nextStep": "Počkat na výsledek buildu #88",
+  "updated": "2026-11-26T12:04:00+01:00",
+  "current": "R1 hotovo: build #88 prošel",
+  "nextStep": "Otestovat na iPhonu pevný stánek Shopu (hrdina nahoře, police pod pultem, panel ve stánku, cedule nad tab barem) na SE i Pro Max",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -967,7 +967,7 @@
     {
       "id": "R1",
       "title": "Shop: pevný stánek s hrdinou, police uvnitř, panel ve stánku (L1–L3)",
-      "status": "build",
+      "status": "hotovo",
       "items": [
         { "text": "L1 Stánek kratší: 16 pt pod řádkem Shop · mince · ozubené kolo, dole končí výš; cedule Gear / Backgrounds / Supplies s řetízky pod ním, 12 pt nad tab barem, nic se nepřekrývá; za hrdinou aktuální pozadí", "done": true },
         { "text": "L2 Hrdina napevno nahoře ve stánku na podstavci, vždy celý, stejná velikost (~110 pt), nezmenšuje se, nescrolluje; pod ním dřevěný pult", "done": true },
@@ -976,8 +976,8 @@
         { "text": "DECISIONS.md", "done": true }
       ],
       "commit": "accb136",
-      "build": { "number": 88, "runId": 45802774007, "result": "běží" },
-      "note": "Build #87 spadl na překladu nového testu (`ambiguous use of infinity` v `ShopStallTests`), kód appky se přeložil. Opraveno, běží build #88."
+      "build": { "number": 88, "runId": 45802774007, "result": "úspěch" },
+      "note": "Build #88 prošel (IPA, Release, unit testy včetně `testFixedStallLeavesRoomForShelvesOnSmallPhone`, screenshot). #87 spadl jen na překladu nového testu (`.infinity` v `sizeThatFits`). Grafika beze změny, jen rozložení. Na iPhonu otestuj na SE i Pro Max v Gear, Backgrounds a Supplies: stánek začíná asi 16 pt pod řádkem Shop · mince · ozubené kolo; cedule Gear / Backgrounds / Supplies visí i s řetízky ze spodní lišty stánku, asi 12 pt nad tab barem, nic se nepřekrývá; nahoře ve stánku hrdina vždy celý (včetně klobouku) a stejně velký, za ním aktuální pozadí (v Backgrounds vycentrovaný obraz); pod ním dřevěný pult a police / obrazy / zásoby se scrollují jen pod pultem, nikdy přes hrdinu; try-on s poskokem funguje; panel věci je tmavý zaoblený uvnitř stánku nad spodní lištou, vlevo název a popis, vpravo žluté tlačítko, vybraná police se odroluje nad něj, zavření tahem dolů nebo dalším tapem. Obrazy jsou menší (SE 120, jinak 160 pt). Kdyby bylo na SE pod pultem málo místa, napiš."
     }
   ]
 }
