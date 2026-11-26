@@ -71,7 +71,7 @@ final class ShopStallTests: XCTestCase {
                 HangingSign(title: section.title, icon: section, active: section == .gear, swing: 0)
             }
         })
-        let signsHeight = signs.sizeThatFits(in: CGSize(width: 343, height: .infinity)).height
+        let signsHeight = signs.sizeThatFits(in: CGSize(width: 343, height: CGFloat.greatestFiniteMagnitude)).height
         XCTAssertGreaterThan(signsHeight, 40)
         // iPhone SE: displej 667, stavovy radek 20, horni radek 8 + 44, lista zalozek se svou rezervou.
         let tabBar = FQTabBarMetrics.bottom + FQTabBarMetrics.height
