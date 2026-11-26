@@ -33,17 +33,22 @@ struct UserProfile: Codable, Sendable {
     var frozenDays: [String] = []
     /// C5: vyzvednute truhly tydennich ukolu (WeeklyQuest.id, jen nekolik poslednich tydnu).
     var claimedQuests: [String] = []
+    /// S1/M4: Class Potion v zasobe (nejvys `maxClassPotions`). Trida jde po onboardingu zmenit jen lektvarem.
+    var classPotions = 0
 
     /// Kolik extra pauz jde drzet najednou.
     static let maxExtraPauses = 5
     /// Cena jedne extra pauzy v mincich (asi 13 minut soustredeni pri 3 mincich za minutu).
     static let extraPausePrice = 40
+    /// S1/M4: cena Class Potion a kolik jich jde drzet.
+    static let classPotionPrice = 500
+    static let maxClassPotions = 1
 
     enum CodingKeys: String, CodingKey {
         case userID, username, title, heroClass, avatarMatrix, dailyFocusGoalMinutes
         case avatar, coins, bossesDefeated, hasCreatedHero, ownedEquipmentIDs, focusGoals
         case ownedBackgroundIDs, backgroundID, foundEasterEggs, extraPauses
-        case firstUseDate, streakFreezes, frozenDays, claimedQuests
+        case firstUseDate, streakFreezes, frozenDays, claimedQuests, classPotions
     }
 
     /// Novy hrac (i po Reset progress) zacina s pozadim Daybreak; World scenes si muze vybrat v Shopu.
@@ -99,6 +104,7 @@ extension UserProfile {
         streakFreezes = min(StreakFreeze.maxOwned, max(0, (try? container.decodeIfPresent(Int.self, forKey: .streakFreezes)) ?? 0))
         frozenDays = (try? container.decodeIfPresent([String].self, forKey: .frozenDays)) ?? []
         claimedQuests = (try? container.decodeIfPresent([String].self, forKey: .claimedQuests)) ?? []
+        classPotions = min(Self.maxClassPotions, max(0, (try? container.decodeIfPresent(Int.self, forKey: .classPotions)) ?? 0))
     }
 }
 

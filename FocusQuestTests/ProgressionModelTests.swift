@@ -132,13 +132,13 @@ final class ProgressionModelTests: XCTestCase {
         var profile = UserProfile.fresh(deviceID: "test")
         profile.avatar.skin = .umber
         profile.avatar.hairStyle = .mohawk
-        profile.avatar.equip("excalibur", in: .weapon)
+        profile.avatar.equip("excalibur", in: .mainHand)
         profile.coins = 321
         profile.hasCreatedHero = true
         let data = try JSONEncoder().encode(profile)
         let decoded = try JSONDecoder().decode(UserProfile.self, from: data)
         XCTAssertEqual(decoded.avatar, profile.avatar)
-        XCTAssertEqual(decoded.avatar.equippedItemID(in: .weapon), "excalibur")
+        XCTAssertEqual(decoded.avatar.equippedItemID(in: .mainHand), "excalibur")
         XCTAssertEqual(decoded.coins, 321)
         XCTAssertTrue(decoded.hasCreatedHero)
     }
@@ -173,7 +173,8 @@ final class ProgressionModelTests: XCTestCase {
         for item in EquipmentItem.catalog {
             var appearance = AvatarAppearance()
             appearance.equip(item.id, in: item.slot)
-            let layers = AvatarSprite.layers(for: appearance, heroClass: .mage)
+            // S1/M3: zbran se kresli jen sve tride.
+            let layers = AvatarSprite.layers(for: appearance, heroClass: item.heroClass ?? .mage)
             let itemLayers = layers.filter { $0.id.hasPrefix("\(item.id)-") }
             XCTAssertFalse(itemLayers.isEmpty, "\(item.name) is not drawn")
             XCTAssertEqual(Set(layers.map(\.id)).count, layers.count, "Layer IDs must be unique for \(item.name)")
@@ -201,27 +202,39 @@ final class ProgressionModelTests: XCTestCase {
         }
     }
 
-    func testShopGearReplacesTheClassMarkInItsSlot() {
+    func testShopWeaponReplacesTheDefaultWeaponOnly() {
         var appearance = AvatarAppearance()
-        appearance.equip("excalibur", in: .weapon)
+        appearance.equip("excalibur", in: .mainHand)
         let ids = AvatarSprite.layers(for: appearance, heroClass: .warrior).map(\.id)
-        XCTAssertFalse(ids.contains("class-axe-handle"), "A shop weapon replaces the class weapon")
+        XCTAssertFalse(ids.contains("battle-axe-handle"), "A shop weapon replaces the default weapon")
         XCTAssertTrue(ids.contains("class-pauldron"), "The class accessory stays")
         XCTAssertTrue(ids.contains("excalibur-blade"))
+    }
+
+    /// S1/M2: starsi verze mely sloty weapon a gadget; kazdy predmet se presune do sveho slotu.
+    func testOldEquipmentSlotsMigrate() throws {
+        let data = Data(#"{"equipment":{"weapon":"excalibur","gadget":"focus-headphones","head":"wizard-hat"}}"#.utf8)
+        let avatar = try JSONDecoder().decode(AvatarAppearance.self, from: data)
+        XCTAssertEqual(avatar.equippedItemID(in: .mainHand), "excalibur")
+        XCTAssertEqual(avatar.equippedItemID(in: .neck), "focus-headphones")
+        XCTAssertEqual(avatar.equippedItemID(in: .head), "wizard-hat")
+        XCTAssertNil(avatar.equipment["weapon"])
+        XCTAssertNil(avatar.equipment["gadget"])
+        let jetpack = try JSONDecoder().decode(AvatarAppearance.self, from: Data(#"{"equipment":{"gadget":"jetpack"}}"#.utf8))
+        XCTAssertEqual(jetpack.equippedItemID(in: .back), "jetpack")
     }
 
     /// O1/H3: tridy nemaji pokryvku hlavy a ucesy jsou bez pokryvky z obchodu cele videt
     /// (zadna vrstva nakreslena po vlasech je neprekryje). Tridu odlisi zbran a doplnek.
     func testClassesWearNoHeadwearAndHairIsAlwaysWhole() throws {
         let expected: [HeroClass: Set<String>] = [
-            .warrior: ["class-axe-handle", "class-axe-blade", "class-pauldron"],
-            .mage: ["class-staff", "class-gem", "class-cape"],
-            .archer: ["class-bow", "class-string", "class-quiver", "class-fletching"],
-            .rogue: ["class-dagger", "class-hilt", "class-scarf"]
+            .warrior: ["class-pauldron"],
+            .mage: ["class-cape"],
+            .archer: ["class-quiver", "class-fletching"],
+            .rogue: ["class-scarf"]
         ]
         for heroClass in HeroClass.allCases {
             XCTAssertEqual(Set(AvatarSprite.classMarks(heroClass).map(\.layer.id)), expected[heroClass], "\(heroClass)")
-            XCTAssertFalse(AvatarSprite.classMarks(heroClass).contains { $0.slot == .head }, "\(heroClass) has headwear")
             for style in HairStyle.allCases where style != .bald {
                 var look = AvatarAppearance()
                 look.hairStyle = style
@@ -293,10 +306,10 @@ final class ProgressionModelTests: XCTestCase {
     func testProfileKeepsOwnedEquipment() throws {
         var profile = UserProfile.fresh(deviceID: "test")
         profile.ownedEquipmentIDs = ["excalibur"]
-        profile.avatar.equip("excalibur", in: .weapon)
+        profile.avatar.equip("excalibur", in: .mainHand)
         let decoded = try JSONDecoder().decode(UserProfile.self, from: JSONEncoder().encode(profile))
         XCTAssertEqual(decoded.ownedEquipmentIDs, ["excalibur"])
-        XCTAssertEqual(decoded.avatar.equippedItemID(in: .weapon), "excalibur")
+        XCTAssertEqual(decoded.avatar.equippedItemID(in: .mainHand), "excalibur")
     }
 
     func testEveryBossHasAFullSpriteAndAPlaceOnAPath() {

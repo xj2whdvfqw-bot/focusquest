@@ -13,14 +13,11 @@ enum HeroAttack: Equatable, Sendable {
     /// Vypad se stitem (od O1/H3 nepouzivany: Warrior ma misto stitu sekeru).
     case bash
 
+    /// S1/M3: utok podle zbrane v Main hand. Zbrane patri tride, takze utok odpovida tride zbrane:
+    /// sekery a mece svih, hole kouzlo, luky sip, dyky a noze bodnuti.
     static func of(appearance: AvatarAppearance, heroClass: HeroClass) -> HeroAttack {
-        switch appearance.equippedItemID(in: .weapon) {
-        case "wooden-sword", "excalibur": return .slash
-        case "magic-staff": return .spell
-        default: break
-        }
-        return switch heroClass {
-        // O1/H3: Warrior ma sekeru v prave ruce, utoci svihem.
+        let weapon = AvatarSprite.equippedItem(in: .mainHand, appearance: appearance, heroClass: heroClass)
+        return switch weapon?.heroClass ?? heroClass {
         case .warrior: .slash
         case .mage: .spell
         case .archer: .arrow
@@ -45,17 +42,8 @@ extension AvatarSprite {
     /// Vrstvy jsou tytez jako v obchode a profilu, jen rozdelene do dvou skupin.
     static func battleLayers(for appearance: AvatarAppearance, heroClass: HeroClass) -> (body: [AvatarLayer], weapon: [AvatarLayer]) {
         let all = layers(for: appearance, heroClass: heroClass)
-        let weaponIDs: Set<String>
-        if let id = appearance.equippedItemID(in: .weapon), let item = EquipmentItem.item(withID: id) {
-            weaponIDs = Set(item.layers.map(\.id))
-        } else {
-            weaponIDs = switch heroClass {
-            case .rogue: ["class-dagger", "class-hilt"]
-            case .archer: ["class-bow", "class-string"]
-            case .mage: ["class-staff", "class-gem"]
-            case .warrior: ["class-axe-handle", "class-axe-blade"]
-            }
-        }
+        let weapon = equippedItem(in: .mainHand, appearance: appearance, heroClass: heroClass)
+        let weaponIDs = Set(weapon?.layers.map(\.id) ?? [])
         return (all.filter { !weaponIDs.contains($0.id) }, all.filter { weaponIDs.contains($0.id) })
     }
 }

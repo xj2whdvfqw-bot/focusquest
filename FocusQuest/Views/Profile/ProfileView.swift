@@ -2,6 +2,8 @@ import SwiftUI
 
 struct ProfileView: View {
     @ObservedObject var model: ProfileViewModel
+    /// S1/M4: "Change with a Class Potion" otevre Shop › Supplies (drzi MainTabView).
+    var onOpenSupplies: () -> Void = {}
     @State private var usernameDraft = ""
     @State private var showsAppearanceEditor = false
     /// Cil behem tazeni posuvniku: kruh a texty se meni zive, ulozi se az po pusteni.
@@ -39,7 +41,7 @@ struct ProfileView: View {
     private var heroCard: some View {
         HStack(spacing: 12) {
             VStack(spacing: 6) {
-                HeroAvatarView(appearance: model.profile.avatar, heroClass: model.profile.heroClass, size: 76)
+                HeroAvatarView(appearance: model.profile.avatar, heroClass: model.profile.heroClass, size: 76, outlined: true)
                     .accessibilityHidden(true)
                 Button { showsAppearanceEditor = true } label: {
                     Image(systemName: "paintbrush.fill")
@@ -99,13 +101,28 @@ struct ProfileView: View {
             }
             .padding(.vertical, FQSpace.sm)
             HairlineDivider()
+            // S1/M4: trida je napevno (zamek); zmenit jde jen Class Potion v Shop › Supplies.
             HStack(spacing: FQSpace.md) {
                 IconTile(symbol: model.profile.heroClass.symbol)
-                Text("Hero class").font(.fqBody).foregroundStyle(FQColor.textPrimary)
-                Spacer(minLength: FQSpace.sm)
-                ValueMenu(title: "Hero class", valueText: model.profile.heroClass.displayName, selection: Binding(get: { model.profile.heroClass }, set: { model.updateHeroClass($0) })) {
-                    ForEach(HeroClass.allCases) { Text($0.displayName).tag($0) }
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Hero class").font(.fqBody).foregroundStyle(FQColor.textPrimary)
+                    Button(action: onOpenSupplies) {
+                        Text("Change with a Class Potion")
+                            .font(.fqMeta)
+                            .foregroundStyle(FQColor.accent)
+                            .frame(minHeight: 32, alignment: .leading)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.fqPress)
+                    .accessibilityHint("Opens Supplies in the Shop")
                 }
+                Spacer(minLength: FQSpace.sm)
+                Label(model.profile.heroClass.displayName, systemImage: "lock.fill")
+                    .labelStyle(.titleAndIcon)
+                    .font(.fqBody)
+                    .foregroundStyle(FQColor.textSecondary)
+                    .lineLimit(1)
+                    .accessibilityLabel("\(model.profile.heroClass.displayName), locked")
             }
             .padding(.vertical, FQSpace.xs)
         }
@@ -174,7 +191,7 @@ struct AppearanceEditorSheet: View {
 
     private var header: some View {
         HStack(spacing: FQSpace.lg) {
-            HeroAvatarView(appearance: model.profile.avatar, heroClass: model.profile.heroClass, size: 96)
+            HeroAvatarView(appearance: model.profile.avatar, heroClass: model.profile.heroClass, size: 96, outlined: true)
                 .animation(.easeOut(duration: 0.2), value: model.profile.avatar)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: FQSpace.xs) {

@@ -4,14 +4,20 @@ import XCTest
 /// Hrdina v bitve: druh utoku a rozdeleni sprite na telo a zbran.
 @MainActor
 final class BattleStageTests: XCTestCase {
-    func testAttackFollowsTheEquippedWeaponFirst() {
+    /// S1/M3: utok podle zbrane v Main hand; zbrane patri tride, takze odpovida tride zbrane.
+    func testAttackFollowsTheEquippedWeapon() {
         var look = AvatarAppearance()
-        look.equip("excalibur", in: .weapon)
-        XCTAssertEqual(HeroAttack.of(appearance: look, heroClass: .mage), .slash)
-        look.equip("wooden-sword", in: .weapon)
-        XCTAssertEqual(HeroAttack.of(appearance: look, heroClass: .archer), .slash)
-        look.equip("magic-staff", in: .weapon)
-        XCTAssertEqual(HeroAttack.of(appearance: look, heroClass: .warrior), .spell)
+        look.equip("excalibur", in: .mainHand)
+        XCTAssertEqual(HeroAttack.of(appearance: look, heroClass: .warrior), .slash)
+        look.equip("magic-staff", in: .mainHand)
+        XCTAssertEqual(HeroAttack.of(appearance: look, heroClass: .mage), .spell)
+        look.equip("golden-bow", in: .mainHand)
+        XCTAssertEqual(HeroAttack.of(appearance: look, heroClass: .archer), .arrow)
+        look.equip("twin-knives", in: .mainHand)
+        XCTAssertEqual(HeroAttack.of(appearance: look, heroClass: .rogue), .stab)
+        // Zbran jine tridy (napr. po zmene tridy) se nepouzije: hrdina drzi vychozi zbran sve tridy.
+        look.equip("excalibur", in: .mainHand)
+        XCTAssertEqual(HeroAttack.of(appearance: look, heroClass: .mage), .spell)
     }
 
     func testAttackWithoutWeaponFollowsTheHeroClass() {
@@ -24,21 +30,23 @@ final class BattleStageTests: XCTestCase {
 
     /// V bitve jsou presne tytez vrstvy jako v obchode a profilu, jen rozdelene na telo a zbran.
     func testBattleLayersMatchTheShopSprite() {
-        var look = AvatarAppearance()
-        look.equip("viking-helmet", in: .head)
-        look.equip("excalibur", in: .weapon)
         for heroClass in HeroClass.allCases {
+            let weapon = EquipmentItem.weapons(for: heroClass).last!
+            var look = AvatarAppearance()
+            look.equip("viking-helmet", in: .head)
+            look.equip("pocket-calculator", in: .offHand)
+            look.equip(weapon.id, in: .mainHand)
             let all = AvatarSprite.layers(for: look, heroClass: heroClass)
             let split = AvatarSprite.battleLayers(for: look, heroClass: heroClass)
             XCTAssertEqual(Set(split.body + split.weapon), Set(all), "\(heroClass)")
             XCTAssertEqual(split.body.count + split.weapon.count, all.count)
-            XCTAssertEqual(Set(split.weapon.map(\.id)), Set(EquipmentItem.item(withID: "excalibur")!.layers.map(\.id)))
+            XCTAssertEqual(Set(split.weapon.map(\.id)), Set(weapon.layers.map(\.id)), "\(heroClass)")
         }
     }
 
-    func testClassWeaponIsSeparatedWithoutShopWeapon() {
+    func testDefaultWeaponIsSeparatedWithoutShopWeapon() {
         let split = AvatarSprite.battleLayers(for: AvatarAppearance(), heroClass: .rogue)
-        XCTAssertEqual(Set(split.weapon.map(\.id)), ["class-dagger", "class-hilt"])
-        XCTAssertFalse(split.body.contains { $0.id.hasPrefix("class-dagger") })
+        XCTAssertEqual(Set(split.weapon.map(\.id)), ["dagger-blade", "dagger-hilt"])
+        XCTAssertFalse(split.body.contains { $0.id.hasPrefix("dagger-") })
     }
 }

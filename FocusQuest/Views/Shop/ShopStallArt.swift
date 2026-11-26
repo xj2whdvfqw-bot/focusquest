@@ -51,23 +51,35 @@ struct PixelPen {
 }
 
 /// Sprite z mrizky znaku; kazdy znak ma v palete barvu, tecka (a neznamy znak) je pruhledna.
+/// S1/M1: s `outline` ma kolem sebe 1px pixelovy obrys (sprite je pak o 2 pixely sirsi i vyssi).
 struct PixelGridView: View {
     let rows: [String]
     let palette: [Character: Color]
     var pixel: CGFloat = StallMetrics.pixel
+    var outline: Color? = nil
 
     var body: some View {
         let columns = rows.map { $0.count }.max() ?? 0
+        let border = outline == nil ? 0 : 1
+        let ring = outline == nil ? [] : PixelOutline.ring(PixelOutline.mask(rows: rows, palette: palette))
         Canvas(opaque: false) { context, _ in
+            if let outline {
+                for (y, row) in ring.enumerated() {
+                    for (x, symbol) in row.enumerated() where symbol == "#" {
+                        context.fill(Path(CGRect(x: CGFloat(x) * pixel, y: CGFloat(y) * pixel, width: pixel + 0.2, height: pixel + 0.2)),
+                                     with: .color(outline))
+                    }
+                }
+            }
             for (y, row) in rows.enumerated() {
                 for (x, symbol) in row.enumerated() {
                     guard let color = palette[symbol] else { continue }
-                    context.fill(Path(CGRect(x: CGFloat(x) * pixel, y: CGFloat(y) * pixel, width: pixel + 0.2, height: pixel + 0.2)),
+                    context.fill(Path(CGRect(x: CGFloat(x + border) * pixel, y: CGFloat(y + border) * pixel, width: pixel + 0.2, height: pixel + 0.2)),
                                  with: .color(color))
                 }
             }
         }
-        .frame(width: CGFloat(columns) * pixel, height: CGFloat(rows.count) * pixel)
+        .frame(width: CGFloat(columns + 2 * border) * pixel, height: CGFloat(rows.count + 2 * border) * pixel)
         .accessibilityHidden(true)
     }
 }
@@ -457,15 +469,25 @@ struct ItemSprite: View {
     let item: EquipmentItem
     /// Velikost jednoho pixelu predmetu.
     var pixel: CGFloat = 4
+    /// S1/M1: 1px pixelovy obrys (tmavy, u vybrane veci bily); sprite je s nim o 2 pixely vetsi.
+    var outline: Color? = nil
 
     var body: some View {
         let crop = Self.crop(item.layers)
-        ZStack(alignment: .topLeading) {
-            ForEach(crop.layers) { layer in
-                PixelLayerShape(rows: layer.rows, symbol: "#").fill(Color(rgb: layer.rgb))
+        let border: CGFloat = outline == nil ? 0 : pixel
+        ZStack {
+            if let outline {
+                PixelLayerShape(rows: PixelOutline.ring(PixelOutline.mask(crop.layers)), symbol: "#")
+                    .fill(outline)
             }
+            ZStack(alignment: .topLeading) {
+                ForEach(crop.layers) { layer in
+                    PixelLayerShape(rows: layer.rows, symbol: "#").fill(Color(rgb: layer.rgb))
+                }
+            }
+            .frame(width: CGFloat(crop.width) * pixel, height: CGFloat(crop.height) * pixel)
         }
-        .frame(width: CGFloat(crop.width) * pixel, height: CGFloat(crop.height) * pixel)
+        .frame(width: CGFloat(crop.width) * pixel + 2 * border, height: CGFloat(crop.height) * pixel + 2 * border)
         .accessibilityHidden(true)
     }
 
@@ -493,12 +515,14 @@ struct ItemSprite: View {
 /// Presypaci hodiny (Extra pause): pisek se pomalu presypa (4 faze), s Reduce Motion stoji.
 struct HourglassSprite: View {
     var pixel: CGFloat = 4
+    /// S1/M1: 1px obrys (tmavy, u vybrane zasoby bily).
+    var outline: Color? = nil
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         TimelineView(.animation(minimumInterval: 0.45, paused: reduceMotion)) { timeline in
             let phase = reduceMotion ? 1 : Int(timeline.date.timeIntervalSinceReferenceDate / 0.45) % 4
-            PixelGridView(rows: Self.rows(phase: phase), palette: Self.palette, pixel: pixel)
+            PixelGridView(rows: Self.rows(phase: phase), palette: Self.palette, pixel: pixel, outline: outline)
         }
         .accessibilityHidden(true)
     }
@@ -548,12 +572,13 @@ struct HourglassSprite: View {
 /// Ledovy krystal (Streak freeze): jemny trpyt (jiskry se stridaji), s Reduce Motion stoji.
 struct IceCrystalSprite: View {
     var pixel: CGFloat = 4
+    var outline: Color? = nil
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         TimelineView(.animation(minimumInterval: 0.6, paused: reduceMotion)) { timeline in
             let phase = reduceMotion ? 0 : Int(timeline.date.timeIntervalSinceReferenceDate / 0.6) % 3
-            PixelGridView(rows: Self.rows(phase: phase), palette: Self.palette, pixel: pixel)
+            PixelGridView(rows: Self.rows(phase: phase), palette: Self.palette, pixel: pixel, outline: outline)
         }
         .accessibilityHidden(true)
     }
@@ -592,6 +617,53 @@ struct IceCrystalSprite: View {
     }
 }
 
+/// S1/M4: Class Potion: zatkana bachrata lahvicka s purpurovym lektvarem (jina barva nez presypaci hodiny
+/// a ledovy krystal). Bublinka v lektvaru pomalu stoupa (2 faze), s Reduce Motion stoji.
+struct ClassPotionSprite: View {
+    var pixel: CGFloat = 4
+    var outline: Color? = nil
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        TimelineView(.animation(minimumInterval: 0.7, paused: reduceMotion)) { timeline in
+            let phase = reduceMotion ? 0 : Int(timeline.date.timeIntervalSinceReferenceDate / 0.7) % 2
+            PixelGridView(rows: Self.rows(phase: phase), palette: Self.palette, pixel: pixel, outline: outline)
+        }
+        .accessibilityHidden(true)
+    }
+
+    static let palette: [Character: Color] = [
+        "c": StallPalette.woodLight, "C": StallPalette.woodDark,
+        "g": Color(red: 0.82, green: 0.86, blue: 0.94),
+        "m": Color(red: 0.86, green: 0.28, blue: 0.74), "M": Color(red: 0.60, green: 0.16, blue: 0.54),
+        "w": Color.white
+    ]
+
+    /// 9 x 12: zatka, hrdlo, bachrate telo s lektvarem, odlesk a bublinka.
+    static func rows(phase: Int) -> [String] {
+        var rows = [
+            "...ccc...",
+            "...cCc...",
+            "...ggg...",
+            "...gmg...",
+            "..gmmmg..",
+            ".gmmmmmg.",
+            "gmwmmmmmg",
+            "gwmmmmMmg",
+            "gmmmmmMmg",
+            "gmmmmMMmg",
+            ".gmmmmmg.",
+            "..ggggg.."
+        ]
+        // Bublinka: dole, pak vys.
+        let (x, y) = phase % 2 == 0 ? (5, 8) : (4, 5)
+        var chars = Array(rows[y])
+        chars[x] = "w"
+        rows[y] = String(chars)
+        return rows
+    }
+}
+
 // MARK: - Cenovka a odznaky
 
 /// Cenovka na provazku pod predmetem: papirovy stitek s minci a cenou, "Owned" u vlastneneho predmetu.
@@ -600,6 +672,8 @@ struct PriceTag: View {
         case price(Int)
         case owned
         case free
+        /// S1/M3: zbran jine tridy ("Mage only").
+        case classOnly(String)
     }
 
     let label: Label
@@ -619,6 +693,8 @@ struct PriceTag: View {
                     Text("Owned")
                 case .free:
                     Text("Free")
+                case let .classOnly(name):
+                    Text("\(name) only")
                 }
             }
             .fqFont(size: 12, weight: .bold, design: .rounded)

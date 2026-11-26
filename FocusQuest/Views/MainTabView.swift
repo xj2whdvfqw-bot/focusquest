@@ -247,7 +247,12 @@ struct MainTabView: View {
             }
                 .tabPage(reserve: reserve)
                 .tag(FocusQuestTab.stats)
-            ProfileView(model: container.profileViewModel)
+            ProfileView(model: container.profileViewModel) {
+                // S1/M4: "Change with a Class Potion" otevre Shop › Supplies (behem tutorialu ne).
+                guard coach.step == nil else { return }
+                shopSection = .supplies
+                switchTab(to: .shop)
+            }
                 .tabPage(reserve: reserve)
                 .tag(FocusQuestTab.profile)
         }

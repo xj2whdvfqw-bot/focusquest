@@ -31,7 +31,13 @@ final class ProfileViewModel: ObservableObject {
         profile.username == UserProfile.defaultUsername ? nil : profile.username
     }
 
-    func updateHeroClass(_ value: HeroClass) { profile.heroClass = value; save() }
+    /// S1/M4: trida z onboardingu ("Create your hero"). Pozdeji jde zmenit jen lektvarem (`changeClass`).
+    /// Zbran jine tridy v Main hand se vrati na vychozi zbran.
+    func chooseInitialHeroClass(_ value: HeroClass) {
+        if value != profile.heroClass { profile.avatar.equip(nil, in: .mainHand) }
+        profile.heroClass = value
+        save()
+    }
     func updateDailyGoal(_ value: Int) { profile.dailyFocusGoalMinutes = min(240, max(15, value)); save() }
 
     // MARK: - Hrdina
@@ -146,24 +152,75 @@ final class ProfileViewModel: ObservableObject {
 
     // MARK: - Obchod s vybavenim
 
-    func owns(_ item: EquipmentItem) -> Bool { profile.ownedEquipmentIDs.contains(item.id) }
-    func isEquipped(_ item: EquipmentItem) -> Bool { profile.avatar.equippedItemID(in: item.slot) == item.id }
+    /// Vychozi zbran tridy je vlastnena vzdy (zdarma).
+    func owns(_ item: EquipmentItem) -> Bool { item.isClassDefault || profile.ownedEquipmentIDs.contains(item.id) }
+    /// S1/M3: zbran jine tridy nejde koupit ani nasadit.
+    func canUse(_ item: EquipmentItem) -> Bool { item.fits(profile.heroClass) }
+    func isEquipped(_ item: EquipmentItem) -> Bool { equippedItem(in: item.slot)?.id == item.id }
     func canAfford(_ item: EquipmentItem) -> Bool { profile.coins >= item.price }
+
+    /// Co ma hrdina ve slotu (Main hand bez zbrane z obchodu = vychozi zbran tridy).
+    func equippedItem(in slot: EquipmentSlot) -> EquipmentItem? {
+        AvatarSprite.equippedItem(in: slot, appearance: profile.avatar, heroClass: profile.heroClass)
+    }
+
+    /// S1/M5: co by vec po nasazeni nahradila (nil = prazdny slot nebo uz je nasazena).
+    func replacedItem(by item: EquipmentItem) -> EquipmentItem? {
+        guard let current = equippedItem(in: item.slot), current.id != item.id else { return nil }
+        return current
+    }
 
     /// Koupi predmet za mince a rovnou ho nasadi, aby byl hned videt na hrdinovi.
     func buy(_ item: EquipmentItem) {
-        guard !owns(item), canAfford(item) else { return }
+        guard !owns(item), canUse(item), canAfford(item) else { return }
         profile.coins -= item.price
         profile.ownedEquipmentIDs.append(item.id)
         profile.avatar.equip(item.id, in: item.slot)
         save()
     }
 
-    /// Nasadi koupeny predmet, nebo ho sundá, pokud uz je nasazeny.
-    func toggleEquip(_ item: EquipmentItem) {
-        guard owns(item) else { return }
-        profile.avatar.equip(isEquipped(item) ? nil : item.id, in: item.slot)
+    /// S1/M2: nasadi vlastneny predmet. Nahradi jen vec ve stejnem slotu, ostatni sloty zustanou.
+    func equip(_ item: EquipmentItem) {
+        guard owns(item), canUse(item) else { return }
+        profile.avatar.equip(item.isClassDefault ? nil : item.id, in: item.slot)
         save()
+    }
+
+    /// S1/M2: sundani vrati slot do vychoziho stavu: Main hand = vychozi zbran tridy, ostatni prazdne.
+    func unequip(_ item: EquipmentItem) {
+        guard isEquipped(item), !item.isClassDefault else { return }
+        profile.avatar.equip(nil, in: item.slot)
+        save()
+    }
+
+    // MARK: - Trida a Class Potion (S1/M4)
+
+    var canBuyClassPotion: Bool {
+        profile.classPotions < UserProfile.maxClassPotions && profile.coins >= UserProfile.classPotionPrice
+    }
+
+    /// Koupi Class Potion za 500 minci (v zasobe nejvys 1). Spotrebuje se az potvrzenim nove tridy.
+    func buyClassPotion() {
+        guard canBuyClassPotion else { return }
+        profile.coins -= UserProfile.classPotionPrice
+        profile.classPotions += 1
+        save()
+    }
+
+    /// Zmena tridy po onboardingu: jen za Class Potion (`usingPotion`), v Debug buildu i zdarma.
+    /// Main hand se vrati na vychozi zbran nove tridy; koupene zbrane stare tridy zustanou vlastnene.
+    /// Vraci false, kdyz zmena neprobehla (stejna trida nebo chybi lektvar).
+    @discardableResult
+    func changeClass(to newClass: HeroClass, usingPotion: Bool) -> Bool {
+        guard newClass != profile.heroClass else { return false }
+        if usingPotion {
+            guard profile.classPotions > 0 else { return false }
+            profile.classPotions -= 1
+        }
+        profile.heroClass = newClass
+        profile.avatar.equip(nil, in: .mainHand)
+        save()
+        return true
     }
 
     // MARK: - Extra pauzy (B2)

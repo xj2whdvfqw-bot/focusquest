@@ -130,7 +130,7 @@ struct OnboardingView: View {
     /// Hrdina proti bossovi: hrdina dycha, boss se pohupuje (s Reduce Motion stoji).
     private func duel(size: CGFloat) -> some View {
         HStack(alignment: .bottom, spacing: FQSpace.lg) {
-            HeroAvatarView(appearance: draft.avatar, heroClass: draft.heroClass, size: size)
+            HeroAvatarView(appearance: draft.avatar, heroClass: draft.heroClass, size: size, outlined: true)
                 .modifier(IdleBob(amplitude: 3, period: 1.6, enabled: !reduceMotion))
             Text("VS")
                 .fqFont(size: 22, weight: .heavy, design: .rounded)
@@ -294,7 +294,7 @@ struct OnboardingView: View {
         VStack(spacing: FQSpace.md) {
             heading("Create your hero")
                 .padding(.top, FQSpace.sm)
-            HeroAvatarView(appearance: draft.avatar, heroClass: draft.heroClass, size: 120)
+            HeroAvatarView(appearance: draft.avatar, heroClass: draft.heroClass, size: 120, outlined: true)
                 .keyframeAnimator(initialValue: 1.0, trigger: HeroLook(heroClass: draft.heroClass, avatar: draft.avatar)) { view, scale in
                     view.scaleEffect(scale, anchor: .bottom)
                 } keyframes: { _ in
@@ -313,20 +313,17 @@ struct OnboardingView: View {
                 VStack(alignment: .leading, spacing: FQSpace.md) {
                     VStack(alignment: .leading, spacing: FQSpace.xs) {
                         Text("Class").font(.fqMeta).foregroundStyle(FQColor.textSecondary)
-                        FadingHorizontalScroll {
-                            HStack(spacing: FQSpace.sm) {
-                                ForEach(HeroClass.allCases) { heroClass in
-                                    FQChip(title: heroClass.displayName, isSelected: heroClass == draft.heroClass, compact: true) {
-                                        draft.heroClass = heroClass
-                                    }
-                                    .accessibilityLabel("Class \(heroClass.displayName)")
-                                }
-                            }
-                        }
+                        // S1/M4: tytez karty trid jako v listu Class Potion.
+                        HeroClassPicker(selection: $draft.heroClass)
+                        // S1/M4: trida je napevno, pozdeji jde zmenit jen lektvarem.
+                        Text("Choose wisely – changing class later costs a Class Potion.")
+                            .font(.fqMeta)
+                            .foregroundStyle(FQColor.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                     HairlineDivider()
                     HeroLookEditor(appearance: draft.avatar) { draft.avatar = $0 }
-                    Text("You can change all of this later on the Hero tab.")
+                    Text("You can change your look later on the Hero tab.")
                         .font(.fqMeta)
                         .foregroundStyle(FQColor.textSecondary)
                         .multilineTextAlignment(.center)
@@ -442,7 +439,7 @@ struct OnboardingView: View {
     /// Start: jmeno, hrdina a polozky "focus" se ulozi, pak Home a tutorial.
     private func finish() {
         profile.updateDisplayName(draft.name)
-        profile.updateHeroClass(draft.heroClass)
+        profile.chooseInitialHeroClass(draft.heroClass)
         profile.updateAvatar(draft.avatar)
         profile.completeHeroCreation()
         let used = Set(profile.stats.sessionHistory.compactMap { $0.subject?.id })

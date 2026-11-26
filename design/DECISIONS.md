@@ -3,7 +3,7 @@
 Doplňuje `design/CHANGES.md` (zadání sekcí 0–15) a `design/progress.html` (stav, buildy, co otestovat).
 Tady je to, co v nich není: rozhodnutí, která padla během práce, otevřené body a známé pasti.
 
-Stav k 26. 11. 2026: větev `phase3-duolingo`; R1 prošla jako build #88 (L1–L3: pevný stánek s hrdinou nahoře, police rolují pod pultem uvnitř stánku, panel věci ve stánku, cedule pod stánkem nad lištou; ruší sbalovací hlavičku z Q1/J1), viz progress.html. Předtím Q1 prošla jako build #86 (J1: stánek Shopu jako sbalovací hlavička nad rolovacím obsahem, kompaktní panel věci; J2: nadpis Settings jako v systémovém Nastavení), viz progress.html. Předtím P1 (I1–I6: obchod jako pixelový kupecký stánek s cedulemi, policemi, obrazy a pultem) a O1 (H1–H3: footer a hlavička Settings, tišší odměna, třídy bez pokrývek hlavy s maskou účesu), prošly jako build #85 (#82 zrušen startem #83, #83 a #84 spadly na testech obchodu). Předtím N1 (G1: plynulé přechody tutoriálu, A na stejné obrazovce v jedné animaci, B při změně obrazovky se schováním a objevením na stabilním cíli) prošel jako build #81. Předtím M1 (tutoriál: kroky 2–4 v otevřeném Fight setupu, cíle měřené v `.global`, Hero ve dvou krocích, celkem 14) prošel jako build #80, viz progress.html. Předtím L1 (opravy E1–E5 po testu #76: Skip v safe area, plynulé přechody, Home bez scrollu, Break panel) prošel jako build #79. Předtím zelený build #76 (K1: onboarding karta, tutoriál ve vlastním okně, Shop Supplies, sdílecí karty, zvuky) a #74 (J1: Habits, widget, freeze, Focus, zkratky, úkoly, poznámky, příprava iCloud); dříve #70 (I1), #69 (H1), #67 (G1); dříve #65 (F1); E1 (opravy z testu po D1) prošel jako build #62; F1 (Habits, mapa, easter eggy) prošel jako build #65; F2 (nový onboarding a coach marks) prošel jako build #66. Všechny sekce z CHANGES.md
+Stav k 26. 11. 2026: větev `phase3-duolingo`; S1 (M1–M5: obrysy spritů a hrdiny, sloty výbavy, zbraně podle třídy, třída napevno a změna jen za Class Potion, slot v panelu věci) čeká na build, viz progress.html. Předtím R1 prošla jako build #88 (L1–L3: pevný stánek s hrdinou nahoře, police rolují pod pultem uvnitř stánku, panel věci ve stánku, cedule pod stánkem nad lištou; ruší sbalovací hlavičku z Q1/J1), viz progress.html. Předtím Q1 prošla jako build #86 (J1: stánek Shopu jako sbalovací hlavička nad rolovacím obsahem, kompaktní panel věci; J2: nadpis Settings jako v systémovém Nastavení), viz progress.html. Předtím P1 (I1–I6: obchod jako pixelový kupecký stánek s cedulemi, policemi, obrazy a pultem) a O1 (H1–H3: footer a hlavička Settings, tišší odměna, třídy bez pokrývek hlavy s maskou účesu), prošly jako build #85 (#82 zrušen startem #83, #83 a #84 spadly na testech obchodu). Předtím N1 (G1: plynulé přechody tutoriálu, A na stejné obrazovce v jedné animaci, B při změně obrazovky se schováním a objevením na stabilním cíli) prošel jako build #81. Předtím M1 (tutoriál: kroky 2–4 v otevřeném Fight setupu, cíle měřené v `.global`, Hero ve dvou krocích, celkem 14) prošel jako build #80, viz progress.html. Předtím L1 (opravy E1–E5 po testu #76: Skip v safe area, plynulé přechody, Home bez scrollu, Break panel) prošel jako build #79. Předtím zelený build #76 (K1: onboarding karta, tutoriál ve vlastním okně, Shop Supplies, sdílecí karty, zvuky) a #74 (J1: Habits, widget, freeze, Focus, zkratky, úkoly, poznámky, příprava iCloud); dříve #70 (I1), #69 (H1), #67 (G1); dříve #65 (F1); E1 (opravy z testu po D1) prošel jako build #62; F1 (Habits, mapa, easter eggy) prošel jako build #65; F2 (nový onboarding a coach marks) prošel jako build #66. Všechny sekce z CHANGES.md
 a všechny opravy z auditu jsou hotové.
 
 ## 1. Rozhodnutí
@@ -282,6 +282,45 @@ a všechny opravy z auditu jsou hotové.
   kapuce Archera a kápě Roguea jsou pryč. Třídu odliší zbraň + doplněk: Warrior sekera (pravá ruka) + kovový
   nárameník, Mage hůl s fialovým kamenem + krátký plášť, Archer luk + toulec s šípy na zádech, Rogue dýka + šátek
   přes pusu. Zbraň třídy (slot weapon) ustoupí zbrani z obchodu, doplněk zůstává.
+  - **Od S1 jsou zbraně tříd předměty ve slotu Main hand** (`EquipmentItem.defaultWeapon`, cena 0, vždy vlastněné)
+    a v `classMarks` zůstal jen doplněk, který je vždy nasazený (Warrior nárameník, Mage plášť, Archer toulec,
+    Rogue šátek). Luk je nově v pravé ruce a toulec na levém rameni; plášť nesahá za pravou ruku, šátek u krku
+    nechává místo mušlím sluchátek (vše kvůli slotům bez překryvu).
+- **Sloty výbavy** (od S1/M2, `EquipmentSlot`): `head`, `mainHand`, `offHand`, `neck`, `feet`, `back`. Zadání
+  jmenuje Head, Main hand, Off hand a Neck; boty zůstaly ve vlastním slotu Feet a jetpack dostal Back, protože by se
+  v jiném slotu překrýval se zbraní, kalkulačkou i pláštěm. V každém slotu je max. 1 věc, nasazení nahradí jen stejný
+  slot. Každý slot má na mřížce 16×16 svou oblast (popsáno v `Equipment.swift`): zbraně sloupce 12–15 v pravé ruce
+  (končí na řádku 11 kvůli křídlům bot, vynechávají 12,0–1 kvůli rohům helmy a 12,7 kvůli plášti), kalkulačka
+  v levé ruce (sloupce 1–2, řádky 9–11), sluchátka kolem krku (řádky 6–7), jetpack za tělem (vidět jen u ramen
+  a plamen u boků). Hole jsou proto kratší (konec na řádku 11).
+  - Unequip vrátí slot do výchozího stavu: Main hand = výchozí zbraň třídy (prázdná Main hand se kreslí jako ona,
+    `AvatarSprite.equippedItem`), ostatní prázdné. Výchozí zbraň nejde sundat, v panelu je šedé „Equipped“.
+  - Starší profily: klíče `weapon` a `gadget` se při čtení přesunou podle katalogu (`AvatarAppearance.migratedEquipment`).
+    Zbraň jiné třídy (např. Magic Staff u Warriora ze starší verze nebo po změně třídy) zůstane vlastněná, ale kreslí
+    se výchozí zbraň třídy. Wooden Sword je od S1 jen pro Warriora.
+  - Útok v bitvě se řídí třídou zbraně v Main hand (sekery a meče svih, hole kouzlo, luky šíp, dýky bodnutí).
+  - Test `EquipmentSlotTests`: všechny kombinace slotů × 4 třídy (288–384 na třídu) bez překryvu viditelných pixelů
+    (u věcí za tělem jen to, co kouká), snapshot (`ImageRenderer`) plné výbavy s každou zbraní třídy, kde každý pixel
+    věci má na snímku barvu té věci, try-on mění jen svůj slot, a změna třídy jen lektvarem.
+- **Zbraně podle třídy** (od S1/M3): Warrior Battle Axe (výchozí), Wooden Sword 60, Flame Axe 320, Excalibur 400;
+  Mage Oak Staff (výchozí), Magic Staff 300, Crystal Staff 450; Archer Short Bow (výchozí), Elven Bow 280,
+  Golden Bow 500; Rogue Dagger (výchozí), Twin Knives 200, Shadow Blade 420. Police Weapons má řadu pro každou třídu:
+  nahoře vlastní třída, pod ní ostatní ztlumené (saturace 35 %, průhlednost 50 %) s cenovkou „Mage only“; cizí zbraň
+  si hrdina nevyzkouší a v panelu je neaktivní „Mage only“.
+- **Třída napevno, změna jen za Class Potion** (od S1/M4): třída se volí jen v onboardingu (pod kartami
+  „Choose wisely – changing class later costs a Class Potion.“, stejné karty `HeroClassPicker` jako v listu lektvaru).
+  Hero tab ukazuje třídu se zámkem a odkaz „Change with a Class Potion“ do Shop › Supplies (během tutoriálu nic
+  nedělá). Class Potion je v Supplies za 500 mincí, max. 1 (`UserProfile.classPotions`); po koupi nebo „Use“ se otevře
+  `ClassChangeSheet` (náhled hrdiny ve vybrané třídě s výchozí zbraní, karty tříd, „Become a Mage“) a potvrzení
+  „Become a Mage?“ upozorní, že se lektvar spotřebuje. Zrušení i zavření listu lektvar nechá v zásobě. Po změně je
+  v Main hand výchozí zbraň nové třídy, koupené zbraně zůstávají vlastněné a po návratu jdou znovu nasadit; pásek
+  a denní kroužek berou barvu nové třídy. Debug v Settings: „Change class (free)“ (stejný list bez lektvaru).
+  Krok tutoriálu o Hero tabu změnu třídy nezmiňuje, zůstal beze změny; onboarding říká „You can change your look later“.
+- **Obrys hrdiny** (od S1/M1): hrdina ve stánku, v Hero tabu (karta i editor vzhledu), v onboardingu a v listu lektvaru
+  má tmavý 1px obrys (`HeroAvatarView(outlined: true)`, přesahuje rám o pixel, rozložení nemění). V bitvě, na widgetu
+  a sdílecích kartách obrys není.
+- **Panel věci** (od S1/M5): pod názvem slot a co věc nahradí („Main hand · replaces Battle Axe“, prázdný slot nebo
+  nasazená věc jen „Off hand“).
   - **Pokrývky hlavy jsou jen z obchodu** a každá definuje masku účesu (`EquipmentItem.hairBrimRow`,
     `AvatarSprite.hairRows`): vlasy do okraje pokrývky a pod jejími pixely se schovají; Long nechá jen pramínky
     po stranách pod okrajem, Spiky a Mohawk se schovají celé, Short a Bald podle tvaru. Vlasy nikdy netrčí přes pokrývku.
@@ -310,8 +349,11 @@ a všechny opravy z auditu jsou hotové.
     Reduce Motion bez zhoupnutí). Klik a vibrace výběru přes `FQFeedback`.
   - **Gear na policích** (I3): skupiny (Helmets & hats, Weapons, Boots, Gadgets) mají malou dřevěnou cedulku nad
     policí; věci stojí na prkně jen jako sprity (`ItemSprite`: vrstvy předmětu oříznuté na obrys, pixel 3–6 bodů),
-    pod prknem visí papírová cenovka na provázku (pixelová mince + cena, vlastněné „Owned“), nasazená věc má hvězdičku
-    a bílou záři, vybraná žlutou záři a zvedne se o 4 body. Klepnutí = hrdina si věc hned vyzkouší (poskok a 8 jisker,
+    pod prknem visí papírová cenovka na provázku (pixelová mince + cena, vlastněné „Owned“), nasazená věc má hvězdičku.
+    Od S1/M1 žádná záře ani aura: každý sprite v obchodě (věci, zásoby, obrazy) má trvale 1px pixelový obrys
+    #1a1a2e (`PixelOutline`, jedna buňka mřížky kolem plných buněk, 4 sousedé) a malý pixelový vržený stín
+    (`PixelDropShadow`); vybraná věc má bílý obrys a zvedne se o 3 body (spring, s Reduce Motion ne), vycentrovaný
+    obraz má bílý obrys. Klepnutí = hrdina si věc hned vyzkouší (poskok a 8 jisker,
     ne když ji už má nasazenou) a vyjede kompaktní panel **uvnitř stánku nad jeho spodní lištou** (od R1/L3):
     zaoblený, tmavý poloprůhledný (rgb 9,8,24 na 82 %, okraj bílá 12 %), 8 bodů od sloupků i lišty, v jednom řádku
     vlevo název a popis na nejvýš 2 řádky, vpravo žluté „Buy · 150“ / žluté „Equip“ / vedlejší „Unequip“, bez mincí
@@ -653,6 +695,7 @@ Shop má od K1 tři záložky: **Gear** (jen vybavení hrdiny), **Backgrounds** 
 |---|---|---|
 | Extra pause | 40 mincí | max 5, v bitvě 1 navíc |
 | Streak freeze | 150 mincí | max 2 |
+| Class Potion (od S1) | 500 mincí | max 1, spotřebuje se potvrzením nové třídy |
 | Truhla týdenního úkolu | odměna 40–100 mincí | 3 za týden |
 
 ### Repo, CI a hosting

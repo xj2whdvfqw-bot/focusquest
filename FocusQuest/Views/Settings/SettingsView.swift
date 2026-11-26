@@ -597,6 +597,8 @@ private struct DebugSettingsSections: View {
     @Binding var notifications: NotificationPermission
     @State private var debugNotificationStatus: String?
     @State private var debugPending: [String]?
+    /// S1/M4: "Change class (free)" otevre list zmeny tridy bez lektvaru.
+    @State private var showsClassChange = false
     /// Znovu onboarding (1A) i tutorial (1B) od zacatku.
     var onResetOnboarding: (() -> Void)?
 
@@ -629,6 +631,12 @@ private struct DebugSettingsSections: View {
                 }
             }
             VStack(alignment: .leading, spacing: FQSpace.sm) {
+                Text("Class: \(profile.profile.heroClass.displayName) · Class Potions: \(profile.profile.classPotions) of \(UserProfile.maxClassPotions)").monospacedDigit().foregroundStyle(.secondary)
+                ChipFlow(spacing: FQSpace.sm) {
+                    debugButton("Change class (free)") { showsClassChange = true }
+                }
+            }
+            VStack(alignment: .leading, spacing: FQSpace.sm) {
                 Text("Level: \(profile.level)").monospacedDigit().foregroundStyle(.secondary)
                 ChipFlow(spacing: FQSpace.sm) {
                     debugButton("Level −1") { profile.debugSetLevel(profile.level - 1) }
@@ -649,6 +657,10 @@ private struct DebugSettingsSections: View {
             Text("Debug")
         } footer: {
             Text("Not in the release build. \"Win now\" in a running battle wins it at once, with rewards.")
+        }
+        .sheet(isPresented: $showsClassChange) {
+            ClassChangeSheet(model: profile, mode: .debugFree) { showsClassChange = false }
+                .presentationDragIndicator(.visible)
         }
 
         Section {

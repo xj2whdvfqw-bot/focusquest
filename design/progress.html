@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-26T12:04:00+01:00",
-  "current": "R1 hotovo: build #88 prošel",
-  "nextStep": "Otestovat na iPhonu pevný stánek Shopu (hrdina nahoře, police pod pultem, panel ve stánku, cedule nad tab barem) na SE i Pro Max",
+  "updated": "2026-11-26T12:35:00+01:00",
+  "current": "S1 (M1–M5): obrysy, sloty výbavy, zbraně tříd, třída za Class Potion, panel věci – kód hotový, commit a build",
+  "nextStep": "Pushnout větev a spustit build pro S1",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -978,6 +978,28 @@
       "commit": "accb136",
       "build": { "number": 88, "runId": 45802774007, "result": "úspěch" },
       "note": "Build #88 prošel (IPA, Release, unit testy včetně `testFixedStallLeavesRoomForShelvesOnSmallPhone`, screenshot). #87 spadl jen na překladu nového testu (`.infinity` v `sizeThatFits`). Grafika beze změny, jen rozložení. Na iPhonu otestuj na SE i Pro Max v Gear, Backgrounds a Supplies: stánek začíná asi 16 pt pod řádkem Shop · mince · ozubené kolo; cedule Gear / Backgrounds / Supplies visí i s řetízky ze spodní lišty stánku, asi 12 pt nad tab barem, nic se nepřekrývá; nahoře ve stánku hrdina vždy celý (včetně klobouku) a stejně velký, za ním aktuální pozadí (v Backgrounds vycentrovaný obraz); pod ním dřevěný pult a police / obrazy / zásoby se scrollují jen pod pultem, nikdy přes hrdinu; try-on s poskokem funguje; panel věci je tmavý zaoblený uvnitř stánku nad spodní lištou, vlevo název a popis, vpravo žluté tlačítko, vybraná police se odroluje nad něj, zavření tahem dolů nebo dalším tapem. Obrazy jsou menší (SE 120, jinak 160 pt). Kdyby bylo na SE pod pultem málo místa, napiš."
+    },
+    {
+      "id": "S1",
+      "title": "Shop a hrdina: obrysy, sloty výbavy, zbraně tříd, třída za Class Potion (M1–M5)",
+      "status": "pracuje",
+      "items": [
+        { "text": "M1 Pryč hnědožlutá aura za vybranou věcí; všechny sprity v obchodě (police, pult, obrazy) mají 1px obrys #1a1a2e a malý vržený stín", "done": true },
+        { "text": "M1 Vybraná věc: bílý 1px obrys + zvednutí o 3 pt (spring), žádná záře", "done": true },
+        { "text": "M1 Hrdina ve stánku, v Hero tabu i v onboardingu má tmavý 1px obrys", "done": true },
+        { "text": "M2 Sloty Head, Main hand, Off hand, Neck (+ Feet pro boty, Back pro jetpack); v každém slotu max. 1 věc, nasazení nahradí jen stejný slot", "done": true },
+        { "text": "M2 Kalkulačka v levé ruce, zbraně v pravé, sluchátka kolem krku; nic se nepřekrývá; Unequip vrátí slot (Main hand = výchozí zbraň třídy)", "done": true },
+        { "text": "M3 Zbraně tříd: Warrior Battle Axe / Excalibur / Flame Axe (+ Wooden Sword), Mage Oak / Magic / Crystal Staff, Archer Short / Elven / Golden Bow, Rogue Dagger / Twin Knives / Shadow Blade", "done": true },
+        { "text": "M3 Police Weapons: nahoře vlastní třída, cizí ztlumené se štítkem „Mage only“, nejdou koupit ani nasadit; doplňek třídy vždy nasazený", "done": true },
+        { "text": "M4 Třída jen v onboardingu s textem „Choose wisely…“; v Hero tabu zámek a odkaz „Change with a Class Potion“ do Shop › Supplies", "done": true },
+        { "text": "M4 Class Potion v Supplies (500 mincí, max. 1), sheet s výběrem třídy a potvrzením „Become a Mage?“; zrušení lektvar nespotřebuje; debug „Change class (free)“", "done": true },
+        { "text": "M5 Panel věci: slot a co nahradí („Main hand · replaces Battle Axe“), tlačítka Buy / Equip / Unequip / Need X more / „Mage only“", "done": true },
+        { "text": "Test `EquipmentSlotTests`: všechny kombinace slotů × 4 třídy bez překryvu, snapshot try-onu, změna třídy jen lektvarem", "done": true },
+        { "text": "DECISIONS.md", "done": true }
+      ],
+      "commit": "",
+      "build": { "number": null, "runId": null, "result": "" },
+      "note": "Kód hotový, build ještě neběžel. Grafika polic, cenovek, cedulí a stávajících spritů beze změny (jen obrys, stín a nové sprity zbraní a lektvaru)."
     }
   ]
 }

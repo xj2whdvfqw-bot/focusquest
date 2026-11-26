@@ -22,6 +22,8 @@ struct ShopView: View {
     /// Cela vyska displeje: na nizkem displeji (iPhone SE) jsou obrazy na stene mensi.
     @State private var screenHeight: CGFloat = 844
     @State private var carouselWidth: CGFloat = 360
+    /// S1/M4: list s vyberem nove tridy po koupi nebo pouziti Class Potion.
+    @State private var showsClassChange = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
@@ -40,7 +42,7 @@ struct ShopView: View {
 
     /// Zasoby na pultu.
     enum Supply: String, CaseIterable, Identifiable {
-        case extraPause, streakFreeze
+        case extraPause, streakFreeze, classPotion
         var id: String { rawValue }
     }
 
@@ -55,11 +57,16 @@ struct ShopView: View {
 
     private var tryOn: EquipmentItem? { tryOnID.flatMap(EquipmentItem.item(withID:)) }
 
-    /// Hrdina tak, jak by vypadal s vyzkousenym predmetem.
+    /// Hrdina tak, jak by vypadal s vyzkousenym predmetem. S1/M2: vyzkouseni nahradi jen vec ve stejnem slotu,
+    /// ostatni sloty zustanou; zbran jine tridy si hrdina nevyzkousi.
     private var previewAppearance: AvatarAppearance {
-        var appearance = model.profile.avatar
-        if let tryOn { appearance.equip(tryOn.id, in: tryOn.slot) }
-        return appearance
+        Self.tryingOn(tryOn, over: model.profile.avatar, heroClass: model.profile.heroClass)
+    }
+
+    static func tryingOn(_ item: EquipmentItem?, over appearance: AvatarAppearance, heroClass: HeroClass) -> AvatarAppearance {
+        var look = appearance
+        if let item, item.fits(heroClass) { look.equip(item.isClassDefault ? nil : item.id, in: item.slot) }
+        return look
     }
 
     /// R1/L1: nahore radek se stitkem, mincemi a ozubenym kolem, 16 bodu pod nim pevny stanek (striska, sloupky,
@@ -109,6 +116,11 @@ struct ShopView: View {
         .fqSound(.coin, trigger: model.profile.coins) { old, new in new < old }
         // I2: prepnuti cedule = jemna vibrace vyberu (klik dava styl tlacitka).
         .fqHaptic(.selection, trigger: section)
+        // S1/M4: vyber nove tridy za Class Potion; zruseni lektvar nespotrebuje.
+        .sheet(isPresented: $showsClassChange) {
+            ClassChangeSheet(model: model, mode: .potion) { showsClassChange = false }
+                .presentationDragIndicator(.visible)
+        }
     }
 
     // MARK: - Hlavicka a stanek
@@ -213,8 +225,8 @@ struct ShopView: View {
         let target: String
         switch pick {
         case let .gear(id):
-            guard let slot = EquipmentItem.item(withID: id)?.slot else { return }
-            target = Self.shelfID(slot)
+            guard let item = EquipmentItem.item(withID: id) else { return }
+            target = Self.shelfRowID(item)
         case .supply:
             target = Self.counterID
         }
@@ -226,7 +238,10 @@ struct ShopView: View {
         }
     }
 
-    static func shelfID(_ slot: EquipmentSlot) -> String { "fq.shop.shelf.\(slot)" }
+    /// Rada police s veci (Weapons ma radu pro kazdou tridu).
+    static func shelfRowID(_ item: EquipmentItem) -> String {
+        "fq.shop.shelf.\(item.shelf.rawValue)" + (item.heroClass.map { ".\($0.rawValue)" } ?? "")
+    }
     static let counterID = "fq.shop.counter"
 
     private var stallAccessibilityLabel: String {
@@ -240,7 +255,7 @@ struct ShopView: View {
 
     /// I1: hrdina s vyzkousenou veci. Kazde vyzkouseni = poskok a jiskry (Reduce Motion jen prolnuti).
     private var hero: some View {
-        HeroAvatarView(appearance: previewAppearance, heroClass: model.profile.heroClass, size: heroSize)
+        HeroAvatarView(appearance: previewAppearance, heroClass: model.profile.heroClass, size: heroSize, outlined: true)
             .animation(FQMotion.quick, value: previewAppearance)
             .keyframeAnimator(initialValue: 0.0, trigger: reduceMotion ? 0 : hop) { content, lift in
                 content.offset(y: lift)
@@ -301,54 +316,77 @@ struct ShopView: View {
 
     // MARK: - Gear na policich (I3)
 
+    /// S1/M3: rady jedne police. Weapons ma radu pro kazdou tridu: nahore zbrane vlastni tridy,
+    /// pod nimi ztlumene zbrane ostatnich trid (se stitkem "Mage only").
+    static func shelfRows(_ shelf: EquipmentShelf, heroClass: HeroClass) -> [[EquipmentItem]] {
+        let items = EquipmentItem.catalog.filter { $0.shelf == shelf }
+        guard shelf == .weapons else { return [items] }
+        let order = [heroClass] + HeroClass.allCases.filter { $0 != heroClass }
+        return order.map { owner in items.filter { $0.heroClass == owner } }.filter { !$0.isEmpty }
+    }
+
     @ViewBuilder private var gearShelves: some View {
-        ForEach(EquipmentSlot.shopOrder, id: \.self) { slot in
-            let items = EquipmentItem.catalog.filter { $0.slot == slot }
+        ForEach(EquipmentShelf.shopOrder, id: \.self) { shelf in
             VStack(spacing: 0) {
-                ShelfSign(title: slot.displayName)
+                ShelfSign(title: shelf.title)
                     .padding(.bottom, FQSpace.xs)
-                HStack(alignment: .bottom, spacing: 0) {
-                    ForEach(items) { item in
-                        shelfItem(item).frame(maxWidth: .infinity)
+                VStack(spacing: FQSpace.sm) {
+                    ForEach(Self.shelfRows(shelf, heroClass: model.profile.heroClass), id: \.first?.id) { row in
+                        shelfRow(row)
                     }
                 }
-                .padding(.horizontal, FQSpace.sm)
-                WoodPlank(thickness: 4, nails: true)
-                HStack(alignment: .top, spacing: 0) {
-                    ForEach(items) { item in
-                        PriceTag(label: model.owns(item) ? .owned : .price(item.price))
-                            .frame(maxWidth: .infinity)
-                    }
-                }
-                .padding(.horizontal, FQSpace.sm)
             }
-            // J1: cil odrolovani, kdyz se vybere vec z teto police.
-            .id(Self.shelfID(slot))
         }
     }
 
+    private func shelfRow(_ items: [EquipmentItem]) -> some View {
+        VStack(spacing: 0) {
+            HStack(alignment: .bottom, spacing: 0) {
+                ForEach(items) { item in
+                    shelfItem(item).frame(maxWidth: .infinity)
+                }
+            }
+            .padding(.horizontal, FQSpace.sm)
+            WoodPlank(thickness: 4, nails: true)
+            HStack(alignment: .top, spacing: 0) {
+                ForEach(items) { item in
+                    PriceTag(label: tag(item))
+                        .opacity(model.canUse(item) ? 1 : 0.7)
+                        .frame(maxWidth: .infinity)
+                }
+            }
+            .padding(.horizontal, FQSpace.sm)
+        }
+        // J1: cil odrolovani, kdyz se vybere vec z teto rady.
+        .id(items.first.map(Self.shelfRowID) ?? "")
+    }
+
+    private func tag(_ item: EquipmentItem) -> PriceTag.Label {
+        if let owner = item.heroClass, !model.canUse(item) { return .classOnly(owner.displayName) }
+        return model.owns(item) ? .owned : .price(item.price)
+    }
+
+    /// S1/M1: kazda vec ma trvale tmavy 1px obrys a maly vrzeny stin pod sebou (zadna zare ani aura).
+    /// Vybrana vec ma bily obrys a zvedne se o 3 body (spring); nasazena ma hvezdicku.
     private func shelfItem(_ item: EquipmentItem) -> some View {
         let owned = model.owns(item)
         let equipped = model.isEquipped(item)
+        let usable = model.canUse(item)
         let selected = pick == .gear(item.id)
         let crop = ItemSprite.crop(item.layers)
         let pixel = max(3, min(6, (56 / CGFloat(max(crop.width, crop.height))).rounded(.down)))
         return Button {
             pickGear(item)
         } label: {
-            ZStack(alignment: .bottom) {
-                // Vybrana vec: zluta zare za ni; nasazena: bila.
-                if selected || equipped {
-                    Ellipse()
-                        .fill(RadialGradient(colors: [(selected ? StallPalette.yellow : Color.white).opacity(0.45), .clear],
-                                             center: .center, startRadius: 2, endRadius: 40))
-                        .frame(width: 80, height: 56)
-                        .offset(y: -8)
-                }
-                ItemSprite(item: item, pixel: pixel)
-                    .padding(.bottom, 2)
-                    .offset(y: selected && !reduceMotion ? -4 : 0)
+            VStack(spacing: 2) {
+                ItemSprite(item: item, pixel: pixel, outline: selected ? PixelOutline.selected : PixelOutline.ink)
+                    .offset(y: selected && !reduceMotion ? -3 : 0)
+                    .animation(FQMotion.spring(reduceMotion: reduceMotion), value: selected)
+                PixelDropShadow(width: crop.width + 2, pixel: pixel)
             }
+            // S1/M3: zbran jine tridy je ztlumena (nejde koupit ani nasadit).
+            .saturation(usable ? 1 : 0.35)
+            .opacity(usable ? 1 : 0.5)
             .frame(maxWidth: .infinity, minHeight: 76, alignment: .bottom)
             .overlay(alignment: .topTrailing) {
                 if equipped {
@@ -359,23 +397,31 @@ struct ShopView: View {
         }
         .buttonStyle(.fqPress)
         .accessibilityLabel(item.name)
-        .accessibilityValue(equipped ? "Equipped" : (owned ? "Owned" : "\(item.price) coins"))
-        .accessibilityHint("Tries it on and shows details")
+        .accessibilityValue(shelfValue(item, owned: owned, equipped: equipped, usable: usable))
+        .accessibilityHint(usable ? "Tries it on and shows details" : "Shows details")
         .accessibilityAddTraits(selected ? .isSelected : [])
     }
 
-    /// Klepnuti na vec: hrdina si ji hned vyzkousi (poskok a jiskry, ne kdyz ji uz ma) a vyjede panel.
-    /// Druhe klepnuti panel zavre.
+    private func shelfValue(_ item: EquipmentItem, owned: Bool, equipped: Bool, usable: Bool) -> String {
+        let slot = item.slot.displayName
+        if !usable, let owner = item.heroClass { return "\(owner.displayName) only, \(slot)" }
+        if equipped { return "Equipped, \(slot)" }
+        return owned ? "Owned, \(slot)" : "\(item.price) coins, \(slot)"
+    }
+
+    /// Klepnuti na vec: hrdina si ji hned vyzkousi (poskok a jiskry, ne kdyz ji uz ma nebo kdyz je pro jinou
+    /// tridu) a vyjede panel. Druhe klepnuti panel zavre.
     private func pickGear(_ item: EquipmentItem) {
         if pick == .gear(item.id) {
             closePanel()
             return
         }
+        let triesOn = !model.isEquipped(item) && model.canUse(item)
         withAnimation(FQMotion.spring(reduceMotion: reduceMotion)) {
             pick = .gear(item.id)
-            tryOnID = model.isEquipped(item) ? nil : item.id
+            tryOnID = triesOn ? item.id : nil
         }
-        if !model.isEquipped(item) { hop += 1 }
+        if triesOn { hop += 1 }
     }
 
     private func closePanel() {
@@ -468,8 +514,22 @@ struct ShopView: View {
             }
         }
         .frame(width: paintingWidth, height: paintingWidth * 1.3)
+        // S1/M1: obraz ma tmavy 1px obrys (vycentrovany bily) a maly vrzeny stin pod sebou.
+        .background {
+            let p = StallMetrics.pixel
+            ZStack(alignment: .bottom) {
+                Rectangle()
+                    .fill(centeredID == Self.backgroundID(background) ? PixelOutline.selected : PixelOutline.ink)
+                    .padding(-p)
+                PixelDropShadow(width: Int(paintingWidth / p), pixel: p)
+                    .offset(y: 2 * p)
+            }
+        }
         .padding(.top, 8)
     }
+
+    /// Obraz uprostred karuselu (pred prvnim posunem pouzivane pozadi).
+    private var centeredID: String { centeredBackground ?? Self.backgroundID(model.selectedBackground) }
 
     private func paintingTag(_ background: ShopBackground?) -> PriceTag.Label {
         guard let background else { return .free }
@@ -545,26 +605,24 @@ struct ShopView: View {
         .id(Self.counterID)
     }
 
+    /// S1/M1: zasoba ma trvale tmavy 1px obrys a stin na pultu; vybrana bily obrys a zvedne se o 3 body.
     private func supplyItem(_ supply: Supply) -> some View {
         let selected = pick == .supply(supply)
         let count = owned(supply)
+        let pixel: CGFloat = 5
+        let outline = selected ? PixelOutline.selected : PixelOutline.ink
         return Button {
             withAnimation(FQMotion.spring(reduceMotion: reduceMotion)) {
                 pick = selected ? nil : .supply(supply)
                 tryOnID = nil
             }
         } label: {
-            ZStack(alignment: .bottom) {
-                if selected {
-                    Ellipse()
-                        .fill(RadialGradient(colors: [StallPalette.yellow.opacity(0.45), .clear], center: .center, startRadius: 2, endRadius: 44))
-                        .frame(width: 96, height: 70)
-                        .offset(y: -10)
-                }
+            VStack(spacing: 2) {
                 Group {
                     switch supply {
-                    case .extraPause: HourglassSprite(pixel: 5)
-                    case .streakFreeze: IceCrystalSprite(pixel: 5)
+                    case .extraPause: HourglassSprite(pixel: pixel, outline: outline)
+                    case .streakFreeze: IceCrystalSprite(pixel: pixel, outline: outline)
+                    case .classPotion: ClassPotionSprite(pixel: pixel, outline: outline)
                     }
                 }
                 .overlay(alignment: .topTrailing) {
@@ -581,8 +639,9 @@ struct ShopView: View {
                         .offset(x: 18, y: -6)
                         .contentTransition(.numericText())
                 }
-                .padding(.bottom, 2)
-                .offset(y: selected && !reduceMotion ? -4 : 0)
+                .offset(y: selected && !reduceMotion ? -3 : 0)
+                .animation(FQMotion.spring(reduceMotion: reduceMotion), value: selected)
+                PixelDropShadow(width: supply == .classPotion ? 11 : 13, pixel: pixel)
             }
             .frame(maxWidth: .infinity, minHeight: 92, alignment: .bottom)
             .contentShape(Rectangle())
@@ -598,6 +657,7 @@ struct ShopView: View {
         switch supply {
         case .extraPause: "Extra pause"
         case .streakFreeze: "Streak freeze"
+        case .classPotion: "Class Potion"
         }
     }
 
@@ -605,6 +665,7 @@ struct ShopView: View {
         switch supply {
         case .extraPause: "Every battle has 1 free pause. An extra pause gives you a second one; 1 per battle."
         case .streakFreeze: "Miss a day and a freeze is used for you, so your streak stays alive."
+        case .classPotion: "Lets your hero become another class. It's used up only when you confirm the change."
         }
     }
 
@@ -612,6 +673,7 @@ struct ShopView: View {
         switch supply {
         case .extraPause: model.profile.extraPauses
         case .streakFreeze: model.profile.streakFreezes
+        case .classPotion: model.profile.classPotions
         }
     }
 
@@ -619,6 +681,7 @@ struct ShopView: View {
         switch supply {
         case .extraPause: UserProfile.maxExtraPauses
         case .streakFreeze: StreakFreeze.maxOwned
+        case .classPotion: UserProfile.maxClassPotions
         }
     }
 
@@ -626,6 +689,7 @@ struct ShopView: View {
         switch supply {
         case .extraPause: UserProfile.extraPausePrice
         case .streakFreeze: StreakFreeze.price
+        case .classPotion: UserProfile.classPotionPrice
         }
     }
 
@@ -633,6 +697,10 @@ struct ShopView: View {
         switch supply {
         case .extraPause: model.buyExtraPause()
         case .streakFreeze: model.buyStreakFreeze()
+        case .classPotion:
+            // S1/M4: po koupi hned vyber nove tridy; zruseni lektvar nespotrebuje (zustane v zasobe).
+            model.buyClassPotion()
+            showsClassChange = true
         }
     }
 
@@ -649,7 +717,7 @@ struct ShopView: View {
             switch pick {
             case let .gear(id):
                 if let item = EquipmentItem.item(withID: id) {
-                    panelText(title: item.name, detail: item.summary)
+                    panelText(title: item.name, caption: slotCaption(item), detail: item.summary)
                     gearAction(item, wide: wide).layoutPriority(1)
                 }
             case let .supply(supply):
@@ -680,11 +748,28 @@ struct ShopView: View {
         .accessibilityAction(.escape) { closePanel() }
     }
 
-    private func panelText(title: String, detail: String) -> some View {
+    /// S1/M5: slot a co vec nahradi: "Main hand · replaces Battle Axe"; prazdny slot nebo nasazena vec jen "Off hand".
+    func slotCaption(_ item: EquipmentItem) -> String {
+        Self.slotCaption(item, replacing: model.canUse(item) ? model.replacedItem(by: item) : nil)
+    }
+
+    static func slotCaption(_ item: EquipmentItem, replacing current: EquipmentItem?) -> String {
+        guard let current else { return item.slot.displayName }
+        return "\(item.slot.displayName) · replaces \(current.name)"
+    }
+
+    private func panelText(title: String, caption: String? = nil, detail: String) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(title)
                 .font(.fqHeadline)
                 .foregroundStyle(FQColor.textPrimary)
+            if let caption {
+                Text(caption)
+                    .fqFont(size: 13, weight: .semibold, design: .rounded)
+                    .foregroundStyle(StallPalette.cream)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
             Text(detail)
                 .font(.fqMeta)
                 .foregroundStyle(FQColor.textSecondary)
@@ -695,12 +780,28 @@ struct ShopView: View {
         .accessibilityElement(children: .combine)
     }
 
+    /// S1/M5: "Buy · 150" / "Equip" / "Unequip" / "Need X more" / pro cizi tridu neaktivni "Mage only".
+    /// Vychozi zbran tridy jde jen nasadit (sundani = navrat k ni), nasazena ukazuje sede "Equipped".
     /// `wide`: tlacitko pres celou sirku panelu (velke pismo), jinak kompaktni vpravo.
     @ViewBuilder private func gearAction(_ item: EquipmentItem, wide: Bool) -> some View {
-        if model.owns(item), model.isEquipped(item) {
+        if !model.canUse(item), let owner = item.heroClass {
+            Button {} label: {
+                Text("\(owner.displayName) only").frame(maxWidth: wide ? .infinity : nil)
+            }
+            .buttonStyle(ShopButtonStyle(fullWidth: wide))
+            .disabled(true)
+            .accessibilityLabel("\(item.name) is for the \(owner.displayName) class only")
+        } else if model.isEquipped(item), item.isClassDefault {
+            Text("Equipped")
+                .fqFont(size: 15, weight: .semibold, design: .rounded)
+                .foregroundStyle(FQColor.textSecondary)
+                .lineLimit(1)
+                .fixedSize()
+                .frame(maxWidth: wide ? .infinity : nil, minHeight: 44)
+        } else if model.isEquipped(item) {
             Button {
                 withAnimation(.easeOut(duration: 0.2)) {
-                    model.toggleEquip(item)
+                    model.unequip(item)
                     tryOnID = nil
                 }
             } label: {
@@ -711,7 +812,7 @@ struct ShopView: View {
         } else if model.owns(item) {
             Button {
                 withAnimation(.easeOut(duration: 0.2)) {
-                    model.toggleEquip(item)
+                    model.equip(item)
                     tryOnID = nil
                 }
                 hop += 1
@@ -743,7 +844,16 @@ struct ShopView: View {
         let count = owned(supply)
         let limit = maximum(supply)
         let cost = price(supply)
-        if count >= limit {
+        if supply == .classPotion, count > 0 {
+            // S1/M4: lektvar v zasobe = "Use" otevre vyber tridy (spotrebuje se az potvrzenim).
+            Button {
+                showsClassChange = true
+            } label: {
+                Text("Use").frame(maxWidth: wide ? .infinity : nil)
+            }
+            .buttonStyle(ShopCTAButtonStyle(fullWidth: wide))
+            .accessibilityLabel("Use Class Potion")
+        } else if count >= limit {
             Text("Max \(limit) held")
                 .fqFont(size: 15, weight: .semibold, design: .rounded)
                 .foregroundStyle(FQColor.textSecondary)

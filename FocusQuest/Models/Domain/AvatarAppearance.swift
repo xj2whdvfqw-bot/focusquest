@@ -73,9 +73,11 @@ enum GearColor: String, Codable, CaseIterable, Sendable, Identifiable {
     }
 }
 
-/// Misto na hrdinovi, kam pujde nasadit vybaveni z obchodu (dalsi buildy).
+/// S1/M2: sloty vybavy hrdiny. V kazdem slotu je nejvys jedna vec; nasazeni nahradi jen vec ve stejnem slotu.
+/// Head = helmy, klobouky, koruna; Main hand = zbrane tridy (prava ruka); Off hand = gadgety v leve ruce;
+/// Neck = sluchatka kolem krku; Feet = boty; Back = batoh na zadech (jetpack).
 enum EquipmentSlot: String, Codable, CaseIterable, Sendable {
-    case weapon, head, feet, gadget
+    case head, mainHand, offHand, neck, feet, back
 }
 
 /// Vzhled hrdiny. Kresli se po vrstvach (kuze, obleceni, vlasy...), viz AvatarSprite.
@@ -107,7 +109,22 @@ extension AvatarAppearance {
         hairColor = (try? container.decode(HairColor.self, forKey: .hairColor)) ?? fallback.hairColor
         outfitColor = (try? container.decode(GearColor.self, forKey: .outfitColor)) ?? fallback.outfitColor
         bootsColor = (try? container.decode(GearColor.self, forKey: .bootsColor)) ?? fallback.bootsColor
-        equipment = (try? container.decode([String: String].self, forKey: .equipment)) ?? [:]
+        equipment = Self.migratedEquipment((try? container.decode([String: String].self, forKey: .equipment)) ?? [:])
+    }
+
+    /// S1/M2: starsi verze mely sloty weapon a gadget (sluchatka, kalkulacka i jetpack v jednom). Kazdy znamy predmet
+    /// se presune do sveho slotu podle katalogu; nezname ID zustane pod puvodnim klicem (novejsi verze appky).
+    static func migratedEquipment(_ stored: [String: String]) -> [String: String] {
+        var result: [String: String] = [:]
+        for key in stored.keys.sorted() {
+            guard let id = stored[key] else { continue }
+            if let item = EquipmentItem.item(withID: id) {
+                result[item.slot.rawValue] = id
+            } else if EquipmentSlot(rawValue: key) != nil, result[key] == nil {
+                result[key] = id
+            }
+        }
+        return result
     }
 }
 
@@ -122,20 +139,27 @@ struct AvatarLayer: Identifiable, Hashable, Sendable {
 enum AvatarSprite {
     static let gridSize = 16
 
+    /// S1/M2: co ma hrdina v kazdem slotu. Main hand je vzdy obsazena: bez zbrane z obchodu (nebo se zbrani
+    /// jine tridy, napr. po zmene tridy lektvarem) drzi vychozi zbran sve tridy. Nezname ID se preskoci.
+    static func gear(for appearance: AvatarAppearance, heroClass: HeroClass) -> [EquipmentItem] {
+        EquipmentSlot.allCases.compactMap { equippedItem(in: $0, appearance: appearance, heroClass: heroClass) }
+    }
+
+    static func equippedItem(in slot: EquipmentSlot, appearance: AvatarAppearance, heroClass: HeroClass) -> EquipmentItem? {
+        if let stored = appearance.equippedItemID(in: slot).flatMap(EquipmentItem.item(withID:)),
+           stored.slot == slot, stored.fits(heroClass) {
+            return stored
+        }
+        return slot == .mainHand ? EquipmentItem.defaultWeapon(for: heroClass) : nil
+    }
+
     static func layers(for appearance: AvatarAppearance, heroClass: HeroClass) -> [AvatarLayer] {
-        // Nasazene vybaveni z obchodu; neznama ID (napr. ze starsi verze) se preskoci.
-        let gear = EquipmentSlot.allCases.compactMap { appearance.equippedItemID(in: $0).flatMap(EquipmentItem.item(withID:)) }
-        // Znak povolani ve slotu, kam hrac nasadil predmet z obchodu, ustoupi predmetu.
-        let occupied = Set(gear.map(\.slot))
-        let marks = classMarks(heroClass).filter { mark in mark.slot.map { !occupied.contains($0) } ?? true }
+        let gear = gear(for: appearance, heroClass: heroClass)
+        // S1/M3: doplnek tridy (naramenik, plast, toulec, satek) zustava vzdy nasazeny.
+        let marks = classMarks(heroClass)
         var layers = marks.filter(\.behindBody).map(\.layer)
         layers += gear.filter(\.drawsBehindBody).flatMap(\.layers)
-        layers += [
-            AvatarLayer(id: "skin", rows: grid([2: [5...10], 3: [5...10], 4: [5...10], 5: [5...10], 6: [7...8], 9: [3...3, 12...12], 10: [3...3, 12...12]]), rgb: appearance.skin.rgb),
-            AvatarLayer(id: "outfit", rows: grid([7: [4...11], 8: [3...12], 9: [4...11], 10: [5...10], 12: [5...6, 9...10], 13: [5...6, 9...10]]), rgb: appearance.outfitColor.rgb),
-            AvatarLayer(id: "belt", rows: grid([11: [5...10]]), rgb: classAccent(heroClass)),
-            AvatarLayer(id: "boots", rows: grid([14: [4...6, 9...11]]), rgb: appearance.bootsColor.rgb)
-        ]
+        layers += bodyLayers(for: appearance, heroClass: heroClass)
         // O1/H3: ucesy jsou vzdy cele videt; jen pokryvka hlavy z obchodu cast vlasu schova (maska).
         let headwear = gear.first { $0.slot == .head }
         if let hair = hairRows(appearance.hairStyle, under: headwear) {
@@ -143,54 +167,48 @@ enum AvatarSprite {
         }
         layers.append(AvatarLayer(id: "eyes", rows: grid([4: [6...6, 9...9]]), rgb: RGB(0.10, 0.10, 0.16)))
         layers += marks.filter { !$0.behindBody }.map(\.layer)
-        // Helmy, zbrane a gadgety jsou nakreslene pres hrdinu.
+        // Helmy, zbrane, gadgety, sluchatka a boty jsou nakreslene pres hrdinu.
         layers += gear.filter { !$0.drawsBehindBody }.flatMap(\.layers)
         return layers
     }
 
-    /// Kousek vybavy, podle ktereho se povolani pozna na prvni pohled.
+    /// Telo hrdiny: kuze, obleceni, pasek v barve tridy a boty.
+    static func bodyLayers(for appearance: AvatarAppearance, heroClass: HeroClass) -> [AvatarLayer] {
+        [
+            AvatarLayer(id: "skin", rows: grid([2: [5...10], 3: [5...10], 4: [5...10], 5: [5...10], 6: [7...8], 9: [3...3, 12...12], 10: [3...3, 12...12]]), rgb: appearance.skin.rgb),
+            AvatarLayer(id: "outfit", rows: grid([7: [4...11], 8: [3...12], 9: [4...11], 10: [5...10], 12: [5...6, 9...10], 13: [5...6, 9...10]]), rgb: appearance.outfitColor.rgb),
+            AvatarLayer(id: "belt", rows: grid([11: [5...10]]), rgb: classAccent(heroClass)),
+            AvatarLayer(id: "boots", rows: grid([14: [4...6, 9...11]]), rgb: appearance.bootsColor.rgb)
+        ]
+    }
+
+    /// Doplnek, podle ktereho se povolani pozna na prvni pohled. Je vzdy nasazeny a nezabira zadny slot.
     struct ClassMark: Sendable {
-        /// Slot, ktery znak zabira; nil = nezavisi na vybaveni (plast, maska).
-        let slot: EquipmentSlot?
         let behindBody: Bool
         let layer: AvatarLayer
     }
 
     static func classMarks(_ heroClass: HeroClass) -> [ClassMark] {
-        let steel = RGB(0.72, 0.76, 0.84)
-        let wood = RGB(0.55, 0.36, 0.18)
-        func mark(_ id: String, _ slot: EquipmentSlot?, behind: Bool = false, _ spans: [Int: [ClosedRange<Int>]], _ rgb: RGB) -> ClassMark {
-            ClassMark(slot: slot, behindBody: behind, layer: AvatarLayer(id: "class-\(id)", rows: grid(spans), rgb: rgb))
+        func mark(_ id: String, behind: Bool = false, _ spans: [Int: [ClosedRange<Int>]], _ rgb: RGB) -> ClassMark {
+            ClassMark(behindBody: behind, layer: AvatarLayer(id: "class-\(id)", rows: grid(spans), rgb: rgb))
         }
-        // O1/H3: zadna trida nema pokryvku hlavy (helma, kapuce i kape jsou pryc), ucesy jsou vzdy cele videt.
-        // Tridu odlisi zbran a doplnek: Warrior sekera + kovovy naramenik, Mage hul + kratky plast,
-        // Archer luk + toulec na zadech, Rogue dyka + satek pres pusu. Zbran ustoupi zbrani z obchodu.
+        // O1/H3: zadna trida nema pokryvku hlavy, ucesy jsou vzdy cele videt.
+        // S1/M3: zbran tridy je predmet ve slotu Main hand (EquipmentItem.defaultWeapon); tady zustal jen doplnek.
+        // Doplnky nezasahuji do slotu: prava ruka (sloupce 12-15) patri zbrani, leva ruka (sloupce 0-2, radky 9-11)
+        // gadgetu, krk (radky 6-7, sloupce 5-10) sluchatkum. Proto je toulec na levem rameni, plast nesaha
+        // za pravou ruku a satek u krku nechava misto muslim sluchatek.
         switch heroClass {
         case .warrior:
-            return [
-                mark("pauldron", nil, [6: [3...3], 7: [2...3], 8: [2...3]], steel),
-                mark("axe-handle", .weapon, [3: [13...13], 4: [13...13], 5: [13...13], 6: [13...13], 7: [13...13], 8: [13...13], 9: [13...13], 10: [13...13], 11: [13...13]], wood),
-                mark("axe-blade", .weapon, [3: [14...15], 4: [12...12, 14...15], 5: [14...15], 6: [14...14]], steel)
-            ]
+            return [mark("pauldron", [6: [3...3], 7: [2...3], 8: [2...3]], RGB(0.72, 0.76, 0.84))]
         case .mage:
-            return [
-                mark("cape", nil, behind: true, [7: [3...12], 8: [2...13], 9: [3...12], 10: [4...11]], RGB(0.36, 0.22, 0.62)),
-                mark("staff", .weapon, [2: [13...13], 3: [13...13], 4: [13...13], 5: [13...13], 6: [13...13], 7: [13...13], 8: [13...13], 9: [13...13], 10: [13...13], 11: [13...13], 12: [13...13], 13: [13...13], 14: [13...13]], wood),
-                mark("gem", .weapon, [0: [13...13], 1: [12...14]], RGB(0.68, 0.45, 0.85))
-            ]
+            return [mark("cape", behind: true, [7: [3...12], 8: [2...12], 9: [3...12], 10: [4...11]], RGB(0.36, 0.22, 0.62))]
         case .archer:
             return [
-                mark("quiver", nil, behind: true, [5: [12...13], 6: [12...13], 7: [12...13], 8: [13...13]], RGB(0.50, 0.32, 0.17)),
-                mark("fletching", nil, behind: true, [3: [13...13], 4: [12...13]], RGB(0.92, 0.90, 0.82)),
-                mark("bow", .weapon, [5: [2...2], 6: [1...1], 7: [0...0], 8: [0...0], 9: [0...0], 10: [0...0], 11: [0...0], 12: [1...1], 13: [2...2]], wood),
-                mark("string", .weapon, [6: [2...2], 7: [2...2], 8: [2...2], 9: [2...2], 10: [2...2], 11: [2...2], 12: [2...2]], RGB(0.92, 0.90, 0.82))
+                mark("quiver", behind: true, [4: [2...3], 5: [2...3], 6: [2...3], 7: [2...3], 8: [2...2]], RGB(0.50, 0.32, 0.17)),
+                mark("fletching", behind: true, [2: [2...2], 3: [2...3]], RGB(0.92, 0.90, 0.82))
             ]
         case .rogue:
-            return [
-                mark("scarf", nil, [5: [5...10], 6: [6...10]], RGB(0.22, 0.22, 0.30)),
-                mark("dagger", .weapon, [6: [13...13], 7: [13...13], 8: [13...13]], steel),
-                mark("hilt", .weapon, [9: [12...14], 10: [13...13]], wood)
-            ]
+            return [mark("scarf", [5: [5...10], 6: [6...9]], RGB(0.22, 0.22, 0.30))]
         }
     }
 
