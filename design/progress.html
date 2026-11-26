@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-26T15:32:48+01:00",
-  "current": "T1: build #91 běží",
-  "nextStep": "Počkat na výsledek buildu #91",
+  "updated": "2026-11-26T16:12:06+01:00",
+  "current": "T1 hotovo: build #91 prošel",
+  "nextStep": "Otestovat na iPhonu tenké obrysy, výběr věci, obrazy v Backgrounds a panel nad cenovkami",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -1004,7 +1004,7 @@
     {
       "id": "T1",
       "title": "Tenké obrysy a stíny v bodech, výběr věci, obrazy bez rámečku, panel nad cenovkami (N1–N4)",
-      "status": "build",
+      "status": "hotovo",
       "items": [
         { "text": "N1 Obrys 1 pt #1a1a2e ~70 % a stín 0,1.5 pt / blur 1.5 pt / černá 35 % v bodech obrazovky, ne v pixelech spritu; žádný černý blok pod věcí", "done": true },
         { "text": "N1 Platí pro hrdinu (stánek, Hero tab, onboarding, mapa, bitva, přestávka) i všechny věci na policích a pultu", "done": true },
@@ -1014,8 +1014,8 @@
         { "text": "DECISIONS.md", "done": true }
       ],
       "commit": "1035b6f",
-      "build": { "number": 91, "runId": 45840050242, "result": "běží" },
-      "note": "Build #90: 1. pokus spadl na výpadku runneru GitHubu, 2. pokus přeložil appku (IPA i Release build prošly), ale během unit testů byl zrušen („The operation was canceled“) dřív, než testy vypsaly výsledek. Žádný test nehlásil chybu. Běží nový build #91."
+      "build": { "number": 91, "runId": 45840050242, "result": "úspěch" },
+      "note": "Build #91 prošel (IPA, Release, unit testy, screenshot). #90 neprošel kvůli GitHubu: 1. pokus výpadek runneru, 2. pokus zrušen během testů bez chybového výsledku. Grafika spritů, polic, cenovek a rámů beze změny. Na iPhonu otestuj na Daybreak i tmavém pozadí, SE i Pro Max: obrys hrdiny a věcí je tenký (1 pt), stín jemný a pod věcmi není žádný černý blok ani tmavá skvrna; tenké zbraně jsou dál dobře vidět. Hrdina má obrys ve stánku, Hero tabu, onboardingu, na mapě, v přestávce i v bitvě. Vybraná věc: tenký bílý obrys a poskočí o 3 pt, žádná záře. Backgrounds: vybraný obraz bez bílého rámečku, jen uprostřed a větší, zlatý rám zůstal. Otevřený panel věci: police končí nad panelem, vybraná řada i s cenovkou je nad ním, pod panelem ani vedle něj neprosvítají „Owned“ ani ceny (hlavně na SE). Kdyby obrys vypadal rozmazaně nebo zubatě, napiš."
     }
   ]
 }
