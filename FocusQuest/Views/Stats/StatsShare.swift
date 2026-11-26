@@ -176,7 +176,7 @@ struct StatsShareCard: View {
 
     private var heroBlock: some View {
         VStack(spacing: 8) {
-            HeroAvatarView(appearance: snapshot.hero, heroClass: snapshot.heroClass, size: Metrics.hero)
+            HeroAvatarView(appearance: snapshot.hero, heroClass: snapshot.heroClass, size: Metrics.hero, outlined: false)
                 .shadow(color: .black.opacity(0.5), radius: 0, x: 0, y: 4)
             if let name {
                 Text(name)

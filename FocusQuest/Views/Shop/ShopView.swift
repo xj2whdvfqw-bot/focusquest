@@ -185,25 +185,29 @@ struct ShopView: View {
     }
 
     /// R1/L2: police, obrazy nebo zasoby na zadni stene stanku. Roluji jen pod pultem (orizle), nikdy pres hrdinu.
-    /// Panel vybrane veci je dole v teto plose (nad spodni listou stanku) a obsah se nad nej odroluje.
+    /// N4: panel vybrane veci je dole v teto plose (nad spodni listou stanku) a police konci nad nim: rolovaci
+    /// plocha se zkrati o vysku panelu (obsah tak ma dole odsazeni o vysku panelu), vybrana vec i s cenovkou
+    /// se odroluje nad panel a pod panelem ani vedle nej nikdy neprosvitaji cenovky.
+    /// N1: BrightTextShadow uz neni na celem obsahu (na svetlem pozadi delal tmave skvrny pod vecmi), jen na textu.
     private var shelves: some View {
         ScrollViewReader { reader in
-            ScrollView {
-                VStack(alignment: .leading, spacing: FQSpace.lg) {
-                    switch section {
-                    case .gear: gearShelves
-                    case .backgrounds: backgroundWall
-                    case .supplies: suppliesCounter
+            VStack(spacing: 0) {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: FQSpace.lg) {
+                        switch section {
+                        case .gear: gearShelves
+                        case .backgrounds: backgroundWall
+                        case .supplies: suppliesCounter
+                        }
                     }
+                    .padding(.horizontal, FQSpace.sm)
+                    .padding(.top, FQSpace.md)
+                    .padding(.bottom, FQSpace.lg)
+                    .modifier(TabSwitchEntrance())
                 }
-                .modifier(BrightTextShadow())
-                .padding(.horizontal, FQSpace.sm)
-                .padding(.top, FQSpace.md)
-                .padding(.bottom, FQSpace.lg)
-                .modifier(TabSwitchEntrance())
-            }
-            .scrollIndicators(.hidden)
-            .safeAreaInset(edge: .bottom, spacing: 0) {
+                .scrollIndicators(.hidden)
+                .frame(maxHeight: .infinity)
+                .clipped()
                 ZStack {
                     if let pick {
                         detailPanel(pick)
@@ -213,7 +217,6 @@ struct ShopView: View {
                 }
                 .animation(FQMotion.spring(reduceMotion: reduceMotion), value: pick)
             }
-            .frame(maxHeight: .infinity)
             .background { PlankWall() }
             .onChange(of: pick) { _, new in reveal(new, with: reader) }
         }
@@ -230,7 +233,7 @@ struct ShopView: View {
         case .supply:
             target = Self.counterID
         }
-        // Panel uz zabral misto dole (safe area); odroluje se jen tolik, kolik je potreba.
+        // N4: panel uz zkratil rolovaci plochu; rada i s cenovkami se odroluje nad nej jen o tolik, kolik je potreba.
         let animation = FQMotion.spring(reduceMotion: reduceMotion)
         Task { @MainActor in
             try? await Task.sleep(for: .milliseconds(60))
@@ -366,8 +369,8 @@ struct ShopView: View {
         return model.owns(item) ? .owned : .price(item.price)
     }
 
-    /// S1/M1: kazda vec ma trvale tmavy 1px obrys a maly vrzeny stin pod sebou (zadna zare ani aura).
-    /// Vybrana vec ma bily obrys a zvedne se o 3 body (spring); nasazena ma hvezdicku.
+    /// S1/M1, N1: kazda vec ma trvale tenky tmavy obrys a jemny stin v bodech obrazovky (zadna zare ani aura,
+    /// zadny blok pod veci). N2: vybrana vec ma bily obrys 1,25 pt a zvedne se o 3 body (spring); nasazena ma hvezdicku.
     private func shelfItem(_ item: EquipmentItem) -> some View {
         let owned = model.owns(item)
         let equipped = model.isEquipped(item)
@@ -379,10 +382,9 @@ struct ShopView: View {
             pickGear(item)
         } label: {
             VStack(spacing: 2) {
-                ItemSprite(item: item, pixel: pixel, outline: selected ? PixelOutline.selected : PixelOutline.ink)
+                ItemSprite(item: item, pixel: pixel, outline: selected ? .selected : .ink)
                     .offset(y: selected && !reduceMotion ? -3 : 0)
                     .animation(FQMotion.spring(reduceMotion: reduceMotion), value: selected)
-                PixelDropShadow(width: crop.width + 2, pixel: pixel)
             }
             // S1/M3: zbran jine tridy je ztlumena (nejde koupit ani nasadit).
             .saturation(usable ? 1 : 0.35)
@@ -493,6 +495,7 @@ struct ShopView: View {
             .frame(maxWidth: .infinity)
             .contentTransition(.opacity)
             .animation(FQMotion.quick, value: centeredBackground)
+            .modifier(BrightTextShadow())
         }
     }
 
@@ -500,9 +503,14 @@ struct ShopView: View {
         let inUse = model.selectedBackground == background
         let inset = CGFloat(PixelFrame.thicknessInPixels) * StallMetrics.pixel
         return ZStack(alignment: .topTrailing) {
-            PaintingScene(background: background)
-                .padding(inset)
-            PixelFrame()
+            // N1, N3: obraz se zlatym ramem ma jen tenky tmavy obrys a jemny stin v bodech. Vycentrovany obraz
+            // nema bily ramecek; vybrany je poznat jen tim, ze je uprostred a vetsi.
+            ZStack {
+                PaintingScene(background: background)
+                    .padding(inset)
+                PixelFrame()
+            }
+            .spriteOutline()
             // Visacka na ramu: Free, cena nebo Owned.
             PriceTag(label: paintingTag(background), stringLength: 6)
                 .padding(.trailing, FQSpace.md)
@@ -514,22 +522,8 @@ struct ShopView: View {
             }
         }
         .frame(width: paintingWidth, height: paintingWidth * 1.3)
-        // S1/M1: obraz ma tmavy 1px obrys (vycentrovany bily) a maly vrzeny stin pod sebou.
-        .background {
-            let p = StallMetrics.pixel
-            ZStack(alignment: .bottom) {
-                Rectangle()
-                    .fill(centeredID == Self.backgroundID(background) ? PixelOutline.selected : PixelOutline.ink)
-                    .padding(-p)
-                PixelDropShadow(width: Int(paintingWidth / p), pixel: p)
-                    .offset(y: 2 * p)
-            }
-        }
         .padding(.top, 8)
     }
-
-    /// Obraz uprostred karuselu (pred prvnim posunem pouzivane pozadi).
-    private var centeredID: String { centeredBackground ?? Self.backgroundID(model.selectedBackground) }
 
     private func paintingTag(_ background: ShopBackground?) -> PriceTag.Label {
         guard let background else { return .free }
@@ -605,12 +599,12 @@ struct ShopView: View {
         .id(Self.counterID)
     }
 
-    /// S1/M1: zasoba ma trvale tmavy 1px obrys a stin na pultu; vybrana bily obrys a zvedne se o 3 body.
+    /// S1/M1, N1, N2: zasoba ma trvale tenky tmavy obrys a jemny stin v bodech; vybrana bily obrys a zvedne se o 3 body.
     private func supplyItem(_ supply: Supply) -> some View {
         let selected = pick == .supply(supply)
         let count = owned(supply)
         let pixel: CGFloat = 5
-        let outline = selected ? PixelOutline.selected : PixelOutline.ink
+        let outline: SpriteOutline.Style = selected ? .selected : .ink
         return Button {
             withAnimation(FQMotion.spring(reduceMotion: reduceMotion)) {
                 pick = selected ? nil : .supply(supply)
@@ -641,7 +635,6 @@ struct ShopView: View {
                 }
                 .offset(y: selected && !reduceMotion ? -3 : 0)
                 .animation(FQMotion.spring(reduceMotion: reduceMotion), value: selected)
-                PixelDropShadow(width: supply == .classPotion ? 11 : 13, pixel: pixel)
             }
             .frame(maxWidth: .infinity, minHeight: 92, alignment: .bottom)
             .contentShape(Rectangle())
@@ -740,6 +733,7 @@ struct ShopView: View {
         // Odsazeni od sloupku stanku a od spodni listy.
         .padding(.horizontal, FQSpace.sm)
         .padding(.bottom, FQSpace.sm)
+        .padding(.top, FQSpace.sm)
         // Zavreni tahem dolu (bez krizku) nebo druhym klepnutim na vec; VoiceOver gestem escape.
         .gesture(DragGesture(minimumDistance: 12).onEnded { value in
             if value.translation.height > 30 { closePanel() }

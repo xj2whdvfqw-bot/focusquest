@@ -383,7 +383,6 @@ private struct MapContent: View {
             // Hrdina ma stejne vrstvy jako v Shopu a Hero Profile (aktualni trida a vybaveni).
             if let current, let point = MapLayout.stops[current.id] {
                 HeroAvatarView(appearance: hero, heroClass: heroClass, size: 44)
-                    .shadow(color: .black.opacity(0.5), radius: 3, y: 2)
                     .position(x: point.x - 52, y: point.y - 6)
                     .allowsHitTesting(false)
                     .accessibilityHidden(true)

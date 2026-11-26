@@ -1,8 +1,7 @@
 import SwiftUI
 
-/// S1/M1: 1px pixelovy obrys kolem spritu (hrdina, veci v obchode, zasoby, obrazy). Tenke veci (nuz, mec, hul)
-/// jsou s nim videt na svetlem i tmavem pozadi. Obrys je jedna bunka mrizky kolem vsech plnych bunek
-/// (4 sousedi, bez rohu, jak se obrys v pixel artu kresli), takze ma vzdy velikost jednoho pixelu spritu.
+/// S1/M1: pixelova maska a obrys spritu v bunkach mrizky (pouzivaji testy). Od N1 se obrys na obrazovce kresli
+/// v bodech pres `SpriteOutline`, ne v pixelech spritu.
 enum PixelOutline {
     /// Tmavy obrys #1a1a2e.
     static let ink = Color(red: 0x1a / 255, green: 0x1a / 255, blue: 0x2e / 255)
@@ -48,23 +47,59 @@ enum PixelOutline {
     }
 }
 
-/// Maly pixelovy vrzeny stin pod spritem (na polici, pultu, pod obrazem): jeden radek pixelu,
-/// uzsi nez sprite, s odsazenymi konci.
-struct PixelDropShadow: View {
-    /// Sirka spritu v pixelech.
-    let width: Int
-    var pixel: CGFloat = StallMetrics.pixel
+/// N1: obrys a stin spritu v bodech obrazovky, nezavisle na zvetseni spritu (driv 1 pixel spritu = 3-10 bodu,
+/// tlusty obrys a cerny blok pod veci). Obrys = silueta obsahu posunuta do 8 smeru o `width` bodu pod spritem,
+/// cela vrstva slozena dohromady a pak zpruhlednena (prekryvy se nescitaji). Stin je jemny, rozmazany, bez tvaru.
+struct SpriteOutline: ViewModifier {
+    enum Style {
+        /// Trvaly tmavy obrys: 1 pt, #1a1a2e na 70 %.
+        case ink
+        /// Vybrana vec v obchode: bily obrys 1,25 pt, bez aury a zare.
+        case selected
 
-    var body: some View {
-        let length = max(2, Int((Double(width) * 0.8).rounded()))
-        Canvas(opaque: false) { context, size in
-            let left = (size.width - CGFloat(length) * pixel) / 2
-            context.fill(Path(CGRect(x: left + pixel, y: 0, width: CGFloat(length - 2) * pixel, height: pixel)),
-                         with: .color(.black.opacity(0.45)))
-            context.fill(Path(CGRect(x: left, y: 0, width: CGFloat(length) * pixel, height: pixel)),
-                         with: .color(.black.opacity(0.22)))
+        var color: Color { self == .ink ? PixelOutline.ink : PixelOutline.selected }
+        var opacity: Double { self == .ink ? 0.7 : 1 }
+        var width: CGFloat { self == .ink ? 1 : 1.25 }
+    }
+
+    var style: Style = .ink
+    /// Jemny vrzeny stin (offset 0,1.5 pt, blur 1.5 pt, cerna 35 %).
+    var shadow = true
+    /// Bez obrysu i stinu (napr. sdileci karty).
+    var enabled = true
+
+    @ViewBuilder func body(content: Content) -> some View {
+        if !enabled {
+            content
+        } else {
+            outlined(content)
         }
-        .frame(width: CGFloat(length) * pixel, height: pixel)
-        .accessibilityHidden(true)
+    }
+
+    private func outlined(_ content: Content) -> some View {
+        content
+            .background {
+                ZStack {
+                    ForEach(0..<8, id: \.self) { index in
+                        let angle = Double(index) * .pi / 4
+                        style.color
+                            .mask { content }
+                            .offset(x: CGFloat(cos(angle)) * style.width, y: CGFloat(sin(angle)) * style.width)
+                    }
+                }
+                .compositingGroup()
+                .opacity(style.opacity)
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+            }
+            .compositingGroup()
+            .shadow(color: .black.opacity(shadow ? 0.35 : 0), radius: shadow ? 1.5 : 0, x: 0, y: shadow ? 1.5 : 0)
+    }
+}
+
+extension View {
+    /// N1: tenky obrys a jemny stin v bodech obrazovky (hrdina, veci, zasoby, obrazy).
+    func spriteOutline(_ style: SpriteOutline.Style = .ink, shadow: Bool = true, enabled: Bool = true) -> some View {
+        modifier(SpriteOutline(style: style, shadow: shadow, enabled: enabled))
     }
 }

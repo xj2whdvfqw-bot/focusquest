@@ -3,7 +3,7 @@
 Doplňuje `design/CHANGES.md` (zadání sekcí 0–15) a `design/progress.html` (stav, buildy, co otestovat).
 Tady je to, co v nich není: rozhodnutí, která padla během práce, otevřené body a známé pasti.
 
-Stav k 26. 11. 2026: větev `phase3-duolingo`; S1 prošla jako build #89 (M1–M5: obrysy spritů a hrdiny, sloty výbavy, zbraně podle třídy, třída napevno a změna jen za Class Potion, slot v panelu věci), viz progress.html. Předtím R1 prošla jako build #88 (L1–L3: pevný stánek s hrdinou nahoře, police rolují pod pultem uvnitř stánku, panel věci ve stánku, cedule pod stánkem nad lištou; ruší sbalovací hlavičku z Q1/J1), viz progress.html. Předtím Q1 prošla jako build #86 (J1: stánek Shopu jako sbalovací hlavička nad rolovacím obsahem, kompaktní panel věci; J2: nadpis Settings jako v systémovém Nastavení), viz progress.html. Předtím P1 (I1–I6: obchod jako pixelový kupecký stánek s cedulemi, policemi, obrazy a pultem) a O1 (H1–H3: footer a hlavička Settings, tišší odměna, třídy bez pokrývek hlavy s maskou účesu), prošly jako build #85 (#82 zrušen startem #83, #83 a #84 spadly na testech obchodu). Předtím N1 (G1: plynulé přechody tutoriálu, A na stejné obrazovce v jedné animaci, B při změně obrazovky se schováním a objevením na stabilním cíli) prošel jako build #81. Předtím M1 (tutoriál: kroky 2–4 v otevřeném Fight setupu, cíle měřené v `.global`, Hero ve dvou krocích, celkem 14) prošel jako build #80, viz progress.html. Předtím L1 (opravy E1–E5 po testu #76: Skip v safe area, plynulé přechody, Home bez scrollu, Break panel) prošel jako build #79. Předtím zelený build #76 (K1: onboarding karta, tutoriál ve vlastním okně, Shop Supplies, sdílecí karty, zvuky) a #74 (J1: Habits, widget, freeze, Focus, zkratky, úkoly, poznámky, příprava iCloud); dříve #70 (I1), #69 (H1), #67 (G1); dříve #65 (F1); E1 (opravy z testu po D1) prošel jako build #62; F1 (Habits, mapa, easter eggy) prošel jako build #65; F2 (nový onboarding a coach marks) prošel jako build #66. Všechny sekce z CHANGES.md
+Stav k 26. 11. 2026: větev `phase3-duolingo`; T1 (N1–N4: tenké obrysy a stíny v bodech obrazovky, bílý obrys vybrané věci, obrazy bez bílého rámečku, panel věci nad cenovkami) čeká na build, viz progress.html. Předtím S1 prošla jako build #89 (M1–M5: obrysy spritů a hrdiny, sloty výbavy, zbraně podle třídy, třída napevno a změna jen za Class Potion, slot v panelu věci), viz progress.html. Předtím R1 prošla jako build #88 (L1–L3: pevný stánek s hrdinou nahoře, police rolují pod pultem uvnitř stánku, panel věci ve stánku, cedule pod stánkem nad lištou; ruší sbalovací hlavičku z Q1/J1), viz progress.html. Předtím Q1 prošla jako build #86 (J1: stánek Shopu jako sbalovací hlavička nad rolovacím obsahem, kompaktní panel věci; J2: nadpis Settings jako v systémovém Nastavení), viz progress.html. Předtím P1 (I1–I6: obchod jako pixelový kupecký stánek s cedulemi, policemi, obrazy a pultem) a O1 (H1–H3: footer a hlavička Settings, tišší odměna, třídy bez pokrývek hlavy s maskou účesu), prošly jako build #85 (#82 zrušen startem #83, #83 a #84 spadly na testech obchodu). Předtím N1 (G1: plynulé přechody tutoriálu, A na stejné obrazovce v jedné animaci, B při změně obrazovky se schováním a objevením na stabilním cíli) prošel jako build #81. Předtím M1 (tutoriál: kroky 2–4 v otevřeném Fight setupu, cíle měřené v `.global`, Hero ve dvou krocích, celkem 14) prošel jako build #80, viz progress.html. Předtím L1 (opravy E1–E5 po testu #76: Skip v safe area, plynulé přechody, Home bez scrollu, Break panel) prošel jako build #79. Předtím zelený build #76 (K1: onboarding karta, tutoriál ve vlastním okně, Shop Supplies, sdílecí karty, zvuky) a #74 (J1: Habits, widget, freeze, Focus, zkratky, úkoly, poznámky, příprava iCloud); dříve #70 (I1), #69 (H1), #67 (G1); dříve #65 (F1); E1 (opravy z testu po D1) prošel jako build #62; F1 (Habits, mapa, easter eggy) prošel jako build #65; F2 (nový onboarding a coach marks) prošel jako build #66. Všechny sekce z CHANGES.md
 a všechny opravy z auditu jsou hotové.
 
 ## 1. Rozhodnutí
@@ -316,9 +316,16 @@ a všechny opravy z auditu jsou hotové.
   v Main hand výchozí zbraň nové třídy, koupené zbraně zůstávají vlastněné a po návratu jdou znovu nasadit; pásek
   a denní kroužek berou barvu nové třídy. Debug v Settings: „Change class (free)“ (stejný list bez lektvaru).
   Krok tutoriálu o Hero tabu změnu třídy nezmiňuje, zůstal beze změny; onboarding říká „You can change your look later“.
-- **Obrys hrdiny** (od S1/M1): hrdina ve stánku, v Hero tabu (karta i editor vzhledu), v onboardingu a v listu lektvaru
-  má tmavý 1px obrys (`HeroAvatarView(outlined: true)`, přesahuje rám o pixel, rozložení nemění). V bitvě, na widgetu
-  a sdílecích kartách obrys není.
+- **Obrys a stín v bodech obrazovky** (od T1/N1, nahrazuje pixelový obrys z S1/M1): obrys v pixelech spritu měl 3–10 bodů
+  a pod věcmi dělal černý blok. Teď `SpriteOutline` (`.spriteOutline()` v `PixelOutline.swift`): silueta obsahu
+  posunutá do 8 směrů o 1 bod, složená do jedné vrstvy (`compositingGroup`) a teprve pak zprůhledněná, takže
+  se překryvy nesčítají; barva #1a1a2e na 70 %. Stín: offset 0,1.5 pt, blur 1.5 pt, černá 35 %, bez tvaru.
+  Velikost ani rozložení spritu se nemění. `PixelDropShadow` je pryč; `PixelOutline.mask/ring` zůstaly jen pro test slotů.
+  **Hrdina má obrys všude** (`HeroAvatarView.outlined` je od T1 výchozí `true`): stánek, Hero tab, onboarding,
+  list lektvaru, mapa (místo dřívějšího stínu), přestávka a bitva (`BattleStage.hero`, místo stínu 0,45/3 pt).
+  Bez obrysu jen sdílecí karty (`outlined: false`); widget hrdinu nekreslí.
+  `BrightTextShadow` (na světlém pozadí stín 0,85/1 pt + 0,55/6 pt) už není na celém obsahu polic, protože dělal
+  tmavé skvrny pod věcmi; zůstal na řádku Shop · mince a na popisu obrazu pod karuselem.
 - **Panel věci** (od S1/M5): pod názvem slot a co věc nahradí („Main hand · replaces Battle Axe“, prázdný slot nebo
   nasazená věc jen „Off hand“).
   - **Pokrývky hlavy jsou jen z obchodu** a každá definuje masku účesu (`EquipmentItem.hairBrimRow`,
@@ -350,15 +357,17 @@ a všechny opravy z auditu jsou hotové.
   - **Gear na policích** (I3): skupiny (Helmets & hats, Weapons, Boots, Gadgets) mají malou dřevěnou cedulku nad
     policí; věci stojí na prkně jen jako sprity (`ItemSprite`: vrstvy předmětu oříznuté na obrys, pixel 3–6 bodů),
     pod prknem visí papírová cenovka na provázku (pixelová mince + cena, vlastněné „Owned“), nasazená věc má hvězdičku.
-    Od S1/M1 žádná záře ani aura: každý sprite v obchodě (věci, zásoby, obrazy) má trvale 1px pixelový obrys
-    #1a1a2e (`PixelOutline`, jedna buňka mřížky kolem plných buněk, 4 sousedé) a malý pixelový vržený stín
-    (`PixelDropShadow`); vybraná věc má bílý obrys a zvedne se o 3 body (spring, s Reduce Motion ne), vycentrovaný
-    obraz má bílý obrys. Klepnutí = hrdina si věc hned vyzkouší (poskok a 8 jisker,
+    Od S1/M1 žádná záře ani aura: každý sprite v obchodě (věci, zásoby, obrazy) má trvale tenký obrys a jemný stín
+    v bodech obrazovky (od T1/N1, viz Obrys a stín výše); vybraná věc (i zásoba) má bílý obrys 1,25 bodu (T1/N2)
+    a zvedne se o 3 body (spring, s Reduce Motion ne). Vycentrovaný obraz v Backgrounds od T1/N3 žádný bílý
+    rámeček nemá: výběr je poznat jen tím, že je uprostřed a větší (sousední 0,8), zlatý rám zůstává. Klepnutí = hrdina si věc hned vyzkouší (poskok a 8 jisker,
     ne když ji už má nasazenou) a vyjede kompaktní panel **uvnitř stánku nad jeho spodní lištou** (od R1/L3):
     zaoblený, tmavý poloprůhledný (rgb 9,8,24 na 82 %, okraj bílá 12 %), 8 bodů od sloupků i lišty, v jednom řádku
     vlevo název a popis na nejvýš 2 řádky, vpravo žluté „Buy · 150“ / žluté „Equip“ / vedlejší „Unequip“, bez mincí
-    šedé „Need 40 more“ (s velkým písmem pod sebou, tlačítko přes celou šířku). Je to spodní bezpečná zóna rolovací
-    plochy pod pultem, takže nepřekryje cedule, lištu záložek ani hrdinu; po výběru se celá police s věcí
+    šedé „Need 40 more“ (s velkým písmem pod sebou, tlačítko přes celou šířku). Od T1/N4 panel není přes rolovací plochu
+    (dřív `safeAreaInset`, obsah pod ním a v mezerách vedle něj prosvítal včetně cenovek „Owned“ a cen): police a panel
+    jsou pod sebou ve `VStack`, rolovací plocha končí nad panelem (obsah má tak dole odsazení o výšku panelu), pod
+    panelem je jen prkenná stěna. Nepřekryje cedule, lištu záložek ani hrdinu; po výběru se celá řada s věcí i cenovkami
     (u Supplies pult) odroluje nad panel (`scrollTo` s `anchor: nil`, jen o potřebný kus). Panel zavře druhé klepnutí na věc, tah dolů nebo VoiceOver
     escape (žádný křížek); přepnutí cedule nebo odchod ze Shopu ho zavře i se zkoušením.
   - **Backgrounds jako obrazy na zadní stěně** (I4): stěna ze svislých prken (od R1 společná pro celou plochu pod pultem; obrazy 120 bodů na SE, jinak 160), obrazy v pixelovém zlatém rámu

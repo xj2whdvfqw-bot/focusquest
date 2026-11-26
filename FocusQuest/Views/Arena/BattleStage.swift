@@ -259,8 +259,9 @@ struct BattleStage: View {
                 .offset(y: weaponOnRight ? 0 : frame.weaponDrop * heroSize)
         }
         .frame(width: heroSize, height: heroSize)
+        // N1: tenky obrys a jemny stin v bodech jako hrdina v obchode a Hero tabu.
+        .spriteOutline()
         .rotationEffect(.degrees(frame.heroTilt), anchor: .bottom)
-        .shadow(color: .black.opacity(0.45), radius: 3, y: 2)
     }
 
     private func groundShadow(width: CGFloat) -> some View {

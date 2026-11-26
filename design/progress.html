@@ -77,9 +77,9 @@
      ====================================================================== -->
 <script id="data" type="application/json">
 {
-  "updated": "2026-11-26T13:13:00+01:00",
-  "current": "S1 hotovo: build #89 prošel",
-  "nextStep": "Otestovat na iPhonu obrysy, sloty výbavy, zbraně tříd a změnu třídy za Class Potion",
+  "updated": "2026-11-26T14:03:01+01:00",
+  "current": "T1 (N1–N4) hotový kód, commit",
+  "nextStep": "Pustit build a počkat na výsledek",
   "repo": "https://github.com/xj2whdvfqw-bot/focusquest",
   "sections": [
     {
@@ -1000,6 +1000,22 @@
       "commit": "b307d55",
       "build": { "number": 89, "runId": 45812176120, "result": "úspěch" },
       "note": "Build #89 prošel (IPA, unit testy včetně nového `EquipmentSlotTests`: všechny kombinace slotů × 4 třídy bez překryvu, snapshot try-onu, změna třídy jen lektvarem). Grafika polic, cenovek, cedulí a stávajících spritů beze změny, přibyl jen obrys, stín a nové sprity zbraní a lektvaru. Na iPhonu otestuj: v Shopu žádná aura, každá věc i obraz má tmavý obrys a stín, tenké zbraně jsou dobře vidět; vybraná věc bílý obrys a poskočí o 3 pt; hrdina má obrys ve stánku, Hero tabu i onboardingu. Nasaď kalkulačku + zbraň + sluchátka (kolem krku) + jetpack + boty + helmu najednou, nic se nesmí překrývat; Unequip zbraně vrátí výchozí zbraň třídy. Na polici Weapons nahoře vlastní třída, cizí ztlumené s „Mage only“ a neaktivním tlačítkem. Panel ukazuje slot a „replaces …“. Hero tab: třída se zámkem, odkaz otevře Shop › Supplies. Class Potion za 500 (max. 1): po koupi sheet, zrušení lektvar nechá, potvrzení „Become a Mage?“ ho spotřebuje, v ruce je výchozí zbraň nové třídy a kroužek má barvu nové třídy. Debug v Settings: „Change class (free)“. Pozor: luk je nově v pravé ruce, toulec na levém rameni a hole jsou kratší (kvůli slotům). Kdyby něco vypadalo posunuté nebo se překrývalo, napiš."
+    },
+    {
+      "id": "T1",
+      "title": "Tenké obrysy a stíny v bodech, výběr věci, obrazy bez rámečku, panel nad cenovkami (N1–N4)",
+      "status": "pracuje",
+      "items": [
+        { "text": "N1 Obrys 1 pt #1a1a2e ~70 % a stín 0,1.5 pt / blur 1.5 pt / černá 35 % v bodech obrazovky, ne v pixelech spritu; žádný černý blok pod věcí", "done": true },
+        { "text": "N1 Platí pro hrdinu (stánek, Hero tab, onboarding, mapa, bitva, přestávka) i všechny věci na policích a pultu", "done": true },
+        { "text": "N2 Vybraná věc: bílý obrys 1,25 pt, zvednutí zůstává, žádná aura ani záře", "done": true },
+        { "text": "N3 Backgrounds: bez bílého rámečku kolem vybraného obrazu, zlatý rám zůstává", "done": true },
+        { "text": "N4 Otevřený panel: police končí nad panelem, vybraná věc i s cenovkou se odroluje nad něj, pod panelem neprosvítají cenovky", "done": true },
+        { "text": "DECISIONS.md", "done": true }
+      ],
+      "commit": "",
+      "build": { "number": null, "runId": null, "result": "" },
+      "note": "Kód hotový, čeká na commit a build."
     }
   ]
 }
